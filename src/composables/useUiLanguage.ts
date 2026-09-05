@@ -5,6 +5,20 @@ export type UiLanguage = 'en' | 'zh-CN'
 const UI_LANGUAGE_STORAGE_KEY = 'codex-web-local.ui-language.v1'
 
 const zhCN: Record<string, string> = {
+  'None': '无',
+  'Minimal': '最低',
+  'Low': '低',
+  'Medium': '中',
+  'High': '高',
+  'Extra high': '极高',
+  'No speech detected. Click again after speaking.': '未检测到语音，请说话后再次点击。',
+  'No speech detected. Hold the mic and speak.': '未检测到语音，请按住麦克风说话。',
+  'Microphone access was denied.': '麦克风访问被拒绝。',
+  'Dictation failed.': '听写失败。',
+  'Composio CLI shares the login and connections from this machine.': 'Composio CLI 使用本机的登录和连接状态。',
+  'Authenticated': '已认证',
+  'Connector': '连接器',
+  'Auth': '认证',
   'Bearer token (optional)': 'Bearer Token（可选）',
   'Custom endpoint': '自定义端点',
   'Dismiss': '关闭',

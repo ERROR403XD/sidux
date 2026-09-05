@@ -288,7 +288,7 @@
                 <span class="directory-card-title">{{ t('Composio workspace') }}</span>
                 <span class="directory-badge">{{ t('Connected') }}</span>
               </div>
-              <span class="directory-card-meta">{{ composioStatus.email || composioStatus.defaultOrgName || 'Authenticated' }}</span>
+              <span class="directory-card-meta">{{ composioStatus.email || composioStatus.defaultOrgName || t('Authenticated') }}</span>
             </div>
           </div>
           <p class="directory-card-description">
@@ -569,7 +569,7 @@
               <div v-else class="directory-card-fallback composio-fallback">{{ selectedComposioDetail?.connector.name.charAt(0) }}</div>
               <div class="directory-card-main">
                 <h3 class="directory-modal-title">{{ selectedComposioDetail?.connector.name || 'Composio' }}</h3>
-                <span class="directory-card-meta">{{ selectedComposioDetail ? composioMetaLabel(selectedComposioDetail.connector) : 'Connector' }}</span>
+                <span class="directory-card-meta">{{ selectedComposioDetail ? composioMetaLabel(selectedComposioDetail.connector) : t('Connector') }}</span>
               </div>
             </div>
             <button class="directory-modal-close" type="button" :aria-label="t('Close Composio detail')" @click="closeComposioDetail">{{ t('Close') }}</button>
@@ -607,7 +607,7 @@
                           {{ composioConnectionStatusLabel(connection.status) }}
                         </span>
                       </span>
-                      <span class="directory-card-meta">{{ connection.authScheme || 'Auth' }}</span>
+                      <span class="directory-card-meta">{{ connection.authScheme || t('Auth') }}</span>
                     </div>
                   </div>
                 </div>
@@ -946,13 +946,13 @@ const hasMoreComposioConnectors = computed(() => composioNextCursor.value !== nu
 const mcpStatusByName = computed(() => new Map(mcpServers.value.map((server) => [server.name, server])))
 const composioWorkspaceSummary = computed(() => {
   const status = composioStatus.value
-  if (!status) return 'Composio CLI shares the login and connections from this machine.'
+  if (!status) return t('Composio CLI shares the login and connections from this machine.')
   const parts = [
     status.email || status.defaultOrgName,
     status.defaultOrgId ? `org ${status.defaultOrgId}` : '',
     status.baseUrl || '',
   ].filter(Boolean)
-  return parts.join(' · ') || 'Composio CLI shares the login and connections from this machine.'
+  return parts.join(' · ') || t('Composio CLI shares the login and connections from this machine.')
 })
 
 function normalizeSearch(value: string): string {
