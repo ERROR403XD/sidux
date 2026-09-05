@@ -6,6 +6,7 @@ type Sample = { pointerId: number; button: number; isPrimary: boolean; clientX: 
 export function createBackdropGesture() {
   let start: Sample | null = null
   return {
+    isTracking() { return start !== null },
     cancel() { start = null },
     down(event: Sample, onBackdrop: boolean) {
       if (start || !event.isPrimary || event.button !== 0 || !onBackdrop) {
@@ -31,12 +32,16 @@ const sample = (e: PointerEvent): Sample => ({ pointerId: e.pointerId, button: e
 function pointer(event: PointerEvent) {
   const modal = stack.at(-1)
   if (!modal) return
-  const onBackdrop = document.elementFromPoint(event.clientX, event.clientY) === modal.el
   if (event.type === 'pointerdown') {
     modal.clickReady = false
-    modal.gesture.down(sample(event), event.target === modal.el && onBackdrop)
+    modal.gesture.down(sample(event), event.target === modal.el)
   } else if (event.type === 'pointermove') modal.gesture.move(sample(event))
-  else if (event.type === 'pointerup') modal.clickReady = modal.gesture.up(sample(event), onBackdrop)
+  else if (event.type === 'pointerup') {
+    // Hit-test only a viable gesture's release (touch may implicitly capture
+    // pointer events). Hover/move events must never force a layout read.
+    const onBackdrop = modal.gesture.isTracking() && document.elementFromPoint(event.clientX, event.clientY) === modal.el
+    modal.clickReady = modal.gesture.up(sample(event), onBackdrop)
+  }
   else { modal.gesture.cancel(); modal.clickReady = false }
 }
 function click(event: MouseEvent) {
