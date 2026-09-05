@@ -649,7 +649,7 @@
     </Teleport>
 
     <Teleport to="body">
-      <div v-if="renameThreadDialogVisible" class="rename-thread-overlay" @click.self="closeRenameThreadDialog">
+      <div v-if="renameThreadDialogVisible" class="rename-thread-overlay" v-modal-backdrop="closeRenameThreadDialog">
         <div class="rename-thread-panel" role="dialog" aria-modal="true" aria-label="Thread title">
           <h3 class="rename-thread-title">{{ t('Rename thread') }}</h3>
           <p class="rename-thread-subtitle">Make it short and recognizable.</p>
@@ -671,7 +671,7 @@
     </Teleport>
 
     <Teleport to="body">
-      <div v-if="deleteThreadDialogVisible" class="rename-thread-overlay" @click.self="closeDeleteThreadDialog">
+      <div v-if="deleteThreadDialogVisible" class="rename-thread-overlay" v-modal-backdrop="closeDeleteThreadDialog">
         <div class="rename-thread-panel" role="dialog" aria-modal="true" aria-label="Delete thread">
           <h3 class="rename-thread-title">{{ deleteThreadHasAutomation ? 'Archive chat and remove automations?' : 'Delete thread?' }}</h3>
           <p class="rename-thread-subtitle">
@@ -693,7 +693,7 @@
     </Teleport>
 
     <Teleport to="body">
-      <div v-if="automationDialogVisible" class="rename-thread-overlay" @click.self="closeAutomationDialog">
+      <div v-if="automationDialogVisible" class="rename-thread-overlay" v-modal-backdrop="closeAutomationDialog">
         <div class="rename-thread-panel automation-thread-panel" role="dialog" aria-modal="true" :aria-label="automationDialogScope === 'project' ? 'Project automation' : 'Thread automation'">
           <h3 class="rename-thread-title">{{ automationDialogMode === 'edit' ? 'Edit automation' : 'Add automation' }}</h3>
           <p class="rename-thread-subtitle">{{ automationDialogSubtitle }}</p>
@@ -874,6 +874,7 @@
 </template>
 
 <script setup lang="ts">
+import { vModalBackdrop } from '../../composables/modalBackdrop'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { ComponentPublicInstance } from 'vue'
 import {

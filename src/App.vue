@@ -694,7 +694,7 @@
                   </div>
                 </section>
                 <Teleport to="body">
-                  <div v-if="isExistingFolderPickerOpen" class="new-thread-open-folder-overlay" @click.self="onCloseExistingFolderPanel">
+                  <div v-if="isExistingFolderPickerOpen" class="new-thread-open-folder-overlay" v-modal-backdrop="onCloseExistingFolderPanel">
                     <div class="new-thread-open-folder" role="dialog" aria-modal="true" :aria-label="t('Select folder')" @keydown.esc.prevent="onCloseExistingFolderPanel">
                       <div class="new-thread-open-folder-header">
                         <p class="new-thread-open-folder-title">{{ t('Select folder') }}</p>
@@ -823,7 +823,7 @@
                   </div>
                 </Teleport>
                 <Teleport to="body">
-                  <div v-if="isProjectSetupModalOpen" class="new-thread-open-folder-overlay" @click.self="onCloseProjectSetupModal">
+                  <div v-if="isProjectSetupModalOpen" class="new-thread-open-folder-overlay" v-modal-backdrop="onCloseProjectSetupModal">
                     <div class="new-thread-project-modal" role="dialog" aria-modal="true" :aria-label="t('Create or clone project')" @keydown.esc.prevent="onCloseProjectSetupModal">
                       <div class="new-thread-open-folder-header">
                         <p class="new-thread-open-folder-title">{{ t('Create or clone project') }}</p>
@@ -1198,6 +1198,7 @@
 </template>
 
 <script setup lang="ts">
+import { vModalBackdrop } from './composables/modalBackdrop'
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DesktopLayout from './components/layout/DesktopLayout.vue'

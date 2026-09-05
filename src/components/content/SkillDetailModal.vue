@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="sdm-overlay" @click.self="$emit('close')">
+    <div v-if="visible" class="sdm-overlay" v-modal-backdrop="() => emit('close')">
       <div class="sdm-panel">
         <div class="sdm-header">
           <div class="sdm-title-area">
@@ -90,6 +90,7 @@
 </template>
 
 <script setup lang="ts">
+import { vModalBackdrop } from '../../composables/modalBackdrop'
 import { computed, ref, watch } from 'vue'
 import { useUiLanguage } from '../../composables/useUiLanguage'
 import IconTablerX from '../icons/IconTablerX.vue'

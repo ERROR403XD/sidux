@@ -423,7 +423,7 @@
     </section>
 
     <Teleport to="body">
-      <div v-if="isPluginDetailOpen" class="directory-modal-overlay" @click.self="closePluginDetail">
+      <div v-if="isPluginDetailOpen" class="directory-modal-overlay" v-modal-backdrop="closePluginDetail">
         <article class="directory-modal">
           <div class="directory-modal-header">
             <div class="directory-card-top">
@@ -555,7 +555,7 @@
     </Teleport>
 
     <Teleport to="body">
-      <div v-if="isComposioDetailOpen" class="directory-modal-overlay" @click.self="closeComposioDetail">
+      <div v-if="isComposioDetailOpen" class="directory-modal-overlay" v-modal-backdrop="closeComposioDetail">
         <article class="directory-modal">
           <div class="directory-modal-header">
             <div class="directory-card-top">
@@ -658,6 +658,7 @@
 </template>
 
 <script setup lang="ts">
+import { vModalBackdrop } from '../../composables/modalBackdrop'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {

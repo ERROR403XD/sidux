@@ -27,3 +27,15 @@ Rollback/cleanup:
 - Remove the created project folder from the filesystem if it was only used for testing.
 - Remove the cloned repository folder from the filesystem if it was only used for testing.
 - Remove the test projects from the app project list if they are no longer needed.
+
+### 0.1.89：模态遮罩完整手势
+
+前提：候选环境，创建/选择目录、线程重命名/删除、自动化、技能及目录详情弹窗。
+
+步骤：逐个打开弹窗；填写内容并从面板内拖选至背景松开；反向拖动；从背景移开再移回；右键、多指触控、取消手势；最后正常点击背景。打开嵌套详情，按 Esc。提交过程中重复关闭操作。
+
+预期：仅完整背景左键点击关闭；拖选保留内容；Esc 只关闭顶层；提交中沿用各弹窗禁止关闭规则；取消按钮仍可用。浅色、深色各检查一次。
+
+清理：取消测试弹窗，不提交删除真实线程。
+
+性能：所有模态共用一组事件监听，仅处理顶层，手势为常数状态；最后一个弹窗卸载时移除监听。
