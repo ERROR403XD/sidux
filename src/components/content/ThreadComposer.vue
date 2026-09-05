@@ -134,7 +134,6 @@
           @paste="onInputPaste"
         />
         <button
-          v-if="hasExpandedComposerToggle"
           class="thread-composer-expand"
           type="button"
           :aria-label="isComposerExpanded ? t('Exit full screen composer') : t('Expand composer')"
@@ -573,8 +572,6 @@ const fileMentionSuggestions = ref<ComposerFileSuggestion[]>([])
 const isFileMentionOpen = ref(false)
 const fileMentionHighlightedIndex = ref(0)
 const isComposerExpanded = ref(false)
-const isDraftOverflowing = ref(false)
-let composerOverflowMeasurementQueued = false
 const draftGeneration = ref(0)
 let fileMentionSearchToken = 0
 let fileMentionDebounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -723,10 +720,6 @@ const placeholderText = computed(() =>
 )
 const hasSubmitContent = computed(() =>
   draft.value.trim().length > 0 || selectedImages.value.length > 0 || fileAttachments.value.length > 0,
-)
-const draftLineCount = computed(() => draft.value.split('\n').length)
-const hasExpandedComposerToggle = computed(() =>
-  isComposerExpanded.value || draftLineCount.value >= 6 || isDraftOverflowing.value,
 )
 const quotaSummaryText = computed(() => buildQuotaSummaryText(props.codexQuota ?? null))
 const quotaWeeklyRefreshText = computed(() => '')
@@ -1098,30 +1091,12 @@ function onInterrupt(): void {
   emit('interrupt')
 }
 
-function updateComposerOverflowState(): void {
-  const input = inputRef.value
-  if (!input) {
-    isDraftOverflowing.value = false
-    return
-  }
-  isDraftOverflowing.value = input.scrollHeight > input.clientHeight + 2
-}
-
-function queueComposerOverflowMeasurement(): void {
-  if (composerOverflowMeasurementQueued) return
-  composerOverflowMeasurementQueued = true
-  void nextTick(() => {
-    composerOverflowMeasurementQueued = false
-    updateComposerOverflowState()
-  })
-}
-
 function toggleComposerExpanded(): void {
   if (isInteractionDisabled.value) return
   const input = inputRef.value
   const selection = input ? [input.selectionStart, input.selectionEnd, input.selectionDirection] as const : null
   isComposerExpanded.value = !isComposerExpanded.value
-  queueComposerOverflowMeasurement()
+
   void nextTick(() => {
     input?.focus({ preventScroll: true })
     if (selection) input?.setSelectionRange(...selection)
@@ -1552,7 +1527,7 @@ function onInputChange(): void {
   if (dictationFeedback.value) {
     dictationFeedback.value = ''
   }
-  queueComposerOverflowMeasurement()
+
   updateFileMentionState()
 }
 
@@ -1673,7 +1648,6 @@ function hydrateDraft(payload: ComposerDraftPayload): void {
   replaceDraftState(payload)
   void nextTick(() => {
     inputRef.value?.focus()
-    updateComposerOverflowState()
   })
 }
 
@@ -1816,7 +1790,7 @@ onMounted(() => {
   window.addEventListener('dragend', onWindowDragCleanup)
   window.addEventListener('blur', onWindowDragCleanup)
   void reloadPrompts()
-  queueComposerOverflowMeasurement()
+
 })
 
 defineExpose<ThreadComposerExposed>({
@@ -1861,9 +1835,6 @@ watch([draft, selectedImages, fileAttachments, selectedSkills], () => {
   persistDraftForThread(lastActiveThreadId, getCurrentDraftPayload())
 }, { deep: true })
 
-watch(draft, () => {
-  queueComposerOverflowMeasurement()
-})
 
 watch(
   () => props.cwd,
@@ -2037,7 +2008,7 @@ watch(
 }
 
 .thread-composer-input-wrap {
-  @apply relative;
+  @apply relative flex gap-1.5;
 }
 
 .thread-composer-input-wrap--expanded {
@@ -2109,11 +2080,11 @@ watch(
 }
 
 .thread-composer-input {
-  @apply w-full min-w-0 min-h-10 sm:min-h-11 max-h-40 rounded-xl border-0 bg-transparent px-1 py-2 pr-10 text-sm text-zinc-900 outline-none transition resize-none overflow-y-auto;
+  @apply flex-1 w-full min-w-0 min-h-10 sm:min-h-11 max-h-40 rounded-xl border-0 bg-transparent px-1 py-2 text-sm text-zinc-900 outline-none transition resize-none overflow-y-auto;
 }
 
 .thread-composer-input-wrap--expanded .thread-composer-input {
-  @apply h-full min-h-0 max-h-none pr-12 text-base leading-6;
+  @apply h-full min-h-0 max-h-none text-base leading-6;
 }
 
 .thread-composer-input:focus {
@@ -2125,7 +2096,7 @@ watch(
 }
 
 .thread-composer-expand {
-  @apply absolute right-0.5 top-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border-0 bg-zinc-100 text-zinc-500 shadow-sm transition hover:bg-zinc-200 hover:text-zinc-900 disabled:cursor-not-allowed disabled:text-zinc-400;
+  @apply mt-0.5 inline-flex h-8 w-8 shrink-0 self-start items-center justify-center rounded-full border-0 bg-zinc-100 text-zinc-500 shadow-sm transition hover:bg-zinc-200 hover:text-zinc-900 disabled:cursor-not-allowed disabled:text-zinc-400;
 }
 
 .thread-composer-expand-icon {

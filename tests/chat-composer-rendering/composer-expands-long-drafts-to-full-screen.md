@@ -1,7 +1,7 @@
 ### Composer expands long drafts to full screen
 
 #### Feature/Change Name
-Thread composer full-screen expand control for multi-line drafts.
+Thread composer expand control is always visible, including empty drafts.
 
 #### Prerequisites/Setup
 1. Dev server running (`pnpm run dev --host 127.0.0.1 --port 4173`)
@@ -9,17 +9,17 @@ Thread composer full-screen expand control for multi-line drafts.
 3. Light theme and dark theme both available from the appearance switcher
 
 #### Steps
-1. In light theme, type or paste at least six lines into the composer.
-2. Confirm the expand button appears in the composer input area.
+1. In light theme, open a thread with an empty draft.
+2. Confirm the expand button is already visible; paste long text and verify its scrollbar remains in a separate area.
 3. Click the expand button.
-4. Confirm the composer fills the viewport, keeps the draft text, and leaves model/skill/thinking/send controls usable at the bottom.
+4. Confirm the composer fills the area below the header, keeps the draft text, and leaves model/skill/thinking/send controls usable at the bottom.
 5. Click the collapse button.
 6. Confirm the composer returns to its normal inline size with the draft still intact.
 7. Switch to dark theme and repeat steps 1-6.
 
 #### Expected Results
-- Short drafts do not show the expand control.
-- Long or overflowing drafts show an icon-only expand control.
+- Empty and short drafts show the expand control.
+- Long or overflowing drafts retain the control in its own right-hand column, separated from the textarea scrollbar.
 - Full-screen mode uses the same draft state and submit controls as inline mode.
 - Full-screen and inline states are readable in light theme and dark theme.
 
@@ -39,3 +39,13 @@ Thread composer full-screen expand control for multi-line drafts.
 清理：丢弃测试草稿和测试附件；恢复缩放及主题。
 
 性能：仅一个 header ResizeObserver，无逐帧轮询，卸载断开；展开态 CSS 限定包含块，不卸载/重建输入框，不增加 API 请求。浏览器尺寸及真实键盘视觉验收须单独记录。
+
+### 0.1.89 补充：展开按钮常驻且避开滚动条
+
+前提：59001 的空草稿、单行、长文本三种状态，浅色/深色；桌面及 375×812、768×1024。
+
+操作：不输入文字直接展开/收起；输入长文本，拖动 textarea 的右侧滚动条至底部，再点击其右侧按钮；展开态重复。
+
+预期：按钮始终可见；按钮和滚动条在独立布局列中，拖动滚动条不触发展开；草稿及选择范围保留。
+
+清理：清空本轮草稿。性能：移除为按钮出现条件而执行的逐次输入 scrollHeight/clientHeight 读取、行数计算和 draft watcher；无新增监听或 API。
