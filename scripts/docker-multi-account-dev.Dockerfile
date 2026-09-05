@@ -5,6 +5,9 @@ RUN apt-get update \
     ca-certificates \
     curl \
     git \
+    python3 \
+    make \
+    g++ \
     sqlite3 \
     unzip \
   && rm -rf /var/lib/apt/lists/*
