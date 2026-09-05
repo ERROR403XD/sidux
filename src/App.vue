@@ -856,24 +856,24 @@
                         </button>
                       </div>
                       <label class="new-thread-project-field">
-                        <span class="new-thread-open-folder-label">{{ projectSetupMode === 'create' ? t('Target folder (project directory)') : t('Clone parent folder') }}</span>
+                        <span class="new-thread-open-folder-label">{{ projectSetupMode === 'create' ? t('Target folder') : t('Clone parent folder') }}</span>
                         <input
                           v-model="projectSetupDestination"
                           class="new-thread-open-folder-path"
                           type="text"
                           :disabled="isProjectSetupSubmitting"
-                          :placeholder="projectSetupMode === 'create' ? t('Target folder (project directory)') : t('Clone parent folder')"
+                          :placeholder="projectSetupMode === 'create' ? t('Target folder') : t('Clone parent folder')"
                         />
                       </label>
                       <label v-if="projectSetupMode === 'create'" class="new-thread-project-field">
-                        <span class="new-thread-open-folder-label">{{ t('Project name (display label)') }}</span>
+                        <span class="new-thread-open-folder-label">{{ t('Project name') }}</span>
                         <input
                           ref="projectSetupPrimaryInputRef"
                           v-model="projectNameDraft"
                           class="new-thread-open-folder-create-input"
                           type="text"
                           :disabled="isProjectSetupSubmitting"
-                          :placeholder="t('Project name (display label)')"
+                          :placeholder="t('Project name')"
                           @input="projectNameEdited = true"
                           @keydown.enter.prevent="onSubmitProjectSetup"
                         />
@@ -890,9 +890,6 @@
                           @keydown.enter.prevent="onSubmitProjectSetup"
                         />
                       </label>
-                      <p v-if="projectSetupMode === 'create' && projectSetupBaseDir.trim()" class="new-thread-open-folder-label" style="overflow-wrap: anywhere">
-                        {{ t('Project directory: {path}', { path: normalizeAbsolutePath(projectSetupBaseDir) }) }}
-                      </p>
                       <div v-if="projectSetupError" class="new-thread-open-folder-error visible-error-with-feedback">
                         <span>{{ t(projectSetupError) }}</span>
                         <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, projectSetupError)">{{ t('Send feedback') }}</a>

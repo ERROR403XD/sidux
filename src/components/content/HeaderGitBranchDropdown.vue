@@ -18,7 +18,7 @@
       <div class="header-git-menu" :class="{ 'has-commit-files': Boolean(selectedCommit) }">
         <button v-if="showReview" class="header-git-review-row" type="button" @click="toggleReview">
           <IconTablerFilePencil class="header-git-row-icon" />
-          <span class="header-git-review-label">{{ reviewOpen ? t('Review Worktree Changes (Open)') : t('Review Worktree Changes') }}</span>
+          <span class="header-git-review-label">{{ t('Review Worktree Changes') }}</span>
           <span class="header-git-review-delta">
             <span class="header-git-file-added">+{{ worktreeChangeSummary.addedLineCount }}</span>
             <span class="header-git-file-removed">-{{ worktreeChangeSummary.removedLineCount }}</span>

@@ -3,7 +3,7 @@ import { projectDisplayName, projectSetupInput } from './projectSetup'
 
 it('keeps display labels including slashes separate from the exact target directory', () => {
   expect(projectSetupInput('/tmp/my-bot', ' 我的 / 机器人 ')).toEqual({ path: '/tmp/my-bot', options: { createIfMissing: true, label: '我的 / 机器人' } })
-  expect(() => projectSetupInput('/tmp/ok', '  ')).toThrow('display name')
+  expect(() => projectSetupInput('/tmp/ok', '  ')).toThrow('project name')
   expect(() => projectSetupInput('relative/path', 'name')).toThrow('absolute')
   expect(() => projectSetupInput('', 'name')).toThrow('absolute')
 })
