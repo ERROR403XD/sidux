@@ -24,3 +24,4 @@ Return to the [manual test index](../../tests.md).
 | [Terminal focus does not fullscreen panel](terminal-focus-does-not-fullscreen-panel.md) |
 | [Terminal quick commands from project files](terminal-quick-commands-from-project-files.md) |
 | [Mobile terminal command dropdown stays on screen](mobile-terminal-command-dropdown-stays-on-screen.md) |
+| [0.1.89 中文界面验收](ui-0.1.89-language.md) |
