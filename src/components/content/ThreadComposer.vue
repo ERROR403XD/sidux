@@ -646,7 +646,15 @@ function onComposerCursorKeyup(event: KeyboardEvent) {
 function replaceCommandToken(token: SlashToken, replacement: string, original = draft.value) {
   if (draft.value !== original || draft.value.slice(token.start, token.end) !== token.text) return false
   commandContext = null
-  draft.value = original.slice(0, token.start) + replacement + original.slice(token.end)
+  const input = inputRef.value
+  let inserted = false
+  if (input && input.value === original) {
+    input.focus({ preventScroll: true })
+    input.setSelectionRange(token.start, token.end)
+    // Native textarea edits preserve Undo; direct assignment is a fallback only.
+    try { inserted = document.execCommand('insertText', false, replacement) } catch { /* unavailable in this browser */ }
+  }
+  draft.value = inserted && input ? input.value : original.slice(0, token.start) + replacement + original.slice(token.end)
   commandPicker.reset()
   void nextTick(() => {
     inputRef.value?.focus({ preventScroll: true })
@@ -1585,6 +1593,7 @@ function onWindowDragCleanup(): void {
 
 function onInputPaste(event: ClipboardEvent): void {
   pastedInput = true
+  queueMicrotask(() => { pastedInput = false })
   commandPicker.dismiss()
   if (isInteractionDisabled.value) return
   const plainText = event.clipboardData?.getData('text/plain') ?? ''
@@ -1616,7 +1625,7 @@ function onInputChange(event?: Event): void {
     dictationFeedback.value = ''
   }
 
-  if (isComposingInput) return
+  if (isComposingInput || (event as InputEvent)?.isComposing) return
   updateFileMentionState()
   updateCommandPicker(pastedInput || (event as InputEvent)?.inputType === 'insertFromPaste')
   pastedInput = false
