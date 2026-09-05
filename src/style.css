@@ -1,4 +1,31 @@
 @import "tailwindcss";
+
+.automation-runtime-status { margin: 0; font-size: 12px; color: #52525b; }
+.automation-runtime-status.has-error, .automation-history-error { color: #be123c; }
+.automation-history { border-top: 1px solid #e4e4e7; padding-top: 16px; min-width: 0; }
+.automation-history-heading, .automation-history-line, .automation-history-links { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.automation-history h3 { font-size: 13px; font-weight: 600; margin: 0; }
+.automation-history button { border: 1px solid #d4d4d8; border-radius: 8px; padding: 5px 9px; font-size: 12px; background: #fff; color: #27272a; }
+.automation-history button:disabled { opacity: .5; cursor: default; }
+.automation-history-schedule, .automation-history-muted { font-size: 12px; color: #71717a; margin: 9px 0; overflow-wrap: anywhere; }
+.automation-history-list { list-style: none; padding: 0; margin: 10px 0; }
+.automation-history-list li { border-top: 1px solid #e4e4e7; padding: 12px 0; font-size: 12px; }
+.automation-history-line { margin-bottom: 6px; color: #71717a; }
+.automation-history-line strong { color: #3f3f46; }
+.automation-history-list [data-run-status='completed'] strong { color: #047857; }
+.automation-history-list [data-run-status='failed'] strong { color: #be123c; }
+.automation-history-list [data-run-status='waiting_input'] strong { color: #a16207; }
+.automation-history-links a { color: #2563eb; }
+.automation-history-error { font-size: 12px; overflow-wrap: anywhere; margin: 7px 0; }
+:root.dark .automation-history, :root.dark .automation-history-list li { border-color: #3f3f46; }
+:root.dark .automation-history button { background: #27272a; border-color: #52525b; color: #e4e4e7; }
+:root.dark .automation-runtime-status, :root.dark .automation-history-line strong { color: #d4d4d8; }
+:root.dark .automation-history-schedule, :root.dark .automation-history-muted, :root.dark .automation-history-line { color: #a1a1aa; }
+:root.dark .automation-history-links a { color: #93c5fd; }
+:root.dark .automation-history-list [data-run-status='completed'] strong { color: #6ee7b7; }
+:root.dark .automation-history-list [data-run-status='failed'] strong, :root.dark .automation-history-error, :root.dark .automation-runtime-status.has-error { color: #fda4af; }
+:root.dark .automation-history-list [data-run-status='waiting_input'] strong { color: #fde68a; }
+
 @import "highlight.js/styles/github-dark.css";
 
 :root.dark {

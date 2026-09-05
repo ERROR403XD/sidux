@@ -1167,6 +1167,7 @@ function asAutomation(record: unknown): UiThreadAutomation | null {
     createdAtMs: readNumber(row.createdAtMs),
     updatedAtMs: readNumber(row.updatedAtMs),
     nextRunAtMs: readNumber(row.nextRunAtMs),
+    timezone: readString(row.timezone) ?? undefined,
   }
 }
 
@@ -1231,6 +1232,7 @@ export async function upsertThreadAutomation(input: {
   prompt: string
   rrule: string
   status: UiThreadAutomationStatus
+  timezone?: string
 }): Promise<UiThreadAutomation> {
   const response = await fetch('/codex-api/thread-automation', {
     method: 'PUT',
@@ -1253,6 +1255,7 @@ export async function upsertProjectAutomation(input: {
   prompt: string
   rrule: string
   status: UiThreadAutomationStatus
+  timezone?: string
 }): Promise<UiThreadAutomation> {
   const response = await fetch('/codex-api/project-automation', {
     method: 'PUT',
@@ -1296,7 +1299,7 @@ export async function runThreadAutomationNow(threadId: string, automationId: str
   const response = await fetch('/codex-api/thread-automation/run', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ threadId, automationId }),
+    body: JSON.stringify({ threadId, automationId, requestId: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}` }),
   })
   const payload = await response.json().catch(() => null)
   if (!response.ok) {

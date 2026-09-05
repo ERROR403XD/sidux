@@ -90,6 +90,7 @@ export type UiThreadAutomation = {
   createdAtMs: number | null
   updatedAtMs: number | null
   nextRunAtMs: number | null
+  timezone?: string
 }
 
 export type CommandExecutionData = {

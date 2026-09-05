@@ -827,6 +827,10 @@
             <p class="automation-schedule-preview">{{ automationSchedulePreview }}</p>
           </div>
 
+          <label class="automation-thread-field">
+            <span class="automation-thread-label">时区（IANA）</span>
+            <input v-model="automationTimezone" class="rename-thread-input" type="text" placeholder="Asia/Shanghai" aria-label="自动化时区" />
+          </label>
           <div class="automation-thread-field">
             <span class="automation-thread-label">{{ t('Status') }}</span>
             <ComposerDropdown
@@ -843,7 +847,7 @@
 
           <div class="rename-thread-actions">
             <button
-              v-if="automationDialogMode === 'edit' && automationDialogScope === 'thread'"
+              v-if="automationDialogMode === 'edit'"
               class="rename-thread-button"
               type="button"
               :disabled="isSavingAutomation || isRunningAutomation"
@@ -874,6 +878,7 @@
 </template>
 
 <script setup lang="ts">
+import { getAutomationRuntime, runAutomationNow, createAutomationRequestId } from '../../api/automationGateway'
 import { vModalBackdrop } from '../../composables/modalBackdrop'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { ComponentPublicInstance } from 'vue'
@@ -1031,6 +1036,11 @@ const automationDialogNotice = ref('')
 const projectAutomationActionError = ref('')
 const isSavingAutomation = ref(false)
 const isRunningAutomation = ref(false)
+const automationTimezone = ref('')
+watch(automationDialogVisible, async (visible) => {
+  if (!visible || automationTimezone.value) return
+  try { const state = await getAutomationRuntime(); if (!automationTimezone.value) automationTimezone.value = state.timezone } catch { /* Saving reports connection errors. */ }
+})
 const automationDraft = ref<{
   name: string
   prompt: string
@@ -1959,6 +1969,7 @@ function setAutomationTargetMode(mode: AutomationTargetMode): void {
 }
 
 function startNewAutomationDraft(): void {
+  automationTimezone.value = ''
   automationDialogAutomationId.value = ''
   automationDialogMode.value = 'create'
   automationDialogError.value = ''
@@ -1979,6 +1990,7 @@ function selectAutomationForEditing(automationId: string): void {
   automationDialogMode.value = 'edit'
   automationDialogError.value = ''
   automationDialogNotice.value = ''
+  automationTimezone.value = existing.timezone ?? ''
   automationDraft.value = {
     name: existing.name,
     prompt: existing.prompt,
@@ -2088,6 +2100,7 @@ async function submitAutomationDialog(): Promise<void> {
       name: automationDraft.value.name,
       prompt: automationDraft.value.prompt,
       rrule: automationDraft.value.rrule,
+      timezone: automationTimezone.value || undefined,
       status: automationDraft.value.status,
     }
     const saved = automationDialogScope.value === 'project'
@@ -2143,12 +2156,13 @@ async function onDeleteAutomationFromDialog(): Promise<void> {
 async function onRunAutomationFromDialog(): Promise<void> {
   const threadId = automationDialogThreadId.value
   const automationId = automationDialogAutomationId.value
-  if (!threadId || !automationId) return
+  const target = automationDialogScope.value === 'project' ? automationDialogProjectName.value : threadId
+  if (!target || !automationId || isRunningAutomation.value) return
   isRunningAutomation.value = true
   automationDialogError.value = ''
   automationDialogNotice.value = ''
   try {
-    await runThreadAutomationNow(threadId, automationId)
+    await runAutomationNow({ automationId, target, kind: automationDialogScope.value === 'project' ? 'cron' : 'heartbeat', requestId: createAutomationRequestId() })
     automationDialogNotice.value = 'Automation run queued.'
   } catch (error) {
     automationDialogError.value = error instanceof Error ? error.message : 'Failed to run automation'

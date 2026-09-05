@@ -21,6 +21,8 @@
       </div>
     </div>
 
+    <p v-if="runtime" class="automation-runtime-status" :class="{ 'has-error': !runtime.ready }">调度器：{{ runtime.error || (runtime.draining ? '正在交接，停止领取新任务' : runtime.ready ? '运行中' : '初始化中') }} · {{ runtime.timezone }}</p>
+    <p v-for="problem in runtime?.definitions.filter(row => row.error) ?? []" :key="problem.id" class="automations-error">{{ problem.id }}：{{ problem.error }}</p>
     <p v-if="loadError" class="automations-error">{{ t(loadError) }}</p>
 
     <div v-if="isLoading && automationRows.length === 0" class="automations-empty">
@@ -99,6 +101,8 @@
           </div>
         </dl>
 
+        <AutomationRunHistory :key="selectedRow.rowKey" :automation="selectedRow.automation" :target="selectedRow.targetTitle" />
+
         <section class="automation-detail-prompt">
           <h3>{{ t('Prompt') }}</h3>
           <p>{{ selectedRow.automation.prompt }}</p>
@@ -109,6 +113,8 @@
 </template>
 
 <script setup lang="ts">
+import AutomationRunHistory from './AutomationRunHistory.vue'
+import { getAutomationRuntime, type AutomationRuntimeStatus } from '../../api/automationGateway'
 import { useUiLanguage } from '../../composables/useUiLanguage'
 const { t } = useUiLanguage()
 
@@ -149,6 +155,7 @@ type AutomationEditRequest = {
 
 const threadAutomations = ref<Record<string, UiThreadAutomation[]>>({})
 const projectAutomations = ref<Record<string, UiThreadAutomation[]>>({})
+const runtime = ref<AutomationRuntimeStatus | null>(null)
 const isLoading = ref(false)
 const loadError = ref('')
 const selectedAutomationId = ref(props.selectedAutomationId ?? '')
@@ -269,10 +276,12 @@ async function loadAutomations(): Promise<void> {
   isLoading.value = true
   loadError.value = ''
   try {
-    const [threadMap, projectMap] = await Promise.all([
+    const [threadMap, projectMap, runtimeState] = await Promise.all([
       getThreadAutomationMap(),
       getProjectAutomationMap(),
+      getAutomationRuntime(),
     ])
+    runtime.value = runtimeState
     threadAutomations.value = threadMap
     projectAutomations.value = projectMap
   } catch (error) {
@@ -313,7 +322,7 @@ function getAutomationRowKey(scope: 'thread' | 'project', target: string, automa
 
 function describeAutomationSchedule(automation: UiThreadAutomation): string {
   if (automation.status === 'PAUSED') return t('Paused')
-  if (automation.nextRunAtMs) return `Next ${formatDateTime(automation.nextRunAtMs)}`
+  if (automation.nextRunAtMs) return `下次 ${formatDateTime(automation.nextRunAtMs, automation.timezone)}`
   const rrule = automation.rrule.trim()
   if (/FREQ=MINUTELY/i.test(rrule)) {
     const interval = /INTERVAL=(\d+)/i.exec(rrule)?.[1] ?? '1'
@@ -328,8 +337,9 @@ function describeAutomationSchedule(automation: UiThreadAutomation): string {
   return t('Custom schedule')
 }
 
-function formatDateTime(value: number): string {
+function formatDateTime(value: number, timezone?: string): string {
   return new Date(value).toLocaleString(undefined, {
+    timeZone: timezone,
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
