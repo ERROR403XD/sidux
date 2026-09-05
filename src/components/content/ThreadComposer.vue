@@ -1118,9 +1118,14 @@ function queueComposerOverflowMeasurement(): void {
 
 function toggleComposerExpanded(): void {
   if (isInteractionDisabled.value) return
+  const input = inputRef.value
+  const selection = input ? [input.selectionStart, input.selectionEnd, input.selectionDirection] as const : null
   isComposerExpanded.value = !isComposerExpanded.value
   queueComposerOverflowMeasurement()
-  void nextTick(() => inputRef.value?.focus())
+  void nextTick(() => {
+    input?.focus({ preventScroll: true })
+    if (selection) input?.setSelectionRange(...selection)
+  })
 }
 
 function onModelSelect(value: string): void {
@@ -1887,7 +1892,11 @@ watch(
 }
 
 .thread-composer:has(.thread-composer-input-wrap--expanded) {
-  @apply fixed inset-0 z-50 max-w-none bg-white/95 p-3 sm:p-6;
+  @apply fixed z-50 max-w-none bg-white/95 p-2 sm:p-3;
+  inset: calc(var(--content-header-height, 0px) + 0.5rem) 0 max(env(safe-area-inset-bottom, 0px), var(--virtual-keyboard-inset, 0px));
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .thread-composer-shell {
@@ -1895,7 +1904,13 @@ watch(
 }
 
 .thread-composer:has(.thread-composer-input-wrap--expanded) .thread-composer-shell {
-  @apply mx-auto flex h-full w-full max-w-[min(var(--chat-column-max,72rem),100%)] flex-col shadow-2xl;
+  @apply mx-auto flex min-h-0 flex-1 w-full max-w-[min(var(--chat-column-max,72rem),100%)] flex-col shadow-2xl;
+}
+
+.thread-composer:has(.thread-composer-input-wrap--expanded) :is(.thread-composer-attachments, .thread-composer-folder-chips, .thread-composer-file-chips, .thread-composer-skill-chips) {
+  max-height: 15%;
+  overflow-y: auto;
+  flex-shrink: 1;
 }
 
 .thread-composer-shell--drag-active {
@@ -2098,7 +2113,7 @@ watch(
 }
 
 .thread-composer-input-wrap--expanded .thread-composer-input {
-  @apply h-full max-h-none pr-12 text-base leading-6;
+  @apply h-full min-h-0 max-h-none pr-12 text-base leading-6;
 }
 
 .thread-composer-input:focus {
@@ -2118,7 +2133,7 @@ watch(
 }
 
 .thread-composer-controls {
-  @apply relative mt-2 sm:mt-3 flex items-center gap-2 sm:gap-4 overflow-visible pb-px;
+  @apply relative mt-2 sm:mt-3 flex shrink-0 items-center gap-2 sm:gap-4 overflow-visible pb-px;
 }
 
 .thread-composer-controls--recording {

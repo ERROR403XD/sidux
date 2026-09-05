@@ -275,6 +275,16 @@
   @apply border-zinc-700 bg-zinc-800;
 }
 
+/* Bound expanded editors to the content column, below its measured header.
+   Layout containment establishes the fixed containing block without moving DOM. */
+.content-root:has(.thread-composer-input-wrap--expanded) {
+  contain: layout;
+}
+
+.content-root.is-virtual-keyboard-open .thread-composer:has(.thread-composer-input-wrap--expanded) {
+  bottom: env(safe-area-inset-bottom, 0px);
+}
+
 :root.dark .thread-composer:has(.thread-composer-input-wrap--expanded) {
   @apply bg-zinc-950/95;
 }
