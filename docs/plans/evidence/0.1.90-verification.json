@@ -1,0 +1,1397 @@
+{
+  "version": "0.1.90",
+  "date": "2026-09-06",
+  "status": "candidate verified; production activation pending",
+  "applicationCommit": "1ddfa06948e3",
+  "releaseScriptCommit": "99ac65a",
+  "candidate": {
+    "url": "http://192.168.50.46:59001/",
+    "image": "codexapp-multi-account-dev:ui-0.1.90",
+    "imageId": "sha256:c20f6b5245c52af33b601b3529e2028fa22b04b56ff46945547f2cbc011d69e0",
+    "codexCli": "0.153.4",
+    "homeVolume": "codexapp-multi-account-dev-home",
+    "fixtureVolume": "codexapp-0190-test-workspace",
+    "externalBusinessMounts": false
+  },
+  "production": {
+    "version": "0.1.89",
+    "port": 5900,
+    "pid": 87226,
+    "changed": false
+  },
+  "preparedRelease": "/home/docker/codexapp-releases/codexapp-0.1.90-1ddfa06948e3-20260906-034856",
+  "releaseCheck": {
+    "exitCode": 3,
+    "stdout": "idle-check|activeTurns=1|queued=0|pendingApprovals=0|pages=1\n",
+    "stderr": "",
+    "expected": "active current Codex turn blocks cutover; read-only check must not drain or stop production"
+  },
+  "verification": {
+    "testFiles": 27,
+    "tests": 225,
+    "unit": "passed",
+    "typecheck": "passed",
+    "build": "passed",
+    "packagedCliCjs": "passed",
+    "nativePtyHostAndContainer": "passed"
+  },
+  "automationRuntime": {
+    "ready": true,
+    "draining": false,
+    "error": null,
+    "timezone": "Asia/Shanghai",
+    "activeCount": 0,
+    "queuedCount": 0,
+    "definitions": [
+      {
+        "id": "0190",
+        "error": null,
+        "revision": "579a8c1046407488",
+        "timezone": "Asia/Shanghai",
+        "anchor": 1788635614353,
+        "cursor": 1788635614354,
+        "nextRunAtMs": null
+      },
+      {
+        "id": "0190-heartbeat",
+        "error": null,
+        "revision": "41686961e2f24aa0",
+        "timezone": "Asia/Shanghai",
+        "anchor": 1788637410686,
+        "cursor": 1788637410686,
+        "nextRunAtMs": null
+      }
+    ]
+  },
+  "businessRuns": [
+    {
+      "runId": "aa2f8c5b-6422-41fe-8218-a16bfb1947c4",
+      "automationId": "0190",
+      "kind": "cron",
+      "trigger": "schedule",
+      "scheduledAt": 1788635520000,
+      "startedAt": 1788635520598,
+      "finishedAt": 1788635536152,
+      "threadId": "01a072fc-1e5b-7c21-83d6-c70b7b85692a",
+      "turnId": "01a072fc-20f3-7b83-86b9-22199d02e8c6",
+      "status": "completed",
+      "attempt": 1,
+      "model": "gpt-6-astra",
+      "errorCode": null
+    },
+    {
+      "runId": "294cce79-f90a-4776-9fcf-ffb203300ce2",
+      "automationId": "0190",
+      "kind": "cron",
+      "trigger": "manual",
+      "scheduledAt": 1788635409522,
+      "startedAt": 1788635409522,
+      "finishedAt": 1788635436419,
+      "threadId": "01a072fa-7633-7170-8d4b-15d4559c125a",
+      "turnId": "01a072fa-78fd-7870-957b-775c1fad185a",
+      "status": "completed",
+      "attempt": 1,
+      "model": "gpt-6-astra",
+      "errorCode": null
+    },
+    {
+      "runId": "b81a1e74-d5a8-43d1-a1c9-b9f7562af0e1",
+      "automationId": "0190-heartbeat",
+      "kind": "heartbeat",
+      "trigger": "manual",
+      "scheduledAt": 1788637410689,
+      "startedAt": 1788637410824,
+      "finishedAt": 1788637423683,
+      "threadId": "01a072fa-7633-7170-8d4b-15d4559c125a",
+      "turnId": "01a07318-fe7d-7992-b3a6-02d49abddc6f",
+      "status": "completed",
+      "attempt": 1,
+      "model": "gpt-6-astra",
+      "errorCode": null
+    }
+  ],
+  "businessArtifact": {
+    "path": "/test-workspace/automation-0190/日历/fixture-0190.md",
+    "count": 1,
+    "fixedWeek": "2026-08-24/2026-08-30",
+    "title": "纸船项目首个页面完成",
+    "date": "2026-08-26",
+    "allDay": true,
+    "source": "[[笔记/日记/2026-08/2026-08-26]]",
+    "emptyWeek": "2026-08-10/2026-08-16",
+    "emptyWeekWroteNothing": true,
+    "mtimeMs": 1788635432880.8115,
+    "ctimeMs": 1788635432880.8115,
+    "sha256": "912f1cd2f73a5f7c99c32c56477c9e7e975e3118a547b85d1ec2ba72cf765b71"
+  },
+  "restart": {
+    "leaseReleased": true,
+    "readyAfterRestart": true,
+    "activeCount": 0,
+    "queuedCount": 0
+  },
+  "negativeApi": {
+    "invalidRuleRejected": true,
+    "duplicateRequestSameRun": true,
+    "missingCwd": "CWD_UNAVAILABLE",
+    "invalidDefinitionVisible": true
+  },
+  "invalidAuthAutomation": [
+    {
+      "status": "failed",
+      "attempt": 1,
+      "errorCode": "AUTH_REQUIRED"
+    }
+  ],
+  "ui": [
+    {
+      "url": "http://127.0.0.1:4173",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "screenshot": "output/playwright/0190-command-1440x900-light.png",
+      "bg": "rgb(255, 255, 255)",
+      "checks": "focus; no default selection; wrap; Chinese search; escape suppression; literal slash; IME; paste; token-only prompt insertion; submenu cancel; skill attach; expanded layout",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:4173",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "screenshot": "output/playwright/0190-command-1440x900-dark.png",
+      "bg": "rgb(36, 36, 38)",
+      "checks": "focus; no default selection; wrap; Chinese search; escape suppression; literal slash; IME; paste; token-only prompt insertion; submenu cancel; skill attach; expanded layout",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:4173",
+      "width": 375,
+      "height": 812,
+      "theme": "light",
+      "screenshot": "output/playwright/0190-command-375x812-light.png",
+      "bg": "rgb(255, 255, 255)",
+      "checks": "focus; no default selection; wrap; Chinese search; escape suppression; literal slash; IME; paste; token-only prompt insertion; submenu cancel; skill attach; expanded layout",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:4173",
+      "width": 375,
+      "height": 812,
+      "theme": "dark",
+      "screenshot": "output/playwright/0190-command-375x812-dark.png",
+      "bg": "rgb(36, 36, 38)",
+      "checks": "focus; no default selection; wrap; Chinese search; escape suppression; literal slash; IME; paste; token-only prompt insertion; submenu cancel; skill attach; expanded layout",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:4173",
+      "width": 768,
+      "height": 1024,
+      "theme": "dark",
+      "screenshot": "output/playwright/0190-command-768x1024-dark.png",
+      "bg": "rgb(36, 36, 38)",
+      "checks": "focus; no default selection; wrap; Chinese search; escape suppression; literal slash; IME; paste; token-only prompt insertion; submenu cancel; skill attach; expanded layout",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:4173",
+      "width": 1366,
+      "height": 600,
+      "theme": "dark",
+      "screenshot": "output/playwright/0190-command-1366x600-dark.png",
+      "bg": "rgb(36, 36, 38)",
+      "checks": "focus; no default selection; wrap; Chinese search; escape suppression; literal slash; IME; paste; token-only prompt insertion; submenu cancel; skill attach; expanded layout",
+      "errors": []
+    }
+  ],
+  "literalEnter": [
+    {
+      "sendWithEnter": true,
+      "literalSlashSent": true,
+      "hoverDoesNotSelect": true,
+      "modifierPolicyPreserved": true
+    },
+    {
+      "sendWithEnter": false,
+      "literalSlashSent": true,
+      "hoverDoesNotSelect": true,
+      "modifierPolicyPreserved": true
+    }
+  ],
+  "historyUi": [
+    {
+      "url": "http://127.0.0.1:4173/#/automations?automationId=0190",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "realCandidateRecords": true,
+      "persistedAfterReload": true,
+      "screenshot": "output/playwright/0190-history-1440x900-light.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:4173/#/automations?automationId=0190",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "realCandidateRecords": true,
+      "persistedAfterReload": true,
+      "screenshot": "output/playwright/0190-history-1440x900-dark.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:4173/#/automations?automationId=0190",
+      "width": 375,
+      "height": 812,
+      "theme": "light",
+      "realCandidateRecords": true,
+      "persistedAfterReload": true,
+      "screenshot": "output/playwright/0190-history-375x812-light.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:4173/#/automations?automationId=0190",
+      "width": 768,
+      "height": 1024,
+      "theme": "dark",
+      "realCandidateRecords": true,
+      "persistedAfterReload": true,
+      "screenshot": "output/playwright/0190-history-768x1024-dark.png",
+      "errors": []
+    }
+  ],
+  "finalCandidateUi": [
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "noRouteStubs": true,
+      "noTurnSubmitted": true,
+      "checks": "actual packaged assets; local search; keyboard selection; cancel submenu retains text; slash literals",
+      "screenshot": "output/playwright/0190-final-candidate-1440x900-light.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "noRouteStubs": true,
+      "noTurnSubmitted": true,
+      "checks": "actual packaged assets; local search; keyboard selection; cancel submenu retains text; slash literals",
+      "screenshot": "output/playwright/0190-final-candidate-1440x900-dark.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "width": 375,
+      "height": 812,
+      "theme": "dark",
+      "noRouteStubs": true,
+      "noTurnSubmitted": true,
+      "checks": "actual packaged assets; local search; keyboard selection; cancel submenu retains text; slash literals",
+      "screenshot": "output/playwright/0190-final-candidate-375x812-dark.png",
+      "errors": []
+    }
+  ],
+  "authMatrix": [
+    {
+      "url": "http://127.0.0.1:59012/#/thread/01a0730a-374f-7ba0-ba2d-acd49f2605ee",
+      "viewport": "1440x900",
+      "theme": "light",
+      "invalidAuthPersistedAfterReload": true,
+      "duplicateLiveOverlayCount": 0,
+      "screenshot": "output/playwright/0190-invalid-auth-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59012/#/thread/01a0730a-374f-7ba0-ba2d-acd49f2605ee",
+      "viewport": "1440x900",
+      "theme": "dark",
+      "invalidAuthPersistedAfterReload": true,
+      "duplicateLiveOverlayCount": 0,
+      "screenshot": "output/playwright/0190-invalid-auth-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:59011/#/",
+      "viewport": "1440x900",
+      "provider": "opencode-zen",
+      "enabled": true,
+      "hasCodexAuth": false,
+      "screenshot": "output/playwright/0190-provider-59011.png"
+    },
+    {
+      "url": "http://127.0.0.1:59013/#/",
+      "viewport": "1440x900",
+      "provider": "opencode-zen",
+      "enabled": true,
+      "hasCodexAuth": false,
+      "screenshot": "output/playwright/0190-provider-59013.png"
+    },
+    {
+      "url": "http://127.0.0.1:59014/#/",
+      "viewport": "1440x900",
+      "provider": "openrouter",
+      "enabled": true,
+      "hasCodexAuth": false,
+      "screenshot": "output/playwright/0190-provider-59014.png"
+    }
+  ],
+  "idleRealTenMinutes": {
+    "durationMs": 600328.959085,
+    "definitions": [
+      {
+        "tasks": 1,
+        "startupMs": 14.446482000000003
+      },
+      {
+        "tasks": 10,
+        "startupMs": 6.247481999999998
+      },
+      {
+        "tasks": 100,
+        "startupMs": 33.74711200000001
+      }
+    ],
+    "runtimeCalls": 0,
+    "tickP95Ms": 0.09185200004139915,
+    "tickMaxMs": 6.07113199995365,
+    "eventLoopP99Ms": 21.397503,
+    "rssDeltaMB": 22.7890625,
+    "cpu": {
+      "user": 1274191,
+      "system": 251804
+    },
+    "search": [
+      {
+        "candidates": 100,
+        "p95Ms": 0.003576999995857477
+      },
+      {
+        "candidates": 1000,
+        "p95Ms": 0.026429999968968332
+      }
+    ]
+  },
+  "burstVirtualTenMinutes": {
+    "virtualDurationMs": 600000,
+    "actualDurationMs": 331.232437,
+    "tasks": 100,
+    "definitionReads": 100,
+    "definitionStats": 1100,
+    "directoryScans": 11,
+    "starts": 19,
+    "maxActive": 1,
+    "maxQueued": 100,
+    "tickP95Ms": 0.3840099999999893,
+    "tickMaxMs": 17.978332000000023,
+    "retainedRuns": 1000
+  },
+  "browserSearchPerformance": [
+    {
+      "count": 100,
+      "p95Ms": 1.3000001907348633,
+      "maxMs": 54.10000014305115,
+      "renderedOptions": 8,
+      "keyPressApiRequests": 0
+    },
+    {
+      "count": 1000,
+      "p95Ms": 1.4000000953674316,
+      "maxMs": 17.5,
+      "renderedOptions": 8,
+      "keyPressApiRequests": 0
+    }
+  ],
+  "browserProfiles": [
+    {
+      "targetUrl": "http://127.0.0.1:4173/",
+      "totalMs": 7350.4,
+      "duplicateCounts": {
+        "threadList": 1,
+        "threadListFirstPage": 1,
+        "threadListCursor": 0,
+        "threadResume": 0,
+        "threadRead": 0,
+        "threadReadWithTurns": 0,
+        "threadReadDuplicateKeys": 0,
+        "skillsList": 1,
+        "rateLimitsRead": 2,
+        "providerModels": 2
+      },
+      "warnings": [
+        "rateLimitsRead=2",
+        "providerModels=1003.6ms"
+      ],
+      "totalApiKB": 19.8,
+      "pageState": {
+        "threadLoadingText": "Loading threads...",
+        "threadLoadTimeoutMs": 15000,
+        "stillLoadingThreads": false
+      },
+      "apiSummary": [
+        {
+          "key": "/codex-api/provider-models",
+          "count": 2,
+          "minMs": 916.1,
+          "avgMs": 959.9,
+          "p95Ms": 1003.6,
+          "maxMs": 1003.6,
+          "totalKB": 0.5
+        },
+        {
+          "key": "/codex-api/free-mode/status",
+          "count": 1,
+          "minMs": 262.6,
+          "avgMs": 262.6,
+          "p95Ms": 262.6,
+          "maxMs": 262.6,
+          "totalKB": 0.4
+        },
+        {
+          "key": "/codex-api/thread-pins",
+          "count": 1,
+          "minMs": 64.7,
+          "avgMs": 64.7,
+          "p95Ms": 64.7,
+          "maxMs": 64.7,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/prompts",
+          "count": 2,
+          "minMs": 63.1,
+          "avgMs": 63.1,
+          "p95Ms": 63.1,
+          "maxMs": 63.1,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/home-directory",
+          "count": 1,
+          "minMs": 63.1,
+          "avgMs": 63.1,
+          "p95Ms": 63.1,
+          "maxMs": 63.1,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/preferences/first-launch-plugins-card",
+          "count": 1,
+          "minMs": 63.1,
+          "avgMs": 63.1,
+          "p95Ms": 63.1,
+          "maxMs": 63.1,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/workspace-roots-state",
+          "count": 1,
+          "minMs": 63.1,
+          "avgMs": 63.1,
+          "p95Ms": 63.1,
+          "maxMs": 63.1,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/telegram/config",
+          "count": 1,
+          "minMs": 63.1,
+          "avgMs": 63.1,
+          "p95Ms": 63.1,
+          "maxMs": 63.1,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/telegram/status",
+          "count": 1,
+          "minMs": 63.1,
+          "avgMs": 63.1,
+          "p95Ms": 63.1,
+          "maxMs": 63.1,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/thread-terminal/status",
+          "count": 1,
+          "minMs": 63.1,
+          "avgMs": 63.1,
+          "p95Ms": 63.1,
+          "maxMs": 63.1,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/thread-queue-state",
+          "count": 1,
+          "minMs": 63.1,
+          "avgMs": 63.1,
+          "p95Ms": 63.1,
+          "maxMs": 63.1,
+          "totalKB": 0
+        },
+        {
+          "key": "skills/list",
+          "count": 1,
+          "minMs": 15,
+          "avgMs": 15,
+          "p95Ms": 15,
+          "maxMs": 15,
+          "totalKB": 8.4
+        },
+        {
+          "key": "config/read",
+          "count": 2,
+          "minMs": 4.8,
+          "avgMs": 9.6,
+          "p95Ms": 14.4,
+          "maxMs": 14.4,
+          "totalKB": 9.5
+        },
+        {
+          "key": "/codex-api/project-root-suggestion",
+          "count": 1,
+          "minMs": 9.3,
+          "avgMs": 9.3,
+          "p95Ms": 9.3,
+          "maxMs": 9.3,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/thread-titles",
+          "count": 1,
+          "minMs": 9.2,
+          "avgMs": 9.2,
+          "p95Ms": 9.2,
+          "maxMs": 9.2,
+          "totalKB": 0
+        },
+        {
+          "key": "thread/list:first-page",
+          "count": 1,
+          "minMs": 9.2,
+          "avgMs": 9.2,
+          "p95Ms": 9.2,
+          "maxMs": 9.2,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/project-automations",
+          "count": 1,
+          "minMs": 9.1,
+          "avgMs": 9.1,
+          "p95Ms": 9.1,
+          "maxMs": 9.1,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/server-requests/pending",
+          "count": 2,
+          "minMs": 6.7,
+          "avgMs": 8.6,
+          "p95Ms": 10.4,
+          "maxMs": 10.4,
+          "totalKB": 0
+        },
+        {
+          "key": "collaborationMode/list",
+          "count": 2,
+          "minMs": 3.5,
+          "avgMs": 7.7,
+          "p95Ms": 11.9,
+          "maxMs": 11.9,
+          "totalKB": 0.3
+        },
+        {
+          "key": "/codex-api/accounts",
+          "count": 1,
+          "minMs": 5.7,
+          "avgMs": 5.7,
+          "p95Ms": 5.7,
+          "maxMs": 5.7,
+          "totalKB": 0.1
+        },
+        {
+          "key": "account/rateLimits/read",
+          "count": 2,
+          "minMs": 3.5,
+          "avgMs": 5.2,
+          "p95Ms": 6.9,
+          "maxMs": 6.9,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/thread-automations",
+          "count": 1,
+          "minMs": 4.3,
+          "avgMs": 4.3,
+          "p95Ms": 4.3,
+          "maxMs": 4.3,
+          "totalKB": 0
+        }
+      ],
+      "slowestApiRows": [
+        {
+          "method": "GET",
+          "path": "/codex-api/provider-models",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 1003.6,
+          "requestBytes": 0,
+          "responseBytes": 278,
+          "responseKB": 0.3
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/provider-models",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 916.1,
+          "requestBytes": 0,
+          "responseBytes": 278,
+          "responseKB": 0.3
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/free-mode/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 262.6,
+          "requestBytes": 0,
+          "responseBytes": 397,
+          "responseKB": 0.4
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-pins",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 64.7,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 63.1,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/home-directory",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 63.1,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/preferences/first-launch-plugins-card",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 63.1,
+          "requestBytes": 0,
+          "responseBytes": 28,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/workspace-roots-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 63.1,
+          "requestBytes": 0,
+          "responseBytes": 83,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/config",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 63.1,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 63.1,
+          "requestBytes": 0,
+          "responseBytes": 132,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 63.1,
+          "requestBytes": 0,
+          "responseBytes": 32,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 63.1,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-queue-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 63.1,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "skills/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 15,
+          "requestBytes": 36,
+          "responseBytes": 8565,
+          "responseKB": 8.4
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "config/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 14.4,
+          "requestBytes": 36,
+          "responseBytes": 4868,
+          "responseKB": 4.8
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "collaborationMode/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 11.9,
+          "requestBytes": 47,
+          "responseBytes": 165,
+          "responseKB": 0.2
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/server-requests/pending",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 10.4,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/project-root-suggestion",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 9.3,
+          "requestBytes": 0,
+          "responseBytes": 66,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-titles",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 9.2,
+          "requestBytes": 0,
+          "responseBytes": 33,
+          "responseKB": 0
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "thread/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 9.2,
+          "requestBytes": 120,
+          "responseBytes": 63,
+          "responseKB": 0.1
+        }
+      ]
+    },
+    {
+      "targetUrl": "http://127.0.0.1:59001/#/thread/01a072fa-7633-7170-8d4b-15d4559c125a",
+      "totalMs": 7236.3,
+      "duplicateCounts": {
+        "threadList": 1,
+        "threadListFirstPage": 1,
+        "threadListCursor": 0,
+        "threadResume": 1,
+        "threadRead": 0,
+        "threadReadWithTurns": 0,
+        "threadReadDuplicateKeys": 0,
+        "skillsList": 1,
+        "rateLimitsRead": 1,
+        "providerModels": 0
+      },
+      "warnings": [],
+      "totalApiKB": 64.8,
+      "pageState": {
+        "threadLoadingText": "Loading threads...",
+        "threadLoadTimeoutMs": 15000,
+        "stillLoadingThreads": false
+      },
+      "apiSummary": [
+        {
+          "key": "thread/resume",
+          "count": 1,
+          "minMs": 1159.2,
+          "avgMs": 1159.2,
+          "p95Ms": 1159.2,
+          "maxMs": 1159.2,
+          "totalKB": 7.1
+        },
+        {
+          "key": "account/rateLimits/read",
+          "count": 1,
+          "minMs": 1134,
+          "avgMs": 1134,
+          "p95Ms": 1134,
+          "maxMs": 1134,
+          "totalKB": 1.7
+        },
+        {
+          "key": "/codex-api/project-automations",
+          "count": 1,
+          "minMs": 75.9,
+          "avgMs": 75.9,
+          "p95Ms": 75.9,
+          "maxMs": 75.9,
+          "totalKB": 0.9
+        },
+        {
+          "key": "/codex-api/workspace-roots-state",
+          "count": 1,
+          "minMs": 68.7,
+          "avgMs": 68.7,
+          "p95Ms": 68.7,
+          "maxMs": 68.7,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/thread-pins",
+          "count": 1,
+          "minMs": 68.6,
+          "avgMs": 68.6,
+          "p95Ms": 68.6,
+          "maxMs": 68.6,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/home-directory",
+          "count": 1,
+          "minMs": 68.6,
+          "avgMs": 68.6,
+          "p95Ms": 68.6,
+          "maxMs": 68.6,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/preferences/first-launch-plugins-card",
+          "count": 1,
+          "minMs": 68.6,
+          "avgMs": 68.6,
+          "p95Ms": 68.6,
+          "maxMs": 68.6,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/telegram/status",
+          "count": 1,
+          "minMs": 68.6,
+          "avgMs": 68.6,
+          "p95Ms": 68.6,
+          "maxMs": 68.6,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/free-mode/status",
+          "count": 1,
+          "minMs": 68.6,
+          "avgMs": 68.6,
+          "p95Ms": 68.6,
+          "maxMs": 68.6,
+          "totalKB": 0.3
+        },
+        {
+          "key": "/codex-api/thread-terminal/status",
+          "count": 1,
+          "minMs": 68.6,
+          "avgMs": 68.6,
+          "p95Ms": 68.6,
+          "maxMs": 68.6,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/telegram/config",
+          "count": 1,
+          "minMs": 68.6,
+          "avgMs": 68.6,
+          "p95Ms": 68.6,
+          "maxMs": 68.6,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/prompts",
+          "count": 1,
+          "minMs": 68.5,
+          "avgMs": 68.5,
+          "p95Ms": 68.5,
+          "maxMs": 68.5,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/git/repository-status",
+          "count": 1,
+          "minMs": 67.5,
+          "avgMs": 67.5,
+          "p95Ms": 67.5,
+          "maxMs": 67.5,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/thread-terminal/quick-commands",
+          "count": 1,
+          "minMs": 67.5,
+          "avgMs": 67.5,
+          "p95Ms": 67.5,
+          "maxMs": 67.5,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/git/branches",
+          "count": 1,
+          "minMs": 67.4,
+          "avgMs": 67.4,
+          "p95Ms": 67.4,
+          "maxMs": 67.4,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/accounts",
+          "count": 1,
+          "minMs": 59.6,
+          "avgMs": 59.6,
+          "p95Ms": 59.6,
+          "maxMs": 59.6,
+          "totalKB": 1.2
+        },
+        {
+          "key": "/codex-api/server-requests/pending",
+          "count": 2,
+          "minMs": 15.3,
+          "avgMs": 37.5,
+          "p95Ms": 59.6,
+          "maxMs": 59.6,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/project-root-suggestion",
+          "count": 3,
+          "minMs": 6.2,
+          "avgMs": 33.9,
+          "p95Ms": 67.4,
+          "maxMs": 67.4,
+          "totalKB": 0.2
+        },
+        {
+          "key": "/codex-api/thread-titles",
+          "count": 1,
+          "minMs": 27.8,
+          "avgMs": 27.8,
+          "p95Ms": 27.8,
+          "maxMs": 27.8,
+          "totalKB": 0.3
+        },
+        {
+          "key": "thread/list:first-page",
+          "count": 1,
+          "minMs": 27.8,
+          "avgMs": 27.8,
+          "p95Ms": 27.8,
+          "maxMs": 27.8,
+          "totalKB": 4.5
+        },
+        {
+          "key": "/codex-api/thread-queue-state",
+          "count": 3,
+          "minMs": 3,
+          "avgMs": 26.1,
+          "p95Ms": 67.6,
+          "maxMs": 67.6,
+          "totalKB": 0
+        },
+        {
+          "key": "skills/list",
+          "count": 1,
+          "minMs": 21.9,
+          "avgMs": 21.9,
+          "p95Ms": 21.9,
+          "maxMs": 21.9,
+          "totalKB": 35.1
+        },
+        {
+          "key": "config/read",
+          "count": 1,
+          "minMs": 19.4,
+          "avgMs": 19.4,
+          "p95Ms": 19.4,
+          "maxMs": 19.4,
+          "totalKB": 5.6
+        },
+        {
+          "key": "collaborationMode/list",
+          "count": 1,
+          "minMs": 18.8,
+          "avgMs": 18.8,
+          "p95Ms": 18.8,
+          "maxMs": 18.8,
+          "totalKB": 0.2
+        },
+        {
+          "key": "/codex-api/thread-automations",
+          "count": 1,
+          "minMs": 14.8,
+          "avgMs": 14.8,
+          "p95Ms": 14.8,
+          "maxMs": 14.8,
+          "totalKB": 0.7
+        },
+        {
+          "key": "model/list",
+          "count": 1,
+          "minMs": 7.7,
+          "avgMs": 7.7,
+          "p95Ms": 7.7,
+          "maxMs": 7.7,
+          "totalKB": 6.4
+        },
+        {
+          "key": "/codex-api/review/summary",
+          "count": 1,
+          "minMs": 7,
+          "avgMs": 7,
+          "p95Ms": 7,
+          "maxMs": 7,
+          "totalKB": 0.1
+        }
+      ],
+      "slowestApiRows": [
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "thread/resume",
+          "cursor": "",
+          "threadId": "01a072fa-7633-7170-8d4b-15d4559c125a",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 1159.2,
+          "requestBytes": 87,
+          "responseBytes": 7315,
+          "responseKB": 7.1
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "account/rateLimits/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": null,
+          "status": 200,
+          "ms": 1134,
+          "requestBytes": 50,
+          "responseBytes": 1744,
+          "responseKB": 1.7
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/project-automations",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 75.9,
+          "requestBytes": 0,
+          "responseBytes": 871,
+          "responseKB": 0.9
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/workspace-roots-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 68.7,
+          "requestBytes": 0,
+          "responseBytes": 83,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-pins",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 68.6,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/home-directory",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 68.6,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/preferences/first-launch-plugins-card",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 68.6,
+          "requestBytes": 0,
+          "responseBytes": 27,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 68.6,
+          "requestBytes": 0,
+          "responseBytes": 132,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/free-mode/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 68.6,
+          "requestBytes": 0,
+          "responseBytes": 329,
+          "responseKB": 0.3
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 68.6,
+          "requestBytes": 0,
+          "responseBytes": 116,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/config",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 68.6,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 68.5,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-queue-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 67.6,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/git/repository-status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 67.5,
+          "requestBytes": 0,
+          "responseBytes": 41,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/quick-commands",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 67.5,
+          "requestBytes": 0,
+          "responseBytes": 15,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/git/branches",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 67.4,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/project-root-suggestion",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 67.4,
+          "requestBytes": 0,
+          "responseBytes": 76,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/server-requests/pending",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 59.6,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/accounts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 59.6,
+          "requestBytes": 0,
+          "responseBytes": 1179,
+          "responseKB": 1.2
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/project-root-suggestion",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 28,
+          "requestBytes": 0,
+          "responseBytes": 66,
+          "responseKB": 0.1
+        }
+      ]
+    }
+  ],
+  "pendingManual": [
+    "physical phone keyboard and real IME",
+    "production activation and original weekly diary job"
+  ]
+}
