@@ -27,6 +27,7 @@ describe('codexapp release switch script', () => {
     const productionHome = join(root, 'production-home')
     const releaseRoot = join(root, 'releases')
     const release = join(releaseRoot, 'codexapp-test-release')
+    const legacyRelease = join(releaseRoot, 'codexapp-legacy-release')
     const stateRoot = join(root, 'state')
     const dropinDir = join(root, 'dropin')
     const dropinFile = join(dropinDir, '90-release-switch.conf')
@@ -35,12 +36,15 @@ describe('codexapp release switch script', () => {
       mkdir(fakeBin, { recursive: true }),
       mkdir(productionHome, { recursive: true, mode: 0o700 }),
       mkdir(join(release, 'dist-cli'), { recursive: true }),
+      mkdir(join(legacyRelease, 'dist-cli'), { recursive: true }),
     ])
     await chmod(productionHome, 0o700)
     await writeFile(join(productionHome, 'auth.json'), '{"test":"credential-placeholder"}\n', { mode: 0o600 })
     await writeFile(join(productionHome, 'accounts.json'), '{"schemaVersion":2,"accounts":[]}\n', { mode: 0o600 })
     await writeFile(join(release, '.codexapp-release-ready'), 'version=test\n', { mode: 0o600 })
     await writeFile(join(release, 'dist-cli/index.js'), '#!/usr/bin/env node\n', { mode: 0o700 })
+    await writeFile(join(release, 'package.json'), JSON.stringify({ version: '0.1.90' }))
+    await writeFile(join(legacyRelease, 'package.json'), JSON.stringify({ version: '0.1.89' }))
     await writeFile(serviceState, 'active\n', 'utf8')
 
     await writeExecutable(join(fakeBin, 'systemctl'), [
@@ -79,7 +83,15 @@ describe('codexapp release switch script', () => {
     await writeExecutable(join(fakeBin, 'docker'), '#!/usr/bin/env bash\nexit 1\n')
     await writeExecutable(join(fakeBin, 'lsof'), '#!/usr/bin/env bash\nexit 1\n')
 
+    let schedulerAvailable = false
+    let drainRequests = 0
     const server = createServer((request, response) => {
+      if (request.url === '/codex-api/automation-runtime/drain') drainRequests += 1
+      if (!schedulerAvailable && request.url?.startsWith('/codex-api/automation-runtime')) {
+        response.setHeader('Content-Type', 'text/html')
+        response.end('<!doctype html><div id=app></div>')
+        return
+      }
       response.setHeader('Content-Type', 'application/json')
       if (request.url === '/codex-api/automation-runtime' || request.url === '/codex-api/automation-runtime/drain') response.end(JSON.stringify({ data: { ready: true, draining: true, activeCount: 0, queuedCount: 0 } }))
       else if (request.url === '/codex-api/thread-queue-state') response.end(JSON.stringify({ data: {} }))
@@ -103,12 +115,24 @@ describe('codexapp release switch script', () => {
       CODEXAPP_PRODUCTION_PORT: String(address.port),
       CODEXAPP_NODE_BIN: process.execPath,
       FAKE_SERVICE_STATE: serviceState,
-      FAKE_BASE_EXEC: '/legacy/codexapp/dist-cli/index.js',
+      FAKE_BASE_EXEC: `${legacyRelease}/dist-cli/index.js`,
       FAKE_PRODUCTION_HOME: productionHome,
       FAKE_MUTATION_MARKER: join(root, 'mutation-fired'),
     }
 
     try {
+      const checked = await execFileAsync(switchScript, ['check', release], { env })
+      expect(checked.stdout).toContain('Release is ready')
+      expect(drainRequests).toBe(0)
+      expect(await readFile(serviceState, 'utf8')).toBe('active\n')
+      // A broken new release must not bypass its scheduler just because it serves HTML.
+      await writeFile(join(legacyRelease, 'package.json'), JSON.stringify({ version: '0.1.90' }))
+      await expect(execFileAsync(switchScript, ['check', release], {
+        env: { ...env, CODEXAPP_LEGACY_SCHEDULER: '1' },
+      })).rejects.toMatchObject({ code: 1 })
+      await writeFile(join(legacyRelease, 'package.json'), JSON.stringify({ version: '0.1.89' }))
+      schedulerAvailable = true
+
       const originalAuth = await readFile(join(productionHome, 'auth.json'), 'utf8')
       const activated = await execFileAsync(switchScript, ['activate', release, '--confirm-idle'], { env })
       expect(activated.stdout).toContain('Cutover succeeded')

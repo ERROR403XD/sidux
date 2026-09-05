@@ -75,3 +75,14 @@ Validate `scripts/codexapp-release-switch.sh`: prepare an immutable release whil
 预期：同 CODEX_HOME 重启读取保留全部账号、active 身份、凭据版本、状态和配额快照。切换脚本覆盖 `auth.json`、`accounts.json` 及整个 `accounts/`，非 active 或 pending 凭据变化也会被发现。人工回滚保留当时最新凭据。生产账号不被测试池覆盖；测试池保留但不自动导入生产。
 
 清理：自动回归清理自身临时目录；不要删除真实生产/候选账号目录或恢复历史 Token。上线后核对所有账号卡及 active 状态，再做真实请求验收。
+
+### 0.1.90 调度器与旧版预检查
+
+前提：以隔离临时服务模拟 0.1.89 和 0.1.90；自动回归不会停止真实 systemd 服务。
+
+1. 模拟 0.1.89 的未知 API 返回 HTML 200，运行 `check <release>`。预期通过实际 ExecStart 对应的 package.json 识别旧版，不解析不存在的调度接口，也不发送 drain 或修改服务。
+2. 模拟 0.1.90 同样返回 HTML，即使环境中设置 `CODEXAPP_LEGACY_SCHEDULER=1`，预期检查失败，不能绕过调度器验证。
+3. 新版本 `activate` / `rollback` 先 drain 调度器，再检查自动化、普通队列、执行中会话和待审批请求。忙时拒绝切换；退出未完成交接时恢复调度。
+4. 当前 Codex turn 尚在运行时，`check latest` 应报告 activeTurns 并返回 3；这表示空闲保护生效。结束当前 turn 后才在独立终端重试。
+
+验证命令：`pnpm exec vitest run src/cli/codexappReleaseSwitch.test.ts`。清理沿用上述临时目录自动清理和独立终端回滚步骤；测试不修改生产任务或账号。

@@ -33,24 +33,28 @@ resume_scheduler_on_exit() {
 }
 trap resume_scheduler_on_exit EXIT
 
-drain_scheduler_for_cutover() {
-  local status
-  status="$(curl --silent --show-error --max-time 10 -o /dev/null -w '%{http_code}' "$PRODUCTION_URL/codex-api/automation-runtime")"
-  # Legacy Express serves the SPA even for unknown API paths. Verify the running
-  # release's package version before accepting that response as a missing scheduler.
-  if CODEXAPP_INSPECT_SERVICE="$SERVICE_NAME" "$NODE_BIN" --input-type=commonjs <<'NODE'
+running_release_has_no_scheduler() {
+  # Legacy Express returns the SPA for unknown API paths. Only a verified old
+  # running release may omit the scheduler; HTTP 200 alone is insufficient.
+  CODEXAPP_INSPECT_SERVICE="$SERVICE_NAME" "$NODE_BIN" --input-type=commonjs <<'NODE'
 const { execFileSync } = require('node:child_process')
 const { readFileSync } = require('node:fs')
 const value = execFileSync('systemctl', ['show', process.env.CODEXAPP_INSPECT_SERVICE, '-p', 'ExecStart', '--value'], { encoding: 'utf8' })
 const match = value.match(/(\/[^\s;{}]+)\/dist-cli\/index\.js/)
 let legacy = false
-try { legacy = /^0\.1\.(\d+)$/.test(JSON.parse(readFileSync(`${match[1]}/package.json`, 'utf8')).version) && Number(RegExp.$1) <= 89 } catch {}
+try {
+  const version = JSON.parse(readFileSync(`${match[1]}/package.json`, 'utf8')).version
+  const parsed = /^0\.1\.(\d+)$/.exec(version)
+  legacy = parsed !== null && Number(parsed[1]) <= 89
+} catch {}
 process.exit(legacy ? 0 : 1)
 NODE
-  then
-    export CODEXAPP_LEGACY_SCHEDULER=1
-    return 0
-  fi
+}
+
+drain_scheduler_for_cutover() {
+  if running_release_has_no_scheduler; then return 0; fi
+  local status
+  status="$(curl --silent --show-error --max-time 10 -o /dev/null -w '%{http_code}' "$PRODUCTION_URL/codex-api/automation-runtime")"
   [[ "$status" == "200" ]] || die "Cannot inspect scheduler (HTTP $status)."
   SCHEDULER_DRAINED=1
   curl --fail --silent --show-error --max-time 40 -X POST -H 'Content-Type: application/json' \
@@ -164,8 +168,9 @@ require_cutover_commands() {
 }
 
 check_idle_runtime() {
-  local base_url="$PRODUCTION_URL"
-  CODEXAPP_IDLE_CHECK_URL="$base_url" "$NODE_BIN" <<'NODE'
+  local base_url="$PRODUCTION_URL" legacy_scheduler=0
+  if running_release_has_no_scheduler; then legacy_scheduler=1; fi
+  CODEXAPP_LEGACY_SCHEDULER="$legacy_scheduler" CODEXAPP_IDLE_CHECK_URL="$base_url" "$NODE_BIN" <<'NODE'
 const baseUrl = process.env.CODEXAPP_IDLE_CHECK_URL
 
 async function readJson(path, init) {
@@ -174,8 +179,8 @@ async function readJson(path, init) {
   return await response.json()
 }
 
-const schedulerResponse = await fetch(`${baseUrl}/codex-api/automation-runtime`)
 if (process.env.CODEXAPP_LEGACY_SCHEDULER !== '1') {
+  const schedulerResponse = await fetch(`${baseUrl}/codex-api/automation-runtime`)
   if (!schedulerResponse.ok) throw new Error('Unable to inspect automation scheduler')
   const scheduler = (await schedulerResponse.json()).data
   if (!scheduler?.ready || scheduler.activeCount || scheduler.queuedCount) throw new Error('Automation scheduler is unavailable or still has active/queued runs')
