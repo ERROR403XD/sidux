@@ -694,7 +694,7 @@
                   </div>
                 </section>
                 <Teleport to="body">
-                  <div v-if="isExistingFolderPickerOpen" class="new-thread-open-folder-overlay" v-modal-backdrop="onCloseExistingFolderPanel">
+                  <div v-if="isExistingFolderPickerOpen" class="new-thread-open-folder-overlay" v-modal-backdrop="() => { if (!isCreatingFolder && !isOpeningExistingFolder) onCloseExistingFolderPanel() }">
                     <div class="new-thread-open-folder" role="dialog" aria-modal="true" :aria-label="t('Select folder')" @keydown.esc.prevent="onCloseExistingFolderPanel">
                       <div class="new-thread-open-folder-header">
                         <p class="new-thread-open-folder-title">{{ t('Select folder') }}</p>

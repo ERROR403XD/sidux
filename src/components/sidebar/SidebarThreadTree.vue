@@ -1989,6 +1989,7 @@ function selectAutomationForEditing(automationId: string): void {
 }
 
 function closeAutomationDialog(): void {
+  if (isSavingAutomation.value || isRunningAutomation.value) return
   automationDialogVisible.value = false
   automationDialogScope.value = 'thread'
   automationDialogThreadId.value = ''
