@@ -51,3 +51,5 @@ Rollback/cleanup:
 清理：从列表移除本轮测试项目，仅删除本轮新建临时目录。
 
 性能：创建模式不请求 project-root-suggestion；一次创建 POST 后读取既有 workspace state，不增加递归扫描。子文件夹入口继续使用原建议接口。
+
+自动回归：先 `pnpm run build`，再 `node scripts/test-project-root-api.cjs`。脚本创建独立临时 CODEX_HOME、启动构建产物，通过真实 HTTP 检查指定目录、原文件保留、同路径去重、label 落盘、文件路径失败以及独立子文件夹创建；结束后删除自身临时目录。Linux 容器内加 `CODEXAPP_TEST_UNPRIVILEGED=1`，并指定 `CODEXAPP_TEST_CLI` 为已安装的 CLI，以 nobody 验证 EACCES；不要让 nobody 读取宿主机 `/root` 下的依赖。
