@@ -97,7 +97,7 @@
       <span class="review-pane-summary-pill review-pane-summary-pill-remove">-{{ snapshot.summary.removedLineCount }}</span>
       <span v-if="snapshot.headBranch">{{ snapshot.headBranch }}</span>
       <span v-if="isCommitReview && snapshot.commitSha">{{ shortCommitSha(snapshot.commitSha) }}</span>
-      <span v-if="!isCommitReview && activeScope === 'baseBranch' && snapshot.baseBranch">vs {{ snapshot.baseBranch }}</span>
+      <span v-if="!isCommitReview && activeScope === 'baseBranch' && snapshot.baseBranch">{{ t('Compared with {branch}', { branch: snapshot.baseBranch }) }}</span>
     </div>
 
     <div class="review-pane-content">
@@ -191,7 +191,7 @@
             class="review-pane-resizer"
             role="separator"
             aria-orientation="vertical"
-            aria-label="Resize file list"
+            :aria-label="t('Resize file list')"
             @pointerdown="onResizerPointerDown"
           ></div>
 
@@ -282,7 +282,7 @@
         <div class="review-pane-sheet" @click.stop>
           <div class="review-pane-sheet-handle" aria-hidden="true"></div>
           <div class="review-pane-sheet-header">
-            <p class="review-pane-sheet-title">Changed files</p>
+            <p class="review-pane-sheet-title">{{ t('Changed files') }}</p>
             <p class="review-pane-sheet-count">{{ snapshot.files.length }}</p>
           </div>
           <div class="review-pane-sheet-list">

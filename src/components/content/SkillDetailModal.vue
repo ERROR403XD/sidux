@@ -71,7 +71,7 @@
               :disabled="isActing || props.isTrying"
               @click="onTry"
             >
-              {{ props.isTrying ? 'Starting...' : 'Try it!' }}
+              {{ props.isTrying ? t('Starting...') : t('Try it!') }}
             </button>
 
             <button

@@ -664,7 +664,7 @@
                     @change="onDirectProjectImportFileChange"
                   />
                 </div>
-                <section v-if="showFirstLaunchPluginsCard" class="new-thread-launch-card" aria-label="Plugins and Apps announcement">
+                <section v-if="showFirstLaunchPluginsCard" class="new-thread-launch-card" :aria-label="t('Plugins and Apps announcement')">
                   <div class="new-thread-launch-card-copy">
                     <div class="new-thread-launch-card-topline">
                       <span class="new-thread-launch-card-badge" aria-hidden="true">
@@ -676,7 +676,7 @@
                     <p class="new-thread-launch-card-text">
                       {{ t('Hook Codex up to Gmail, Calendar, GitHub, Slack, Browser Use, and more so it can actually help with real work right away.') }}
                     </p>
-                    <div class="new-thread-launch-card-pills" aria-label="Example integrations">
+                    <div class="new-thread-launch-card-pills" :aria-label="t('Example integrations')">
                       <span class="new-thread-launch-card-pill">Gmail</span>
                       <span class="new-thread-launch-card-pill">Calendar</span>
                       <span class="new-thread-launch-card-pill">GitHub</span>
@@ -767,7 +767,7 @@
                           </button>
                         </div>
                         <div v-if="createFolderError" class="new-thread-open-folder-error visible-error-with-feedback">
-                          <span>{{ createFolderError }}</span>
+                          <span>{{ t(createFolderError) }}</span>
                           <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, createFolderError)">{{ t('Send feedback') }}</a>
                         </div>
                       </div>
@@ -781,7 +781,7 @@
                       />
                       <div v-if="existingFolderError" class="new-thread-open-folder-error-actions">
                         <div class="new-thread-open-folder-error visible-error-with-feedback">
-                          <span>{{ existingFolderError }}</span>
+                          <span>{{ t(existingFolderError) }}</span>
                           <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, existingFolderError)">{{ t('Send feedback') }}</a>
                         </div>
                         <button
@@ -894,7 +894,7 @@
                         {{ t('Project directory: {path}', { path: normalizeAbsolutePath(projectSetupBaseDir) }) }}
                       </p>
                       <div v-if="projectSetupError" class="new-thread-open-folder-error visible-error-with-feedback">
-                        <span>{{ projectSetupError }}</span>
+                        <span>{{ t(projectSetupError) }}</span>
                         <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, projectSetupError)">{{ t('Send feedback') }}</a>
                       </div>
                       <div class="new-thread-project-modal-actions">
@@ -3834,12 +3834,8 @@ function onCloseProjectSetupModal(): void {
 }
 
 async function createProjectFromSetupModal(): Promise<string> {
-  try {
-    const input = projectSetupInput(normalizeAbsolutePath(projectSetupBaseDir.value), projectNameDraft.value)
-    return await openProjectRoot(input.path, input.options)
-  } catch (error) {
-    throw new Error(t(error instanceof Error ? error.message : 'Failed to create or clone project.'))
-  }
+  const input = projectSetupInput(normalizeAbsolutePath(projectSetupBaseDir.value), projectNameDraft.value)
+  return openProjectRoot(input.path, input.options)
 }
 
 async function cloneGithubRepositoryFromSetupModal(): Promise<string> {

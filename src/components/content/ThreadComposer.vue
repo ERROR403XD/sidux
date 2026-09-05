@@ -13,11 +13,11 @@
     >
       <div v-if="selectedImages.length > 0" class="thread-composer-attachments">
         <div v-for="image in selectedImages" :key="image.id" class="thread-composer-attachment">
-          <img class="thread-composer-attachment-image" :src="image.url" :alt="image.name || 'Selected image'" />
+          <img class="thread-composer-attachment-image" :src="image.url" :alt="image.name || t('Selected image')" />
           <button
             class="thread-composer-attachment-remove"
             type="button"
-            :aria-label="`Remove ${image.name || 'image'}`"
+            :aria-label="t('Remove {name}', { name: image.name || t('Selected image') })"
             :disabled="isInteractionDisabled"
             @click="removeImage(image.id)"
           >
@@ -32,16 +32,16 @@
           <span class="thread-composer-folder-chip-name" :title="group.name">{{ group.name }}</span>
           <span class="thread-composer-folder-chip-meta">
             <template v-if="group.isUploading">
-              {{ getFolderUploadPercent(group) }}% uploading ({{ group.processed }}/{{ group.total }})
+              {{ t('{percent}% uploading ({processed}/{total})', { percent: getFolderUploadPercent(group), processed: group.processed, total: group.total }) }}
             </template>
             <template v-else>
-              {{ group.filePaths.length }} file{{ group.filePaths.length === 1 ? '' : 's' }}
+              {{ t('{count} files', { count: group.filePaths.length }) }}
             </template>
           </span>
           <button
             class="thread-composer-folder-chip-remove"
             type="button"
-            :aria-label="`Remove folder ${group.name}`"
+            :aria-label="t('Remove folder {name}', { name: group.name })"
             :disabled="isInteractionDisabled"
             @click="removeFolderAttachment(group.id)"
           >×</button>
@@ -55,7 +55,7 @@
           <button
             class="thread-composer-file-chip-remove"
             type="button"
-            :aria-label="`Remove ${att.label}`"
+            :aria-label="t('Remove {name}', { name: att.label })"
             :disabled="isInteractionDisabled"
             @click="removeFileAttachment(att.fsPath)"
           >×</button>
@@ -68,7 +68,7 @@
             class="thread-composer-skill-chip-name"
             type="button"
             :title="skillMarkdownPath(skill.path)"
-            :aria-label="`Open ${skill.displayName || skill.name} SKILL.md`"
+            :aria-label="t('Open {name} SKILL.md', { name: skill.displayName || skill.name })"
             @click="openSkillMarkdown(skill)"
           >
             {{ skill.displayName || skill.name }}
@@ -76,7 +76,7 @@
           <button
             class="thread-composer-skill-chip-remove"
             type="button"
-            :aria-label="`Remove skill ${skill.displayName || skill.name}`"
+            :aria-label="t('Remove skill {name}', { name: skill.displayName || skill.name })"
             @click="removeSkill(skill.path)"
           >×</button>
         </span>
@@ -94,7 +94,7 @@
         @drop="onInputDrop"
       >
         <div v-if="isDragActive" class="thread-composer-drop-overlay" aria-hidden="true">
-          <span class="thread-composer-drop-overlay-copy">Drop images or files</span>
+          <span class="thread-composer-drop-overlay-copy">{{ t('Drop images or files') }}</span>
         </div>
         <div v-if="isFileMentionOpen" class="thread-composer-file-mentions">
           <template v-if="fileMentionSuggestions.length > 0">
@@ -1258,7 +1258,7 @@ function normalizeSelectedFiles(files: FileList | File[] | null | undefined): Fi
 }
 
 function formatAttachmentFileCount(count: number): string {
-  return count === 1 ? '1 file' : `${count} files`
+  return t('{count} files', { count })
 }
 
 function beginAttachmentWork(sessionToken: number): boolean {
