@@ -74,7 +74,18 @@ async function main() {
     const folder = path.join(target, 'child-folder')
     assert.equal((await request('/codex-api/local-directory', { path: folder })).status, 200)
     assert.equal((await fs.stat(folder)).isDirectory(), true)
-    console.log(JSON.stringify({ passed: true, port, permissionTest: unprivileged ? 'EACCES verified' : 'pending: run CODEXAPP_TEST_UNPRIVILEGED=1 inside packed-image container', measurements }, null, 2))
+    if (process.env.CODEXAPP_TEST_GITHUB_CLONE === '1') {
+      const cloneBase = path.join(root, 'clone-parent')
+      await fs.mkdir(cloneBase)
+      await fs.chmod(cloneBase, 0o777)
+      const cloned = await request('/codex-api/github-clone', { url: 'https://github.com/octocat/Hello-World.git', basePath: cloneBase })
+      assert.equal(cloned.status, 200, JSON.stringify(cloned.body))
+      assert.equal(cloned.body.data.path, path.join(cloneBase, 'Hello-World'))
+      assert.ok((await fs.stat(path.join(cloned.body.data.path, '.git'))).isDirectory())
+      const invalid = await request('/codex-api/github-clone', { url: 'https://example.com/repo.git', basePath: cloneBase })
+      assert.equal(invalid.status, 400)
+    }
+    console.log(JSON.stringify({ passed: true, port, permissionTest: unprivileged ? 'EACCES verified' : 'pending: run CODEXAPP_TEST_UNPRIVILEGED=1 inside packed-image container', cloneTest: process.env.CODEXAPP_TEST_GITHUB_CLONE === '1' ? 'passed' : 'not requested', measurements }, null, 2))
   } finally {
     if (child && child.exitCode === null) {
       child.kill('SIGTERM')

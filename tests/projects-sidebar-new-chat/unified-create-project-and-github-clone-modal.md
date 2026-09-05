@@ -55,3 +55,5 @@ Rollback/cleanup:
 自动回归：先 `pnpm run build`，再 `node scripts/test-project-root-api.cjs`。脚本创建独立临时 CODEX_HOME、启动构建产物，通过真实 HTTP 检查指定目录、原文件保留、同路径去重、label 落盘、文件路径失败以及独立子文件夹创建；结束后删除自身临时目录。Linux 容器内加 `CODEXAPP_TEST_UNPRIVILEGED=1`，并指定 `CODEXAPP_TEST_CLI` 为已安装的 CLI，以 nobody 验证 EACCES；不要让 nobody 读取宿主机 `/root` 下的依赖。
 
 提交中保护补充：在自动化保存/运行、目录创建/打开进行时按 Esc 或点击背景，弹窗应保持打开；完成后正常关闭。自动化取消按钮与遮罩/键盘使用相同禁止关闭条件。
+
+Clone 自动回归：在隔离测试容器中加 `CODEXAPP_TEST_GITHUB_CLONE=1` 并允许网络，脚本克隆公开的 `octocat/Hello-World` 到已存在的测试父目录，验证实际路径是 `父目录/Hello-World`，并验证非 GitHub URL 被拒绝；测试结束清理自身克隆。
