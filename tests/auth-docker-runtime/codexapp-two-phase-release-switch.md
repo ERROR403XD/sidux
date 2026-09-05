@@ -65,3 +65,13 @@ Validate `scripts/codexapp-release-switch.sh`: prepare an immutable release whil
 
 3. Confirm `5900` is healthy, the previous release is active, and the production account remains signed in.
 4. Keep `/home/docker/codexapp-switch-state/transactions/` and the previous release until the observation period ends. Do not delete authentication snapshots or old releases as part of the switch test.
+
+### 0.1.88 多账号基线后续版本的账号保留
+
+前提：生产使用 `/root/.codex`，当前分支包含多账号 0.1.88 基线；所有账号在生产池中已导入。候选继续使用独立 volume。
+
+操作：确认账号实现与 0.1.88 的差异，执行 `pnpm exec vitest run src/server/accountAuthStore.test.ts src/server/releaseAuthPreservation.test.ts`。该回归只使用临时虚拟账号，不读取真实认证、不执行 systemctl。真正切生产仍由用户结束当前 turn 后，在独立终端执行已准备 release 的 `activate ... --confirm-idle`。
+
+预期：同 CODEX_HOME 重启读取保留全部账号、active 身份、凭据版本、状态和配额快照。切换脚本覆盖 `auth.json`、`accounts.json` 及整个 `accounts/`，非 active 或 pending 凭据变化也会被发现。人工回滚保留当时最新凭据。生产账号不被测试池覆盖；测试池保留但不自动导入生产。
+
+清理：自动回归清理自身临时目录；不要删除真实生产/候选账号目录或恢复历史 Token。上线后核对所有账号卡及 active 状态，再做真实请求验收。

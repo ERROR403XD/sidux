@@ -42,6 +42,32 @@ afterEach(async () => {
 })
 
 describe('AccountAuthStore', () => {
+  it('preserves all imported accounts, active identity and saved metadata when reopening the same home', async () => {
+    const store = await createStore()
+    for (const id of ['a', 'b', 'c']) await store.upsertCredential(credential(`account-${id}`, `user-${id}`))
+    const state = await store.readState()
+    state.activeStorageId = state.accounts[1]!.storageId
+    state.operationEpoch = 9
+    state.accounts[0]!.authStatus = 'reauth_required'
+    state.accounts[0]!.unavailableReason = 'reauth_required'
+    state.accounts[2]!.credentialRevision = 7
+    state.accounts[2]!.quotaStatus = 'ready'
+    state.accounts[2]!.quotaSnapshot = {
+      limitId: 'codex', limitName: 'Codex', primary: { usedPercent: 42, windowMinutes: 300, resetsAt: 2000000000 },
+      secondary: null, credits: null, planType: 'plus',
+    }
+    await store.materializeActive(state.activeStorageId)
+    await store.writeState(state)
+    const paths = [store.statePath, store.activeAuthPath, ...state.accounts.map(account => store.credentialPath(account.storageId))]
+    const before = await Promise.all(paths.map(path => readFile(path, 'utf8')))
+    const reopened = new AccountAuthStore(store.codexHome)
+    const loaded = await reopened.readState()
+    expect(loaded.accounts).toEqual(state.accounts)
+    expect(loaded.activeStorageId).toBe(state.activeStorageId)
+    expect(loaded.operationEpoch).toBe(9)
+    expect(await Promise.all(paths.map(path => readFile(path, 'utf8')))).toEqual(before)
+  })
+
   it('extracts a stable identity from account and user identity', () => {
     const first = parseAccountCredential(credential('workspace-a', 'user-a'))
     const again = parseAccountCredential(credential('workspace-a', 'user-a', 'rotated'))
