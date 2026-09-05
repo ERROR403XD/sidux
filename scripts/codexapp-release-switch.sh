@@ -23,6 +23,39 @@ CUTOVER_TRANSACTION=""
 AUTH_SNAPSHOT_READY=0
 DROPIN_SNAPSHOT_READY=0
 TEST_CONTAINER_WAS_RUNNING=0
+SCHEDULER_DRAINED=0
+
+resume_scheduler_on_exit() {
+  if [[ "$SCHEDULER_DRAINED" == "1" ]]; then
+    curl --silent --show-error --max-time 10 -X POST -H 'Content-Type: application/json' \
+      --data '{"draining":false}' "$PRODUCTION_URL/codex-api/automation-runtime/drain" >/dev/null || true
+  fi
+}
+trap resume_scheduler_on_exit EXIT
+
+drain_scheduler_for_cutover() {
+  local status
+  status="$(curl --silent --show-error --max-time 10 -o /dev/null -w '%{http_code}' "$PRODUCTION_URL/codex-api/automation-runtime")"
+  # Legacy Express serves the SPA even for unknown API paths. Verify the running
+  # release's package version before accepting that response as a missing scheduler.
+  if CODEXAPP_INSPECT_SERVICE="$SERVICE_NAME" "$NODE_BIN" --input-type=commonjs <<'NODE'
+const { execFileSync } = require('node:child_process')
+const { readFileSync } = require('node:fs')
+const value = execFileSync('systemctl', ['show', process.env.CODEXAPP_INSPECT_SERVICE, '-p', 'ExecStart', '--value'], { encoding: 'utf8' })
+const match = value.match(/(\/[^\s;{}]+)\/dist-cli\/index\.js/)
+let legacy = false
+try { legacy = /^0\.1\.(\d+)$/.test(JSON.parse(readFileSync(`${match[1]}/package.json`, 'utf8')).version) && Number(RegExp.$1) <= 89 } catch {}
+process.exit(legacy ? 0 : 1)
+NODE
+  then
+    export CODEXAPP_LEGACY_SCHEDULER=1
+    return 0
+  fi
+  [[ "$status" == "200" ]] || die "Cannot inspect scheduler (HTTP $status)."
+  SCHEDULER_DRAINED=1
+  curl --fail --silent --show-error --max-time 40 -X POST -H 'Content-Type: application/json' \
+    --data '{"draining":true}' "$PRODUCTION_URL/codex-api/automation-runtime/drain" >/dev/null
+}
 
 usage() {
   cat <<'EOF'
@@ -139,6 +172,13 @@ async function readJson(path, init) {
   const response = await fetch(`${baseUrl}${path}`, init)
   if (!response.ok) throw new Error(`${path} returned HTTP ${response.status}`)
   return await response.json()
+}
+
+const schedulerResponse = await fetch(`${baseUrl}/codex-api/automation-runtime`)
+if (process.env.CODEXAPP_LEGACY_SCHEDULER !== '1') {
+  if (!schedulerResponse.ok) throw new Error('Unable to inspect automation scheduler')
+  const scheduler = (await schedulerResponse.json()).data
+  if (!scheduler?.ready || scheduler.activeCount || scheduler.queuedCount) throw new Error('Automation scheduler is unavailable or still has active/queued runs')
 }
 
 const queuePayload = await readJson('/codex-api/thread-queue-state')
@@ -381,6 +421,7 @@ activate_release() {
   release="$(validate_release "$requested")"
   check_runtime_boundary
   systemctl is-active --quiet "$SERVICE_NAME" || die "$SERVICE_NAME must be active before cutover."
+  drain_scheduler_for_cutover
   check_idle_runtime
 
   timestamp="$(date '+%Y%m%d-%H%M%S')"
@@ -438,6 +479,7 @@ rollback_release() {
   previous_transaction="$(read_first_line "$active_transaction/previous-transaction" || true)"
   check_runtime_boundary
   systemctl is-active --quiet "$SERVICE_NAME" || die "$SERVICE_NAME must be active before rollback."
+  drain_scheduler_for_cutover
   check_idle_runtime
 
   timestamp="$(date '+%Y%m%d-%H%M%S')"

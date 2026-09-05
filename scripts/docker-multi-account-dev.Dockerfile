@@ -11,11 +11,12 @@ RUN apt-get update \
 
 COPY output/package/codexapp.tgz /tmp/codexapp.tgz
 
-RUN npm install -g /tmp/codexapp.tgz @openai/codex@0.147.0 \
+RUN npm install -g /tmp/codexapp.tgz @openai/codex@0.153.4 \
   && npm cache clean --force \
   && rm /tmp/codexapp.tgz
 
 ENV CODEX_HOME=/codex-home
+ENV TZ=Asia/Shanghai
 RUN mkdir -p /codex-home /home/Code \
   && chmod 700 /codex-home
 

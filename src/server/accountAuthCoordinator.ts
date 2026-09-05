@@ -26,6 +26,7 @@ export type RuntimeQuiescenceSnapshot = {
   queuedThreadIds: string[]
   pendingServerRequestCount: number
   pendingTurnMutationCount: number
+  automationRunIds?: string[]
 }
 
 export type AccountRuntime = {
@@ -149,6 +150,7 @@ function sameContinuity(left: ReturnType<typeof threadContinuity>, right: Return
 }
 
 export class AccountAuthCoordinator {
+  isAccountOperationInProgress(): boolean { return this.operation !== null }
   private operation: CoordinatorOperation | null = null
   private loginSession: LoginSession | null = null
   private readonly refreshFlights = new Map<string, Promise<StoredAccountEntry>>()

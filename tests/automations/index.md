@@ -8,6 +8,7 @@ Return to the [manual test index](../../tests.md).
 
 | Section |
 | --- |
+| [0.1.90：持久调度与执行记录](durable-scheduler-and-execution-history.md) |
 | [Feature: Thread heartbeat automations](thread-heartbeat-automations.md) |
 | [Feature: Project automations and `/automations` panel](project-automations-and-automations-panel.md) |
 | [Automation editor scrolls on small viewports](automation-editor-scrolls-on-small-viewports.md) |

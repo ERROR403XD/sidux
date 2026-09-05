@@ -1,3 +1,8 @@
+import { AutomationEngine } from './automationEngine.js'
+import { createAutomationRuntime } from './automationRuntime.js'
+import { createAutomationSchedule, validateAutomationTimezone } from './automationSchedule.js'
+import { parseAutomationToml, serializeAutomationToml, toAutomationApiRecord, writeAutomationFileAtomic, type ThreadAutomationRecord, type ThreadAutomationStatus } from './automationDefinition.js'
+export { parseAutomationToml, toAutomationApiRecord } from './automationDefinition.js'
 import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { mkdtemp, readFile, readdir, rename, rm, mkdir, stat, cp, lstat, readlink, symlink, realpath, utimes } from 'node:fs/promises'
@@ -4759,199 +4764,6 @@ function getCodexAutomationsDir(): string {
   return join(getCodexHomeDir(), 'automations')
 }
 
-type ThreadAutomationStatus = 'ACTIVE' | 'PAUSED'
-
-type ThreadAutomationRecord = {
-  id: string
-  kind: 'heartbeat' | 'cron'
-  name: string
-  prompt: string
-  rrule: string
-  status: ThreadAutomationStatus
-  targetThreadId: string | null
-  cwds: string[]
-  extraTomlLines: string[]
-  createdAtMs: number | null
-  updatedAtMs: number | null
-  nextRunAtMs: number | null
-}
-
-function readTomlString(value: string): string {
-  const trimmed = value.trim()
-  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith('\'') && trimmed.endsWith('\''))) {
-    try {
-      return JSON.parse(trimmed)
-    } catch {
-      return trimmed.slice(1, -1)
-    }
-  }
-  return trimmed
-}
-
-function serializeTomlString(value: string): string {
-  return JSON.stringify(value)
-}
-
-function parseTomlStringArray(value: string): string[] {
-  const trimmed = value.trim()
-  if (!trimmed.startsWith('[') || !trimmed.endsWith(']')) return []
-  const values: string[] = []
-  let index = 1
-  const endIndex = trimmed.length - 1
-
-  while (index < endIndex) {
-    while (index < endIndex && /[\s,]/u.test(trimmed[index] ?? '')) index += 1
-    if (index >= endIndex) break
-
-    const quote = trimmed[index]
-    if (quote !== '"' && quote !== "'") return []
-    const start = index
-    index += 1
-    let valueText = ''
-
-    if (quote === "'") {
-      const closeIndex = trimmed.indexOf("'", index)
-      if (closeIndex < 0 || closeIndex > endIndex) return []
-      valueText = trimmed.slice(index, closeIndex)
-      index = closeIndex + 1
-    } else {
-      let escaped = false
-      while (index < endIndex) {
-        const char = trimmed[index] ?? ''
-        if (escaped) {
-          escaped = false
-        } else if (char === '\\') {
-          escaped = true
-        } else if (char === '"') {
-          break
-        }
-        index += 1
-      }
-      if (index >= endIndex || trimmed[index] !== '"') return []
-      try {
-        valueText = JSON.parse(trimmed.slice(start, index + 1)) as string
-      } catch {
-        return []
-      }
-      index += 1
-    }
-
-    if (valueText.trim().length > 0) values.push(valueText)
-    while (index < endIndex && /\s/u.test(trimmed[index] ?? '')) index += 1
-    if (index < endIndex && trimmed[index] !== ',') return []
-  }
-
-  return values
-}
-
-function serializeTomlStringArray(values: string[]): string {
-  return `[${values.map((value) => serializeTomlString(value)).join(', ')}]`
-}
-
-export function parseAutomationToml(raw: string): ThreadAutomationRecord | null {
-  const values: Record<string, string> = {}
-  const extraTomlLines: string[] = []
-  const knownKeys = new Set([
-    'version',
-    'id',
-    'kind',
-    'name',
-    'prompt',
-    'status',
-    'rrule',
-    'target_thread_id',
-    'cwds',
-    'created_at',
-    'updated_at',
-  ])
-  let isInsideExtraTable = false
-  for (const line of raw.split(/\r?\n/u)) {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('#')) continue
-    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-      isInsideExtraTable = true
-      extraTomlLines.push(trimmed)
-      continue
-    }
-    if (isInsideExtraTable) {
-      extraTomlLines.push(trimmed)
-      continue
-    }
-    if (!trimmed.includes('=')) {
-      extraTomlLines.push(trimmed)
-      continue
-    }
-    const separatorIndex = trimmed.indexOf('=')
-    const key = trimmed.slice(0, separatorIndex).trim()
-    const value = trimmed.slice(separatorIndex + 1).trim()
-    if (!key) continue
-    if (knownKeys.has(key)) {
-      values[key] = value
-    } else {
-      extraTomlLines.push(trimmed)
-    }
-  }
-
-  const id = readTomlString(values.id ?? '')
-  const kindValue = readTomlString(values.kind ?? (values.cwds ? 'cron' : 'heartbeat'))
-  const name = readTomlString(values.name ?? '')
-  const prompt = readTomlString(values.prompt ?? '')
-  const rrule = readTomlString(values.rrule ?? '')
-  const statusValue = readTomlString(values.status ?? 'ACTIVE')
-  const targetThreadId = readTomlString(values.target_thread_id ?? '') || null
-  const cwds = parseTomlStringArray(values.cwds ?? '')
-  const createdAtMs = Number.parseInt(values.created_at ?? '', 10)
-  const updatedAtMs = Number.parseInt(values.updated_at ?? '', 10)
-
-  if (!id || !name || !prompt || !rrule) return null
-  if (kindValue !== 'heartbeat' && kindValue !== 'cron') return null
-  if (statusValue !== 'ACTIVE' && statusValue !== 'PAUSED') return null
-
-  return {
-    id,
-    kind: kindValue,
-    name,
-    prompt,
-    rrule,
-    status: statusValue,
-    targetThreadId,
-    cwds,
-    extraTomlLines,
-    createdAtMs: Number.isFinite(createdAtMs) ? createdAtMs : null,
-    updatedAtMs: Number.isFinite(updatedAtMs) ? updatedAtMs : null,
-    nextRunAtMs: null,
-  }
-}
-
-function serializeAutomationToml(record: ThreadAutomationRecord): string {
-  const lines = [
-    'version = 1',
-    `id = ${serializeTomlString(record.id)}`,
-    `kind = ${serializeTomlString(record.kind)}`,
-    `name = ${serializeTomlString(record.name)}`,
-    `prompt = ${serializeTomlString(record.prompt)}`,
-    `status = ${serializeTomlString(record.status)}`,
-    `rrule = ${serializeTomlString(record.rrule)}`,
-  ]
-  if (record.targetThreadId) {
-    lines.push(`target_thread_id = ${serializeTomlString(record.targetThreadId)}`)
-  }
-  if (record.cwds.length > 0) {
-    lines.push(`cwds = ${serializeTomlStringArray(record.cwds)}`)
-  }
-  lines.push(
-    `created_at = ${String(record.createdAtMs ?? Date.now())}`,
-    `updated_at = ${String(record.updatedAtMs ?? Date.now())}`,
-  )
-  lines.push(...record.extraTomlLines)
-  return `${lines.join('\n')}\n`
-}
-
-export function toAutomationApiRecord(record: ThreadAutomationRecord): Omit<ThreadAutomationRecord, 'extraTomlLines'> {
-  const { extraTomlLines: _extraTomlLines, ...apiRecord } = record
-  return apiRecord
-}
-
 function toAutomationApiMap(
   automationsByTarget: Record<string, ThreadAutomationRecord[]>,
 ): Record<string, Array<Omit<ThreadAutomationRecord, 'extraTomlLines'>>> {
@@ -4979,7 +4791,9 @@ function slugifyAutomationId(threadId: string, name: string): string {
 
 async function readAutomationRecordFromFile(filePath: string): Promise<ThreadAutomationRecord | null> {
   try {
-    return parseAutomationToml(await readFile(filePath, 'utf8'))
+    const record = parseAutomationToml(await readFile(filePath, 'utf8'))
+    const engine = (globalThis as any)[SHARED_BRIDGE_KEY]?.automationEngine as AutomationEngine | undefined
+    return record && engine ? engine.decorate(record) : record
   } catch {
     return null
   }
@@ -5075,7 +4889,7 @@ async function writeThreadHeartbeatAutomation(input: {
   }
 
   await mkdir(automationDir, { recursive: true })
-  await writeFile(join(automationDir, 'automation.toml'), serializeAutomationToml(record), 'utf8')
+  await writeAutomationFileAtomic(join(automationDir, 'automation.toml'), serializeAutomationToml(record))
   const memoryPath = join(automationDir, 'memory.md')
   try {
     await stat(memoryPath)
@@ -5186,7 +5000,7 @@ async function writeProjectCronAutomation(input: {
   }
 
   await mkdir(automationDir, { recursive: true })
-  await writeFile(join(automationDir, 'automation.toml'), serializeAutomationToml(record), 'utf8')
+  await writeAutomationFileAtomic(join(automationDir, 'automation.toml'), serializeAutomationToml(record))
   const memoryPath = join(automationDir, 'memory.md')
   try {
     await stat(memoryPath)
@@ -5206,7 +5020,7 @@ async function deleteProjectCronAutomation(projectName: string, automationId = '
     const remainingCwds = automation.cwds.filter((cwd) => cwd !== normalizedProjectName)
     if (remainingCwds.length > 0) {
       const record = { ...automation, cwds: remainingCwds, updatedAtMs: Date.now() }
-      await writeFile(join(getCodexAutomationsDir(), automation.id, 'automation.toml'), serializeAutomationToml(record), 'utf8')
+      await writeAutomationFileAtomic(join(getCodexAutomationsDir(), automation.id, 'automation.toml'), serializeAutomationToml(record))
     } else {
       await rm(join(getCodexAutomationsDir(), automation.id), { recursive: true, force: true })
     }
@@ -5219,7 +5033,7 @@ async function deleteProjectCronAutomation(projectName: string, automationId = '
     const remainingCwds = automation.cwds.filter((cwd) => cwd !== normalizedProjectName)
     if (remainingCwds.length > 0) {
       const record = { ...automation, cwds: remainingCwds, updatedAtMs: Date.now() }
-      await writeFile(join(getCodexAutomationsDir(), automation.id, 'automation.toml'), serializeAutomationToml(record), 'utf8')
+      await writeAutomationFileAtomic(join(getCodexAutomationsDir(), automation.id, 'automation.toml'), serializeAutomationToml(record))
       return
     }
     await rm(join(getCodexAutomationsDir(), automation.id), { recursive: true, force: true })
@@ -6236,6 +6050,7 @@ const MERGEABLE_ITEM_TYPES = new Set([
 ])
 
 class AppServerProcess {
+  automationActivity: () => string[] = () => []
   private process: ChildProcessWithoutNullStreams | null = null
   private initialized = false
   private initializePromise: Promise<void> | null = null
@@ -6376,7 +6191,7 @@ class AppServerProcess {
       if (!pendingRequest) return
 
       if (message.error) {
-        pendingRequest.reject(new Error(message.error.message))
+        pendingRequest.reject(Object.assign(new Error(message.error.message), { rpcRejected: true }))
       } else {
         pendingRequest.resolve(message.result)
       }
@@ -6823,13 +6638,15 @@ class AppServerProcess {
       || request.method === 'thread/resume'
     )).length
     const pendingServerRequestCount = this.pendingServerRequests.size
+    const automationRunIds = this.automationActivity()
     return {
-      idle: activeTurnThreadIds.size === 0
+      idle: automationRunIds.length === 0 && activeTurnThreadIds.size === 0
         && queuedThreadIds.length === 0
         && pendingServerRequestCount === 0
         && pendingTurnMutationCount === 0,
       activeTurnThreadIds: Array.from(activeTurnThreadIds),
       queuedThreadIds,
+      automationRunIds,
       pendingServerRequestCount,
       pendingTurnMutationCount,
     }
@@ -7055,7 +6872,7 @@ export class BackendQueueProcessor {
     throw new Error(`${mode === 'plan' ? 'Plan' : 'Default'} mode requires an available model.`)
   }
 
-  private async buildQueuedTurnParams(turn: BackendQueuedTurn): Promise<Record<string, unknown>> {
+  async buildQueuedTurnParams(turn: BackendQueuedTurn): Promise<Record<string, unknown>> {
     const localImageAttachments: StoredQueuedMessage['fileAttachments'] = []
     for (const imageUrl of turn.message.imageUrls) {
       const localImagePath = extractLocalImagePathFromUrl(imageUrl.trim())
@@ -7241,16 +7058,18 @@ type CodexBridgeMiddleware = ((req: IncomingMessage, res: ServerResponse, next: 
 }
 
 type SharedBridgeState = {
+  disposed: boolean
   version: string
   appServer: AppServerProcess
   terminalManager: ThreadTerminalManager
   methodCatalog: MethodCatalog
   telegramBridge: TelegramThreadBridge
   backendQueueProcessor: BackendQueueProcessor
+  automationEngine: AutomationEngine
 }
 
 const SHARED_BRIDGE_KEY = '__codexRemoteSharedBridge__'
-const SHARED_BRIDGE_VERSION = 'experimental-api-v2'
+const SHARED_BRIDGE_VERSION = 'automations-0190-v2'
 
 function getSharedBridgeState(): SharedBridgeState {
   const globalScope = globalThis as typeof globalThis & {
@@ -7259,9 +7078,10 @@ function getSharedBridgeState(): SharedBridgeState {
 
   const existing = globalScope[SHARED_BRIDGE_KEY]
   if (existing) {
-    if (existing.version === SHARED_BRIDGE_VERSION && existing.terminalManager) {
+    if (!existing.disposed && existing.version === SHARED_BRIDGE_VERSION && existing.terminalManager) {
       return existing
     }
+    void existing.automationEngine?.dispose()
     existing.appServer.dispose()
     existing.backendQueueProcessor?.dispose()
     existing.terminalManager?.dispose()
@@ -7270,7 +7090,20 @@ function getSharedBridgeState(): SharedBridgeState {
   const appServer = new AppServerProcess()
   const terminalManager = new ThreadTerminalManager()
   const backendQueueProcessor = new BackendQueueProcessor(appServer)
+  const automationEngine = new AutomationEngine(getCodexHomeDir(), createAutomationRuntime({
+    rpc: (method, params) => appServer.rpc(method, params),
+    accountBusy: () => getAccountAuthCoordinator().isAccountOperationInProgress(),
+    hasQueuedMessages: async (id) => Boolean((await readThreadQueueState())[id]?.length),
+    pendingRequests: () => appServer.listPendingServerRequests(),
+    buildParams: (threadId, text, id) => backendQueueProcessor.buildQueuedTurnParams({ threadId, message: {
+      id, text, imageUrls: [], skills: [], fileAttachments: [], collaborationMode: 'default',
+    } }),
+  }))
+  appServer.automationActivity = () => automationEngine.activity()
+  appServer.onNotification((notification) => automationEngine.notification(notification))
   const created: SharedBridgeState = {
+    disposed: false,
+    automationEngine,
     version: SHARED_BRIDGE_VERSION,
     appServer,
     terminalManager,
@@ -7363,7 +7196,8 @@ async function buildThreadSearchIndex(appServer: AppServerProcess): Promise<Thre
 }
 
 export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
-  const { appServer, terminalManager, methodCatalog, telegramBridge, backendQueueProcessor } = getSharedBridgeState()
+  const sharedState = getSharedBridgeState()
+  const { appServer, terminalManager, methodCatalog, telegramBridge, backendQueueProcessor, automationEngine } = sharedState
   let threadSearchIndex: ThreadSearchIndex | null = null
   let threadSearchIndexPromise: Promise<ThreadSearchIndex> | null = null
 
@@ -9293,6 +9127,27 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         return
       }
 
+      if (req.method === 'GET' && url.pathname === '/codex-api/automation-runtime') {
+        await automationEngine.readyPromise
+        setJson(res, 200, { data: automationEngine.snapshot() })
+        return
+      }
+      if (req.method === 'GET' && url.pathname === '/codex-api/automation-runs') {
+        setJson(res, 200, automationEngine.runs(url.searchParams.get('automationId') ?? '', Number(url.searchParams.get('before') || Infinity), Number(url.searchParams.get('limit') || 20)))
+        return
+      }
+      if (req.method === 'POST' && url.pathname === '/codex-api/automation-runtime/drain') {
+        const payload = asRecord(await readJsonBody(req))
+        setJson(res, 200, { data: await automationEngine.drain(payload?.draining !== false) })
+        return
+      }
+      if (req.method === 'POST' && ['/codex-api/thread-automation/run', '/codex-api/project-automation/run', '/codex-api/automation-run/retry'].includes(url.pathname)) {
+        const payload = asRecord(await readJsonBody(req))
+        const run = await automationEngine.manual(String(payload?.automationId ?? ''), String(payload?.threadId ?? payload?.projectName ?? payload?.target ?? ''), String(payload?.requestId ?? ''), typeof payload?.retryOf === 'string' ? payload.retryOf : undefined)
+        setJson(res, 200, { data: { queued: run.status === 'queued', run } })
+        void automationEngine.tick()
+        return
+      }
       if (req.method === 'GET' && url.pathname === '/codex-api/thread-automations') {
         const automationsByThreadId = await listThreadHeartbeatAutomations()
         setJson(res, 200, { data: toAutomationApiMap(automationsByThreadId) })
@@ -9396,8 +9251,13 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           setJson(res, 400, { error: 'threadId, name, prompt, and rrule are required' })
           return
         }
+        await automationEngine.readyPromise
+        if (!automationEngine.snapshot().ready) throw new Error(automationEngine.snapshot().error ?? '调度器尚未就绪')
+        const timezone = validateAutomationTimezone(typeof payload?.timezone === 'string' ? payload.timezone : automationEngine.snapshot().definitions.find((row) => row.id === id)?.timezone ?? automationEngine.timezone)
+        createAutomationSchedule(rrule, timezone, Date.now())
         const automation = await writeThreadHeartbeatAutomation({ threadId, id, name, prompt, rrule, status })
-        setJson(res, 200, { data: toAutomationApiRecord(automation) })
+        await automationEngine.refresh(automation.id, timezone)
+        setJson(res, 200, { data: toAutomationApiRecord(automationEngine.decorate(automation)) })
         return
       }
 
@@ -9417,27 +9277,13 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           setJson(res, 400, { error: 'Project automation cwd must be an absolute path' })
           return
         }
+        await automationEngine.readyPromise
+        if (!automationEngine.snapshot().ready) throw new Error(automationEngine.snapshot().error ?? '调度器尚未就绪')
+        const timezone = validateAutomationTimezone(typeof payload?.timezone === 'string' ? payload.timezone : automationEngine.snapshot().definitions.find((row) => row.id === id)?.timezone ?? automationEngine.timezone)
+        createAutomationSchedule(rrule, timezone, Date.now())
         const automation = await writeProjectCronAutomation({ projectName, id, name, prompt, rrule, status })
-        setJson(res, 200, { data: toAutomationApiRecord(automation) })
-        return
-      }
-
-      if (req.method === 'POST' && url.pathname === '/codex-api/thread-automation/run') {
-        const payload = asRecord(await readJsonBody(req))
-        const threadId = typeof payload?.threadId === 'string' ? payload.threadId.trim() : ''
-        const automationId = typeof payload?.automationId === 'string' ? payload.automationId.trim() : ''
-        if (!threadId || !automationId) {
-          setJson(res, 400, { error: 'threadId and automationId are required' })
-          return
-        }
-        const automation = await readThreadHeartbeatAutomation(threadId, automationId)
-        if (!automation) {
-          setJson(res, 404, { error: 'Automation not found for thread' })
-          return
-        }
-        await appendThreadQueuedMessage(threadId, buildHeartbeatQueuedMessage(automation))
-        backendQueueProcessor.scheduleThreadQueueDrain(threadId, 0)
-        setJson(res, 200, { data: { queued: true } })
+        await automationEngine.refresh(automation.id, timezone)
+        setJson(res, 200, { data: toAutomationApiRecord(automationEngine.decorate(automation)) })
         return
       }
 
@@ -9449,6 +9295,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           return
         }
         const removed = await deleteThreadHeartbeatAutomation(threadId, automationId)
+        await automationEngine.refresh()
         setJson(res, 200, { data: { removed } })
         return
       }
@@ -9461,6 +9308,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           return
         }
         const removed = await deleteProjectCronAutomation(projectName, automationId)
+        await automationEngine.refresh()
         setJson(res, 200, { data: { removed } })
         return
       }
@@ -9549,6 +9397,8 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
   }
 
   middleware.dispose = () => {
+    sharedState.disposed = true
+    void automationEngine.dispose()
     threadSearchIndex = null
     telegramBridge.stop()
     terminalManager.dispose()
@@ -9570,7 +9420,9 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         atIso: new Date().toISOString(),
       })
     })
+    const unsubscribeAutomation = automationEngine.subscribe(() => listener({ method: 'automation/changed', params: null, atIso: new Date().toISOString() }))
     return () => {
+      unsubscribeAutomation()
       unsubscribeAppServer()
       unsubscribeTerminal()
     }

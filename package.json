@@ -1,6 +1,6 @@
 {
   "name": "codexapp",
-  "version": "0.1.89",
+  "version": "0.1.90",
   "description": "A lightweight web interface for Codex that runs on top of the Codex app-server, allowing remote access from any browser",
   "type": "module",
   "license": "MIT",
@@ -67,6 +67,8 @@
     "express": "^5.1.0",
     "firebase": "^12.2.1",
     "highlight.js": "^11.11.1",
+    "rrule": "2.8.1",
+    "smol-toml": "1.8.0",
     "ws": "^8.18.3"
   },
   "optionalDependencies": {
