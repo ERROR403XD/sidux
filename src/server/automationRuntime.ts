@@ -55,6 +55,8 @@ export function createAutomationRuntime(options: {
       if (turn.status === 'failed' || turn.error) return { status: 'failed', turnId, error: String(record(turn.error).message ?? '') }
       if (turn.status === 'interrupted') return { status: 'interrupted', turnId }
       const waiting = options.pendingRequests().some((request) => record(record(request).params).threadId === run.threadId)
+      const threadStatus = record(record(response.thread).status).type ?? record(response.thread).status
+      if (!waiting && threadStatus && !['active', 'running', 'inProgress'].includes(String(threadStatus))) return { status: 'interrupted', turnId }
       return { status: waiting ? 'waiting_input' : 'running', turnId }
     },
     async interrupt(run) { if (run.threadId && run.turnId) await rpc('turn/interrupt', { threadId: run.threadId, turnId: run.turnId }) },

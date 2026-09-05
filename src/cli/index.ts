@@ -309,16 +309,24 @@ async function startServer(options: {
   console.log(lines.join('\n'))
   if (options.open) openBrowser(`http://localhost:${String(port)}`)
 
+  let isShuttingDown = false
+  let disposal: Promise<void> | null = null
+  async function finishShutdown(code: number) {
+    disposal ??= dispose()
+    try { await disposal } finally { process.exit(code) }
+  }
   function shutdown() {
+    if (isShuttingDown) return
+    isShuttingDown = true
     console.log('\nShutting down...')
     server.close(() => {
-      dispose()
-      process.exit(0)
+      void finishShutdown(0)
     })
     // Force exit after timeout
     setTimeout(() => {
-      dispose()
-      process.exit(1)
+      // Allow the scheduler's atomic journal/lease cleanup one final second.
+      setTimeout(() => process.exit(1), 1000).unref()
+      void finishShutdown(1)
     }, 5000).unref()
   }
 

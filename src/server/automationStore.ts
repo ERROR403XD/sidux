@@ -72,7 +72,10 @@ export class AutomationStore {
   async read(): Promise<AutomationState> {
     try {
       const value = JSON.parse(await readFile(join(this.directory, 'state.json'), 'utf8'))
-      if (value.version !== 1 || !value.definitions || !Array.isArray(value.runs)) throw new Error('自动化运行状态文件损坏，请检查 state.json；调度已停止以避免重复执行')
+      const validDefinitions = value?.definitions && typeof value.definitions === 'object' && !Array.isArray(value.definitions)
+        && Object.values(value.definitions).every((row: any) => row && typeof row.revision === 'string' && typeof row.timezone === 'string' && Number.isFinite(row.anchor) && Number.isFinite(row.cursor) && (row.nextRunAtMs === null || Number.isFinite(row.nextRunAtMs)))
+      const validRuns = Array.isArray(value?.runs) && value.runs.every((row: any) => row && typeof row.runId === 'string' && typeof row.automationId === 'string' && typeof row.target === 'string' && Number.isFinite(row.createdAt) && Number.isFinite(row.scheduledAt) && ['queued', 'starting', 'running', 'waiting_input', 'completed', 'failed', 'interrupted', 'missed', 'skipped', 'cancelled'].includes(row.status))
+      if (value?.version !== 1 || !validDefinitions || !validRuns) throw new Error('自动化运行状态文件损坏，请检查 state.json；调度已停止以避免重复执行')
       return value
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { version: 1, definitions: {}, runs: [] }
