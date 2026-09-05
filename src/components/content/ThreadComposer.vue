@@ -123,12 +123,23 @@
           </template>
           <div v-else class="thread-composer-file-mention-empty">{{ t('No matching files') }}</div>
         </div>
+        <ComposerCommandPicker v-if="commandPicker.visible.value" :commands="commandPicker.results.value" :selected-index="commandPicker.selectedIndex.value" :anchor="inputRef" :list-id="commandListId" @choose="commandPicker.choose" @dismiss="commandPicker.dismiss" />
         <textarea
           ref="inputRef"
           v-model="draft"
           class="thread-composer-input"
           :placeholder="placeholderText"
           :disabled="isInteractionDisabled"
+          :role="commandPicker.visible.value ? 'combobox' : undefined"
+          :aria-expanded="commandPicker.visible.value"
+          :aria-controls="commandPicker.visible.value ? commandListId : undefined"
+          :aria-activedescendant="commandPicker.visible.value && commandPicker.selectedIndex.value >= 0 ? `${commandListId}-${commandPicker.selectedIndex.value}` : undefined"
+          :aria-autocomplete="commandPicker.visible.value ? 'list' : undefined"
+          @compositionstart="onCompositionStart"
+          @compositionend="onCompositionEnd"
+          @click="updateCommandPicker()"
+          @keyup="onComposerCursorKeyup"
+          @select="updateCommandPicker()"
           @input="onInputChange"
           @keydown="onInputKeydown"
           @paste="onInputPaste"
@@ -257,6 +268,8 @@
 
         <template v-if="!isDictationRecording">
           <ComposerDropdown
+            ref="commandModelRef"
+            @open-change="onCommandSubmenuChange('model', $event)"
             class="thread-composer-control"
             :model-value="selectedModel"
             :options="modelOptions"
@@ -270,6 +283,8 @@
           />
 
           <ComposerSearchDropdown
+            ref="commandSkillsRef"
+            @open-change="onCommandSubmenuChange('skills', $event)"
             class="thread-composer-control"
             :options="skillDropdownOptions"
             :selected-values="selectedSkillPaths"
@@ -390,6 +405,9 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import ComposerCommandPicker from './ComposerCommandPicker.vue'
+import { buildComposerCommands, type ComposerCommand, type SlashToken } from './composerCommands'
+import { useComposerCommandPicker } from '../../composables/useComposerCommandPicker'
 import type {
   CollaborationModeKind,
   CollaborationModeOption,
@@ -602,6 +620,71 @@ const isPlanModeSelected = computed(() => props.selectedCollaborationMode === 'p
 const isPlanModeWaitingForModel = computed(() =>
   props.selectedCollaborationMode === 'plan' && props.selectedModel.trim().length === 0,
 )
+
+const commandModelRef = ref<{ open(): void; close(): void } | null>(null)
+const commandSkillsRef = ref<{ open(): void; close(): void } | null>(null)
+const commandListId = `composer-commands-${Math.random().toString(36).slice(2)}`
+const commandEntries = computed(() => buildComposerCommands(props.skills ?? [], savedPrompts.value))
+const commandPicker = useComposerCommandPicker(commandEntries, applyComposerCommand)
+let isComposingInput = false
+let pastedInput = false
+let commandContext: { token: SlashToken; draft: string; menu: 'model' | 'skills' } | null = null
+function updateCommandPicker(paste = false) {
+  const input = inputRef.value
+  if (!input || isComposingInput || isInteractionDisabled.value) { commandPicker.dismiss(); return }
+  commandPicker.update(draft.value, input.selectionStart, input.selectionEnd, paste)
+  if (commandPicker.visible.value) {
+    closeFileMention(); isAttachMenuOpen.value = false
+    commandModelRef.value?.close(); commandSkillsRef.value?.close()
+  }
+}
+function onCompositionStart() { isComposingInput = true; commandPicker.visible.value = false; commandPicker.selectedIndex.value = -1; closeFileMention() }
+function onCompositionEnd() { isComposingInput = false; updateCommandPicker() }
+function onComposerCursorKeyup(event: KeyboardEvent) {
+  if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) updateCommandPicker()
+}
+function replaceCommandToken(token: SlashToken, replacement: string, original = draft.value) {
+  if (draft.value !== original || draft.value.slice(token.start, token.end) !== token.text) return false
+  commandContext = null
+  draft.value = original.slice(0, token.start) + replacement + original.slice(token.end)
+  commandPicker.reset()
+  void nextTick(() => {
+    inputRef.value?.focus({ preventScroll: true })
+    inputRef.value?.setSelectionRange(token.start + replacement.length, token.start + replacement.length)
+  })
+  return true
+}
+function applyComposerCommand(command: ComposerCommand, token: SlashToken) {
+  if (isComposerConfigDisabled.value) return
+  if (command.action === 'model' || command.action === 'skills') {
+    commandContext = { token, draft: draft.value, menu: command.action }
+    if (command.action === 'model') commandModelRef.value?.open()
+    else commandSkillsRef.value?.open()
+    return
+  }
+  if (command.action === 'prompt') {
+    const prompt = savedPrompts.value.find((row) => row.path === command.value)
+    if (prompt) replaceCommandToken(token, prompt.content)
+  } else if (command.action === 'skill') {
+    const skill = (props.skills ?? []).find((row) => row.path === command.value)
+    if (skill && replaceCommandToken(token, '') && !selectedSkills.value.some((row) => row.path === skill.path)) selectedSkills.value.push(skill)
+  } else if (replaceCommandToken(token, '')) emit('update:selected-collaboration-mode', command.action)
+}
+function onCommandSubmenuChange(menu: 'model' | 'skills', open: boolean) {
+  if (open) {
+    commandPicker.dismiss(); closeFileMention()
+    if (menu === 'model') commandSkillsRef.value?.close()
+    else commandModelRef.value?.close()
+  } else if (commandContext?.menu === menu) commandContext = null
+}
+function consumeCommandContext(replacement = '') {
+  const context = commandContext
+  if (!context) return
+  commandContext = null
+  replaceCommandToken(context.token, replacement, context.draft)
+}
+watch(draft, (value) => { if (commandContext && commandContext.draft !== value) commandContext = null })
+watch(() => props.activeThreadId, () => { commandPicker.dismiss(); commandContext = null })
 
 const selectedSkillPaths = computed(() => selectedSkills.value.map((s) => s.path))
 const skillDropdownOptions = computed(() =>
@@ -946,6 +1029,7 @@ function buildContextUsageView(
 }
 
 function onSubmit(mode: 'steer' | 'queue' = 'steer'): void {
+  commandPicker.dismiss(); commandContext = null
   const text = draft.value.trim()
   if (!canSubmit.value) return
   emit('submit', {
@@ -995,6 +1079,7 @@ function replaceDraftState(payload: ComposerDraftPayload): void {
 }
 
 function clearDraftState(): void {
+  commandPicker.reset()
   replaceDraftState({
     text: '',
     imageUrls: [],
@@ -1104,6 +1189,7 @@ function toggleComposerExpanded(): void {
 }
 
 function onModelSelect(value: string): void {
+  if (commandContext?.menu === 'model') consumeCommandContext()
   emit('update:selected-model', value)
 }
 
@@ -1498,6 +1584,8 @@ function onWindowDragCleanup(): void {
 }
 
 function onInputPaste(event: ClipboardEvent): void {
+  pastedInput = true
+  commandPicker.dismiss()
   if (isInteractionDisabled.value) return
   const plainText = event.clipboardData?.getData('text/plain') ?? ''
   if (plainText.length >= PASTED_TEXT_FILE_THRESHOLD) {
@@ -1523,15 +1611,20 @@ function onInputPaste(event: ClipboardEvent): void {
   attachIncomingFiles(imageFiles)
 }
 
-function onInputChange(): void {
+function onInputChange(event?: Event): void {
   if (dictationFeedback.value) {
     dictationFeedback.value = ''
   }
 
+  if (isComposingInput) return
   updateFileMentionState()
+  updateCommandPicker(pastedInput || (event as InputEvent)?.inputType === 'insertFromPaste')
+  pastedInput = false
 }
 
 function onInputKeydown(event: KeyboardEvent): void {
+  if (isComposingInput || event.isComposing || event.keyCode === 229) return
+  if (commandPicker.keydown(event)) return
   if (isFileMentionOpen.value) {
     if (event.key === 'Escape') {
       event.preventDefault()
@@ -1759,6 +1852,15 @@ function skillSourceBadge(skill: SkillItem): SkillSourceBadge {
 }
 
 function onSkillDropdownToggle(path: string, checked: boolean): void {
+  if (commandContext?.menu === 'skills') {
+    const promptPath = promptPathFromOptionValue(path)
+    if (promptPath) {
+      const prompt = savedPrompts.value.find((row) => row.path === promptPath)
+      if (prompt) consumeCommandContext(prompt.content)
+      return
+    }
+    consumeCommandContext()
+  }
   const promptPath = promptPathFromOptionValue(path)
   if (promptPath) {
     onPromptDropdownToggle(promptPath)
@@ -2202,7 +2304,7 @@ watch(
 
 
 .thread-composer-actions {
-  @apply ml-auto flex min-w-0 items-center gap-2;
+  @apply ml-auto flex shrink-0 min-w-0 items-center gap-2;
 }
 
 .thread-composer-actions--recording {

@@ -136,6 +136,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   toggle: [value: string, checked: boolean]
+  'open-change': [open: boolean]
   create: []
   remove: [value: string]
 }>()
@@ -264,6 +265,8 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', onWindowLayoutChange)
   window.removeEventListener('scroll', onWindowLayoutChange, true)
 })
+watch(isOpen, (open) => emit('open-change', open))
+defineExpose({ open: () => { if (!isOpen.value) onToggle() }, close: () => { isOpen.value = false } })
 </script>
 
 <style scoped>

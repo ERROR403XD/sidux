@@ -81,6 +81,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
+  'open-change': [open: boolean]
 }>()
 
 const rootRef = ref<HTMLElement | null>(null)
@@ -199,6 +200,7 @@ function onDocumentPointerDown(event: PointerEvent): void {
 }
 
 watch(isOpen, (open) => {
+  emit('open-change', open)
   if (!open) {
     removeLayoutListeners()
     menuWrapStyle.value = {}
@@ -220,6 +222,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointerdown', onDocumentPointerDown)
   removeLayoutListeners()
 })
+defineExpose({ open: () => { if (!props.disabled) isOpen.value = true }, close: () => { isOpen.value = false } })
 </script>
 
 <style scoped>
