@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CodexApp 0.1.90 · 命令选择器设计稿</title>
+  <style>
+    :root { color-scheme: light; --bg:#f6f5f2; --panel:#fff; --text:#242424; --muted:#767676; --line:#e4e3df; --hover:#f3f3f0; --selected:#e9f1ed; --accent:#28674a; --shadow:0 12px 38px #18181812; }
+    :root.dark { color-scheme:dark; --bg:#191a19; --panel:#242624; --text:#eee; --muted:#a1a7a2; --line:#3b3f3b; --hover:#303330; --selected:#334b3e; --accent:#a2d7b8; --shadow:0 12px 38px #0005; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    button,textarea { font:inherit; color:inherit; }
+    button { cursor:pointer; }
+    button:focus-visible,textarea:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+    header { max-width:1040px; margin:auto; padding:32px 28px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .eyebrow { font-size:12px; color:var(--muted); letter-spacing:.07em; }
+    h1 { font-size:23px; font-weight:600; margin:5px 0 0; }
+    .quiet { border:1px solid var(--line); background:var(--panel); border-radius:9px; padding:7px 12px; white-space:nowrap; }
+    main { max-width:940px; padding:0 28px 40px; margin:auto; }
+    .intro { max-width:670px; color:var(--muted); margin:8px 0 28px; }
+    .stage { min-height:470px; display:flex; flex-direction:column; justify-content:flex-end; padding:20px 0 8px; }
+    .composer-wrap { position:relative; width:100%; }
+    .composer { border:1px solid var(--line); border-radius:19px; background:var(--panel); padding:15px; box-shadow:0 2px 5px #00000003; }
+    textarea { width:100%; min-height:106px; max-height:240px; resize:vertical; border:0; outline:none; padding:2px 5px; background:transparent; display:block; }
+    .toolbar { display:flex; align-items:center; gap:12px; margin-top:10px; padding:0 3px; }
+    .icon { border:0; background:var(--hover); border-radius:50%; width:32px; height:32px; font-size:21px; }
+    .model-label { font-size:12px; color:var(--muted); }
+    .send { margin-left:auto; background:var(--text); color:var(--panel); }
+    .picker { position:absolute; bottom:calc(100% + 8px); left:0; width:390px; max-width:100%; border:1px solid var(--line); background:var(--panel); box-shadow:var(--shadow); border-radius:13px; overflow:hidden; }
+    .picker[hidden],.secondary[hidden] { display:none; }
+    .picker-title { font-size:11px; color:var(--muted); padding:10px 14px 5px; }
+    .options { max-height:min(315px,40dvh); overflow:auto; padding:2px 5px 5px; }
+    .option { display:flex; align-items:center; width:100%; gap:9px; border:0; text-align:left; padding:9px 10px; border-radius:7px; background:transparent; }
+    .option:hover { background:var(--hover); }
+    .option.active { background:var(--selected); }
+    .copy { flex:1; min-width:0; }
+    .name { display:block; font-size:13px; font-weight:600; }
+    .description { display:block; font-size:12px; color:var(--muted); margin-top:1px; }
+    .badge { color:var(--muted); font-size:10px; border:1px solid var(--line); border-radius:4px; padding:0 4px; }
+    .keymark { width:12px; font-size:12px; color:var(--accent); }
+    .hint { border-top:1px solid var(--line); padding:7px 14px; font-size:11px; color:var(--muted); }
+    .empty { font-size:12px; color:var(--muted); padding:14px; }
+    .status { min-height:26px; color:var(--accent); font-size:12px; margin:13px 3px; overflow-wrap:anywhere; }
+    .notes { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; border-top:1px solid var(--line); padding-top:23px; margin-top:13px; }
+    .notes strong { font-size:13px; font-weight:600; }
+    .notes p { color:var(--muted); font-size:12px; margin:6px 0; }
+    .secondary { border:1px solid var(--line); background:var(--panel); border-radius:10px; padding:13px; margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .secondary span { font-size:12px; margin-right:auto; }
+    footer { font-size:11px; color:var(--muted); margin-top:25px; }
+    @media(max-width:600px) { header { padding:22px 18px; } h1 { font-size:19px; } main { padding:0 18px 24px; } .intro { font-size:13px; } .stage { min-height:440px; } .notes { grid-template-columns:1fr; gap:12px; } }
+    @media(max-height:650px) { .stage { min-height:360px; } .options { max-height:28dvh; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div><div class="eyebrow">CODEXAPP · 0.1.90</div><h1>输入照常，命令随手可用</h1></div>
+    <button class="quiet" id="theme" type="button">切换深色</button>
+  </header>
+  <main>
+    <p class="intro">在输入框中输入 /，继续打字即可搜索。方向键选择后，回车确认；没有选择时，回车仍按原文提交。此页为独立交互设计稿。</p>
+    <div class="stage">
+      <div class="composer-wrap">
+        <div class="picker" id="picker">
+          <div class="picker-title">命令</div>
+          <div class="options" id="options" role="listbox" aria-label="命令建议"></div>
+          <div class="hint">↑↓ 选择 · Enter 确认 · Esc 收起</div>
+        </div>
+        <div class="composer">
+          <textarea id="draft" aria-label="消息输入" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="options" aria-expanded="true" spellcheck="false">/</textarea>
+          <div class="toolbar"><button class="icon" type="button" id="reset" title="重置演示">↺</button><span class="model-label" id="mode">当前模型 · 默认模式</span><button class="icon send" type="button" id="send" aria-label="提交原文">↑</button></div>
+        </div>
+      </div>
+      <div class="secondary" id="secondary" hidden><span id="secondary-title"></span><button class="quiet" id="secondary-apply" type="button">选择示例项</button><button class="quiet" id="secondary-cancel" type="button">取消</button></div>
+    </div>
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+    <div class="notes">
+      <div><strong>输入不换地方</strong><p>浮层没有独立搜索框。输入焦点和草稿一直留在原处，中文描述也可搜索。</p></div>
+      <div><strong>选择始终由你决定</strong><p>默认不高亮。↑↓ 后回车或直接点击才确认，Esc 收起后原文保持。</p></div>
+      <div><strong>斜杠仍是普通文字</strong><p>试试 /plan 直接回车、/mnt/a、foo/bar 或 https://example.com。没有选择就不会执行命令。</p></div>
+    </div>
+    <footer>仅模拟交互，不发送网络请求、不调用模型、不执行命令、不保存个人数据。正式实现的 IME、光标、软键盘与无障碍完整验收见实施方案。</footer>
+  </main>
+  <script>
+    const commands = [
+      {name:'/plan', description:'切换到计划模式', kind:'mode', value:'计划模式'},
+      {name:'/default', description:'切换到默认模式', kind:'mode', value:'默认模式'},
+      {name:'/model', description:'选择模型与推理强度', kind:'menu', value:'模型菜单'},
+      {name:'/skills', description:'选择本次使用的技能', kind:'menu', value:'技能菜单'},
+      {name:'/prompts:周报', description:'插入已保存的周报提示词', kind:'prompt', value:'请整理本周进展、问题与下一步。', badge:'提示词'},
+      {name:'/document-locator', description:'定位项目文档与归档目录', kind:'skill', value:'document-locator', badge:'技能'}
+    ];
+    const $ = id => document.getElementById(id);
+    const draft = $('draft');
+    let results = [], selected = -1, token = null, suppressed = null, composing = false, pending = null;
+    function currentToken() {
+      if (draft.selectionStart !== draft.selectionEnd) return null;
+      const end = draft.selectionStart;
+      const before = draft.value.slice(0,end);
+      const tick = String.fromCharCode(96);
+      if ((before.split(tick+tick+tick).length - 1) % 2) return null;
+      const line = before.slice(before.lastIndexOf('\n')+1);
+      if ((line.split(tick).length - 1) % 2) return null;
+      const match = before.match(/(?:^|\s)(\/[^\s/]*)$/u);
+      if (!match) return null;
+      return {start:end-match[1].length,end,query:match[1].slice(1)};
+    }
+    function hide() {
+      $('picker').hidden = true;
+      draft.setAttribute('aria-expanded','false');
+      draft.removeAttribute('aria-activedescendant');
+      selected = -1;
+    }
+    function render() {
+      const list = $('options');
+      list.replaceChildren();
+      if (!results.length) {
+        const empty = document.createElement('div');
+        empty.className='empty'; empty.textContent='无匹配命令，可继续输入'; list.append(empty);
+      }
+      results.forEach((item,index) => {
+        const button=document.createElement('button');
+        button.type='button'; button.tabIndex=-1; button.id='command-'+index;
+        button.className='option'+(index===selected?' active':'');
+        button.setAttribute('role','option');
+        button.setAttribute('aria-selected',String(index===selected));
+        const copy=document.createElement('span'); copy.className='copy';
+        const name=document.createElement('span'); name.className='name'; name.textContent=item.name;
+        const description=document.createElement('span'); description.className='description'; description.textContent=item.description;
+        copy.append(name,description); button.append(copy);
+        if(item.badge) { const badge=document.createElement('span'); badge.className='badge'; badge.textContent=item.badge; button.append(badge); }
+        const key=document.createElement('span'); key.className='keymark'; key.textContent=index===selected?'↵':''; button.append(key);
+        button.addEventListener('pointerdown',event=>event.preventDefault());
+        button.addEventListener('click',()=>choose(item));
+        list.append(button);
+      });
+      if(selected>=0) {
+        draft.setAttribute('aria-activedescendant','command-'+selected);
+        $('command-'+selected).scrollIntoView({block:'nearest'});
+      } else draft.removeAttribute('aria-activedescendant');
+    }
+    function update(resetSelection=true) {
+      if(composing || pending) return;
+      token=currentToken();
+      if(!token) { suppressed=null; hide(); return; }
+      if(suppressed===token.start) { hide(); return; }
+      const q=token.query.toLocaleLowerCase();
+      results=commands.filter(item=>(item.name+' '+item.description).toLocaleLowerCase().includes(q));
+      if(resetSelection) selected=-1;
+      $('picker').hidden=false;
+      draft.setAttribute('aria-expanded','true');
+      render();
+    }
+    function consume(item,savedToken) {
+      const insert=item.kind==='prompt'?item.value:'';
+      draft.setRangeText(insert,savedToken.start,savedToken.end,'end');
+      if(item.kind==='mode') $('mode').textContent='当前模型 · '+item.value;
+      $('status').textContent=item.kind==='prompt'?'已插入提示词，尚未发送。':item.kind==='skill'?'演示：已附加技能 '+item.value+'，尚未发送。':'演示：已选择 '+item.value+'，其余草稿保留。';
+      suppressed=null; hide(); draft.focus();
+    }
+    function choose(item) {
+      if(!token) return;
+      if(item.kind==='menu') {
+        pending={item,token:{...token}}; hide();
+        $('secondary-title').textContent='演示 '+item.value+'：确认后消费命令，取消保留原文。';
+        $('secondary').hidden=false; return;
+      }
+      consume(item,{...token});
+    }
+    function cancelSecondary() {
+      if(!pending) return;
+      suppressed=pending.token.start; pending=null; $('secondary').hidden=true;
+      $('status').textContent='已取消，原始命令和草稿保留。'; draft.focus();
+    }
+    function send() {
+      if(pending) cancelSecondary();
+      $('status').textContent='演示按原文提交：'+(draft.value||'（空）');
+      draft.value=''; token=null; suppressed=null; hide(); draft.focus();
+    }
+    draft.addEventListener('input',()=>{
+      if(pending) { pending=null; $('secondary').hidden=true; }
+      update();
+    });
+    draft.addEventListener('click',()=>update());
+    draft.addEventListener('compositionstart',()=>{composing=true;hide();});
+    draft.addEventListener('compositionend',()=>{composing=false;update();});
+    draft.addEventListener('paste',()=>{hide();setTimeout(()=>{const t=currentToken();suppressed=t?t.start:null;hide();},0);});
+    draft.addEventListener('keydown',event=>{
+      if(composing || event.isComposing || event.keyCode===229) return;
+      if(event.key==='Escape') {
+        if(pending) {event.preventDefault();cancelSecondary();return;}
+        if(!$('picker').hidden) {event.preventDefault();suppressed=token?.start;hide();return;}
+      }
+      if(!$('picker').hidden && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey && results.length) {
+        if(event.key==='ArrowDown' || event.key==='ArrowUp') {
+          event.preventDefault();
+          selected=selected<0?(event.key==='ArrowDown'?0:results.length-1):(selected+(event.key==='ArrowDown'?1:-1)+results.length)%results.length;
+          render(); return;
+        }
+        if(event.key==='Enter' && selected>=0) {event.preventDefault();choose(results[selected]);return;}
+      }
+      if(event.key==='Enter' && !event.shiftKey) {event.preventDefault();send();}
+      if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) setTimeout(()=>update(),0);
+    });
+    $('secondary-apply').addEventListener('click',()=>{
+      if(!pending) return; const current=pending;pending=null;$('secondary').hidden=true;consume(current.item,current.token);
+    });
+    $('secondary-cancel').addEventListener('click',cancelSecondary);
+    $('send').addEventListener('click',send);
+    $('reset').addEventListener('click',()=>{pending=null;$('secondary').hidden=true;draft.value='/';suppressed=null;$('status').textContent='';draft.focus();draft.setSelectionRange(1,1);update();});
+    $('theme').addEventListener('click',()=>{const dark=document.documentElement.classList.toggle('dark');$('theme').textContent=dark?'切换浅色':'切换深色';});
+    document.addEventListener('pointerdown',event=>{
+      if(!event.target.closest('.composer-wrap') && !event.target.closest('.secondary')) {suppressed=token?.start;hide();}
+    });
+    if(window.matchMedia('(prefers-color-scheme: dark)').matches) {$('theme').click();}
+    draft.focus();draft.setSelectionRange(1,1);update();
+  </script>
+</body>
+</html>
