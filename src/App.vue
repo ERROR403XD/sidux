@@ -856,24 +856,25 @@
                         </button>
                       </div>
                       <label class="new-thread-project-field">
-                        <span class="new-thread-open-folder-label">{{ t('Destination folder') }}</span>
+                        <span class="new-thread-open-folder-label">{{ projectSetupMode === 'create' ? t('Target folder (project directory)') : t('Clone parent folder') }}</span>
                         <input
-                          v-model="projectSetupBaseDir"
+                          v-model="projectSetupDestination"
                           class="new-thread-open-folder-path"
                           type="text"
                           :disabled="isProjectSetupSubmitting"
-                          :placeholder="t('Destination folder')"
+                          :placeholder="projectSetupMode === 'create' ? t('Target folder (project directory)') : t('Clone parent folder')"
                         />
                       </label>
                       <label v-if="projectSetupMode === 'create'" class="new-thread-project-field">
-                        <span class="new-thread-open-folder-label">{{ t('Project name') }}</span>
+                        <span class="new-thread-open-folder-label">{{ t('Project name (display label)') }}</span>
                         <input
                           ref="projectSetupPrimaryInputRef"
                           v-model="projectNameDraft"
                           class="new-thread-open-folder-create-input"
                           type="text"
                           :disabled="isProjectSetupSubmitting"
-                          :placeholder="t('Project name')"
+                          :placeholder="t('Project name (display label)')"
+                          @input="projectNameEdited = true"
                           @keydown.enter.prevent="onSubmitProjectSetup"
                         />
                       </label>
@@ -889,6 +890,9 @@
                           @keydown.enter.prevent="onSubmitProjectSetup"
                         />
                       </label>
+                      <p v-if="projectSetupMode === 'create' && projectSetupBaseDir.trim()" class="new-thread-open-folder-label" style="overflow-wrap: anywhere">
+                        {{ t('Project directory: {path}', { path: normalizeAbsolutePath(projectSetupBaseDir) }) }}
+                      </p>
                       <div v-if="projectSetupError" class="new-thread-open-folder-error visible-error-with-feedback">
                         <span>{{ projectSetupError }}</span>
                         <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, projectSetupError)">{{ t('Send feedback') }}</a>
@@ -1199,6 +1203,7 @@
 
 <script setup lang="ts">
 import { vModalBackdrop } from './composables/modalBackdrop'
+import { projectDisplayName, projectSetupInput } from './composables/projectSetup'
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DesktopLayout from './components/layout/DesktopLayout.vue'
@@ -1709,6 +1714,15 @@ const isCreatingFolder = ref(false)
 const isProjectSetupModalOpen = ref(false)
 const projectSetupMode = ref<'create' | 'clone'>('create')
 const projectSetupBaseDir = ref('')
+const projectCloneBaseDir = ref('')
+const projectNameEdited = ref(false)
+const projectSetupDestination = computed({
+  get: () => projectSetupMode.value === 'create' ? projectSetupBaseDir.value : projectCloneBaseDir.value,
+  set: (value: string) => { if (projectSetupMode.value === 'create') projectSetupBaseDir.value = value; else projectCloneBaseDir.value = value },
+})
+watch(projectSetupBaseDir, (path) => {
+  if (!projectNameEdited.value) projectNameDraft.value = projectDisplayName(normalizeAbsolutePath(path), workspaceRootOptionsState.value.labels)
+})
 const projectNameDraft = ref('')
 const githubCloneUrlDraft = ref('')
 const isProjectImporting = ref(false)
@@ -2046,14 +2060,9 @@ const isCreateFolderNameValid = computed(() => {
 const canCreateFolder = computed(() => {
   return isCreateFolderNameValid.value && createFolderParentPath.value.trim().length > 0 && !existingFolderError.value
 })
-const isProjectNameDraftValid = computed(() => {
-  const draft = projectNameDraft.value.trim()
-  if (!draft) return false
-  if (draft === '.' || draft === '..') return false
-  return !/[\\/]/u.test(draft)
-})
+const isProjectNameDraftValid = computed(() => Boolean(projectNameDraft.value.trim()))
 const canSubmitProjectSetup = computed(() => {
-  const baseDir = projectSetupBaseDir.value.trim()
+  const baseDir = projectSetupDestination.value.trim()
   if (!baseDir) return false
   if (projectSetupMode.value === 'create') return isProjectNameDraftValid.value
   return githubCloneUrlDraft.value.trim().length > 0
@@ -3807,12 +3816,10 @@ function clearCommitReviewContext(): void {
 }
 
 async function onOpenProjectSetupModal(): Promise<void> {
-  const baseDir = await resolveProjectBaseDirectory()
-  if (!baseDir) return
-
-  await refreshDefaultProjectName()
-  projectSetupBaseDir.value = baseDir
-  projectNameDraft.value = defaultNewProjectName.value.trim() || 'New Project (1)'
+  projectNameEdited.value = false
+  projectSetupBaseDir.value = normalizeAbsolutePath(newThreadCwd.value)
+  projectCloneBaseDir.value = await resolveProjectBaseDirectory()
+  projectNameDraft.value = projectDisplayName(projectSetupBaseDir.value, workspaceRootOptionsState.value.labels)
   githubCloneUrlDraft.value = ''
   projectSetupError.value = ''
   projectSetupMode.value = 'create'
@@ -3827,22 +3834,16 @@ function onCloseProjectSetupModal(): void {
 }
 
 async function createProjectFromSetupModal(): Promise<string> {
-  const baseDir = projectSetupBaseDir.value.trim()
-  const normalizedProjectName = projectNameDraft.value.trim()
-  if (!isProjectNameDraftValid.value) {
-    throw new Error('Enter a single project folder name.')
+  try {
+    const input = projectSetupInput(normalizeAbsolutePath(projectSetupBaseDir.value), projectNameDraft.value)
+    return await openProjectRoot(input.path, input.options)
+  } catch (error) {
+    throw new Error(t(error instanceof Error ? error.message : 'Failed to create or clone project.'))
   }
-  const targetPath = normalizeAbsolutePath(joinPath(baseDir, normalizedProjectName))
-  if (!targetPath) return ''
-
-  return openProjectRoot(targetPath, {
-    createIfMissing: true,
-    label: '',
-  })
 }
 
 async function cloneGithubRepositoryFromSetupModal(): Promise<string> {
-  const baseDir = projectSetupBaseDir.value.trim()
+  const baseDir = projectCloneBaseDir.value.trim()
   const normalizedRepoUrl = githubCloneUrlDraft.value.trim()
   if (!normalizedRepoUrl) return ''
 
@@ -3864,7 +3865,6 @@ async function onSubmitProjectSetup(): Promise<void> {
     newThreadCwd.value = normalizedPath
     pinProjectToTop(getProjectOrderNameForPath(normalizedPath))
     await loadWorkspaceRootOptionsState()
-    await refreshDefaultProjectName()
     isProjectSetupModalOpen.value = false
   } catch (error) {
     projectSetupError.value = error instanceof Error ? error.message : 'Failed to create or clone project.'
