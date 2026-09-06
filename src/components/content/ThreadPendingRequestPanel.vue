@@ -444,6 +444,13 @@ function formatPermissionsPreview(value: unknown): string {
   const writePaths = Array.isArray(fileSystem?.write) ? fileSystem.write.filter((entry): entry is string => typeof entry === 'string') : []
   if (readPaths.length > 0) parts.push(`Read: ${readPaths.join(', ')}`)
   if (writePaths.length > 0) parts.push(`Write: ${writePaths.join(', ')}`)
+  const entries = Array.isArray(fileSystem?.entries) ? fileSystem.entries : []
+  for (const entry of entries) {
+    const row = asRecord(entry)
+    const path = asRecord(row?.path)
+    const value = readString(path?.path) || readString(path?.pattern) || readString(asRecord(path?.value)?.kind)
+    if (value) parts.push(`${readString(row?.access)}: ${value}`)
+  }
   if (network?.enabled === true) parts.push('Network access')
 
   return parts.join(' • ')
@@ -867,15 +874,13 @@ function onApprovalOtherInput(event: Event): void {
   selectedApprovalDecision.value = 'decline'
 }
 
-function onRespondApproval(request: UiServerRequest, decision: ApprovalDecision): void {
+function onRespondApproval(request: UiServerRequest, decision: ApprovalDecision, note = ''): void {
   if (isPermissionsApprovalRequest(request)) {
     if (decision === 'decline' || decision === 'cancel') {
       emit('respondServerRequest', {
         id: request.id,
-        error: {
-          code: -32000,
-          message: decision === 'cancel' ? 'Cancelled from CodexUI.' : 'Declined from CodexUI.',
-        },
+        result: { permissions: {}, scope: 'turn' },
+        followUpMessageText: note || undefined,
       })
       return
     }
@@ -902,7 +907,7 @@ function onSubmitApproval(request: UiServerRequest): void {
   const decision: ApprovalDecision = note.length > 0 ? 'decline' : selectedApprovalDecision.value
 
   if (isPermissionsApprovalRequest(request)) {
-    onRespondApproval(request, decision)
+    onRespondApproval(request, decision, note)
     return
   }
 
