@@ -85,16 +85,18 @@ export function observeCompactionHistory(value: unknown) {
   }
 }
 
-export function restoreTrackedCompactionMessage(messages: UiMessage[], value: unknown): UiMessage[] {
+export function restoreTrackedCompactionMessage(messages: UiMessage[], value: unknown, baseTurnIndex = 0): UiMessage[] {
   const thread = (value as { thread?: Record<string, any> } | null)?.thread
   const current = thread && compactionRequests.value[thread.id]
   if (!current?.turnId || !Array.isArray(thread?.turns) || messages.some(message => message.compaction && message.turnId === current.turnId)) return messages
   const turn = thread.turns.find((turn: any) => turn.id === current.turnId)
   if (!turn || turn.status !== 'interrupted') return messages
-  const index = thread.turns.indexOf(turn)
-  const next: UiMessage = { id: current.itemId || `${current.turnId}-compaction`, turnId: current.turnId, turnIndex: index,
+  const turnIndex = baseTurnIndex + thread.turns.indexOf(turn)
+  const next: UiMessage = { id: current.itemId || `${current.turnId}-compaction`, turnId: current.turnId, turnIndex,
     role: 'system', messageType: 'contextCompaction', text: '上下文压缩已中断', compaction: { status: 'interrupted' } }
-  return [...messages, next]
+  const followingIndex = messages.findIndex(message => typeof message.turnIndex === 'number' && message.turnIndex > turnIndex)
+  if (followingIndex < 0) return [...messages, next]
+  return [...messages.slice(0, followingIndex), next, ...messages.slice(followingIndex)]
 }
 
 export function observeCompactionNotification(notification: RpcNotification) {

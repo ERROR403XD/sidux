@@ -73,5 +73,12 @@ describe('manual compaction request recovery', () => {
     api.observeCompactionHistory(history)
     expect(api.compactionRequests.value.t.status).toBe('interrupted')
     expect(api.restoreTrackedCompactionMessage([], history)[0]).toMatchObject({ turnId: 'new', compaction: { status: 'interrupted' } })
+    const paginatedHistory = { thread: { id: 't', turns: [...history.thread.turns, turn('later')] } }
+    const recovered = api.restoreTrackedCompactionMessage([
+      { id: 'earlier', role: 'user', text: 'before', turnIndex: 100 },
+      { id: 'later', role: 'assistant', text: 'after', turnIndex: 102 },
+    ], paginatedHistory, 100)
+    expect(recovered.map(message => message.id)).toEqual(['earlier', 'compact', 'later'])
+    expect(recovered[1].turnIndex).toBe(101)
   })
 })

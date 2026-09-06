@@ -581,7 +581,7 @@ async function callRpc<T>(method: string, params?: unknown): Promise<T> {
 }
 
 function normalizeThreadMessagesV2(payload: ThreadReadResponse, startTurnIndex = 0): UiMessage[] {
-  return restoreTrackedCompactionMessage(normalizeNativeThreadMessagesV2(payload, startTurnIndex), payload)
+  return restoreTrackedCompactionMessage(normalizeNativeThreadMessagesV2(payload, startTurnIndex), payload, startTurnIndex)
 }
 
 function normalizeFallbackFileChange(value: unknown): UiFileChange | null {
