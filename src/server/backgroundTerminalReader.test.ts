@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { BackgroundTerminalReader } from './backgroundTerminalReader'
+import { BackgroundTerminalReader, threadsWithBackgroundTerminals } from './backgroundTerminalReader'
 const row = { processId: '17', itemId: 'command-a', command: 'sleep 5', cwd: '/tmp' }
 
 describe('Codex background terminal inventory and exact termination', () => {
@@ -53,4 +53,29 @@ describe('Codex background terminal inventory and exact termination', () => {
     await expect(endless.list('a')).rejects.toThrow('超过 200')
     expect(cursor).toBe(10)
   })
+})
+
+
+it('checks only loaded metadata with four workers and reports threads that still own a command', async () => {
+  let reading = 0
+  let peak = 0
+  const rpc = vi.fn(async (method: string, params: unknown) => {
+    if (method === 'thread/loaded/list') return { data: Array.from({ length: 9 }, (_, i) => `t${i}`), nextCursor: null }
+    expect(method).toBe('thread/backgroundTerminals/list')
+    const request = params as { threadId: string; limit: number }
+    expect(request.limit).toBe(1)
+    reading++
+    peak = Math.max(peak, reading)
+    await new Promise(resolve => setTimeout(resolve, 1))
+    reading--
+    return { data: request.threadId === 't3' ? [row] : [], nextCursor: null }
+  })
+  expect(await threadsWithBackgroundTerminals(rpc)).toEqual(['t3'])
+  expect(peak).toBe(4)
+  expect(rpc).toHaveBeenCalledTimes(10)
+})
+
+it('does not turn repeated cursors or unknown responses into an empty background inventory', async () => {
+  await expect(threadsWithBackgroundTerminals(async () => ({ data: [], nextCursor: 'same' }))).rejects.toThrow('未前进')
+  await expect(threadsWithBackgroundTerminals(async () => ({}))).rejects.toThrow('无效')
 })

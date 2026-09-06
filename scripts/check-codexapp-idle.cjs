@@ -1,7 +1,10 @@
 // Shared read-only preflight for candidate replacement and production cutover.
 async function checkIdle(baseUrl, { legacyScheduler = false, legacyApiProxy = false } = {}) {
+  const deadline = Date.now() + 45000;
   async function readJson(path, init) {
-    const response = await fetch(`${baseUrl}${path}`, { ...init, signal: AbortSignal.timeout(10000) });
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) throw new Error('Idle inventory exceeded its 45-second limit');
+    const response = await fetch(`${baseUrl}${path}`, { ...init, signal: AbortSignal.timeout(Math.min(10000, remaining)) });
     if (!response.ok) throw new Error(`${path} returned HTTP ${response.status}`);
     return response.json();
   }
@@ -33,6 +36,7 @@ async function checkIdle(baseUrl, { legacyScheduler = false, legacyApiProxy = fa
   let cursor = null;
   let pages = 0;
   let activeTurns = 0;
+  const cursors = new Set();
   do {
     const payload = await readJson('/codex-api/rpc', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -47,16 +51,65 @@ async function checkIdle(baseUrl, { legacyScheduler = false, legacyApiProxy = fa
       }
     }
     cursor = payload.result.nextCursor || null;
+    if (cursor && (typeof cursor !== 'string' || cursors.has(cursor))) throw new Error('Thread inventory cursor did not advance');
+    if (cursor) cursors.add(cursor);
   } while (cursor && pages < 20);
   if (cursor) throw new Error('Thread inventory exceeded the bounded 2000-thread idle check');
-  return { activeTurns, queuedCount, pendingCount: pending.length, pages, apiConnections, apiActiveRequests, idle: !activeTurns && !queuedCount && !pending.length && !apiConnections && !apiActiveRequests };
+  const busy = !!(activeTurns || queuedCount || pending.length || apiConnections || apiActiveRequests);
+  let backgroundCheck = 'skipped-busy';
+  let backgroundThreads = null;
+  let loadedThreads = 0;
+  if (!busy) {
+    const { data: methods } = await readJson('/codex-api/meta/methods');
+    if (!Array.isArray(methods) || methods.some(method => typeof method !== 'string')) throw new Error('Unable to inspect background terminal capability');
+    backgroundCheck = 'unsupported';
+    if (methods.includes('thread/backgroundTerminals/list')) {
+      if (!methods.includes('thread/loaded/list')) throw new Error('Unable to inventory threads with background terminals');
+      backgroundCheck = 'supported';
+      backgroundThreads = 0;
+      async function rpc(method, params) {
+        const payload = await readJson('/codex-api/rpc', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method, params }),
+        });
+        if (payload.error || !Array.isArray(payload.result?.data)) throw new Error(`Unable to inspect ${method}`);
+        return payload.result;
+      }
+      const ids = new Set();
+      const loadedCursors = new Set();
+      cursor = null;
+      do {
+        const result = await rpc('thread/loaded/list', { limit: 100, cursor });
+        if (result.data.length > 100 || result.data.some(id => typeof id !== 'string' || !id || id.length > 200)) throw new Error('Invalid loaded thread inventory');
+        result.data.forEach(id => ids.add(id));
+        cursor = result.nextCursor || null;
+        if (cursor && (typeof cursor !== 'string' || loadedCursors.has(cursor))) throw new Error('Loaded thread cursor did not advance');
+        if (cursor) loadedCursors.add(cursor);
+        if (ids.size > 200 || (cursor && loadedCursors.size >= 2)) throw new Error('Loaded thread inventory exceeded the bounded 200-thread check');
+      } while (cursor);
+      const threads = [...ids];
+      loadedThreads = threads.length;
+      let next = 0;
+      const reads = await Promise.allSettled(Array.from({ length: Math.min(4, threads.length) }, async () => {
+        while (next < threads.length) {
+          const threadId = threads[next++];
+          // Presence alone blocks cutover; never read command output or full history.
+          const result = await rpc('thread/backgroundTerminals/list', { threadId, limit: 1 });
+          if (result.data.length > 1 || (!result.data.length && result.nextCursor)) throw new Error('Invalid background terminal inventory');
+          if (result.data.length) backgroundThreads++;
+        }
+      }));
+      const failed = reads.find(read => read.status === 'rejected');
+      if (failed) throw failed.reason;
+    }
+  }
+  return { activeTurns, queuedCount, pendingCount: pending.length, pages, apiConnections, apiActiveRequests, backgroundCheck, backgroundThreads, loadedThreads, idle: !busy && !backgroundThreads };
 }
 
 module.exports = { checkIdle };
 if (require.main === module) {
   checkIdle(process.env.CODEXAPP_IDLE_CHECK_URL, { legacyScheduler: process.env.CODEXAPP_LEGACY_SCHEDULER === '1', legacyApiProxy: process.env.CODEXAPP_LEGACY_API_PROXY === '1' })
     .then(result => {
-      console.log(`idle-check|activeTurns=${result.activeTurns}|queued=${result.queuedCount}|pendingApprovals=${result.pendingCount}|apiConnections=${result.apiConnections}|apiActiveRequests=${result.apiActiveRequests}|pages=${result.pages}`);
+      console.log(`idle-check|activeTurns=${result.activeTurns}|queued=${result.queuedCount}|pendingApprovals=${result.pendingCount}|apiConnections=${result.apiConnections}|apiActiveRequests=${result.apiActiveRequests}|backgroundThreads=${result.backgroundThreads ?? result.backgroundCheck}|loadedThreads=${result.loadedThreads}|pages=${result.pages}`);
       if (!result.idle) process.exitCode = 3;
     })
     .catch(error => { console.error(error.message); process.exitCode = 1; });

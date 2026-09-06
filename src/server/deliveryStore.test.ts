@@ -24,6 +24,22 @@ afterEach(async () => {
 })
 
 describe('durable delivery records', () => {
+  it('waits for the previous runtime to release its writer before initializing', async () => {
+    const { store: old, dir } = await fixture()
+    await old.add(input())
+    let release!: () => void
+    const previousRuntimeStopped = new Promise<void>(resolve => { release = resolve })
+    const current = new DeliveryStore(dir, { previousRuntimeStopped })
+    stores.push(current)
+    let finished = false
+    const reading = current.records().then(rows => { finished = true; return rows })
+    await Promise.resolve()
+    expect(finished).toBe(false)
+    await old.dispose()
+    release()
+    expect(await reading).toHaveLength(1)
+  })
+
   it('stops dispatch after a filesystem publication failure', async () => {
     const { store, dir } = await fixture()
     const row = await store.add(input()) as DeliveryRecord

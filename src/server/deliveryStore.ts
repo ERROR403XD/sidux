@@ -59,6 +59,7 @@ export class DeliveryStore {
     now?: () => number
     readLegacy?: () => Promise<ThreadQueueState>
     clearLegacy?: () => Promise<void>
+    previousRuntimeStopped?: Promise<void>
   } = {}) {
     this.lease = new AutomationStore(join(directory, 'writer'))
   }
@@ -71,6 +72,8 @@ export class DeliveryStore {
     if (this.state) return
     if (this.starting) return this.starting
     this.starting = (async () => {
+      await this.options.previousRuntimeStopped
+      if (this.disposed) throw new Error('发送服务已停止')
       if (!await this.lease.acquire(this.now())) throw new Error('另一个进程正在管理此 CODEX_HOME 的发送记录')
       try {
         let state: State

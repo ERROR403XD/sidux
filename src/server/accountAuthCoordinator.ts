@@ -27,6 +27,7 @@ export type RuntimeQuiescenceSnapshot = {
   pendingServerRequestCount: number
   pendingTurnMutationCount: number
   automationRunIds?: string[]
+  backgroundThreadIds?: string[]
 }
 
 export type AccountRuntime = {
@@ -675,7 +676,10 @@ export class AccountAuthCoordinator {
           pendingTurnMutationCount: 0,
         }
     if (!snapshot.idle || (this.apiLifecycle && !this.apiLifecycle.isIdle())) {
-      throw new AccountCoordinatorError('account_switch_blocked', 'Finish active turns, queued messages, and pending requests before switching accounts.', 409, { quiescence: snapshot })
+      const message = snapshot.backgroundThreadIds?.length
+        ? '请先处理 Codex 后台终端，再切换账号。'
+        : 'Finish active turns, queued messages, and pending requests before switching accounts.'
+      throw new AccountCoordinatorError('account_switch_blocked', message, 409, { quiescence: snapshot })
     }
   }
 

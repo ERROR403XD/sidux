@@ -58,9 +58,12 @@ export class AutomationEngine {
   private listeners = new Set<() => void>()
   readonly timezone = validateAutomationTimezone(process.env.CODEXAPP_DEFAULT_TIMEZONE || DEFAULT_TIME_ZONE)
   readonly readyPromise: Promise<void>
-  constructor(private home: string, private runtime: AutomationRuntime, private now = Date.now, private automatic = true) {
+  constructor(private home: string, private runtime: AutomationRuntime, private now = Date.now, private automatic = true, previousRuntimeStopped?: Promise<void>) {
     this.store = new AutomationStore(join(home, 'codexapp-automations'))
-    this.readyPromise = this.serial(() => this.initialize())
+    this.readyPromise = this.serial(async () => {
+      await previousRuntimeStopped
+      await this.initialize()
+    })
     if (automatic) {
       this.timer = setInterval(() => {
         if (this.stopped) return

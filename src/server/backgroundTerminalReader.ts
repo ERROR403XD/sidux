@@ -1,5 +1,51 @@
 import { readBackgroundTerminal, type BackgroundTerminal } from '../processActivity.js'
 
+/** Only loaded threads can own live commands. Presence is enough to block an identity change. */
+export async function threadsWithBackgroundTerminals(rpc: (method: string, params: unknown) => Promise<unknown>): Promise<string[]> {
+  const deadline = Date.now() + 30000
+  async function read(method: string, params: unknown) {
+    const remaining = deadline - Date.now()
+    if (remaining <= 0) throw new Error('后台终端核对超时，请稍后重试')
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      const response = await Promise.race([
+        rpc(method, params),
+        new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('后台终端核对超时，请稍后重试')), remaining) }),
+      ]) as { data?: unknown[]; nextCursor?: string | null }
+      if (!Array.isArray(response?.data)) throw new Error('后台终端核对响应无效')
+      return response as { data: unknown[]; nextCursor?: string | null }
+    } finally {
+      if (timer) clearTimeout(timer)
+    }
+  }
+  const ids = new Set<string>()
+  const cursors = new Set<string>()
+  let cursor: string | null = null
+  do {
+    const page = await read('thread/loaded/list', { limit: 100, cursor })
+    if (page.data.length > 100 || page.data.some(id => typeof id !== 'string' || !id || id.length > 200)) throw new Error('已加载会话列表无效')
+    for (const id of page.data) ids.add(id as string)
+    cursor = page.nextCursor || null
+    if (cursor && (typeof cursor !== 'string' || cursors.has(cursor))) throw new Error('已加载会话分页未前进')
+    if (cursor) cursors.add(cursor)
+    if (ids.size > 200 || (cursor && cursors.size >= 2)) throw new Error('已加载会话超过核对范围，请先处理后台任务')
+  } while (cursor)
+  const threads = [...ids]
+  const active: string[] = []
+  let next = 0
+  const reads = await Promise.allSettled(Array.from({ length: Math.min(4, threads.length) }, async () => {
+    while (next < threads.length) {
+      const threadId = threads[next++]!
+      const page = await read('thread/backgroundTerminals/list', { threadId, limit: 1 })
+      if (page.data.length > 1 || (!page.data.length && page.nextCursor)) throw new Error('后台终端列表无效')
+      if (page.data.length) active.push(threadId)
+    }
+  }))
+  const failed = reads.find(row => row.status === 'rejected')
+  if (failed?.status === 'rejected') throw failed.reason
+  return active
+}
+
 export class BackgroundTerminalReader {
   private pending = new Map<string, Promise<BackgroundTerminal[]>>()
   private stopping = new Set<string>()

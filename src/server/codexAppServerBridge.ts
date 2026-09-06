@@ -1,5 +1,5 @@
 import { DirectoryMcpReader } from './directoryMcpReader.js'
-import { BackgroundTerminalReader } from './backgroundTerminalReader.js'
+import { BackgroundTerminalReader, threadsWithBackgroundTerminals } from './backgroundTerminalReader.js'
 import { ProcessActivityStore } from './processActivityStore.js'
 import { readCommandToolOutput } from './commandToolOutput.js'
 import { hookRunKey, readCommandOutput, readHookConfiguration } from '../processActivity.js'
@@ -5988,9 +5988,10 @@ const MERGEABLE_ITEM_TYPES = new Set([
   'fileChange',
 ])
 
-class AppServerProcess {
+export class AppServerProcess {
   readonly authRecovery = new AuthRecoveryRegistry()
   automationActivity: () => string[] = () => []
+  backgroundActivity: () => Promise<string[]> = async () => []
   queueStateReader: () => Promise<ThreadQueueState> = readLegacyThreadQueueState
   private process: ChildProcessWithoutNullStreams | null = null
   private initialized = false
@@ -6524,6 +6525,7 @@ class AppServerProcess {
     const activeTurnThreadIds = new Set(this.activeTurnThreadIds)
     let cursor: string | null = null
     let pageCount = 0
+    const cursors = new Set<string>()
     do {
       const response = asRecord(await this.rpc('thread/list', {
         archived: false,
@@ -6532,17 +6534,23 @@ class AppServerProcess {
         modelProviders: [],
         cursor,
       }))
-      const threads = Array.isArray(response?.data) ? response.data : []
+      if (!Array.isArray(response?.data)) throw new Error('无法核对当前会话状态，请稍后重试')
+      const threads = response.data
       for (const value of threads) {
         const thread = asRecord(value)
         const threadId = readNonEmptyString(thread?.id)
         const status = asRecord(thread?.status)
         const statusType = readNonEmptyString(status?.type) || readNonEmptyString(thread?.status)
+        if (!threadId || !['idle', 'notLoaded', 'systemError', 'completed', 'interrupted', 'failed', 'inProgress', 'running', 'active'].includes(statusType)) {
+          throw new Error('会话运行状态未知，暂不能切换账号')
+        }
         if (threadId && (statusType === 'inProgress' || statusType === 'running' || statusType === 'active')) {
           activeTurnThreadIds.add(threadId)
         }
       }
       cursor = readNonEmptyString(response?.nextCursor) || null
+      if (cursor && cursors.has(cursor)) throw new Error('会话分页未前进，暂不能切换账号')
+      if (cursor) cursors.add(cursor)
       pageCount += 1
     } while (cursor && pageCount < 10)
     if (cursor) activeTurnThreadIds.add('__thread_inventory_truncated__')
@@ -6563,14 +6571,18 @@ class AppServerProcess {
     )).length
     const pendingServerRequestCount = this.pendingServerRequests.size
     const automationRunIds = this.automationActivity()
+    const backgroundThreadIds = activeTurnThreadIds.size || queuedThreadIds.length || automationRunIds.length
+      || pendingServerRequestCount || pendingTurnMutationCount ? [] : await this.backgroundActivity()
     return {
       idle: automationRunIds.length === 0 && activeTurnThreadIds.size === 0
+        && backgroundThreadIds.length === 0
         && queuedThreadIds.length === 0
         && pendingServerRequestCount === 0
         && pendingTurnMutationCount === 0,
       activeTurnThreadIds: Array.from(activeTurnThreadIds),
       queuedThreadIds,
       automationRunIds,
+      backgroundThreadIds,
       pendingServerRequestCount,
       pendingTurnMutationCount,
     }
@@ -6634,6 +6646,7 @@ export class BackendQueueProcessor {
   private readonly unsubscribe: () => void
   private pruneTimer: ReturnType<typeof setInterval> | null = null
   private disposed = false
+  private disposal: Promise<void> | null = null
   private providerChanging = false
 
   constructor(private readonly appServer: AppServerProcess, options: {
@@ -6641,10 +6654,11 @@ export class BackendQueueProcessor {
     directory?: string
     features?: ConstructorParameters<typeof ThreadHistory>[1]
     context?: () => Promise<string>
+    previousRuntimeStopped?: Promise<void>
   } = {}) {
-    this.store = new DeliveryStore(options.directory ?? join(getCodexHomeDir(), 'codexapp-delivery'), options.directory ? {} : {
-      readLegacy: readLegacyThreadQueueState,
-      clearLegacy: clearLegacyThreadQueueState,
+    this.store = new DeliveryStore(options.directory ?? join(getCodexHomeDir(), 'codexapp-delivery'), {
+      ...(options.directory ? {} : { readLegacy: readLegacyThreadQueueState, clearLegacy: clearLegacyThreadQueueState }),
+      previousRuntimeStopped: options.previousRuntimeStopped,
     })
     const catalog = new MethodCatalog()
     this.history = new ThreadHistory(
@@ -6790,7 +6804,8 @@ export class BackendQueueProcessor {
     return { state: await this.readState(), ...(removed ? { removed } : {}) }
   }
 
-  async dispose(): Promise<void> {
+  dispose(): Promise<void> {
+    if (this.disposal) return this.disposal
     this.disposed = true
     this.unsubscribe()
     if (this.pruneTimer) clearInterval(this.pruneTimer)
@@ -6800,7 +6815,8 @@ export class BackendQueueProcessor {
     this.recoveryChecks.clear()
     this.threadsNeedingResume.clear()
     this.history.clear()
-    await this.deliveries.dispose()
+    this.disposal = this.deliveries.dispose()
+    return this.disposal
   }
 
   async scheduleAllQueuedThreads(delayMs = 0): Promise<void> {
@@ -6984,6 +7000,8 @@ type CodexBridgeMiddleware = ((req: IncomingMessage, res: ServerResponse, next: 
 
 type SharedBridgeState = {
   disposed: boolean
+  owners: number
+  disposal: Promise<void> | null
   version: string
   appServer: AppServerProcess
   terminalManager: ThreadTerminalManager
@@ -6997,7 +7015,21 @@ type SharedBridgeState = {
 }
 
 const SHARED_BRIDGE_KEY = '__codexRemoteSharedBridge__'
-const SHARED_BRIDGE_VERSION = 'hooks-terminals-0207-v1'
+const SHARED_BRIDGE_VERSION = 'shared-runtime-0209-v1'
+
+function disposeSharedBridgeState(state: SharedBridgeState): Promise<void> {
+  if (state.disposal) return state.disposal
+  state.disposed = true
+  state.disposal = (async () => {
+    const automationDisposal = state.automationEngine.dispose()
+    state.telegramBridge.stop()
+    state.terminalManager.dispose()
+    const deliveryDisposal = state.backendQueueProcessor.dispose()
+    state.appServer.dispose()
+    await Promise.all([automationDisposal, deliveryDisposal, state.processActivity.flush()])
+  })()
+  return state.disposal
+}
 
 function getSharedBridgeState(): SharedBridgeState {
   const globalScope = globalThis as typeof globalThis & {
@@ -7005,22 +7037,22 @@ function getSharedBridgeState(): SharedBridgeState {
   }
 
   const existing = globalScope[SHARED_BRIDGE_KEY]
-  if (existing) {
-    if (!existing.disposed && existing.version === SHARED_BRIDGE_VERSION && existing.terminalManager) {
-      return existing
-    }
-    void existing.automationEngine?.dispose()
-    existing.appServer.dispose()
-    void existing.processActivity?.flush()
-    void existing.backendQueueProcessor?.dispose().catch(() => {})
-    existing.terminalManager?.dispose()
+  if (existing && !existing.disposed && existing.version === SHARED_BRIDGE_VERSION && existing.terminalManager) {
+    return existing
   }
+  const previousRuntimeStopped = existing ? disposeSharedBridgeState(existing) : undefined
 
   const appServer = new AppServerProcess()
   const processActivity = existing?.processActivity ?? new ProcessActivityStore(join(getCodexHomeDir(), 'codexapp-hook-observations.json'))
   const terminalManager = new ThreadTerminalManager()
   const methodCatalog = new MethodCatalog()
-  const backendQueueProcessor = new BackendQueueProcessor(appServer, { features: async () => (await methodCatalog.snapshot()).features })
+  appServer.backgroundActivity = async () => {
+    const methods = (await methodCatalog.snapshot()).methods
+    if (!methods.includes('thread/backgroundTerminals/list')) return []
+    if (!methods.includes('thread/loaded/list')) throw new Error('无法完整核对后台终端，暂不能切换账号')
+    return threadsWithBackgroundTerminals((method, params) => appServer.rpc(method, params))
+  }
+  const backendQueueProcessor = new BackendQueueProcessor(appServer, { features: async () => (await methodCatalog.snapshot()).features, previousRuntimeStopped })
   const threadGoalReader = new ThreadGoalReader((method, params) => appServer.rpc(method, params))
   const threadCompactionGate = new ThreadCompactionGate((method, params) => appServer.rpc(method, params),
     async threadId => backendQueueProcessor.isIdentityChanging() || Boolean((await backendQueueProcessor.readState())[threadId]?.length))
@@ -7033,7 +7065,7 @@ function getSharedBridgeState(): SharedBridgeState {
     buildParams: (threadId, text, id) => backendQueueProcessor.buildQueuedTurnParams({ threadId, message: {
       id, text, imageUrls: [], skills: [], fileAttachments: [], collaborationMode: 'default',
     } }),
-  }))
+  }), Date.now, true, previousRuntimeStopped)
   appServer.automationActivity = () => automationEngine.activity()
   appServer.onNotification((notification) => {
     automationEngine.notification(notification)
@@ -7043,6 +7075,8 @@ function getSharedBridgeState(): SharedBridgeState {
   })
   const created: SharedBridgeState = {
     disposed: false,
+    owners: 0,
+    disposal: null,
     automationEngine,
     threadGoalReader,
     threadCompactionGate,
@@ -7064,6 +7098,7 @@ function getSharedBridgeState(): SharedBridgeState {
 
 export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
   const sharedState = getSharedBridgeState()
+  sharedState.owners++
   const { appServer, terminalManager, methodCatalog, telegramBridge, backendQueueProcessor, automationEngine, threadGoalReader, threadCompactionGate } = sharedState
   const directoryMcps = new DirectoryMcpReader((method, params) => appServer.rpc(method, params))
   const backgroundTerminals = new BackgroundTerminalReader((method, params) => appServer.rpc(method, params), () => backendQueueProcessor.isIdentityChanging())
@@ -9430,18 +9465,16 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
     }
   }
 
+  let middlewareDisposal: Promise<void> | null = null
   middleware.dispose = () => {
-    sharedState.disposed = true
-    const automationDisposal = automationEngine.dispose()
+    if (middlewareDisposal) return middlewareDisposal
     unsubscribeSearch()
     search.invalidate()
     unsubscribeHistory()
     history.clear()
-    telegramBridge.stop()
-    terminalManager.dispose()
-    const deliveryDisposal = backendQueueProcessor.dispose()
-    appServer.dispose()
-    return Promise.all([automationDisposal, deliveryDisposal, sharedState.processActivity.flush()]).then(() => {})
+    sharedState.owners--
+    middlewareDisposal = sharedState.owners === 0 ? disposeSharedBridgeState(sharedState) : Promise.resolve()
+    return middlewareDisposal
   }
   middleware.subscribeNotifications = (
     listener: (value: { method: string; params: unknown; atIso: string }) => void,
