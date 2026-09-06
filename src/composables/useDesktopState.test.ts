@@ -1342,6 +1342,22 @@ it('does not lose a live question when an earlier pending snapshot arrives after
 
 
 describe('native history integration', () => {
+  it('keeps conversation history when workspace rollback is rejected', async () => {
+    installTestWindow()
+    gatewayMocks.getThreadGroupsPage.mockResolvedValue({ groups: [{ projectName: 'fixture', threads: [thread('paged', '/tmp/fixture')] }], nextCursor: null })
+    gatewayMocks.resumeThread.mockResolvedValue({ messages: [{ id: 'message', turnId: 'turn', turnIndex: 0, role: 'user', text: 'preserve this' }], inProgress: false, activeTurnId: '', turnIndexByTurnId: { turn: 0 }, hasMoreOlder: false })
+    gatewayMocks.revertThreadFileChanges.mockResolvedValue({ reverted: 0, errors: ['此会话不支持撤回历史。'] })
+    const state = useDesktopState()
+    state.primeSelectedThread('paged')
+    await state.refreshAll()
+    await state.loadMessages('paged')
+    expect(await state.rollbackSelectedThread('turn')).toBe(false)
+    expect(gatewayMocks.revertThreadFileChanges).toHaveBeenCalledExactlyOnceWith('paged', 'turn', '/tmp/fixture')
+    expect(gatewayMocks.rollbackThread).not.toHaveBeenCalled()
+    expect(state.messages.value.some(message => message.text === 'preserve this')).toBe(true)
+    expect(state.error.value).toContain('不支持撤回历史')
+  })
+
   it('retains older pages and empty turns, and passes the cursor unchanged', async () => {
     installTestWindow()
     const msg = (id: string) => ({ id, turnId: id, turnIndex: 0, text: id, role: 'assistant' as const })

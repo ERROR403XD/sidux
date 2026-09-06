@@ -212,4 +212,15 @@ export class ThreadHistory {
     if (!(await this.features()).exactFork) throw new Error('当前 Codex CLI 不支持按回合分支，请先更新 CLI。')
     return this.rpc('thread/fork', { threadId, lastTurnId, excludeTurns: true, deferGoalContinuation: true })
   }
+
+  async assertRollbackAllowed(threadId: string): Promise<void> {
+    const metadata = record(await this.rpc('thread/read', { threadId, includeTurns: false }))
+    const thread = record(metadata.thread)
+    if (thread.historyMode === 'paginated') {
+      throw new Error('此会话不支持撤回历史。可从已完成的回合创建分支。')
+    }
+    if (record(thread.status).type === 'active') {
+      throw new Error('请等待当前回合结束后再撤回历史。')
+    }
+  }
 }

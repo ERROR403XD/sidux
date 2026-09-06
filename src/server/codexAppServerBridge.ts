@@ -7458,6 +7458,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         let rpcResult: unknown
         try {
           const params = asRecord(body.params) ?? {}
+          if (body.method === 'thread/rollback') await history.assertRollbackAllowed(readNonEmptyString(params.threadId))
           if (body.method === 'thread/resume' || (body.method === 'thread/read' && params.includeTurns === true)) {
             rpcResult = await history.initial(body.method, params)
           } else {
@@ -7745,6 +7746,8 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
             return
           }
 
+          // Combined history rollback must be supported before any workspace file is changed.
+          if (scope === 'turn_and_later') await history.assertRollbackAllowed(threadId)
           const threadReadResult = await appServer.rpc('thread/read', { threadId, includeTurns: true })
           const record = asRecord(threadReadResult)
           const thread = asRecord(record?.thread)

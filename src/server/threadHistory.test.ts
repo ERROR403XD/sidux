@@ -9,6 +9,16 @@ const dirs: string[] = []
 afterEach(async () => { await Promise.all(dirs.splice(0).map(dir => rm(dir, { recursive: true, force: true }))) })
 
 describe('native history', () => {
+  it('rejects paginated or active rollback from metadata before any full read or mutation', async () => {
+    for (const thread of [{ historyMode: 'paginated' }, { historyMode: 'legacy', status: { type: 'active' } }]) {
+      const rpc = vi.fn(async () => ({ thread }))
+      await expect(new ThreadHistory(rpc, support).assertRollbackAllowed('t')).rejects.toThrow(thread.historyMode === 'paginated' ? '不支持撤回' : '等待当前回合')
+      expect(rpc).toHaveBeenCalledExactlyOnceWith('thread/read', { threadId: 't', includeTurns: false })
+    }
+    const rpc = vi.fn(async () => ({ thread: { historyMode: 'legacy', status: { type: 'idle' } } }))
+    await expect(new ThreadHistory(rpc, support).assertRollbackAllowed('t')).resolves.toBeUndefined()
+  })
+
   it('bootstraps recent turns in one resume call and preserves an opaque cursor', async () => {
     const rpc = vi.fn(async () => ({ thread: { id: 't', turns: [] }, initialTurnsPage: { data: [{ id: 'b', items: [] }, { id: 'a', items: [] }], nextCursor: 'opaque/+=' } }))
     const result = await new ThreadHistory(rpc, support).initial('thread/resume', { threadId: 't' })

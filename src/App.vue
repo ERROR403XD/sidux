@@ -1056,6 +1056,7 @@
                     <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, codexCliMissingError)">{{ t('Send feedback') }}</a>
                   </div>
                   <p v-if="selectedThreadQueueError" class="composer-runtime-error" role="alert">{{ selectedThreadQueueError }}</p>
+                  <p v-if="threadHistoryActionError" class="composer-runtime-error" role="alert">{{ threadHistoryActionError }}</p>
                   <QueuedMessages
                     :messages="selectedThreadQueuedMessages"
                     @edit="onEditQueuedMessage"
@@ -1654,6 +1655,8 @@ const settingsButtonRef = ref<HTMLElement | null>(null)
 const serverMatchedThreadIds = ref<string[] | null>(null)
 const threadSearchStatus = ref('')
 const threadSearchScope = ref('')
+const threadHistoryActionError = ref('')
+watch(() => selectedThreadId.value, () => { threadHistoryActionError.value = '' })
 let threadSearchController: AbortController | null = null
 let threadSearchTimer: ReturnType<typeof setTimeout> | null = null
 let terminalKeyboardFocusFallbackTimer: ReturnType<typeof setTimeout> | null = null
@@ -3270,8 +3273,12 @@ async function handleServerRequestResponse(payload: UiServerRequestReply): Promi
 }
 
 async function onForkThreadFromMessage(payload: { threadId: string; turnId: string }): Promise<void> {
+  threadHistoryActionError.value = ''
   const forkedThreadId = await forkThreadFromTurn(payload.threadId, payload.turnId)
-  if (!forkedThreadId) return
+  if (!forkedThreadId) {
+    if (selectedThreadId.value === payload.threadId) threadHistoryActionError.value = desktopError.value || '无法创建历史分支。'
+    return
+  }
   await router.push({ name: 'thread', params: { threadId: forkedThreadId } })
   if (selectedThreadId.value !== forkedThreadId) {
     await selectThread(forkedThreadId)
@@ -4432,8 +4439,11 @@ function onInterruptTurn(): void {
   void interruptSelectedThreadTurn()
 }
 
-function onRollback(payload: { turnId: string }): void {
+async function onRollback(payload: { turnId: string }): Promise<void> {
+  const threadId = selectedThreadId.value
+  threadHistoryActionError.value = ''
   const targetTurnId = payload.turnId.trim()
+  let draft = ''
   if (targetTurnId.length > 0) {
     const rollbackUserMessage = [...filteredMessages.value]
       .reverse()
@@ -4442,11 +4452,15 @@ function onRollback(payload: { turnId: string }): void {
         && (message.turnId?.trim() ?? '') === targetTurnId
         && message.text.trim().length > 0
       ))
-    if (rollbackUserMessage?.text && threadComposerRef.value) {
-      threadComposerRef.value.appendTextToDraft(rollbackUserMessage.text)
-    }
+    draft = rollbackUserMessage?.text ?? ''
   }
-  void rollbackSelectedThread(payload.turnId)
+  const rolledBack = await rollbackSelectedThread(payload.turnId)
+  if (!rolledBack && selectedThreadId.value === threadId) {
+    threadHistoryActionError.value = desktopError.value || '无法撤回历史。'
+  }
+  if (rolledBack && selectedThreadId.value === threadId && draft) {
+    threadComposerRef.value?.appendTextToDraft(draft)
+  }
 }
 
 function onImplementPlan(payload: { turnId: string }): void {

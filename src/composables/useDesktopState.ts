@@ -5281,27 +5281,28 @@ export function useDesktopState() {
     }
   }
 
-  async function rollbackSelectedThread(turnId: string): Promise<void> {
+  async function rollbackSelectedThread(turnId: string): Promise<boolean> {
     const threadId = selectedThreadId.value
-    if (!threadId) return
-    if (isRollingBack.value) return
-    if (!turnId.trim()) return
+    if (!threadId) return false
+    if (isRollingBack.value) return false
+    if (!turnId.trim()) return false
 
     const persisted = persistedMessagesByThreadId.value[threadId] ?? []
     const matchedMessage = persisted.find((message) => message.turnId === turnId)
     const turnIndex = typeof matchedMessage?.turnIndex === 'number' ? matchedMessage.turnIndex : -1
-    if (turnIndex < 0) return
+    if (turnIndex < 0) return false
     const maxTurnIndex = Math.max(-1, ...Object.values(turnIndexByTurnIdByThreadId.value[threadId] ?? {}))
-    if (maxTurnIndex < 0 || turnIndex > maxTurnIndex) return
+    if (maxTurnIndex < 0 || turnIndex > maxTurnIndex) return false
     const numTurns = maxTurnIndex - turnIndex + 1
-    if (numTurns < 1) return
+    if (numTurns < 1) return false
 
     isRollingBack.value = true
     error.value = ''
     try {
       const threadCwd = selectedThread.value?.cwd?.trim() ?? ''
       if (threadCwd) {
-        await revertThreadFileChanges(threadId, turnId, threadCwd)
+        const files = await revertThreadFileChanges(threadId, turnId, threadCwd)
+        if (files.errors.length) throw new Error(files.errors.join('\n'))
       }
       const nextMessages = await rollbackThread(threadId, numTurns)
       replaceTurnIndexLookupForThread(threadId, {})
@@ -5320,8 +5321,10 @@ export function useDesktopState() {
       setTurnErrorForThread(threadId, null)
       pendingThreadsRefresh = true
       await syncFromNotifications()
+      return true
     } catch (unknownError) {
       error.value = unknownError instanceof Error ? unknownError.message : 'Failed to rollback thread'
+      return false
     } finally {
       isRollingBack.value = false
     }
