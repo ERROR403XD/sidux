@@ -131,10 +131,15 @@ export class DeliveryStore {
       await this.init()
       await this.lease.assertOwnership()
       const state = structuredClone(this.state!)
-      const result = await action(state)
-      await this.publish(state)
-      this.state = state
-      return structuredClone(result)
+      try {
+        const result = await action(state)
+        await this.publish(state)
+        this.state = state
+        return structuredClone(result)
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code) this.failure = '发送记录保存失败，已停止投递；请检查存储后重启服务核对。'
+        throw error
+      }
     })
     this.chain = pending.catch(() => {})
     return pending
@@ -225,7 +230,10 @@ export class DeliveryStore {
     if (!turnId.trim()) throw new Error('缺少回合 ID，无法确认送达')
     return this.serial(async state => {
       const existing = await this.readReceipt(id)
-      if (existing) return existing
+      if (existing) {
+        state.records = state.records.filter(record => record.message.id !== id)
+        return existing
+      }
       const row = this.pending(state, id)
       if (!['sending', 'unknown'].includes(row.status)) throw new Error('该消息尚未开始发送')
       const receipt: DeliveryReceipt = { id, threadId: row.threadId, fingerprint: row.fingerprint, status: 'accepted', turnId, createdAt: row.createdAt, updatedAt: this.now() }

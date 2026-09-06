@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -24,6 +24,15 @@ afterEach(async () => {
 })
 
 describe('durable delivery records', () => {
+  it('stops dispatch after a filesystem publication failure', async () => {
+    const { store, dir } = await fixture()
+    const row = await store.add(input()) as DeliveryRecord
+    await rm(join(dir, 'pending.json'))
+    await mkdir(join(dir, 'pending.json'))
+    await expect(store.sending(row.message.id, row.revision, {}, row.contextId)).rejects.toThrow()
+    await expect(store.records()).rejects.toThrow('发送记录保存失败')
+  })
+
   it('coalesces concurrent request IDs and rejects changed content', async () => {
     const { store } = await fixture()
     const [a, b] = await Promise.all([store.add(input()), store.add(input())])
