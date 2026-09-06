@@ -32,6 +32,19 @@ afterEach(async () => {
 })
 
 describe('delivery before replay', () => {
+  it('steers a stored message with its captured model and never restores it after a lost response', async () => {
+    const { service, dependencies, store } = await fixture()
+    const queued = await service.submit({ ...input(), mode: 'queue' }) as DeliveryRecord
+    dependencies.canStart.mockResolvedValue(false)
+    dependencies.start.mockRejectedValue(new Error('response lost'))
+    const result = await service.steer(queued.message.id, queued.revision)
+    expect(result).toMatchObject({ status: 'unknown', mode: 'steer' })
+    expect(dependencies.start.mock.calls[0]?.[0]).toMatchObject({ model: 'captured-model', clientUserMessageId: queued.message.id })
+    expect(await store.records()).toHaveLength(1)
+    await service.process('thread')
+    expect(dependencies.start).toHaveBeenCalledTimes(1)
+  })
+
   it('coalesces simultaneous evidence checks for the same unknown request', async () => {
     const { service, dependencies } = await fixture()
     dependencies.start.mockRejectedValue(new Error('response lost'))

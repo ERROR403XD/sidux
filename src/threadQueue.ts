@@ -1,5 +1,7 @@
 import { capabilityValue } from './modelCapabilities.js'
+import { readDeliveryView, type DeliveryView } from './delivery.js'
 export type StoredQueuedMessage = {
+  delivery?: DeliveryView
   model?: string
   effort?: string
   serviceTier?: string | null
@@ -29,6 +31,7 @@ export function normalizeStoredQueuedMessage(value: unknown): StoredQueuedMessag
   if (!id) return null
   return {
     id,
+    ...(row.delivery !== undefined ? { delivery: readDeliveryView(row.delivery) } : {}),
     ...(capabilityValue(row.model) ? { model: capabilityValue(row.model) } : {}),
     ...(typeof row.effort === 'string' ? { effort: capabilityValue(row.effort) } : {}),
     ...(row.serviceTier === null ? { serviceTier: null } : capabilityValue(row.serviceTier) ? { serviceTier: capabilityValue(row.serviceTier) } : {}),

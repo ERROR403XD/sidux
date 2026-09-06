@@ -167,8 +167,9 @@ export class DeliveryStore {
   }
 
   private makeRecord(input: Submission): DeliveryRecord {
-    const message = normalizeStoredQueuedMessage(input.message)
-    if (!message || !input.threadId.trim()) throw new Error('无效的发送内容')
+    const normalized = normalizeStoredQueuedMessage(input.message)
+    if (!normalized || !input.threadId.trim()) throw new Error('无效的发送内容')
+    const { delivery: _clientState, ...message } = normalized
     if (!['queue', 'immediate', 'steer'].includes(input.mode)) throw new Error('无效的发送方式')
     validId(message.id)
     const now = this.now()
@@ -263,6 +264,15 @@ export class DeliveryStore {
       const row = this.pending(state, id, revision)
       if (!['failed', 'editing'].includes(row.status)) throw new Error('结果不明的消息只能先核对，不能重新排队')
       this.update(row, { status: 'queued', error: undefined, editToken: undefined })
+    })
+  }
+
+  async requestSteer(id: string, revision: number): Promise<void> {
+    await this.serial(async state => {
+      const row = this.pending(state, id, revision)
+      if (row.status !== 'queued' || state.records.some(other => other.threadId === row.threadId && ['sending', 'unknown'].includes(other.status))) throw new Error('请先处理正在发送或等待确认的消息')
+      const mode = 'steer' as const
+      this.update(row, { mode, fingerprint: fingerprint({ ...row, mode }) })
     })
   }
 

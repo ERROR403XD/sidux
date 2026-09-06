@@ -116,6 +116,17 @@ export class DeliveryService {
     this.changed(current.threadId)
   }
 
+  async steer(id: string, revision: number): Promise<Result> {
+    if (this.disposed || this.dependencies.accountBusy()) throw new Error('账号操作期间暂不能引导消息')
+    const current = await this.result(id)
+    if (!current) throw new Error('找不到该消息，请刷新状态')
+    if (!('message' in current)) return current
+    await this.store.requestSteer(id, revision)
+    this.changed(current.threadId)
+    await this.process(current.threadId, id)
+    return this.result(id)
+  }
+
   async dispose(): Promise<void> {
     this.disposed = true
     await Promise.allSettled(this.active.values())

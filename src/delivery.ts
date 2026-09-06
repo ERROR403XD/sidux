@@ -43,3 +43,17 @@ export function deliveryView(record: DeliveryRecord): DeliveryView {
   const { status, revision, createdAt, updatedAt, mode, error, turnId, editToken } = record
   return { status, revision, createdAt, updatedAt, mode, ...(error ? { error } : {}), ...(turnId ? { turnId } : {}), ...(editToken ? { editToken } : {}) }
 }
+
+export function readDeliveryView(value: unknown): DeliveryView | undefined {
+  if (value === undefined) return undefined
+  const row = value as DeliveryView
+  if (!row || !['queued', 'editing', 'sending', 'unknown', 'failed'].includes(row.status)
+    || !['queue', 'immediate', 'steer'].includes(row.mode) || !Number.isInteger(row.revision) || row.revision < 1
+    || !Number.isFinite(row.createdAt) || !Number.isFinite(row.updatedAt)) throw new Error('发送状态无效，请刷新页面核对')
+  return {
+    status: row.status, mode: row.mode, revision: row.revision, createdAt: row.createdAt, updatedAt: row.updatedAt,
+    ...(typeof row.error === 'string' ? { error: row.error } : {}),
+    ...(typeof row.turnId === 'string' ? { turnId: row.turnId } : {}),
+    ...(typeof row.editToken === 'string' ? { editToken: row.editToken } : {}),
+  }
+}
