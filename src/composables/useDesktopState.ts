@@ -1,3 +1,4 @@
+import { mergeSubtaskMessage, observeTaskNotification } from '../subtasks'
 import { createDeliveryId } from '../delivery'
 import { changesThreadSearch } from '../threadSearchEvents'
 import { bindMessageTurnOrder, mergeTurnOrder, orderedTurnIds } from '../historyOrder'
@@ -667,6 +668,7 @@ function areMessageFieldsEqual(first: UiMessage, second: UiMessage): boolean {
     first.rawPayload === second.rawPayload &&
     first.isUnhandled === second.isUnhandled &&
     JSON.stringify(first.compaction) === JSON.stringify(second.compaction) &&
+    JSON.stringify(first.subtask) === JSON.stringify(second.subtask) &&
     areCommandExecutionsEqual(first.commandExecution, second.commandExecution) &&
     arePlanDataEqual(first.plan, second.plan) &&
     first.turnId === second.turnId &&
@@ -3719,6 +3721,7 @@ export function useDesktopState() {
 
   function applyRealtimeUpdates(notification: RpcNotification): void {
     observeCompactionNotification(notification)
+    observeTaskNotification(notification)
     const compactionThreadId = extractThreadIdFromNotification(notification)
     if (compactionThreadId) {
       const updated = updateCompactionMessages(persistedMessagesByThreadId.value[compactionThreadId] ?? [], notification.method, notification.params)
@@ -3733,7 +3736,7 @@ export function useDesktopState() {
         const messages = persistedMessagesByThreadId.value[threadId] || []
         const next = { ...summary, turnId: readString(params?.turnId) || undefined }
         const index = messages.findIndex(message => message.id === summary.id)
-        setPersistedMessagesForThread(threadId, index < 0 ? [...messages, next] : messages.map((message, offset) => offset === index ? next : message))
+        setPersistedMessagesForThread(threadId, index < 0 ? [...messages, next] : messages.map((message, offset) => offset === index ? mergeSubtaskMessage(message, next) : message))
       }
     }
     if (['account/updated', 'model/list/updated', 'models/updated', 'config/updated'].includes(notification.method)) {

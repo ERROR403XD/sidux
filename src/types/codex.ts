@@ -221,6 +221,7 @@ export type UiMessage = {
   rawPayload?: string
   isUnhandled?: boolean
   compaction?: import('../compaction').CompactionProgress
+  subtask?: import('../subtasks').SubtaskEvent
   commandExecution?: CommandExecutionData
   plan?: UiPlanData
   turnId?: string

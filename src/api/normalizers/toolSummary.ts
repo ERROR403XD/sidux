@@ -1,9 +1,12 @@
 import type { UiMessage } from '../../types/codex'
+import { normalizeSubtaskEvent } from '../../subtasks'
 
 // Only summaries of unhandled items; never copy arguments or entire RPC payloads.
 const handled = new Set(['agentMessage', 'userMessage', 'reasoning', 'plan', 'commandExecution', 'fileChange', 'imageView', 'imageGeneration', 'image_generation', 'contextCompaction'])
 const labels: Record<string, string> = { mcpToolCall: 'MCP 工具', dynamicToolCall: '工具调用', collabAgentToolCall: '子任务工具', subAgentActivity: '子任务进展', webSearch: '网页搜索', contextCompaction: '上下文压缩' }
 export function normalizeToolSummary(value: unknown): UiMessage | null {
+  const subtask = normalizeSubtaskEvent(value)
+  if (subtask) return subtask
   if (!value || typeof value !== 'object') return null
   const row = value as Record<string, unknown>
   if (typeof row.type !== 'string' || !row.type || handled.has(row.type) || typeof row.id !== 'string') return null

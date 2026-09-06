@@ -1,3 +1,5 @@
+import { extractTaskExcerpt } from '../taskExcerpt'
+import { maySupplementImportedThreads } from './threadListCompatibility'
 import { changesThreadSearch } from '../threadSearchEvents.js'
 import { deliveryView } from '../delivery.js'
 import { DeliveryStore } from './deliveryStore.js'
@@ -1850,7 +1852,8 @@ ${archivedPredicate};
   }
 }
 
-function mergeImportedThreadsIntoThreadListResult(result: unknown): unknown {
+function mergeImportedThreadsIntoThreadListResult(result: unknown, params: unknown): unknown {
+  if (!maySupplementImportedThreads(params)) return result
   const record = asRecord(result)
   const data = Array.isArray(record?.data) ? record.data : null
   if (!record || !data) return result
@@ -7061,7 +7064,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
   const search = new ThreadSearch({
     list: async cursor => {
       const raw = await callRpcWithArchiveRecovery(appServer, 'thread/list', { archived: false, limit: 100, sortKey: 'updated_at', modelProviders: [], cursor })
-      const result = asRecord(await mergeImportedThreadsIntoThreadListResult(raw))
+      const result = asRecord(await mergeImportedThreadsIntoThreadListResult(raw, { cursor }))
       return { data: Array.isArray(result?.data) ? result.data : [], nextCursor: readNonEmptyString(result?.nextCursor) || null }
     },
     body: async thread => {
@@ -7631,7 +7634,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           ? mergeStreamTurnErrorsIntoThreadResult(appServer, trimmedResult)
           : trimmedResult
         const listMergedResult = body.method === 'thread/list'
-          ? mergeImportedThreadsIntoThreadListResult(errorMergedResult)
+          ? mergeImportedThreadsIntoThreadListResult(errorMergedResult, body.params)
           : errorMergedResult
         const sanitizedResult = await sanitizeThreadTurnsInlinePayloads(body.method, listMergedResult)
         const result = THREAD_METHODS_WITH_TURNS.has(body.method)
@@ -7648,6 +7651,21 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         }
 
         setJson(res, 200, { result })
+        return
+      }
+
+      if (req.method === 'GET' && url.pathname === '/codex-api/task-excerpt') {
+        const threadId = url.searchParams.get('threadId')?.trim() || ''
+        if (!threadId) {
+          setJson(res, 400, { error: '缺少任务 ID' })
+          return
+        }
+        try {
+          const page = await history.page(threadId, { limit: 10 })
+          setJson(res, 200, { data: extractTaskExcerpt(asRecord(page.result)?.thread, page.hasMoreOlder) })
+        } catch (error) {
+          setJson(res, 500, { error: getErrorMessage(error, '任务摘录读取失败。') })
+        }
         return
       }
 
