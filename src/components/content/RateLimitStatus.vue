@@ -30,6 +30,7 @@
 
 <script setup lang="ts">
 import type { UiRateLimitSnapshot, UiRateLimitWindow } from '../../types/codex'
+import { formatLocalDateTime } from '../../dateTime'
 
 defineProps<{
   snapshots: UiRateLimitSnapshot[]
@@ -90,12 +91,7 @@ function getWindowMetrics(snapshot: UiRateLimitSnapshot): RateLimitMetric[] {
 function formatAbsoluteResetDate(resetsAt: number | null): string {
   if (!resetsAt) return ''
 
-  const resetDate = new Date(resetsAt * 1000)
-  const month = resetDate.getMonth() + 1
-  const day = String(resetDate.getDate()).padStart(2, '0')
-  const hours = String(resetDate.getHours()).padStart(2, '0')
-  const minutes = String(resetDate.getMinutes()).padStart(2, '0')
-  return `${month}.${day} ${hours}:${minutes}`
+  return formatLocalDateTime(resetsAt * 1000, { year: undefined, month: 'numeric', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
 function formatRelativeResetText(window: UiRateLimitWindow | null): string {

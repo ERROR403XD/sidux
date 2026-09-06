@@ -837,14 +837,13 @@ function formatResetTime(resetsAt: number | null): string {
 function formatResetDate(resetsAt: number | null): string {
   if (typeof resetsAt !== 'number' || !Number.isFinite(resetsAt)) return ''
   return formatLocalDateTime(resetsAt * 1000, {
-    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
   })
 }
 
 function formatResetDateCompact(resetsAt: number | null): string {
   if (typeof resetsAt !== 'number' || !Number.isFinite(resetsAt)) return ''
-  const date = new Date(resetsAt * 1000)
-  return `${date.getMonth() + 1}月${date.getDate()}日`
+  return formatLocalDateTime(resetsAt * 1000, { year: undefined, month: 'long', day: 'numeric', hour: undefined, minute: undefined }, 'zh-CN')
 }
 
 function pickWeeklyQuotaWindow(quota: UiRateLimitSnapshot): UiRateLimitWindow | null {

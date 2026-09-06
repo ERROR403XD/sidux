@@ -5,6 +5,13 @@ export type UiLanguage = 'en' | 'zh-CN'
 const UI_LANGUAGE_STORAGE_KEY = 'codex-web-local.ui-language.v1'
 
 const zhCN: Record<string, string> = {
+  'Display timezone': '显示时区',
+  'Copy': '复制',
+  'Copy code': '复制代码',
+  'Copy failed': '复制失败',
+  'Search timezones': '搜索时区',
+  'Follow system': '跟随系统',
+  'Applies to all pages in this browser.': '应用于本浏览器的所有页面。',
   'None': '无',
   'Minimal': '最低',
   'Low': '低',

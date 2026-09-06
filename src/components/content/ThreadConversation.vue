@@ -275,7 +275,7 @@
                 <div v-if="message.isAutomationRun" class="automation-message-label">
                   <span>Sent via automation</span>
                   <code v-if="message.automationDisplayName">{{ message.automationDisplayName }}</code>
-                  <time v-if="message.automationRun" :datetime="new Date(message.automationRun.startedAt).toISOString()" :title="formatLocalDateTime(message.automationRun.startedAt, { second: '2-digit', timeZoneName: 'short' })">{{ formatLocalDateTime(message.automationRun.startedAt) }}</time>
+                  <time v-if="message.automationRun" :datetime="new Date(message.automationRun.startedAt).toISOString()" :title="formatLocalDateTime(message.automationRun.startedAt, { second: '2-digit' })">{{ formatLocalDateTime(message.automationRun.startedAt) }}</time>
                 </div>
                 <SubtaskEventCard v-if="message.subtask" :event="message.subtask" @open-task="emit('openTask', $event)" />
                 <div v-else-if="message.compaction" class="thread-compaction-event" :data-status="message.compaction.status" role="status">
@@ -587,7 +587,14 @@
                       </table>
                     </div>
                     <div v-else-if="block.kind === 'codeBlock'" class="message-code-block">
-                      <div v-if="block.language" class="message-code-language">{{ block.language }}</div>
+                      <div class="message-code-heading">
+                        <div class="message-code-language">{{ block.language }}</div>
+                        <AppButton
+                          class="message-code-copy"
+                          :data-copied="copiedCodeBlockKey === `${message.id}:${blockIndex}`"
+                          @click="copyCodeBlock(`${message.id}:${blockIndex}`, block.value)"
+                        >{{ copyFailureKey === `code:${message.id}:${blockIndex}` ? t('Copy failed') : copiedCodeBlockKey === `${message.id}:${blockIndex}` ? t('Copied') : t('Copy code') }}</AppButton>
+                      </div>
                       <pre class="message-code-pre"><code class="hljs" v-html="renderCachedHighlightedCodeAsHtml(block.language, block.value)"></code></pre>
                     </div>
                     <hr v-else-if="block.kind === 'thematicBreak'" class="message-divider" />
@@ -741,7 +748,7 @@
                   @click="copyResponse(message.id)"
                 >
                   <IconTablerCopy class="icon-svg message-copy-icon" />
-                  <span class="message-copy-label">{{ copiedResponseAnchorId === message.id ? 'Copied' : 'Copy' }}</span>
+                  <span class="message-copy-label">{{ copyFailureKey === `response:${message.id}` ? t('Copy failed') : copiedResponseAnchorId === message.id ? t('Copied') : t('Copy') }}</span>
                 </button>
               </div>
             </article>
@@ -943,7 +950,9 @@ import type { UiFileChange, UiLiveOverlay, UiMessage, UiPlanStep, UiServerReques
 import { updateThreadFileChanges } from '../../api/codexGateway'
 import { useFeedbackDiagnostics } from '../../composables/useFeedbackDiagnostics'
 import { useMobile } from '../../composables/useMobile'
-import { copyTextToClipboard, copyTextWithSelectionFallback } from '../../utils/clipboard'
+import { useUiLanguage } from '../../composables/useUiLanguage'
+import { copyTextToClipboard } from '../../utils/clipboard'
+import AppButton from '../common/AppButton.vue'
 
 import IconTablerArrowBackUp from '../icons/IconTablerArrowBackUp.vue'
 import IconTablerArrowUp from '../icons/IconTablerArrowUp.vue'
@@ -1352,6 +1361,10 @@ const conversationListRef = ref<HTMLElement | null>(null)
 const bottomAnchorRef = ref<HTMLElement | null>(null)
 const modalImageUrl = ref('')
 const copiedResponseAnchorId = ref('')
+const copiedCodeBlockKey = ref('')
+const copyFailureKey = ref('')
+const { t } = useUiLanguage()
+let copyAttempt = 0
 const fileChangeActionState = ref<Record<string, 'idle' | 'undoing' | 'redoing' | 'undone' | 'redone'>>({})
 const fileChangeActionError = ref<Record<string, string>>({})
 const fileChangeRedoPatchIds = ref<Record<string, string[]>>({})
@@ -2325,29 +2338,31 @@ function diffViewerMarker(line: DiffViewerLine): string {
 async function copyResponse(anchorMessageId: string): Promise<void> {
   const content = copyableResponseContentByAnchorId.value[anchorMessageId] ?? ''
   if (!content) return
+  await copyMessageText(content, `response:${anchorMessageId}`)
+}
 
-  let copied = false
+async function copyCodeBlock(key: string, content: string): Promise<void> {
+  await copyMessageText(content, `code:${key}`)
+}
+
+async function copyMessageText(content: string, key: string): Promise<void> {
+  const attempt = ++copyAttempt
+  copyFailureKey.value = ''
   try {
     await copyTextToClipboard(content)
-    copied = true
   } catch {
-    copied = false
+    if (attempt === copyAttempt) copyFailureKey.value = key
+    return
   }
-
-  if (!copied) {
-    copied = copyTextWithSelectionFallback(content)
-  }
-
-  if (!copied) return
-
-  copiedResponseAnchorId.value = anchorMessageId
+  if (attempt !== copyAttempt) return
+  copiedResponseAnchorId.value = key.startsWith('response:') ? key.slice('response:'.length) : ''
+  copiedCodeBlockKey.value = key.startsWith('code:') ? key.slice('code:'.length) : ''
   if (copiedMessageResetTimer) {
     clearTimeout(copiedMessageResetTimer)
   }
   copiedMessageResetTimer = setTimeout(() => {
-    if (copiedResponseAnchorId.value === anchorMessageId) {
-      copiedResponseAnchorId.value = ''
-    }
+    copiedResponseAnchorId.value = ''
+    copiedCodeBlockKey.value = ''
     copiedMessageResetTimer = null
   }, 1800)
 }
@@ -4047,6 +4062,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  copyAttempt++
   clearRenderCaches()
   if (conversationScrollFrame) {
     cancelAnimationFrame(conversationScrollFrame)

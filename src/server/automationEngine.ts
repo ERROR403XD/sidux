@@ -1,4 +1,4 @@
-import { DEFAULT_TIME_ZONE } from '../dateTime.js'
+import { DEFAULT_TIME_ZONE } from '../timeZoneConstants.js'
 import { buildAutomationMessage } from '../automationMessage.js'
 import { AutomationHistory } from './automationHistory.js'
 import type { AutomationModelSettings } from '../automationOptions.js'

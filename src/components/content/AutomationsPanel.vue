@@ -21,7 +21,7 @@
       </div>
     </div>
 
-    <p v-if="runtime" class="automation-runtime-status" :class="{ 'has-error': !runtime.ready }">调度器：{{ runtime.error || (runtime.draining ? '正在交接，停止领取新任务' : runtime.ready ? '运行中' : '初始化中') }} · 显示时区 {{ browserTimeZone() }}</p>
+    <p v-if="runtime" class="automation-runtime-status" :class="{ 'has-error': !runtime.ready }">调度器：{{ runtime.error || (runtime.draining ? '正在交接，停止领取新任务' : runtime.ready ? '运行中' : '初始化中') }}</p>
     <p v-for="problem in runtime?.definitions.filter(row => row.error) ?? []" :key="problem.id" class="automations-error">{{ problem.id }}：{{ problem.error }}</p>
     <p v-if="loadError" class="automations-error">{{ t(loadError) }}</p>
 
@@ -117,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-import { browserTimeZone, formatLocalDateTime } from '../../dateTime'
+import { formatLocalDateTime } from '../../dateTime'
 import AutomationRunHistory from './AutomationRunHistory.vue'
 import { getAutomationRuntime, type AutomationRuntimeStatus } from '../../api/automationGateway'
 import { useUiLanguage } from '../../composables/useUiLanguage'

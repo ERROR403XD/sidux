@@ -88,6 +88,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import AppButton from '../common/AppButton.vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppSelect from '../common/AppSelect.vue'
+import { formatLocalDateTime } from '../../dateTime'
+import { copyTextToClipboard } from '../../utils/clipboard'
 import { apiProxyRequest, type ApiProxyKey, type ApiProxySettings, type ApiProxyStatus } from '../../api/apiProxy'
 
 const status = ref<ApiProxyStatus | null>(null)
@@ -117,7 +119,7 @@ const stateLabel = computed(() => !status.value?.installed ? '组件未安装' :
 const keyActivityCount = computed(() => status.value?.activity.entries.filter(entry => entry.keyId === revokeTarget.value?.id).length || 0)
 const clientConfig = computed(() => `model_provider = "codexapp_gateway"\nmodel = "${model.value}"\n\n[model_providers.codexapp_gateway]\nname = "CodexApp API"\nbase_url = "${baseUrl}"\nenv_key = "CODEXAPP_API_KEY"\nwire_api = "responses"\nrequires_openai_auth = false\nsupports_websockets = true`)
 function accountStatusLabel(value: string): string { return ({ ready: '可用', stale: '待确认', refreshing: '刷新中', reauth_required: '需重新登录', payment_required: '需处理额度', transient_error: '暂时异常', materialization_dirty: '需修复认证' } as Record<string, string>)[value] || value }
-function date(value: string | null): string { return value ? new Date(value).toLocaleString() : '—' }
+function date(value: string | null): string { return value ? formatLocalDateTime(value, { second: '2-digit' }) : '—' }
 function accountName(id: string | null): string { const account = status.value?.accounts.accounts.find(row => row.storageId === id); return account?.email || account?.accountId || '未选择' }
 function keyName(id: string): string { return status.value?.keys.find(key => key.id === id)?.name || id.slice(0, 8) }
 function keyLabel(key: ApiProxyKey): string { return key.revokedAt ? '已撤销' : key.expiresAt && Date.parse(key.expiresAt) <= Date.now() ? '已到期' : key.enabled ? '可用' : '已停用' }
@@ -174,7 +176,7 @@ async function createKey(): Promise<void> {
     if (rotateTarget.value) await apiProxyRequest(`/keys/${rotateTarget.value.id}`, { expiresAt: new Date(Date.now() + 86400_000).toISOString() })
   })
 }
-async function copySecret(): Promise<void> { try { await navigator.clipboard.writeText(secret.value) } catch { error.value = '当前浏览器无法自动复制，请选中 key 手动复制。' } }
+async function copySecret(): Promise<void> { try { await copyTextToClipboard(secret.value) } catch { error.value = '当前浏览器无法自动复制，请选中 key 手动复制。' } }
 async function updateKey(key: ApiProxyKey, input: unknown): Promise<void> { await run(async () => { await apiProxyRequest(`/keys/${key.id}`, input) }) }
 async function revokeKey(): Promise<void> { const target = revokeTarget.value; if (!target) return; await run(async () => { await apiProxyRequest(`/keys/${target.id}`, { revoke: true, interrupt: interruptKey.value }); revokeTarget.value = null }) }
 async function renameKey(): Promise<void> { const target = renameTarget.value; if (!target) return; await run(async () => { await apiProxyRequest(`/keys/${target.id}`, { name: renameValue.value }); renameTarget.value = null }) }

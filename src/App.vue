@@ -283,6 +283,20 @@
                   @update:model-value="setUiLanguage($event as 'en' | 'zh-CN')"
                 />
               </div>
+              <div class="sidebar-settings-row sidebar-settings-timezone">
+                <span class="sidebar-settings-label">{{ t('Display timezone') }}</span>
+                <AppSelect
+                  :model-value="displayTimeZonePreference"
+                  :options="displayTimeZoneOptions"
+                  :placeholder="t('Display timezone')"
+                  enable-search
+                  :search-placeholder="t('Search timezones')"
+                  menu-align="end"
+                  @update:model-value="onDisplayTimeZoneChange"
+                />
+                <small>{{ t('Applies to all pages in this browser.') }}</small>
+                <p v-if="displayTimeZoneError" class="sidebar-timezone-error" role="alert">{{ displayTimeZoneError }}</p>
+              </div>
               <button class="sidebar-settings-row" type="button" :title="SETTINGS_HELP.chatWidth" @click="cycleChatWidth">
                 <span class="sidebar-settings-label">{{ t('Chat width') }}</span>
                 <span class="sidebar-settings-value">{{ chatWidthLabel }}</span>
@@ -1278,7 +1292,8 @@ import { createDeliveryId } from './delivery'
 
 import { isAsyncUserInputRequest, pendingRequestPriority } from './userQuestions'
 import { isOverlayEventInside } from './composables/overlayEvents'
-import { formatLocalDateTime, browserTimeZone } from './dateTime'
+import { availableDisplayTimeZones, browserTimeZone, displayTimeZone, displayTimeZonePreference, formatLocalDateTime, setDisplayTimeZone, subscribeDisplayTimeZoneStorage } from './dateTime'
+import AppSelect from './components/common/AppSelect.vue'
 import { vModalBackdrop } from './composables/modalBackdrop'
 import { projectDisplayName, projectSetupInput } from './composables/projectSetup'
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -1368,6 +1383,20 @@ const DirectoryHub = defineAsyncComponent(() => import('./components/content/Dir
 const ApiProxyPanel = defineAsyncComponent(() => import('./components/api-proxy/ApiProxyPanel.vue'))
 const AutomationsPanel = defineAsyncComponent(() => import('./components/content/AutomationsPanel.vue'))
 const { t, uiLanguage, uiLanguageOptions, setUiLanguage } = useUiLanguage()
+const displayTimeZoneError = ref('')
+const displayTimeZoneOptions = computed(() => [
+  { value: 'system', label: `${t('Follow system')} · ${browserTimeZone()}` },
+  ...availableDisplayTimeZones().map(zone => ({ value: zone, label: zone })),
+])
+let unsubscribeDisplayTimeZone: (() => void) | null = null
+function onDisplayTimeZoneChange(value: string): void {
+  displayTimeZoneError.value = ''
+  try {
+    setDisplayTimeZone(value)
+  } catch (cause) {
+    displayTimeZoneError.value = cause instanceof Error ? cause.message : '显示时区保存失败。'
+  }
+}
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'codex-web-local.sidebar-collapsed.v1'
 const ACCOUNTS_SECTION_COLLAPSED_STORAGE_KEY = 'codex-web-local.accounts-section-collapsed.v1'
@@ -2361,6 +2390,7 @@ const telegramStatusText = computed(() => {
 })
 
 onMounted(() => {
+  unsubscribeDisplayTimeZone = subscribeDisplayTimeZoneStorage()
   document.addEventListener('pointerdown', onDocumentPointerDown)
   window.addEventListener('keydown', onWindowKeyDown)
   document.addEventListener('visibilitychange', onDocumentVisibilityChange)
@@ -2395,6 +2425,7 @@ watch(visibleFeedbackErrors, (values, oldValues) => {
 })
 
 onUnmounted(() => {
+  unsubscribeDisplayTimeZone?.()
   document.removeEventListener('pointerdown', onDocumentPointerDown)
   window.removeEventListener('keydown', onWindowKeyDown)
   document.removeEventListener('visibilitychange', onDocumentVisibilityChange)
@@ -4642,7 +4673,7 @@ function buildThreadMarkdown(): string {
   const threadTitle = selectedThread.value?.title?.trim() || 'Untitled thread'
   lines.push(`# ${escapeMarkdownText(threadTitle)}`)
   lines.push('')
-  lines.push(`- Exported: ${formatLocalDateTime(Date.now(), { second: '2-digit' })} (${browserTimeZone()})`)
+  lines.push(`- Exported: ${formatLocalDateTime(Date.now(), { second: '2-digit' })} (${displayTimeZone()})`)
   lines.push(`- Thread ID: ${selectedThread.value?.id ?? ''}`)
   lines.push('')
   lines.push('---')

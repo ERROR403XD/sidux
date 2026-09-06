@@ -2,7 +2,7 @@
     <ol class="automation-history-list">
       <li v-for="run in runs" :key="run.runId" :data-run-status="run.status">
         <div class="automation-history-line"><strong>{{ statusLabels[run.status] }}</strong><span>{{ triggerLabels[run.trigger] }} · 第 {{ run.attempt }} 次</span></div>
-        <div class="automation-history-line"><time :datetime="new Date(run.scheduledAt).toISOString()" :title="formatLocalDateTime(run.scheduledAt, { second: '2-digit', timeZoneName: 'short' })">{{ formatLocalDateTime(run.scheduledAt) }}</time><span>{{ duration(run) }}</span></div>
+        <div class="automation-history-line"><time :datetime="new Date(run.scheduledAt).toISOString()" :title="formatLocalDateTime(run.scheduledAt, { second: '2-digit' })">{{ formatLocalDateTime(run.scheduledAt) }}</time><span>{{ duration(run) }}</span></div>
         <p v-if="run.target !== target" class="automation-history-muted">{{ run.target }}</p>
         <p v-if="run.error" class="automation-history-error">{{ run.error }}</p>
         <div class="automation-history-links">

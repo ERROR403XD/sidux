@@ -2327,3 +2327,14 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .thread-process-dialog .process-id { display: block; margin-top: 8px; }
 .thread-process-dialog .process-config { margin-top: 18px; }
 :root.dark .thread-process-dialog, :root.dark .thread-process-dialog .process-card { color: var(--ui-text); background: var(--ui-surface); border-color: var(--ui-border); }
+
+.sidebar-settings-timezone.sidebar-settings-row { flex-direction: column; align-items: stretch; gap: 7px; }
+.sidebar-settings-timezone .app-select { width: 100%; min-width: 0; }
+.sidebar-settings-timezone .composer-dropdown-trigger { width: 100%; }
+.sidebar-settings-timezone small { color: var(--ui-text); opacity: .65; font-size: 11px; }
+.sidebar-settings-timezone .sidebar-timezone-error { color: var(--ui-danger); margin: 0; font-size: 12px; }
+:root.dark .sidebar-settings-timezone .composer-dropdown-trigger { color: var(--ui-text); background: var(--ui-field); border-color: var(--ui-border); }
+.message-code-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 10px; }
+.message-code-block .message-code-heading .message-code-language { border: 0; padding: 0; }
+.message-code-heading .message-code-copy { font-size: 11px; padding: 3px 7px; flex-shrink: 0; }
+:root.dark .message-code-heading .message-code-copy { color: var(--ui-text); background: var(--ui-field); border-color: var(--ui-border); }
