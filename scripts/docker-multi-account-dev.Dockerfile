@@ -14,7 +14,9 @@ RUN apt-get update \
 
 COPY output/package/codexapp.tgz /tmp/codexapp.tgz
 
-RUN npm install -g /tmp/codexapp.tgz @openai/codex@0.153.4 \
+RUN npm install -g /tmp/codexapp.tgz \
+  && npm install -g @openai/codex@0.153.4 \
+  && codex --version \
   && npm cache clean --force \
   && rm /tmp/codexapp.tgz
 
