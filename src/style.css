@@ -2219,3 +2219,24 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
+/* Delivery controls use the shared palette in both themes. */
+.delivery-outbox, .queue-edit-notice {
+  width: 100%;
+  max-width: min(var(--chat-column-max, 45rem), 100%);
+  margin: 0 auto;
+  padding: 8px 12px;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  font-size: 13px;
+}
+.delivery-outbox-row, .queue-edit-notice { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.delivery-outbox-content { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 3px; }
+.delivery-outbox-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .7; }
+.delivery-outbox-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.delivery-outbox-error { color: var(--ui-danger); overflow-wrap: anywhere; }
+:root.dark .queued-messages-inner, :root.dark .delivery-outbox, :root.dark .queue-edit-notice { background: var(--ui-surface); color: var(--ui-text); border-color: var(--ui-border); }
+@media (max-width: 600px) {
+  .delivery-outbox-row { align-items: stretch; flex-direction: column; }
+}

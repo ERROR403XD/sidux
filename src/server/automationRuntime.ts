@@ -32,7 +32,10 @@ export function createAutomationRuntime(options: {
       return { threadId: thread.id, model: typeof response.model === 'string' ? response.model : undefined }
     },
     async prepare(threadId, text, runId, settings = {}) {
-      await rpc('thread/resume', { threadId, excludeTurns: true, ...(settings.model ? { model: settings.model } : {}) })
+      const current = record(record(await rpc('thread/read', { threadId, includeTurns: false })).thread)
+      if ((record(current.status).type ?? current.status) === 'notLoaded') {
+        await rpc('thread/resume', { threadId, excludeTurns: true, ...(settings.model ? { model: settings.model } : {}) })
+      }
       const params = await options.buildParams(threadId, text, runId)
       if (settings.model) params.model = settings.model
       if (settings.reasoningEffort) params.effort = settings.reasoningEffort

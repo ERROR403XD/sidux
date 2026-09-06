@@ -1,103 +1,101 @@
 <template>
-  <div v-if="messages.length > 0" class="queued-messages">
+  <div v-if="messages.length" class="queued-messages">
     <div class="queued-messages-inner">
-    <div
-      v-for="msg in messages"
-      :key="msg.id"
-      class="queued-row"
-      :class="{
-        'is-dragging': draggedMessageId === msg.id,
-        'is-drop-target': dropTargetMessageId === msg.id && draggedMessageId !== msg.id,
-      }"
-      draggable="true"
-      @dragstart="onDragStart($event, msg.id)"
-      @dragover.prevent="onDragOver(msg.id)"
-      @dragleave="onDragLeave(msg.id)"
-      @drop.prevent="onDrop(msg.id)"
-      @dragend="resetDragState"
-    >
-      <button
-        class="queued-row-drag"
-        type="button"
-        :aria-label="t('Drag to reorder queued message')"
-        :title="t('Drag to reorder queued message')"
+      <div
+        v-for="msg in messages"
+        :key="msg.id"
+        class="queued-row"
+        :data-delivery-id="msg.id"
+        :data-delivery-status="msg.delivery?.status"
+        :class="{ 'is-dragging': draggedMessageId === msg.id, 'is-drop-target': dropTargetMessageId === msg.id && draggedMessageId !== msg.id }"
+        :draggable="msg.delivery?.status === 'queued'"
+        @dragstart="onDragStart($event, msg)"
+        @dragover.prevent="onDragOver(msg)"
+        @dragleave="onDragLeave(msg.id)"
+        @drop.prevent="onDrop(msg)"
+        @dragend="resetDragState"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true">
-          <path fill="currentColor" d="M9 5.5A1.5 1.5 0 1 1 6 5.5a1.5 1.5 0 0 1 3 0m0 6.5a1.5 1.5 0 1 1-3 0a1.5 1.5 0 0 1 3 0m-1.5 8A1.5 1.5 0 1 0 7.5 17a1.5 1.5 0 0 0 0 3m10-13A1.5 1.5 0 1 0 17.5 4a1.5 1.5 0 0 0 0 3m1.5 5a1.5 1.5 0 1 1-3 0a1.5 1.5 0 0 1 3 0m-1.5 8a1.5 1.5 0 1 0 0-3a1.5 1.5 0 0 0 0 3" />
-        </svg>
-      </button>
-      <svg class="queued-row-icon" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true">
-        <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-      </svg>
-      <span class="queued-row-text">{{ getMessagePreview(msg) }}</span>
-      <div class="queued-row-actions">
-        <button class="queued-row-edit" type="button" :title="t('Edit queued message')" @click="$emit('edit', msg.id)">{{ t('Edit') }}</button>
-        <button class="queued-row-steer" type="button" :title="t('Send now without interrupting work')" @click="$emit('steer', msg.id)">{{ t('Steer') }}</button>
-        <button class="queued-row-delete" type="button" :aria-label="t('Delete queued message')" :title="t('Delete queued message')" @click="$emit('delete', msg.id)">
-          <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" />
-          </svg>
-        </button>
+        <div class="queued-row-content">
+          <span class="queued-row-text" :title="getMessagePreview(msg)">{{ getMessagePreview(msg) }}</span>
+          <span class="queued-row-status">{{ msg.delivery ? deliveryStatusLabel(msg.delivery.status) : '等待加载发送状态' }}</span>
+          <span v-if="msg.delivery?.error" class="queued-row-error">{{ msg.delivery.error }}</span>
+        </div>
+        <div class="queued-row-actions">
+          <AppButton v-if="['queued', 'failed', 'editing'].includes(msg.delivery?.status ?? '')" @click="emit('edit', msg.id)">{{ msg.delivery?.status === 'editing' ? '继续编辑' : '编辑' }}</AppButton>
+          <AppButton v-if="msg.delivery?.status === 'queued'" title="发送引导消息，不中断当前任务" @click="emit('steer', msg.id)">引导</AppButton>
+          <AppButton v-if="msg.delivery?.status === 'unknown'" @click="emit('reconcile', msg.id)">核对结果</AppButton>
+          <AppButton v-if="msg.delivery?.status === 'failed'" @click="emit('resume', msg.id)">重新排队</AppButton>
+          <AppButton v-if="msg.delivery?.status === 'editing'" @click="emit('resume', msg.id)">取消编辑</AppButton>
+          <AppButton v-if="msg.delivery?.status === 'unknown'" variant="danger" @click="abandonId = msg.id">停止跟踪</AppButton>
+          <AppButton v-else-if="msg.delivery && msg.delivery.status !== 'sending'" variant="danger" @click="emit('delete', msg.id)">删除</AppButton>
+        </div>
       </div>
     </div>
-    </div>
+    <AppDialog :open="Boolean(abandonId)" title="停止跟踪这条消息？" size="compact" @close="abandonId = ''">
+      <p>消息可能已经送达。停止跟踪不会中止已执行的任务；后续消息将可以继续发送。</p>
+      <template #footer>
+        <AppButton @click="abandonId = ''">保留记录</AppButton>
+        <AppButton variant="danger" @click="confirmAbandon">停止跟踪</AppButton>
+      </template>
+    </AppDialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useUiLanguage } from '../../composables/useUiLanguage'
+import { ref, watch } from 'vue'
+import { deliveryStatusLabel } from '../../delivery'
+import type { StoredQueuedMessage } from '../../threadQueue'
+import AppButton from '../common/AppButton.vue'
+import AppDialog from '../common/AppDialog.vue'
 
-type QueuedMessageRow = {
-  id: string
-  text: string
-  imageUrls?: string[]
-  skills?: Array<{ name: string; path: string }>
-  fileAttachments?: Array<{ label: string; path: string; fsPath: string }>
-}
-
-defineProps<{
-  messages: QueuedMessageRow[]
-}>()
-
+const props = defineProps<{ messages: StoredQueuedMessage[] }>()
 const emit = defineEmits<{
   edit: [messageId: string]
   steer: [messageId: string]
   delete: [messageId: string]
+  reconcile: [messageId: string]
+  resume: [messageId: string]
+  abandon: [messageId: string]
   reorder: [payload: { draggedId: string; targetId: string }]
 }>()
-
-const { t } = useUiLanguage()
 const draggedMessageId = ref('')
 const dropTargetMessageId = ref('')
+const abandonId = ref('')
+watch(() => props.messages, messages => {
+  if (abandonId.value && !messages.some(row => row.id === abandonId.value)) abandonId.value = ''
+})
 
-function onDragStart(event: DragEvent, messageId: string): void {
-  draggedMessageId.value = messageId
+function confirmAbandon(): void {
+  const id = abandonId.value
+  abandonId.value = ''
+  if (id) emit('abandon', id)
+}
+
+function onDragStart(event: DragEvent, message: StoredQueuedMessage): void {
+  if (message.delivery?.status !== 'queued') {
+    event.preventDefault()
+    return
+  }
+  draggedMessageId.value = message.id
   dropTargetMessageId.value = ''
-  event.dataTransfer?.setData('text/plain', messageId)
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-  }
+  event.dataTransfer?.setData('text/plain', message.id)
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
 }
 
-function onDragOver(messageId: string): void {
-  if (!draggedMessageId.value || draggedMessageId.value === messageId) return
-  dropTargetMessageId.value = messageId
+function onDragOver(message: StoredQueuedMessage): void {
+  if (message.delivery?.status !== 'queued' || !draggedMessageId.value || draggedMessageId.value === message.id) return
+  dropTargetMessageId.value = message.id
 }
 
-function onDragLeave(messageId: string): void {
-  if (dropTargetMessageId.value === messageId) {
-    dropTargetMessageId.value = ''
-  }
+function onDragLeave(id: string): void {
+  if (dropTargetMessageId.value === id) dropTargetMessageId.value = ''
 }
 
-function onDrop(targetId: string): void {
+function onDrop(message: StoredQueuedMessage): void {
   const draggedId = draggedMessageId.value
   resetDragState()
-  if (!draggedId || draggedId === targetId) return
-  emit('reorder', { draggedId, targetId })
+  if (message.delivery?.status !== 'queued' || !draggedId || draggedId === message.id) return
+  emit('reorder', { draggedId, targetId: message.id })
 }
 
 function resetDragState(): void {
@@ -105,71 +103,31 @@ function resetDragState(): void {
   dropTargetMessageId.value = ''
 }
 
-function getMessagePreview(message: QueuedMessageRow): string {
-  const text = message.text.trim()
-  if (text) return text
-
-  const parts: string[] = []
-  const imageCount = message.imageUrls?.length ?? 0
-  const fileCount = message.fileAttachments?.length ?? 0
-  const skillCount = message.skills?.length ?? 0
-
-  if (imageCount > 0) parts.push(`${imageCount} ${t(imageCount === 1 ? 'image' : 'images')}`)
-  if (fileCount > 0) parts.push(`${fileCount} ${t(fileCount === 1 ? 'file' : 'files')}`)
-  if (skillCount > 0) parts.push(`${skillCount} ${t(skillCount === 1 ? 'skill' : 'skills')}`)
-
-  return parts.join(', ') || t('(empty queued message)')
+function getMessagePreview(message: StoredQueuedMessage): string {
+  return message.text.trim() || [
+    message.imageUrls.length ? `${message.imageUrls.length} 张图片` : '',
+    message.fileAttachments.length ? `${message.fileAttachments.length} 个文件` : '',
+    message.skills.length ? `${message.skills.length} 个技能` : '',
+  ].filter(Boolean).join(' · ') || '空消息'
 }
 </script>
 
 <style scoped>
-@reference "tailwindcss";
-
-.queued-messages {
-  @apply w-full max-w-[min(var(--chat-column-max,45rem),100%)] mx-auto;
-}
-
-.queued-messages-inner {
-  @apply flex max-h-[30dvh] flex-col gap-px overflow-y-auto rounded-t-2xl border-x border-t border-zinc-300 bg-zinc-50/80 px-3 py-1.5;
-}
-
-.queued-row {
-  @apply flex min-w-0 items-center gap-2 rounded-lg py-1 text-sm transition;
-}
-
-.queued-row.is-dragging {
-  @apply opacity-50;
-}
-
-.queued-row.is-drop-target {
-  @apply bg-zinc-200/70;
-}
-
-.queued-row-drag {
-  @apply inline-flex h-6 w-6 shrink-0 cursor-grab items-center justify-center rounded-md border-0 bg-transparent text-zinc-400 transition hover:bg-zinc-200 hover:text-zinc-700 active:cursor-grabbing;
-}
-
-.queued-row-icon {
-  @apply h-4 w-4 shrink-0 text-zinc-400;
-}
-
-.queued-row-text {
-  @apply min-w-0 flex-1 truncate text-zinc-700;
-}
-
-.queued-row-actions {
-  @apply flex shrink-0 items-center gap-1;
-}
-
-.queued-row-steer {
-  @apply rounded-md border border-zinc-300 bg-white px-2 py-0.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100;
-}
-
-.queued-row-edit {
-  @apply rounded-md border border-zinc-300 bg-white px-2 py-0.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100;
-}
-
-.queued-row-delete {
-  @apply inline-flex h-6 w-6 items-center justify-center rounded-md border-0 bg-transparent text-zinc-400 transition hover:bg-zinc-200 hover:text-zinc-700;
+.queued-messages { width: 100%; max-width: min(var(--chat-column-max, 45rem), 100%); margin: 0 auto; }
+.queued-messages-inner { display: flex; flex-direction: column; max-height: 30dvh; overflow-y: auto; border: 1px solid var(--ui-border); border-bottom: 0; border-radius: 16px 16px 0 0; padding: 6px 12px; background: var(--ui-surface); }
+.queued-row { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 8px 0; color: var(--ui-text); }
+.queued-row + .queued-row { border-top: 1px solid var(--ui-border); }
+.queued-row[draggable="true"] { cursor: grab; }
+.queued-row.is-dragging { opacity: .5; }
+.queued-row.is-drop-target { background: var(--ui-hover); }
+.queued-row-content { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.queued-row-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.queued-row-status { font-size: 11px; opacity: .75; }
+.queued-row-error { font-size: 12px; color: var(--ui-danger); overflow-wrap: anywhere; }
+.queued-row-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; flex-shrink: 0; }
+.queued-row-actions :deep(.app-button) { padding: 3px 7px; font-size: 12px; }
+@media (max-width: 600px) {
+  .queued-row { align-items: stretch; flex-direction: column; gap: 6px; }
+  .queued-row-actions { justify-content: flex-start; }
 }
 </style>

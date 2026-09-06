@@ -1,10 +1,11 @@
+import { createDeliveryId } from '../delivery'
 import { changesThreadSearch } from '../threadSearchEvents'
 import { bindMessageTurnOrder, mergeTurnOrder, orderedTurnIds } from '../historyOrder'
 import { authRecoveryFromNotification, type AuthRecoveryState } from '../authRecovery'
 import { buildQuestionReply, isAsyncUserInputRequest, readAsyncQuestions, readQuestionReply, questionRefKey, type AsyncQuestionReply } from '../userQuestions'
 import { normalizeToolSummary } from '../api/normalizers/toolSummary'
 import { capabilityValue, modelSettingsProblem, type ModelCapability } from '../modelCapabilities'
-import type { ThreadQueueOperation, ThreadQueueResult } from '../threadQueue'
+import type { StoredQueuedMessage, ThreadQueueOperation, ThreadQueueResult } from '../threadQueue'
 import { computed, ref } from 'vue'
 import {
 
@@ -1423,26 +1424,10 @@ export function useDesktopState() {
   const liveFileChangeMessagesByThreadId = ref<Record<string, UiMessage[]>>({})
   const inProgressById = ref<Record<string, boolean>>({})
   type FileAttachment = { label: string; path: string; fsPath: string }
-  type QueuedMessage = {
-    id: string
-    text: string
-    imageUrls: string[]
-    skills: Array<{ name: string; path: string }>
-    fileAttachments: FileAttachment[]
-    collaborationMode: CollaborationModeKind
-  }
-  type PendingTurnRequest = {
-    text: string
-    imageUrls: string[]
-    skills: Array<{ name: string; path: string }>
-    fileAttachments: FileAttachment[]
-    effort: ReasoningEffort | ''
-    collaborationMode: CollaborationModeKind
-    serviceTier?: string | null
-    fallbackRetried: boolean
-  }
+  type QueuedMessage = StoredQueuedMessage
   const queuedMessagesByThreadId = ref<Record<string, QueuedMessage[]>>({})
   const queueErrorByThreadId = ref<Record<string, string>>({})
+  const queueStateError = ref('')
   const queueProcessingByThreadId = ref<Record<string, boolean>>({})
   let hasLoadedPersistedQueueState = false
   const eventUnreadByThreadId = ref<Record<string, boolean>>({})
@@ -1529,7 +1514,6 @@ export function useDesktopState() {
     requests: Map<number, UiServerRequest | null>
     auth: Map<string, AuthRecoveryState | null>
   } | null = null
-  const pendingTurnRequestByThreadId = ref<Record<string, PendingTurnRequest>>({})
   const codexRateLimit = ref<UiRateLimitSnapshot | null>(null)
   const threadTokenUsageByThreadId = ref<Record<string, UiThreadTokenUsage>>(loadThreadTokenUsageMap())
   const terminalOpenByThreadId = ref<Record<string, boolean>>(loadThreadTerminalOpenMap())
@@ -1608,7 +1592,6 @@ export function useDesktopState() {
   let activeReasoningItemId = ''
   let shouldAutoScrollOnNextAgentEvent = false
   const pendingTurnStartsById = new Map<string, TurnStartedInfo>()
-  const fallbackRetryInFlightThreadIds = new Set<string>()
 
 
   const allThreads = computed(() => flattenThreads(projectGroups.value))
@@ -1910,95 +1893,6 @@ export function useDesktopState() {
       setSelectedModelId(MODEL_FALLBACK_ID)
     }
     ensureAvailableModelIds(MODEL_FALLBACK_ID)
-  }
-
-  function setPendingTurnRequest(threadId: string, request: PendingTurnRequest): void {
-    pendingTurnRequestByThreadId.value = {
-      ...pendingTurnRequestByThreadId.value,
-      [threadId]: request,
-    }
-  }
-
-  function clearPendingTurnRequest(threadId: string): void {
-    if (!pendingTurnRequestByThreadId.value[threadId]) return
-    pendingTurnRequestByThreadId.value = omitKey(pendingTurnRequestByThreadId.value, threadId)
-  }
-
-
-
-  async function retryPendingTurnWithFallback(threadId: string): Promise<void> {
-    if (fallbackRetryInFlightThreadIds.has(threadId)) return
-    const pending = pendingTurnRequestByThreadId.value[threadId]
-    if (!pending || pending.fallbackRetried) return
-
-    fallbackRetryInFlightThreadIds.add(threadId)
-    setPendingTurnRequest(threadId, {
-      ...pending,
-      fallbackRetried: true,
-    })
-
-    try {
-      await applyFallbackModelSelection(threadId)
-      // Remove the failed user turn before replaying on fallback model to avoid duplicated user messages.
-      try {
-        const rolledBackMessages = await rollbackThread(threadId, 1)
-        setPersistedMessagesForThread(threadId, rolledBackMessages)
-        clearLivePlansForThread(threadId)
-        setLiveAgentMessagesForThread(threadId, [])
-        clearLiveReasoningForThread(threadId)
-        if (liveCommandsByThreadId.value[threadId]) {
-          liveCommandsByThreadId.value = omitKey(liveCommandsByThreadId.value, threadId)
-        }
-      } catch {
-        // If rollback fails, continue with retry rather than dropping the turn.
-      }
-      setTurnErrorForThread(threadId, null)
-      error.value = ''
-      setTurnSummaryForThread(threadId, null)
-      setTurnActivityForThread(threadId, {
-        label: 'Thinking',
-        details: buildPendingTurnDetails(MODEL_FALLBACK_ID, pending.effort, pending.collaborationMode),
-      })
-      setThreadInProgress(threadId, true)
-
-      if (resumedThreadById.value[threadId] !== true) {
-        const resumedThread = await resumeThread(threadId)
-        if (resumedThread.model) {
-          setThreadModelId(threadId, resolveThreadModelForProvider(threadId, resumedThread.model, resumedThread.modelProvider))
-        }
-        if (resumedThread.modelProvider) {
-          setThreadModelProviderId(threadId, resumedThread.modelProvider)
-        }
-        resumedThreadById.value = {
-          ...resumedThreadById.value,
-          [threadId]: true,
-        }
-      }
-
-      await startThreadTurn(
-        threadId,
-        pending.text,
-        pending.imageUrls,
-        MODEL_FALLBACK_ID,
-        pending.effort || undefined,
-        pending.skills.length > 0 ? pending.skills : undefined,
-        pending.fileAttachments,
-        pending.collaborationMode,
-        pending.serviceTier,
-      )
-
-      scheduleRateLimitRefresh()
-      pendingThreadMessageRefresh.add(threadId)
-      await syncFromNotifications()
-    } catch (unknownError) {
-      const errorMessage = unknownError instanceof Error ? unknownError.message : 'Unknown application error'
-      setTurnErrorForThread(threadId, errorMessage)
-      error.value = errorMessage
-      setThreadInProgress(threadId, false)
-      setTurnActivityForThread(threadId, null)
-    } finally {
-      fallbackRetryInFlightThreadIds.delete(threadId)
-    }
   }
 
   function setSelectedReasoningEffort(effort: ReasoningEffort | ''): void {
@@ -2741,7 +2635,6 @@ export function useDesktopState() {
     if (activeTurnIdByThreadId.value[threadId]) {
       activeTurnIdByThreadId.value = omitKey(activeTurnIdByThreadId.value, threadId)
     }
-    clearPendingTurnRequest(threadId)
   }
 
   function normalizePlanStepStatus(value: unknown): UiPlanStep['status'] {
@@ -3915,15 +3808,7 @@ export function useDesktopState() {
 
     const completedTurn = readTurnCompletedInfo(notification)
     const turnErrorMessage = readTurnErrorMessage(notification)
-    const completedThreadId = completedTurn?.threadId ?? extractThreadIdFromNotification(notification)
-    const completedThreadModelId = completedThreadId ? readModelIdForThread(completedThreadId) : ''
-    const shouldRetryWithFallback =
-      Boolean(completedThreadId) &&
-      Boolean(turnErrorMessage) &&
-      completedThreadModelId !== MODEL_FALLBACK_ID &&
-      isUnsupportedChatGptModelError(new Error(turnErrorMessage))
     if (completedTurn) {
-      const pendingTurnRequest = pendingTurnRequestByThreadId.value[completedTurn.threadId]
       const startedTurnState = pendingTurnStartsById.get(completedTurn.turnId)
       if (startedTurnState) {
         pendingTurnStartsById.delete(completedTurn.turnId)
@@ -3948,10 +3833,7 @@ export function useDesktopState() {
       setThreadInProgress(completedTurn.threadId, false)
       setTurnActivityForThread(completedTurn.threadId, null)
       markThreadUnreadByEvent(completedTurn.threadId)
-      if (!shouldRetryWithFallback) {
-        clearPendingTurnRequest(completedTurn.threadId)
-        scheduleQueueStateRefresh(completedTurn.threadId)
-      }
+      scheduleQueueStateRefresh(completedTurn.threadId)
     }
 
     if (turnErrorMessage) {
@@ -3960,29 +3842,20 @@ export function useDesktopState() {
         setTurnErrorForThread(failedThreadId, turnErrorMessage)
       }
       error.value = turnErrorMessage
-      if (failedThreadId && shouldRetryWithFallback) {
-        void retryPendingTurnWithFallback(failedThreadId)
-      }
+
     } else if (completedTurn) {
       setTurnErrorForThread(completedTurn.threadId, null)
     }
 
     if (notificationErrorState) {
       const errorThreadId = notificationThreadId
-      const errorThreadModelId = errorThreadId ? readModelIdForThread(errorThreadId) : selectedModelId.value.trim()
       if (errorThreadId) {
         setTurnErrorForThread(errorThreadId, notificationErrorState.message, {
           transient: notificationErrorState.transient,
         })
       }
       error.value = notificationErrorState.message
-      if (errorThreadModelId !== MODEL_FALLBACK_ID && isUnsupportedChatGptModelError(new Error(notificationErrorState.message))) {
-        if (errorThreadId) {
-          void retryPendingTurnWithFallback(errorThreadId)
-        } else {
-          void applyFallbackModelSelection()
-        }
-      }
+
     }
 
     const planUpdate = readPlanUpdate(notification)
@@ -4104,10 +3977,7 @@ export function useDesktopState() {
         setThreadInProgress(completedThreadId, false)
         setTurnActivityForThread(completedThreadId, null)
         markThreadUnreadByEvent(completedThreadId)
-        if (!shouldRetryWithFallback) {
-          clearPendingTurnRequest(completedThreadId)
-          scheduleQueueStateRefresh(completedThreadId)
-        }
+        scheduleQueueStateRefresh(completedThreadId)
       }
     }
 
@@ -4319,8 +4189,16 @@ export function useDesktopState() {
   async function refreshQueueState(): Promise<void> {
     const generation = ++queueRequestGeneration
     await queueMutationChain
-    const state = await getThreadQueueState()
-    if (generation === queueRequestGeneration) queuedMessagesByThreadId.value = state
+    try {
+      const state = await getThreadQueueState()
+      if (generation === queueRequestGeneration) {
+        queuedMessagesByThreadId.value = state
+        queueStateError.value = ''
+      }
+    } catch (cause) {
+      queueStateError.value = cause instanceof Error ? cause.message : '无法读取发送队列'
+      throw cause
+    }
   }
 
   async function loadPersistedQueueStateIfNeeded(): Promise<void> {
@@ -4936,7 +4814,7 @@ export function useDesktopState() {
         threadId,
         beforeId: queue[insertIndex]?.id,
         message: {
-          id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          id: createDeliveryId(),
           text: nextText,
           imageUrls,
           skills,
@@ -4950,18 +4828,7 @@ export function useDesktopState() {
 
     if (isInProgress) {
       shouldAutoScrollOnNextAgentEvent = true
-      void startTurnForThread(
-        threadId,
-        nextText,
-        imageUrls,
-        skills,
-        fileAttachments,
-        collaborationModeOverride,
-      ).catch((unknownError) => {
-        const errorMessage = unknownError instanceof Error ? unknownError.message : 'Unknown application error'
-        setTurnErrorForThread(threadId, errorMessage)
-        error.value = errorMessage
-      })
+      await startTurnForThread(threadId, nextText, imageUrls, skills, fileAttachments, collaborationModeOverride, 'steer')
       return
     }
 
@@ -5074,7 +4941,7 @@ export function useDesktopState() {
       const capturedThreadId = threadId
       const capturedCwd = targetCwd || null
       const capturedPrompt = nextText
-      void startTurnForThread(threadId, nextText, imageUrls, skills, fileAttachments, selectedMode)
+      await startTurnForThread(threadId, nextText, imageUrls, skills, fileAttachments, selectedMode)
         .catch((unknownError) => {
           shouldAutoScrollOnNextAgentEvent = false
           setThreadInProgress(threadId, false)
@@ -5082,6 +4949,7 @@ export function useDesktopState() {
           const errorMessage = unknownError instanceof Error ? unknownError.message : 'Unknown application error'
           setTurnErrorForThread(threadId, errorMessage)
           error.value = errorMessage
+          throw unknownError
         })
         .finally(() => {
           isSendingMessage.value = false
@@ -5100,6 +4968,7 @@ export function useDesktopState() {
       }
       error.value = errorMessage
       isSendingMessage.value = false
+      if (threadId && unknownError instanceof Error) Object.assign(unknownError, { createdThreadId: threadId })
       throw unknownError
     }
   }
@@ -5111,6 +4980,7 @@ export function useDesktopState() {
     skills: Array<{ name: string; path: string }> = [],
     fileAttachments: FileAttachment[] = [],
     collaborationModeOverride?: CollaborationModeKind,
+    deliveryMode?: 'immediate' | 'steer',
   ): Promise<void> {
     const executionSettings = checkedModelSettings(readModelIdForThread(threadId), imageUrls.length > 0)
     const reasoningEffort = executionSettings.effort
@@ -5128,20 +4998,6 @@ export function useDesktopState() {
         normalizedImageUrls.push(latestAttachedImageUrl)
       }
     }
-    const normalizedSkills = skills.map((skill) => ({ name: skill.name, path: skill.path }))
-    const normalizedFileAttachments = fileAttachments.map((file) => ({ ...file }))
-
-    setPendingTurnRequest(threadId, {
-      text: normalizedText,
-      imageUrls: [...normalizedImageUrls],
-      skills: normalizedSkills,
-      fileAttachments: normalizedFileAttachments,
-      effort: reasoningEffort,
-      collaborationMode,
-      serviceTier: executionSettings.serviceTier,
-      fallbackRetried: false,
-    })
-
     try {
       if (resumedThreadById.value[threadId] !== true) {
         const resumedThread = await resumeThread(threadId)
@@ -5156,48 +5012,18 @@ export function useDesktopState() {
           [threadId]: true,
         }
       }
-      const modelId = readModelIdForThread(threadId)
-
-      let startedTurnId = ''
-      try {
-        startedTurnId = await startThreadTurn(
-          threadId,
-          nextText,
-          normalizedImageUrls,
-          modelId || undefined,
-          reasoningEffort || undefined,
-          skills.length > 0 ? skills : undefined,
-          fileAttachments,
-          collaborationMode,
-          executionSettings.serviceTier,
-        )
-      } catch (unknownError) {
-        if (modelId && modelId !== MODEL_FALLBACK_ID && isUnsupportedChatGptModelError(unknownError)) {
-          await applyFallbackModelSelection(threadId)
-          setPendingTurnRequest(threadId, {
-            text: normalizedText,
-            imageUrls: [...normalizedImageUrls],
-            skills: normalizedSkills,
-            fileAttachments: normalizedFileAttachments,
-            effort: reasoningEffort,
-            collaborationMode,
-            serviceTier: executionSettings.serviceTier,
-            fallbackRetried: true,
-          })
-          startedTurnId = await startThreadTurn(
-            threadId,
-            nextText,
-            normalizedImageUrls,
-            MODEL_FALLBACK_ID,
-            reasoningEffort || undefined,
-            skills.length > 0 ? skills : undefined,
-            fileAttachments,
-            collaborationMode,
-            executionSettings.serviceTier,
-          )
-        } else {
-          throw unknownError
-        }
+      const startedTurnId = await startThreadTurn(
+        threadId, nextText, normalizedImageUrls, executionSettings.model || undefined,
+        reasoningEffort || undefined, skills.length > 0 ? skills : undefined,
+        fileAttachments, collaborationMode, executionSettings.serviceTier,
+        ...(deliveryMode ? [deliveryMode] as const : []),
+      )
+      if (!startedTurnId) {
+        setThreadInProgress(threadId, false)
+        setTurnActivityForThread(threadId, null)
+        const messages = persistedMessagesByThreadId.value[threadId] ?? []
+        setPersistedMessagesForThread(threadId, messages.filter(message => !isOptimisticUserMessage(message)))
+        await refreshQueueState().catch(() => {})
       }
 
       if (startedTurnId) {
@@ -5209,7 +5035,8 @@ export function useDesktopState() {
       }
 
       pendingThreadMessageRefresh.add(threadId)
-      await syncFromNotifications()
+      // Delivery is already durably acknowledged; a later read failure cannot undo it.
+      await syncFromNotifications().catch(() => {})
       scheduleDelayedTurnSync(threadId)
     } catch (unknownError) {
       throw unknownError
@@ -5730,7 +5557,7 @@ export function useDesktopState() {
     threadTokenUsageByThreadId.value = {}
   }
 
-  const selectedThreadQueueError = computed(() => queueErrorByThreadId.value[selectedThreadId.value] ?? '')
+  const selectedThreadQueueError = computed(() => queueErrorByThreadId.value[selectedThreadId.value] || queueStateError.value)
 
   const selectedThreadQueuedMessages = computed<QueuedMessage[]>(() => {
     const threadId = selectedThreadId.value
@@ -5742,7 +5569,8 @@ export function useDesktopState() {
     const threadId = selectedThreadId.value
     if (!threadId) return null
     try {
-      const result = await commitQueueOperation({ type: 'remove', threadId, messageId })
+      const message = queuedMessagesByThreadId.value[threadId]?.find(row => row.id === messageId)
+      const result = await commitQueueOperation({ type: 'remove', threadId, messageId, revision: message?.delivery?.revision })
       return result.removed ?? null
     } catch {
       void refreshQueueState().catch(() => {})
@@ -5754,28 +5582,44 @@ export function useDesktopState() {
     const threadId = selectedThreadId.value
     if (!threadId || draggedId === targetId) return
     try {
-      await commitQueueOperation({ type: 'move', threadId, messageId: draggedId, targetId })
+      const message = queuedMessagesByThreadId.value[threadId]?.find(row => row.id === draggedId)
+      await commitQueueOperation({ type: 'move', threadId, messageId: draggedId, targetId, revision: message?.delivery?.revision })
     } catch {
       void refreshQueueState().catch(() => {})
     }
   }
 
-  function restoreQueuedMessage(threadId: string, message: QueuedMessage, beforeId?: string): Promise<ThreadQueueResult> {
-    return commitQueueOperation({ type: 'add', threadId, message, beforeId })
-  }
-
-  async function steerQueuedMessage(messageId: string): Promise<void> {
+  async function changeQueuedMessage(messageId: string, type: 'steer' | 'reconcile' | 'resume' | 'abandon'): Promise<void> {
     const threadId = selectedThreadId.value
-    if (!threadId) return
-    const message = await removeQueuedMessage(messageId)
+    const message = queuedMessagesByThreadId.value[threadId]?.find(row => row.id === messageId)
     if (!message) return
     try {
-      await startTurnForThread(threadId, message.text, message.imageUrls, message.skills, message.fileAttachments, message.collaborationMode)
-    } catch (cause) {
-      await commitQueueOperation({ type: 'add', threadId, message }).catch(() => {})
-      error.value = cause instanceof Error ? cause.message : '引导失败，请检查队列后重试'
-      queueErrorByThreadId.value = { ...queueErrorByThreadId.value, [threadId]: error.value }
+      await commitQueueOperation({ type, threadId, messageId, revision: message.delivery?.revision })
+    } catch {
+      void refreshQueueState().catch(() => {})
     }
+  }
+
+  async function beginQueuedMessageEdit(messageId: string): Promise<QueuedMessage | null> {
+    const threadId = selectedThreadId.value
+    const message = queuedMessagesByThreadId.value[threadId]?.find(row => row.id === messageId)
+    if (!message?.delivery) return null
+    if (message.delivery.status === 'editing') return message
+    try {
+      const result = await commitQueueOperation({ type: 'edit', threadId, messageId, revision: message.delivery.revision, editToken: createDeliveryId() })
+      return result.state[threadId]?.find(row => row.id === messageId) ?? null
+    } catch {
+      void refreshQueueState().catch(() => {})
+      return null
+    }
+  }
+
+  async function updateQueuedMessage(threadId: string, messageId: string, revision: number, editToken: string, contents: Pick<QueuedMessage, 'text' | 'imageUrls' | 'skills' | 'fileAttachments'>): Promise<void> {
+    await commitQueueOperation({ type: 'update', threadId, messageId, revision, editToken, message: { ...contents, id: messageId, collaborationMode: 'default' } })
+  }
+
+  function steerQueuedMessage(messageId: string): Promise<void> {
+    return changeQueuedMessage(messageId, 'steer')
   }
 
   function primeSelectedThread(threadId: string, options: { persist?: boolean } = {}): void {
@@ -5838,7 +5682,10 @@ export function useDesktopState() {
     selectedThreadQueuedMessages,
     selectedThreadQueueError,
     removeQueuedMessage,
-    restoreQueuedMessage,
+    beginQueuedMessageEdit,
+    updateQueuedMessage,
+    changeQueuedMessage,
+    refreshQueueState,
     reorderQueuedMessage,
     steerQueuedMessage,
     setSelectedCollaborationMode,

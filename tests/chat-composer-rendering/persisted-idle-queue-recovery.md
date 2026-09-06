@@ -1,7 +1,9 @@
 ### Persisted idle queue recovery
 
 #### Feature/Change Name
-Backend queued messages are retried and drained for idle threads even if the original `turn/completed` notification was missed or the server starts with persisted queue state already present.
+Queued messages in the queued state are drained for idle threads even if the original `turn/completed` notification was missed or the server starts with persisted queue state already present.
+
+0.2.3 的不明结果、编辑和故障恢复以 [可靠发送与结果核对](reliable-message-delivery.md) 为准；unknown 不自动重试。
 
 #### Prerequisites/Setup
 1. Dev server running (`pnpm run dev`)
@@ -24,7 +26,7 @@ Backend queued messages are retried and drained for idle threads even if the ori
 - Idle persisted queues recover without requiring a new manual message
 - Queued messages do not start while the thread has an in-progress turn
 - Multiple queued messages drain one at a time and complete in order
-- The queue panel disappears after the final queued message is started
+- The queue panel disappears after the final message receives a confirmed turn ID; sending/unknown entries remain visible
 - The recovered turns and empty queue state are visible in both light theme and dark theme
 
 #### Rollback/Cleanup

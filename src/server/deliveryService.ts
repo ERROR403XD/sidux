@@ -30,10 +30,11 @@ export class DeliveryService {
     return await this.store.readReceipt(id) ?? (await this.store.records()).find(row => row.message.id === id) ?? null
   }
 
-  async submit(input: Omit<Submission, 'contextId'>, beforeId?: string): Promise<Result> {
+  async submit(input: Omit<Submission, 'contextId'> & { expectedContextId?: string }, beforeId?: string): Promise<Result> {
     if (this.disposed || this.dependencies.accountBusy()) throw new Error('账号操作期间暂不能提交消息')
-    const contextId = await this.dependencies.context()
-    const row = await this.store.add({ ...input, contextId }, beforeId)
+    const { expectedContextId, ...submission } = input
+    const contextId = expectedContextId || await this.dependencies.context()
+    const row = await this.store.add({ ...submission, contextId }, beforeId)
     this.changed(input.threadId)
     if (!('message' in row)) return row
     if (row.status === 'unknown') return this.reconcile(row.message.id)

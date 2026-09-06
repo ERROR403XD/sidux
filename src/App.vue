@@ -1057,11 +1057,20 @@
                   </div>
                   <p v-if="selectedThreadQueueError" class="composer-runtime-error" role="alert">{{ selectedThreadQueueError }}</p>
                   <p v-if="threadHistoryActionError" class="composer-runtime-error" role="alert">{{ threadHistoryActionError }}</p>
+                  <DeliveryOutbox :thread-id="selectedThreadId" :queue="selectedThreadQueuedMessages" @settled="onDeliveryAcknowledged" />
+                  <p v-if="queueDraftError" class="composer-runtime-error" role="alert">{{ queueDraftError }}</p>
+                  <div v-if="editingQueuedMessageState" class="queue-edit-notice" role="status">
+                    <span>正在编辑队列消息</span>
+                    <AppButton @click="resumeQueuedMessage(editingQueuedMessageState.messageId)">取消编辑</AppButton>
+                  </div>
                   <QueuedMessages
                     :messages="selectedThreadQueuedMessages"
                     @edit="onEditQueuedMessage"
                     @steer="steerQueuedMessage"
-                    @delete="removeQueuedMessage"
+                    @delete="deleteQueuedMessage"
+                    @resume="resumeQueuedMessage"
+                    @reconcile="changeQueuedMessage($event, 'reconcile')"
+                    @abandon="changeQueuedMessage($event, 'abandon')"
                     @reorder="onReorderQueuedMessage"
                   />
                   <ThreadTerminalPanel
@@ -1087,6 +1096,7 @@
                     ref="threadComposerRef"
                     :disabled="isSwitchingAccounts"
                     :active-thread-id="composerThreadContextId"
+                    :draft-key="editingQueuedMessageState?.draftKey"
                     :cwd="composerCwd"
                     :collaboration-modes="availableCollaborationModes"
                     :selected-collaboration-mode="selectedCollaborationMode"
@@ -1239,9 +1249,22 @@
       </div>
     </form>
   </div>
+  <AppDialog :open="Boolean(replaceQueueDraftId)" title="替换当前草稿？" size="compact" @close="replaceQueueDraftId = ''">
+    <p>用这条队列消息替换输入框中的草稿。</p>
+    <template #footer>
+      <AppButton @click="replaceQueueDraftId = ''">保留草稿</AppButton>
+      <AppButton @click="hydrateQueuedMessage(replaceQueueDraftId)">替换并编辑</AppButton>
+    </template>
+  </AppDialog>
 </template>
 
 <script setup lang="ts">
+import AppDialog from './components/common/AppDialog.vue'
+import AppButton from './components/common/AppButton.vue'
+import DeliveryOutbox from './components/content/DeliveryOutbox.vue'
+import type { PendingWebDelivery } from './api/deliveryOutbox'
+import { createDeliveryId } from './delivery'
+
 import { isAsyncUserInputRequest, pendingRequestPriority } from './userQuestions'
 import { isOverlayEventInside } from './composables/overlayEvents'
 import { formatLocalDateTime, browserTimeZone } from './dateTime'
@@ -1547,7 +1570,10 @@ const {
   selectedThreadQueuedMessages,
   selectedThreadQueueError,
   removeQueuedMessage,
-  restoreQueuedMessage,
+  beginQueuedMessageEdit,
+  updateQueuedMessage,
+  changeQueuedMessage,
+  refreshQueueState,
   reorderQueuedMessage,
   steerQueuedMessage,
   setSelectedCollaborationMode,
@@ -1614,7 +1640,38 @@ const isThreadTerminalAvailable = ref(true)
 const terminalProjectQuickCommands = ref<ThreadTerminalQuickCommand[]>([])
 const terminalStoredQuickCommands = ref<TerminalHeaderQuickCommand[]>(loadTerminalStoredQuickCommands())
 const terminalHeaderDropdownValue = ref('')
-const editingQueuedMessageState = ref<{ threadId: string; queueIndex: number } | null>(null)
+type QueueDraftEdit = { threadId: string; messageId: string; revision: number; editToken: string; draftKey: string }
+const queueDraftEditKey = 'codexapp.queue-draft-edits.v2'
+const queueDraftEdits = ref<Record<string, QueueDraftEdit>>(loadQueueDraftEdits())
+const editingQueuedMessageState = computed(() => queueDraftEdits.value[selectedThreadId.value] ?? null)
+const replaceQueueDraftId = ref('')
+const queueDraftError = ref('')
+
+function loadQueueDraftEdits(): Record<string, QueueDraftEdit> {
+  try {
+    const rows = JSON.parse(window.sessionStorage.getItem(queueDraftEditKey) || '{}')
+    if (!rows || typeof rows !== 'object' || Array.isArray(rows)) return {}
+    const restored: Record<string, QueueDraftEdit> = {}
+    for (const [id, value] of Object.entries(rows)) {
+      const row = value as QueueDraftEdit
+      if (row?.threadId === id && row.messageId && row.editToken && row.draftKey && Number.isInteger(row.revision)) restored[id] = row
+    }
+    return restored
+  } catch { return {} }
+}
+
+function saveQueueDraftEdit(threadId: string, edit: QueueDraftEdit | null): void {
+  const next = { ...queueDraftEdits.value }
+  if (edit) next[threadId] = edit
+  else delete next[threadId]
+  window.sessionStorage.setItem(queueDraftEditKey, JSON.stringify(next))
+  queueDraftEdits.value = next
+}
+
+watch(selectedThreadId, () => {
+  queueDraftError.value = ''
+  replaceQueueDraftId.value = ''
+})
 const isRouteSyncInProgress = ref(false)
 const directoryTryInFlightKey = ref('')
 let hasPendingRouteSync = false
@@ -3678,58 +3735,81 @@ async function runAppCommand(name: AppCommandName, value?: string): Promise<void
   }
 }
 
+async function onDeliveryAcknowledged(submission: PendingWebDelivery): Promise<void> {
+  if (submission.body.threadId === selectedThreadId.value && !editingQueuedMessageState.value) {
+    threadComposerRef.value?.acknowledgeDraft(submission.body.message)
+  }
+  await refreshQueueState().catch(() => {})
+}
+
 function onSubmitThreadMessage(payload: { text: string; imageUrls: string[]; fileAttachments: Array<{ label: string; path: string; fsPath: string }>; skills: Array<{ name: string; path: string }>; mode: 'steer' | 'queue'; complete?: (saved: boolean) => void }): void {
-  const text = payload.text
   scheduleMobileConversationJumpToLatest()
-  const editingState = editingQueuedMessageState.value
-  const queueInsertIndex =
-    payload.mode === 'queue'
-    && editingState
-    && editingState.threadId === selectedThreadId.value
-      ? editingState.queueIndex
-      : undefined
+  const editing = editingQueuedMessageState.value
   if (isHomeRoute.value) {
-    void submitFirstMessageForNewThread(text, payload.imageUrls, payload.skills, payload.fileAttachments)
+    void submitFirstMessageForNewThread(payload.text, payload.imageUrls, payload.skills, payload.fileAttachments)
+      .then(saved => payload.complete?.(saved))
     return
   }
-  void sendMessageToSelectedThread(text, payload.imageUrls, payload.skills, payload.mode, payload.fileAttachments, queueInsertIndex)
-    .then(() => {
-      editingQueuedMessageState.value = null
-      payload.complete?.(true)
-    })
-    .catch(() => payload.complete?.(false))
+  queueDraftError.value = ''
+  const saving = editing
+    ? updateQueuedMessage(editing.threadId, editing.messageId, editing.revision, editing.editToken, payload)
+    : sendMessageToSelectedThread(payload.text, payload.imageUrls, payload.skills, payload.mode, payload.fileAttachments)
+  void saving.then(() => {
+    if (editing) saveQueueDraftEdit(editing.threadId, null)
+    payload.complete?.(true)
+  }).catch(cause => {
+    queueDraftError.value = cause instanceof Error ? cause.message : '保存失败，请重试'
+    payload.complete?.(false)
+  })
 }
 
 async function onEditQueuedMessage(messageId: string): Promise<void> {
-  const queueIndex = selectedThreadQueuedMessages.value.findIndex((item) => item.id === messageId)
-  const message = queueIndex >= 0 ? selectedThreadQueuedMessages.value[queueIndex] : undefined
-  const composer = threadComposerRef.value
-  if (!message || !composer) return
-
-  if (composer.hasUnsavedDraft()) {
-    const shouldReplace = window.confirm('Replace the current draft with this queued message for editing?')
-    if (!shouldReplace) return
-  }
-
-  const originalThreadId = selectedThreadId.value
-  const beforeId = selectedThreadQueuedMessages.value[queueIndex + 1]?.id
-  const removed = await removeQueuedMessage(messageId)
-  if (!removed) return
-  if (selectedThreadId.value !== originalThreadId) {
-    if (originalThreadId) await restoreQueuedMessage(originalThreadId, removed, beforeId).catch(() => {})
+  if (editingQueuedMessageState.value?.messageId === messageId) return
+  if (threadComposerRef.value?.hasUnsavedDraft()) {
+    replaceQueueDraftId.value = messageId
     return
   }
+  await hydrateQueuedMessage(messageId)
+}
 
-  editingQueuedMessageState.value = selectedThreadId.value
-    ? { threadId: selectedThreadId.value, queueIndex }
-    : null
-  const payload: ComposerDraftPayload = {
-    text: message.text,
-    imageUrls: [...message.imageUrls],
-    fileAttachments: message.fileAttachments.map((attachment) => ({ ...attachment })),
-    skills: message.skills.map((skill) => ({ ...skill })),
+async function hydrateQueuedMessage(messageId: string): Promise<void> {
+  replaceQueueDraftId.value = ''
+  const threadId = selectedThreadId.value
+  const message = await beginQueuedMessageEdit(messageId)
+  if (!message?.delivery?.editToken) return
+  const edit = { threadId, messageId, revision: message.delivery.revision, editToken: message.delivery.editToken, draftKey: `${threadId}:queue-edit:${createDeliveryId()}` }
+  try {
+    if (selectedThreadId.value === threadId) threadComposerRef.value?.hydrateDraft({ text: '', imageUrls: [], fileAttachments: [], skills: [] })
+    await nextTick()
+    saveQueueDraftEdit(threadId, edit)
+    await nextTick()
+    if (selectedThreadId.value !== threadId) return
+    const payload: ComposerDraftPayload = {
+      text: message.text, imageUrls: [...message.imageUrls],
+      fileAttachments: message.fileAttachments.map(row => ({ ...row })),
+      skills: message.skills.map(row => ({ ...row })),
+    }
+    threadComposerRef.value?.hydrateDraft(payload)
+  } catch {
+    queueDraftError.value = '未能保存编辑关联；原消息仍保留在队列中，可点击“继续编辑”恢复'
   }
-  composer.hydrateDraft(payload)
+}
+
+async function resumeQueuedMessage(messageId: string): Promise<void> {
+  const threadId = selectedThreadId.value
+  await changeQueuedMessage(messageId, 'resume')
+  const row = selectedThreadQueuedMessages.value.find(message => message.id === messageId)
+  if (row?.delivery?.status === 'editing') return
+  if (queueDraftEdits.value[threadId]?.messageId === messageId) {
+    saveQueueDraftEdit(threadId, null)
+    if (selectedThreadId.value === threadId) threadComposerRef.value?.hydrateDraft({ text: '', imageUrls: [], skills: [], fileAttachments: [] })
+  }
+}
+
+async function deleteQueuedMessage(messageId: string): Promise<void> {
+  const threadId = selectedThreadId.value
+  const removed = await removeQueuedMessage(messageId)
+  if (removed && queueDraftEdits.value[threadId]?.messageId === messageId) saveQueueDraftEdit(threadId, null)
 }
 
 
@@ -5136,7 +5216,7 @@ async function submitFirstMessageForNewThread(
   imageUrls: string[] = [],
   skills: Array<{ name: string; path: string }> = [],
   fileAttachments: Array<{ label: string; path: string; fsPath: string }> = [],
-): Promise<void> {
+): Promise<boolean> {
   try {
     worktreeInitStatus.value = { phase: 'idle', title: '', message: '' }
     let targetCwd = newThreadCwd.value
@@ -5157,7 +5237,7 @@ async function submitFirstMessageForNewThread(
           title: t('Worktree setup failed'),
           message: t('Unable to create worktree. Try again or switch to Local project.'),
         }
-        return
+        return false
       }
     } else if (!targetCwd.trim()) {
       const directory = await createProjectlessThreadDirectory(text)
@@ -5165,11 +5245,18 @@ async function submitFirstMessageForNewThread(
       newThreadCwd.value = directory.cwd
     }
     const threadId = await sendMessageToNewThread(text, targetCwd, imageUrls, skills, fileAttachments)
-    if (!threadId) return
+    if (!threadId) return false
     await router.replace({ name: 'thread', params: { threadId } })
     scheduleMobileConversationJumpToLatest()
-  } catch {
-    // Error is already reflected in state.
+    return true
+  } catch (cause) {
+    const createdThreadId = (cause as { createdThreadId?: string })?.createdThreadId
+    if (createdThreadId && isHomeRoute.value) {
+      await router.replace({ name: 'thread', params: { threadId: createdThreadId } })
+      await nextTick()
+      if (selectedThreadId.value === createdThreadId) threadComposerRef.value?.hydrateDraft({ text, imageUrls, skills, fileAttachments })
+    }
+    return false
   }
 }
 

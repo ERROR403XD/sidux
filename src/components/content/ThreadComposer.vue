@@ -418,6 +418,7 @@ type SkillItem = { name: string; displayName?: string; description: string; path
 
 const props = defineProps<{
   activeThreadId: string
+  draftKey?: string
   cwd?: string
   collaborationModes?: CollaborationModeOption[]
   selectedCollaborationMode: CollaborationModeKind
@@ -463,6 +464,7 @@ export type SubmitPayload = {
 
 export type ThreadComposerExposed = {
   hydrateDraft: (payload: ComposerDraftPayload) => void
+  acknowledgeDraft: (payload: ComposerDraftPayload) => void
   appendTextToDraft: (text: string) => void
   hasUnsavedDraft: () => boolean
 }
@@ -1018,13 +1020,12 @@ function onSubmit(mode: 'steer' | 'queue' = 'queue'): void {
   commandPicker.dismiss()
   commandContext = null
   if (!canSubmit.value || modelSettingsWarning.value) return
-  const threadId = props.activeThreadId
+  const threadId = draftContextId.value
   const snapshot = JSON.stringify(getCurrentDraftPayload())
-  const deferred = props.isTurnInProgress && mode === 'queue'
-  queueSubmissionPending.value = Boolean(deferred)
+  queueSubmissionPending.value = true
   const complete = (saved: boolean) => {
     queueSubmissionPending.value = false
-    if (!saved || props.activeThreadId !== threadId || JSON.stringify(getCurrentDraftPayload()) !== snapshot) return
+    if (!saved || draftContextId.value !== threadId || JSON.stringify(getCurrentDraftPayload()) !== snapshot) return
     clearPersistedDraftForThread(threadId)
     clearDraftState()
     isComposerExpanded.value = false
@@ -1040,9 +1041,8 @@ function onSubmit(mode: 'steer' | 'queue' = 'queue'): void {
     fileAttachments: [...fileAttachments.value],
     skills: selectedSkills.value.map((skill) => ({ name: skill.name, path: skill.path })),
     mode,
-    ...(deferred ? { complete } : {}),
+    complete,
   })
-  if (!deferred) complete(true)
 }
 
 
@@ -1077,6 +1077,18 @@ function clearDraftState(): void {
     skills: [],
   })
   isComposerExpanded.value = false
+}
+
+function acknowledgeDraft(payload: ComposerDraftPayload): void {
+  const current = getCurrentDraftPayload()
+  const comparable = (draft: ComposerDraftPayload) => JSON.stringify({
+    text: draft.text.trim(), imageUrls: draft.imageUrls,
+    skills: draft.skills.map(skill => [skill.name, skill.path]),
+    files: draft.fileAttachments.map(file => [file.label, file.path, file.fsPath]),
+  })
+  if (comparable(current) !== comparable(payload)) return
+  clearPersistedDraftForThread(draftContextId.value)
+  clearDraftState()
 }
 
 function getDraftStorageKey(threadId: string): string {
@@ -1884,6 +1896,7 @@ onMounted(() => {
 
 defineExpose<ThreadComposerExposed>({
   hydrateDraft,
+  acknowledgeDraft,
   appendTextToDraft,
   hasUnsavedDraft: () => hasUnsavedDraft.value,
 })
@@ -1901,8 +1914,9 @@ onBeforeUnmount(() => {
   }
 })
 
+const draftContextId = computed(() => props.draftKey || props.activeThreadId)
 watch(
-  () => props.activeThreadId,
+  () => draftContextId.value,
   (nextThreadId) => {
     cancelDictation()
     if (lastActiveThreadId) {

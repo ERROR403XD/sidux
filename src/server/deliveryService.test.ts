@@ -32,6 +32,15 @@ afterEach(async () => {
 })
 
 describe('delivery before replay', () => {
+  it('keeps the browser account snapshot when an offline submission arrives after a switch', async () => {
+    const { service, dependencies, store } = await fixture()
+    dependencies.context.mockResolvedValue('new-account/provider')
+    const result = await service.submit({ ...input(), expectedContextId: 'original-account/provider' })
+    expect(result).toMatchObject({ status: 'failed', contextId: 'original-account/provider' })
+    expect(dependencies.start).not.toHaveBeenCalled()
+    expect((await store.records())[0].error).toContain('账号或供应方已变化')
+  })
+
   it('steers a stored message with its captured model and never restores it after a lost response', async () => {
     const { service, dependencies, store } = await fixture()
     const queued = await service.submit({ ...input(), mode: 'queue' }) as DeliveryRecord

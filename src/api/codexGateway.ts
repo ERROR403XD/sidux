@@ -1,3 +1,5 @@
+import { prepareWebDelivery, submitRememberedDelivery } from './deliveryOutbox'
+import { createDeliveryId } from '../delivery'
 import { loadModelCatalog, type ModelCatalogOptions } from './modelCatalog'
 export { invalidateModelCatalog } from './modelCatalog'
 import { capabilityValue } from '../modelCapabilities.js'
@@ -1950,6 +1952,7 @@ export async function startThreadTurn(
   fileAttachments: FileAttachmentParam[] = [],
   collaborationMode?: CollaborationModeKind,
   serviceTier?: string | null,
+  deliveryMode: 'immediate' | 'steer' = 'immediate',
 ): Promise<string> {
   try {
     const normalizedModel = model?.trim() ?? ''
@@ -2014,8 +2017,19 @@ export async function startThreadTurn(
         },
       }
     }
-    const payload = await callRpc<{ turn?: Turn }>('turn/start', params)
-    return typeof payload?.turn?.id === 'string' ? payload.turn.id.trim() : ''
+    const pending = await prepareWebDelivery('delivery', {
+      protocol: 2, threadId, params, mode: deliveryMode,
+      message: {
+        id: createDeliveryId(), text, imageUrls, skills: skills ?? [], fileAttachments,
+        collaborationMode: collaborationMode ?? 'default',
+        ...(normalizedModel ? { model: normalizedModel } : {}),
+        ...(effort !== undefined ? { effort } : {}),
+        ...(serviceTier !== undefined ? { serviceTier } : {}),
+      },
+    })
+    const payload = await submitRememberedDelivery(pending)
+    if (payload.data.status === 'cancelled') throw new Error('此提交已停止跟踪，请核对会话后再发送新消息')
+    return typeof payload.data.turnId === 'string' ? payload.data.turnId : ''
   } catch (error) {
     throw normalizeCodexApiError(error, `Failed to start turn for thread ${threadId}`, 'turn/start')
   }
@@ -2632,7 +2646,7 @@ export async function getThreadQueueState(): Promise<ThreadQueueState> {
   const response = await fetch('/codex-api/thread-queue-state')
   const payload = (await response.json()) as unknown
   if (!response.ok) {
-    throw new Error('Failed to load thread queue state')
+    throw new Error((payload as { error?: string })?.error || '无法读取发送队列，请稍后重试')
   }
   const envelope =
     payload && typeof payload === 'object' && !Array.isArray(payload)
@@ -2642,13 +2656,18 @@ export async function getThreadQueueState(): Promise<ThreadQueueState> {
 }
 
 export async function mutateThreadQueueState(operation: ThreadQueueOperation): Promise<ThreadQueueResult> {
-  const response = await fetch('/codex-api/thread-queue-state', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(operation),
-  })
-  const payload = await response.json()
-  if (!response.ok) throw new Error(payload.error || '队列保存失败，请重试')
+  let payload
+  if (operation.type === 'add') {
+    const pending = await prepareWebDelivery('thread-queue-state', { ...operation, protocol: 2 })
+    payload = await submitRememberedDelivery(pending)
+  } else {
+    const response = await fetch('/codex-api/thread-queue-state', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...operation, protocol: 2 }),
+    })
+    payload = await response.json()
+    if (!response.ok) throw new Error(payload.error || '队列保存失败，请重试')
+  }
   return { state: normalizeThreadQueueState(payload.data?.state), removed: payload.data?.removed }
 }
 

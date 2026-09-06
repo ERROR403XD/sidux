@@ -44,3 +44,4 @@ Return to the [manual test index](../../tests.md).
 | [Bold URL trailing punctuation parsing](bold-url-trailing-punctuation-parsing.md) |
 | [展开输入框的思考强度菜单定位](expanded-thinking-menu-position.md) |
 | [0.2.1 异步提问与等待状态](async-questions-and-wait-states.md) |
+| [0.2.3 可靠发送与结果核对](reliable-message-delivery.md) |

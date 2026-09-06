@@ -16,8 +16,9 @@ export type StoredQueuedMessage = {
 export type ThreadQueueState = Record<string, StoredQueuedMessage[]>
 export type ThreadQueueOperation =
   | { type: 'add'; threadId: string; message: StoredQueuedMessage; beforeId?: string }
-  | { type: 'remove'; threadId: string; messageId: string }
-  | { type: 'move'; threadId: string; messageId: string; targetId: string }
+  | { type: 'remove' | 'abandon' | 'resume' | 'steer' | 'reconcile'; threadId: string; messageId: string; revision?: number }
+  | { type: 'edit' | 'update'; threadId: string; messageId: string; revision: number; editToken: string; message?: StoredQueuedMessage }
+  | { type: 'move'; threadId: string; messageId: string; targetId: string; revision?: number }
 
 export type ThreadQueueResult = { state: ThreadQueueState; removed?: StoredQueuedMessage }
 

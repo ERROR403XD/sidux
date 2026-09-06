@@ -6615,6 +6615,7 @@ export class BackendQueueProcessor {
   private readonly queueDrainTimersByThreadId = new Map<string, ReturnType<typeof setTimeout>>()
   private readonly queueDrainDueAtByThreadId = new Map<string, number>()
   private readonly recoveryChecks = new Map<string, number>()
+  private readonly threadsNeedingResume = new Set<string>()
   private readonly unsubscribe: () => void
   private pruneTimer: ReturnType<typeof setInterval> | null = null
   private disposed = false
@@ -6640,7 +6641,9 @@ export class BackendQueueProcessor {
       context: options.context ?? (() => this.deliveryContext()),
       canStart: threadId => this.canStartQueuedTurn(threadId),
       prepare: async row => {
-        await appServer.rpc('thread/resume', { threadId: row.threadId, excludeTurns: true })
+        if (row.mode === 'steer') await this.readThreadStatus(row.threadId)
+        const needsResume = this.threadsNeedingResume.delete(row.threadId)
+        if (needsResume) await appServer.rpc('thread/resume', { threadId: row.threadId, excludeTurns: true })
         return row.params ?? this.buildQueuedTurnParams(row)
       },
       start: async params => {
@@ -6666,7 +6669,7 @@ export class BackendQueueProcessor {
     }
   }
 
-  private async deliveryContext(): Promise<string> {
+  async deliveryContext(): Promise<string> {
     const [account, auth, response] = await Promise.all([
       getAccountAuthCoordinator().store.readState(),
       readCodexAuth(),
@@ -6690,7 +6693,12 @@ export class BackendQueueProcessor {
 
   async readState(): Promise<ThreadQueueState> {
     const state: ThreadQueueState = {}
-    for (const row of await this.store.records()) {
+    const records = await this.store.records()
+    const pendingIds = new Set(records.map(row => row.message.id))
+    for (const id of this.recoveryChecks.keys()) {
+      if (!pendingIds.has(id)) this.recoveryChecks.delete(id)
+    }
+    for (const row of records) {
       (state[row.threadId] ??= []).push({ ...row.message, delivery: deliveryView(row) })
     }
     return state
@@ -6702,9 +6710,10 @@ export class BackendQueueProcessor {
     const threadId = readNonEmptyString(body.threadId)
     const message = normalizeStoredQueuedMessage(body.message)
     const params = asRecord(body.params)
-    if (!threadId || !message || !params || params.threadId !== threadId || !Array.isArray(params.input)) throw new Error('无效的发送内容')
+    const expectedContextId = readNonEmptyString(body.expectedContextId)
+    if (!threadId || !message || !params || !expectedContextId || params.threadId !== threadId || !Array.isArray(params.input)) throw new Error('无效的发送内容或缺少账号快照，请刷新页面')
     const result = await this.deliveries.submit({
-      threadId, message, params,
+      threadId, message, params, expectedContextId,
       mode: body.mode === 'steer' ? 'steer' : 'immediate',
     })
     this.scheduleThreadQueueDrain(threadId, 1000)
@@ -6722,8 +6731,9 @@ export class BackendQueueProcessor {
     let removed: StoredQueuedMessage | undefined
     if (body.type === 'add') {
       const message = normalizeStoredQueuedMessage(body.message)
-      if (!message) throw new Error('无效的排队消息')
-      await this.deliveries.submit({ threadId, message, mode: 'queue' }, readNonEmptyString(body.beforeId) || undefined)
+      const expectedContextId = readNonEmptyString(body.expectedContextId)
+      if (!message || !expectedContextId) throw new Error('无效的排队消息或缺少账号快照，请刷新页面')
+      await this.deliveries.submit({ threadId, message, mode: 'queue', expectedContextId }, readNonEmptyString(body.beforeId) || undefined)
     } else {
       const id = readNonEmptyString(body.messageId)
       const row = await this.deliveries.result(id)
@@ -6768,6 +6778,7 @@ export class BackendQueueProcessor {
     this.queueDrainTimersByThreadId.clear()
     this.queueDrainDueAtByThreadId.clear()
     this.recoveryChecks.clear()
+    this.threadsNeedingResume.clear()
     this.history.clear()
     await this.deliveries.dispose()
   }
@@ -6814,9 +6825,10 @@ export class BackendQueueProcessor {
         this.scheduleThreadQueueDrain(threadId, [1000, 5000, 15000][count])
         return
       }
-      const head = rows[0]
+      const steer = rows.find(row => row.status === 'queued' && row.mode === 'steer')
+      const head = steer ?? rows[0]
       if (!head || head.status !== 'queued') return
-      await this.deliveries.process(threadId)
+      await this.deliveries.process(threadId, steer?.message.id)
       if ((await this.store.records(threadId)).length) this.scheduleThreadQueueDrain(threadId)
     } catch (error) {
       // A persisted failure remains visible through readState; it never authorizes replay.
@@ -6828,6 +6840,12 @@ export class BackendQueueProcessor {
 
   private async canStartQueuedTurn(threadId: string): Promise<boolean> {
     if (this.appServer.listPendingServerRequests().some(row => extractThreadIdFromNotificationParams(row.params) === threadId)) return false
+    const statusType = await this.readThreadStatus(threadId)
+    return !['inProgress', 'running', 'active'].includes(statusType)
+  }
+
+  private async readThreadStatus(threadId: string): Promise<string> {
+    this.threadsNeedingResume.delete(threadId)
     let response: Record<string, unknown> | null
     try {
       response = asRecord(await this.appServer.rpc('thread/read', { threadId, includeTurns: false }))
@@ -6838,7 +6856,8 @@ export class BackendQueueProcessor {
     const thread = asRecord(response?.thread)
     if (!thread) throw new Error('无法读取会话状态')
     const statusType = readNonEmptyString(asRecord(thread.status)?.type) || readNonEmptyString(thread.status)
-    return !['inProgress', 'running', 'active'].includes(statusType)
+    if (statusType === 'notLoaded') this.threadsNeedingResume.add(threadId)
+    return statusType
   }
 
   private async resolveCollaborationModeSettings(mode: CollaborationModeKind): Promise<ResolvedCollaborationModeSettings> {
@@ -8681,6 +8700,11 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           remoteProjects: existingState.remoteProjects,
         }))
         setJson(res, 200, { ok: true })
+        return
+      }
+
+      if (req.method === 'GET' && url.pathname === '/codex-api/delivery-context') {
+        setJson(res, 200, { data: { contextId: await backendQueueProcessor.deliveryContext() } })
         return
       }
 

@@ -15,14 +15,18 @@ import {
 
 function mockRpcFetch(): { requests: Array<{ method: string, params: Record<string, unknown> }> } {
   const requests: Array<{ method: string, params: Record<string, unknown> }> = []
+  const saved = new Map<string, string>()
+  vi.stubGlobal('localStorage', { get length() { return saved.size }, key: (index: number) => [...saved.keys()][index] ?? null, getItem: (key: string) => saved.get(key) ?? null, setItem: (key: string, value: string) => saved.set(key, value), removeItem: (key: string) => saved.delete(key) })
 
   vi.stubGlobal('fetch', vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(_input).endsWith('/delivery-context')) return new Response(JSON.stringify({ data: { contextId: 'fixture-account' } }))
     const body = typeof init?.body === 'string'
-      ? JSON.parse(init.body) as { method: string, params: Record<string, unknown> }
+      ? JSON.parse(init.body) as { method: string, params: Record<string, unknown>, message?: { id: string } }
       : { method: '', params: {} }
 
-    requests.push(body)
+    requests.push({ ...body, method: String(_input).endsWith('/delivery') ? 'delivery/submit' : body.method })
 
+    if (String(_input).endsWith('/delivery')) return new Response(JSON.stringify({ data: { id: body.message?.id, status: 'accepted', turnId: `turn-${requests.length}` } }))
     return new Response(JSON.stringify({
       result: {
         turn: {
@@ -52,7 +56,7 @@ describe('startThreadTurn collaboration mode payloads', () => {
     await startThreadTurn('thread-1', 'implement it', [], 'gpt-5.4', 'medium', undefined, [], 'default')
 
     expect(requests).toHaveLength(2)
-    expect(requests[0].method).toBe('turn/start')
+    expect(requests[0].method).toBe('delivery/submit')
     expect(requests[0].params.collaborationMode).toEqual({
       mode: 'plan',
       settings: {
@@ -61,7 +65,7 @@ describe('startThreadTurn collaboration mode payloads', () => {
         developer_instructions: null,
       },
     })
-    expect(requests[1].method).toBe('turn/start')
+    expect(requests[1].method).toBe('delivery/submit')
     expect(requests[1].params.collaborationMode).toEqual({
       mode: 'default',
       settings: {
@@ -327,7 +331,7 @@ describe('resumeThread', () => {
       const body = typeof init?.body === 'string'
         ? JSON.parse(init.body) as { method: string; params: Record<string, unknown> }
         : { method: '', params: {} }
-      requests.push(body)
+      requests.push({ ...body, method: String(_input).endsWith('/delivery') ? 'delivery/submit' : body.method })
       return new Response(JSON.stringify({ error: 'no rollout found for thread id missing-thread' }), {
         status: 502,
         headers: { 'Content-Type': 'application/json' },
@@ -352,7 +356,7 @@ describe('resumeThread', () => {
       const body = typeof init?.body === 'string'
         ? JSON.parse(init.body) as { method: string; params: Record<string, unknown> }
         : { method: '', params: {} }
-      requests.push(body)
+      requests.push({ ...body, method: String(_input).endsWith('/delivery') ? 'delivery/submit' : body.method })
       return new Promise<Response>(() => undefined)
     }))
 
