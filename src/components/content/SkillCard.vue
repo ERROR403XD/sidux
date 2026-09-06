@@ -20,9 +20,10 @@
           <span class="skill-card-name">{{ skill.displayName || skill.name }}</span>
           <template v-if="showStatusBadge">
             <span v-if="skill.installed && skill.enabled === false" class="skill-card-badge-disabled">{{ t('Disabled') }}</span>
-            <span v-else-if="skill.installed" class="skill-card-badge">{{ t('Installed') }}</span>
+            <span v-else-if="skill.installed" class="skill-card-badge">{{ skill.enabled === true ? '已启用' : '状态未知' }}</span>
           </template>
         </div>
+        <span v-if="skill.scope" class="skill-card-owner" :title="skill.path">{{ skill.pluginId ? '插件' : skill.scope === 'repo' ? '项目' : skill.scope === 'user' ? '用户' : skill.scope }} · {{ skill.path }}</span>
         <span v-if="showOwner" class="skill-card-owner">{{ skill.owner }}</span>
       </div>
       <button
@@ -61,6 +62,8 @@ const props = withDefaults(defineProps<{
     source?: string
     path?: string
     enabled?: boolean
+    scope?: string
+    pluginId?: string
     installCountLabel?: string
   }
   showStatusBadge?: boolean

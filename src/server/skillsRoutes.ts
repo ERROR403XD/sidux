@@ -1,3 +1,4 @@
+import { normalizeDirectorySkills } from '../directory.js'
 import { spawn } from 'node:child_process'
 import { mkdtemp, readFile, readdir, rm, mkdir, stat, lstat, readlink, symlink } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
@@ -1391,10 +1392,9 @@ export async function handleSkillsRoutes(
   const { appServer, readJsonBody } = context
   if (req.method === 'GET' && url.pathname === '/codex-api/skills-hub') {
     try {
-      const installedMap = await collectInstalledSkillsMap(appServer)
-      const installed = await Promise.all([...installedMap.values()].map((info) => buildLocalHubEntry(info)))
-      installed.sort((a, b) => a.name.localeCompare(b.name))
-      setJson(res, 200, { installed })
+      const cwd = url.searchParams.get('cwd')?.trim() || getCodexHomeDir()
+      const result = await appServer.rpc('skills/list', { cwds: [cwd], forceReload: url.searchParams.get('forceReload') === 'true' })
+      setJson(res, 200, normalizeDirectorySkills(result))
     } catch (error) {
       setJson(res, 502, { error: getErrorMessage(error, 'Failed to fetch skills hub') })
     }

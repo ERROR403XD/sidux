@@ -36,7 +36,7 @@
         <div class="sdm-footer">
           <div class="sdm-footer-actions">
             <button
-              v-if="skill.installed"
+              v-if="skill.installed && skill.canUninstall === true"
               class="sdm-btn sdm-btn-danger"
               type="button"
               :disabled="isActing"
@@ -45,7 +45,7 @@
               {{ props.isUninstalling ? t('Uninstalling...') : t('Uninstall') }}
             </button>
             <button
-              v-else
+              v-else-if="!skill.installed"
               class="sdm-btn sdm-btn-primary"
               type="button"
               :disabled="isActing"
@@ -61,7 +61,7 @@
               :disabled="isActing"
               @click="onToggleEnabled"
             >
-              {{ effectiveEnabled ? t('Disable') : t('Enable') }}
+              {{ props.isToggling ? '保存中…' : effectiveEnabled ? t('Disable') : t('Enable') }}
             </button>
 
             <button
@@ -107,6 +107,9 @@ export type HubSkill = {
   source?: string
   path?: string
   enabled?: boolean
+  scope?: string
+  pluginId?: string
+  canUninstall?: boolean
   installCountLabel?: string
 }
 
@@ -116,6 +119,7 @@ const props = defineProps<{
   isInstalling?: boolean
   isUninstalling?: boolean
   isTrying?: boolean
+  isToggling?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -126,14 +130,13 @@ const emit = defineEmits<{
   try: [skill: HubSkill]
 }>()
 
-const localEnabled = ref<boolean | null>(null)
 const localDescription = ref('')
 const readmeContent = ref('')
 const isLoadingReadme = ref(false)
 const { t } = useUiLanguage()
 
-const effectiveEnabled = computed(() => localEnabled.value ?? props.skill.enabled ?? true)
-const isActing = computed(() => (props.isInstalling === true) || (props.isUninstalling === true))
+const effectiveEnabled = computed(() => props.skill.enabled === true)
+const isActing = computed(() => (props.isInstalling === true) || (props.isUninstalling === true) || props.isToggling === true)
 const effectiveDescription = computed(() => localDescription.value || props.skill.description)
 const skillDirPath = computed(() => {
   const p = props.skill.path
@@ -188,7 +191,6 @@ async function fetchReadme(): Promise<void> {
 
 watch(() => props.visible, (v) => {
   if (v) {
-    localEnabled.value = null
     localDescription.value = ''
     readmeContent.value = ''
     void fetchReadme()
@@ -205,7 +207,6 @@ function onUninstall(): void {
 
 function onToggleEnabled(): void {
   const next = !effectiveEnabled.value
-  localEnabled.value = next
   emit('toggle-enabled', props.skill, next)
 }
 

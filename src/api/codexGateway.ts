@@ -1,3 +1,4 @@
+import { normalizeInstalledApps, readDirectoryPages, type InstalledDirectoryApp, type DirectoryMcpSnapshot } from '../directory'
 import { prepareWebDelivery, submitRememberedDelivery } from './deliveryOutbox'
 import { createDeliveryId } from '../delivery'
 import { observeCompactionHistory, restoreTrackedCompactionMessage } from './threadCompaction'
@@ -88,6 +89,8 @@ export type DirectoryPluginSummary = {
   sourceUrl: string
   installed: boolean
   enabled: boolean
+  availability: string
+  disabledReason: string
   installPolicy: string
   authPolicy: string
   logoUrl: string
@@ -153,13 +156,7 @@ export type DirectoryAppInfo = {
   catalogRank: number
 }
 
-export type DirectoryMcpServerStatus = {
-  name: string
-  authStatus: string
-  tools: Array<{ name: string; title: string; description: string }>
-  resources: Array<{ name: string; title: string; uri: string; description: string }>
-  resourceTemplates: Array<{ name: string; title: string; uriTemplate: string; description: string }>
-}
+export type DirectoryMcpServerStatus = DirectoryMcpSnapshot
 
 export type DirectoryMcpLoginResult = {
   authorizationUrl: string
@@ -2230,7 +2227,9 @@ function normalizeDirectoryPluginSummary(
     sourceType,
     sourceUrl,
     installed: readBoolean(record.installed) ?? false,
-    enabled: readBoolean(record.enabled) ?? true,
+    enabled: readBoolean(record.enabled) ?? false,
+    availability: readString(record.availability) ?? '',
+    disabledReason: readString(record.disabledReason) ?? '',
     installPolicy: readString(record.installPolicy ?? record.install_policy) ?? '',
     authPolicy: readString(record.authPolicy ?? record.auth_policy) ?? '',
     logoUrl: readString(iface?.logoUrl ?? iface?.logo_url) ?? '',
@@ -2276,57 +2275,12 @@ function normalizeDirectoryApp(value: unknown, catalogRank = 0): DirectoryAppInf
   }
 }
 
-function normalizeDirectoryMcpServer(value: unknown): DirectoryMcpServerStatus | null {
-  const record = asRecord(value)
-  if (!record) return null
-  const name = readString(record.name)
-  if (!name) return null
-  const toolsRecord = asRecord(record.tools) ?? {}
-  const tools = Object.entries(toolsRecord).map(([fallbackName, raw]) => {
-    const tool = asRecord(raw)
-    return {
-      name: readString(tool?.name) ?? fallbackName,
-      title: readString(tool?.title) ?? '',
-      description: readString(tool?.description) ?? '',
-    }
-  })
-  const resources = Array.isArray(record.resources)
-    ? record.resources.map((raw) => {
-      const resource = asRecord(raw)
-      return {
-        name: readString(resource?.name) ?? '',
-        title: readString(resource?.title) ?? '',
-        uri: readString(resource?.uri) ?? '',
-        description: readString(resource?.description) ?? '',
-      }
-    }).filter((resource) => resource.name || resource.uri)
-    : []
-  const rawResourceTemplates = record.resourceTemplates ?? record.resource_templates
-  const resourceTemplates = Array.isArray(rawResourceTemplates)
-    ? rawResourceTemplates.map((raw: unknown) => {
-      const template = asRecord(raw)
-      return {
-        name: readString(template?.name) ?? '',
-        title: readString(template?.title) ?? '',
-        uriTemplate: readString(template?.uriTemplate ?? template?.uri_template) ?? '',
-        description: readString(template?.description) ?? '',
-      }
-    }).filter((template) => template.name || template.uriTemplate)
-    : []
-
-  return {
-    name,
-    authStatus: readString(record.authStatus ?? record.auth_status) ?? 'unsupported',
-    tools,
-    resources,
-    resourceTemplates,
-  }
-}
-
-export async function listDirectoryPlugins(cwds?: string[]): Promise<DirectoryPluginSummary[]> {
+export async function listDirectoryPlugins(cwds?: string[], forceRefetch = false): Promise<DirectoryPluginSummary[]> {
   const params: Record<string, unknown> = {}
   if (cwds && cwds.length > 0) params.cwds = cwds
-  const payload = await callRpc<{ marketplaces?: unknown[] }>('plugin/list', params)
+  if (forceRefetch) params.forceRefetch = true
+  const payload = await callRpc<{ marketplaces?: unknown[]; marketplaceLoadErrors?: Array<{ message?: string }> }>('plugin/list', params)
+  if (payload.marketplaceLoadErrors?.length) throw new Error(payload.marketplaceLoadErrors.map(error => error.message || '插件市场加载失败').join('；'))
   const plugins: DirectoryPluginSummary[] = []
   for (const marketplaceValue of payload.marketplaces ?? []) {
     const marketplace = asRecord(marketplaceValue)
@@ -2396,23 +2350,18 @@ export async function setDirectoryPluginEnabled(pluginId: string, enabled: boole
   })
 }
 
-export async function listDirectoryApps(threadId?: string): Promise<DirectoryAppInfo[]> {
-  const apps: DirectoryAppInfo[] = []
-  let cursor: string | null = null
-  let catalogRank = 0
-  do {
-    const params: Record<string, unknown> = { limit: 100 }
-    if (cursor) params.cursor = cursor
-    if (threadId) params.threadId = threadId
-    const payload = await callRpc<{ data?: unknown[]; nextCursor?: string | null; next_cursor?: string | null }>('app/list', params)
-    for (const item of payload.data ?? []) {
-      const app = normalizeDirectoryApp(item, catalogRank)
-      if (app) apps.push(app)
-      catalogRank += 1
-    }
-    cursor = readString(payload.nextCursor ?? payload.next_cursor)
-  } while (cursor)
-  return apps
+export async function listDirectoryApps(threadId?: string, forceRefetch = false): Promise<DirectoryAppInfo[]> {
+  const rows = await readDirectoryPages(async cursor => {
+    const params = { limit: 100, ...(cursor ? { cursor } : {}), ...(threadId ? { threadId } : {}), ...(forceRefetch && !cursor ? { forceRefetch: true } : {}) }
+    const payload = await callRpc<{ data: unknown[]; nextCursor?: string | null }>('app/list', params)
+    if (payload.data?.length > 100) throw new Error('App 分页响应超过上限')
+    return payload
+  })
+  return [...new Map(rows.map((item, index) => normalizeDirectoryApp(item, index)).filter((app): app is DirectoryAppInfo => app !== null).map(app => [app.id, app])).values()]
+}
+
+export async function listInstalledDirectoryApps(threadId?: string, forceRefresh = false): Promise<InstalledDirectoryApp[]> {
+  return normalizeInstalledApps(await callRpc('app/installed', { ...(threadId ? { threadId } : {}), ...(forceRefresh ? { forceRefresh: true } : {}) }))
 }
 
 export async function setDirectoryAppEnabled(appId: string, enabled: boolean): Promise<void> {
@@ -2424,20 +2373,13 @@ export async function setDirectoryAppEnabled(appId: string, enabled: boolean): P
   })
 }
 
-export async function listDirectoryMcpServers(): Promise<DirectoryMcpServerStatus[]> {
-  const servers: DirectoryMcpServerStatus[] = []
-  let cursor: string | null = null
-  do {
-    const params: Record<string, unknown> = {}
-    if (cursor) params.cursor = cursor
-    const payload = await callRpc<{ data?: unknown[]; nextCursor?: string | null; next_cursor?: string | null }>('mcpServerStatus/list', params)
-    for (const item of payload.data ?? []) {
-      const server = normalizeDirectoryMcpServer(item)
-      if (server) servers.push(server)
-    }
-    cursor = readString(payload.nextCursor ?? payload.next_cursor)
-  } while (cursor)
-  return servers
+export async function listDirectoryMcpServers(threadId?: string, full = false): Promise<DirectoryMcpServerStatus[]> {
+  const query = new URLSearchParams({ full: String(full) })
+  if (threadId) query.set('threadId', threadId)
+  const response = await fetch(`/codex-api/directory/mcps?${query}`)
+  const payload = await response.json() as { data?: DirectoryMcpServerStatus[]; error?: string }
+  if (!response.ok || !Array.isArray(payload.data)) throw new Error(payload.error || 'MCP 状态读取失败')
+  return payload.data
 }
 
 export async function reloadDirectoryMcpServers(): Promise<void> {

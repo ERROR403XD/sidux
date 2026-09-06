@@ -56,7 +56,7 @@
             class="sidebar-skills-link"
             :class="{ 'is-active': isSkillsRoute }"
             type="button"
-            @click="router.push({ name: 'skills' }); isMobile && setSidebarCollapsed(true)"
+            @click="openDirectory()"
           >
             <span class="sidebar-skills-link-icon" aria-hidden="true">
               <IconTablerBolt />
@@ -637,8 +637,11 @@
         <section class="content-body">
           <template v-if="isSkillsRoute">
             <DirectoryHub
+              :key="`${directoryCwd}:${directoryThreadId}:${activeAccountStorageId || ''}`"
               :cwd="directoryCwd"
-              :thread-id="routeThreadId"
+              :thread-id="directoryThreadId"
+              :projects="directoryProjects"
+              @scope-change="onDirectoryScopeChange"
               :try-in-flight-key="directoryTryInFlightKey"
               @skills-changed="onSkillsChanged"
               @try-item="onTryDirectoryItem"
@@ -2004,7 +2007,26 @@ const isTerminalKeyboardLayoutActive = computed(() => (
   isVirtualKeyboardOpen.value ||
   (isComposerTerminalOpen.value && isTerminalKeyboardFocusFallbackActive.value)
 ))
-const directoryCwd = computed(() => selectedThread.value?.cwd?.trim() ?? newThreadCwd.value.trim())
+const directoryCwd = computed(() => isSkillsRoute.value
+  ? (typeof route.query.cwd === 'string' ? route.query.cwd.trim() : '')
+  : selectedThread.value?.cwd?.trim() ?? newThreadCwd.value.trim())
+const directoryThreadId = computed(() => isSkillsRoute.value && typeof route.query.fromThread === 'string' ? route.query.fromThread : '')
+const directoryProjects = computed(() => [...new Set([
+  ...workspaceRootOptionsState.value.order,
+  ...projectGroups.value.flatMap(group => group.threads.map(thread => thread.cwd.trim())),
+  directoryCwd.value,
+].filter(Boolean))].map(cwd => ({ value: cwd, label: getFolderOptionLabel(cwd) || cwd })))
+
+async function openDirectory(tab = 'plugins'): Promise<void> {
+  const cwd = directoryCwd.value
+  const fromThread = isSkillsRoute.value ? directoryThreadId.value : routeThreadId.value
+  await router.push({ name: 'skills', query: { tab, ...(cwd ? { cwd } : {}), ...(fromThread ? { fromThread } : {}) } })
+  if (isMobile.value) setSidebarCollapsed(true)
+}
+
+function onDirectoryScopeChange(cwd: string): void {
+  void router.replace({ name: 'skills', query: { tab: route.query.tab || 'plugins', ...(cwd ? { cwd } : {}) } })
+}
 const isSelectedThreadInProgress = computed(() => !isHomeRoute.value && selectedThread.value?.inProgress === true)
 const showThreadContextBadge = computed(() => !isHomeRoute.value && !isSkillsRoute.value && !isAutomationsRoute.value && !isApiProxyRoute.value && selectedThreadId.value.trim().length > 0)
 const isAccountSwitchBlocked = computed(() =>
@@ -2052,7 +2074,7 @@ function dismissFirstLaunchPluginsCard(): void {
 
 function onOpenPluginsHomeCard(): void {
   dismissFirstLaunchPluginsCard()
-  void router.push({ name: 'skills', query: { tab: 'plugins' } })
+  void openDirectory('plugins')
 }
 
 const threadContextBadgeState = computed(() => {
@@ -3768,7 +3790,7 @@ async function runAppCommand(name: AppCommandName, value?: string): Promise<void
     case 'copy': await copyTextToClipboard(await getLatestCompletedReply(threadId)); break
     case 'export': downloadProjectZipFallback(new Blob([buildThreadMarkdown()], { type: 'text/markdown;charset=utf-8' }), `codex-${threadId}.md`); break
     case 'apps': case 'plugins': case 'mcp':
-      await router.push({ name: 'skills', query: { tab: name === 'mcp' ? 'skills' : name } }); break
+      await openDirectory(name === 'mcp' ? 'skills' : name); break
     case 'automations': await router.push({ name: 'automations' }); break
     default: throw new Error('该命令尚未接入可执行操作')
   }

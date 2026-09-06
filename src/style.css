@@ -2280,3 +2280,26 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 
 .content-thread:has(> .thread-tasks-panel) { display: flex; flex-direction: column; }
 .content-thread:has(> .thread-tasks-panel) > .conversation-root { flex: 1; min-height: 0; }
+/* Extension scope and native status surfaces share app theme tokens. */
+.directory-scope {
+  width: 100%;
+  max-width: 64rem;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--ui-text);
+  font-size: 13px;
+}
+.directory-scope > .app-select { flex: 1 1 180px; min-width: 0; max-width: 420px; }
+.directory-scope-note { margin: 0; color: var(--ui-muted); font-size: 12px; overflow-wrap: anywhere; }
+.directory-scope > p { flex-basis: 100%; }
+.directory-hub .skill-card-owner { white-space: normal; overflow-wrap: anywhere; }
+.directory-hub .directory-mcp-detail { overflow-wrap: anywhere; }
+:root.dark .directory-hub .mcp-skill-card,
+:root.dark .directory-hub .skill-card { background: var(--ui-surface); color: var(--ui-text); border-color: var(--ui-border); }
+:root.dark .directory-hub .mcp-skill-name,
+:root.dark .directory-hub .skill-card-name { color: var(--ui-text); }
+:root.dark .directory-hub .mcp-skill-badge,
+:root.dark .directory-hub .directory-toast { background: var(--ui-field); border-color: var(--ui-border); }

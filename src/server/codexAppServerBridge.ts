@@ -1,3 +1,4 @@
+import { DirectoryMcpReader } from './directoryMcpReader.js'
 import { extractTaskExcerpt } from '../taskExcerpt'
 import { maySupplementImportedThreads } from './threadListCompatibility'
 import { changesThreadSearch } from '../threadSearchEvents.js'
@@ -6988,7 +6989,7 @@ type SharedBridgeState = {
 }
 
 const SHARED_BRIDGE_KEY = '__codexRemoteSharedBridge__'
-const SHARED_BRIDGE_VERSION = 'goals-compaction-0204-v1'
+const SHARED_BRIDGE_VERSION = 'project-extensions-0206-v1'
 
 function getSharedBridgeState(): SharedBridgeState {
   const globalScope = globalThis as typeof globalThis & {
@@ -7052,6 +7053,7 @@ function getSharedBridgeState(): SharedBridgeState {
 export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
   const sharedState = getSharedBridgeState()
   const { appServer, terminalManager, methodCatalog, telegramBridge, backendQueueProcessor, automationEngine, threadGoalReader, threadCompactionGate } = sharedState
+  const directoryMcps = new DirectoryMcpReader((method, params) => appServer.rpc(method, params))
   const history = new ThreadHistory(
     (method, params) => callRpcWithArchiveRecovery(appServer, method, params),
     async () => (await methodCatalog.snapshot()).features,
@@ -7581,6 +7583,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         let rpcResult: unknown
         try {
           const params = asRecord(body.params) ?? {}
+          if (['config/batchWrite', 'config/value/write', 'config/mcpServer/reload', 'plugin/install', 'plugin/uninstall'].includes(body.method)) directoryMcps.invalidate()
           if (body.method === 'turn/start' || body.method === 'turn/steer') throw new Error('发送接口已更新，请刷新页面后重试')
           if (body.method === 'thread/rollback') await history.assertRollbackAllowed(readNonEmptyString(params.threadId))
           if (body.method === 'thread/compact/start') {
@@ -7651,6 +7654,16 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         }
 
         setJson(res, 200, { result })
+        return
+      }
+
+      if (req.method === 'GET' && url.pathname === '/codex-api/directory/mcps') {
+        try {
+          const data = await directoryMcps.read(url.searchParams.get('threadId')?.trim() || '', url.searchParams.get('full') === 'true')
+          setJson(res, 200, { data })
+        } catch (error) {
+          setJson(res, 502, { error: getErrorMessage(error, 'MCP 状态读取失败') })
+        }
         return
       }
 

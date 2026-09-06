@@ -2,7 +2,7 @@
   <div class="skills-hub">
     <div class="skills-hub-header">
       <h2 class="skills-hub-title">{{ t('Skills Hub') }}</h2>
-      <p class="skills-hub-subtitle">{{ t('Manage installed skills on this machine') }}</p>
+      <p class="skills-hub-subtitle">{{ props.cwd ? '当前项目可见的技能；安装与 GitHub 同步使用用户目录。' : '用户技能与插件技能；GitHub 同步使用用户目录。' }}</p>
     </div>
 
     <div class="skills-sync-panel">
@@ -103,7 +103,8 @@
 
     <slot name="before-installed" />
 
-    <div v-if="filteredInstalled.length > 0" class="skills-hub-section">
+    <p v-for="problem in discoveryErrors" :key="problem" class="skills-hub-error">{{ problem }}</p>
+    <div v-if="filteredInstalled.length > 0 && !isLoading && !error" class="skills-hub-section">
       <button class="skills-hub-section-toggle" type="button" @click="isInstalledOpen = !isInstalledOpen">
         <span class="skills-hub-section-title">{{ t('Installed skills ({count})', { count: filteredInstalled.length }) }}</span>
         <IconTablerChevronRight class="skills-hub-section-chevron" :class="{ 'is-open': isInstalledOpen }" />
@@ -111,9 +112,9 @@
       <div v-if="isInstalledOpen" class="skills-hub-grid">
         <SkillCard
           v-for="skill in filteredInstalled"
-          :key="skill.name"
+          :key="skill.path || skill.name"
           :skill="skill"
-          :show-status-badge="false"
+          :show-status-badge="true"
           :show-owner="false"
           @select="(skill) => openDetail(skill as HubSkill)"
         />
@@ -134,6 +135,7 @@
       :visible="isDetailOpen"
       :is-installing="isDetailInstalling"
       :is-uninstalling="isDetailUninstalling"
+      :is-toggling="isTogglingSkill"
       :is-trying="props.tryInFlightKey === skillTryKey(detailSkill)"
       @close="isDetailOpen = false"
       @install="handleInstall"
@@ -145,7 +147,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import IconTablerChevronRight from '../icons/IconTablerChevronRight.vue'
 import SkillCard from './SkillCard.vue'
 import SkillDetailModal, { type HubSkill } from './SkillDetailModal.vue'
@@ -154,10 +156,15 @@ import { useFeedbackDiagnostics } from '../../composables/useFeedbackDiagnostics
 import { useUiLanguage } from '../../composables/useUiLanguage'
 
 const EMPTY_SKILL: HubSkill = { name: '', owner: '', description: '', url: '', installed: false }
-type SkillsHubPayload = { installed?: HubSkill[] }
+type SkillsHubPayload = { installed?: HubSkill[]; errors?: string[]; error?: string }
 type SkillsSearchPayload = { results?: HubSkill[]; error?: string }
 
 const installedSkills = ref<HubSkill[]>([])
+const discoveryErrors = ref<string[]>([])
+const isTogglingSkill = ref(false)
+let skillsReadId = 0
+let disposed = false
+let skillsController: AbortController | null = null
 const skillSearchResults = ref<HubSkill[]>([])
 const isLoading = ref(false)
 const isSearchingSkills = ref(false)
@@ -178,6 +185,7 @@ const { buildFeedbackMailto, feedbackMailtoBase, recordVisibleFailure } = useFee
 const feedbackMailto = feedbackMailtoBase()
 
 const props = defineProps<{
+  cwd?: string
   tryInFlightKey?: string
 }>()
 
@@ -187,7 +195,8 @@ const emit = defineEmits<{
 }>()
 
 const toastClass = computed(() => toast.value?.type === 'error' ? 'skills-hub-toast-error' : 'skills-hub-toast-success')
-const currentDetailSkillKey = computed(() => `${detailSkill.value.owner}/${detailSkill.value.name}`)
+const currentDetailSkillKey = computed(() => skillIdentity(detailSkill.value))
+function skillIdentity(skill: HubSkill): string { return skill.path || `${skill.owner}/${skill.name}` }
 const isDetailInstalling = computed(() =>
   isInstallActionInFlight.value && actionSkillKey.value === currentDetailSkillKey.value,
 )
@@ -219,11 +228,17 @@ function prepareSkillsErrorFeedback(event: MouseEvent, message: string): void {
 
 function applySkillsPayload(payload: SkillsHubPayload): void {
   installedSkills.value = payload.installed ?? []
+  discoveryErrors.value = payload.errors ?? []
+  if (isDetailOpen.value && detailSkill.value.path) {
+    const latest = installedSkills.value.find(skill => skill.path === detailSkill.value.path)
+    if (latest) detailSkill.value = latest
+    else isDetailOpen.value = false
+  }
   if (skillSearchResults.value.length > 0) {
-    const installedByName = new Map(installedSkills.value.map((skill) => [skill.name, skill]))
+    const installedByName = new Map(installedSkills.value.filter(skill => skill.scope === 'user' && !skill.pluginId).map((skill) => [skill.name, skill]))
     skillSearchResults.value = skillSearchResults.value.map((skill) => {
       const installed = installedByName.get(skill.name)
-      return installed ? registrySearchSkillWithLocalState(skill, installed) : skill
+      return installed ? registrySearchSkillWithLocalState(skill, installed) : { ...skill, installed: false, path: undefined, enabled: undefined }
     })
   }
 }
@@ -234,6 +249,9 @@ function registrySearchSkillWithLocalState(registrySkill: HubSkill, installed: H
     installed: true,
     path: installed.path,
     enabled: installed.enabled,
+    scope: installed.scope,
+    pluginId: installed.pluginId,
+    canUninstall: installed.canUninstall,
   }
 }
 
@@ -246,23 +264,29 @@ function localSearchSkill(installed: HubSkill, registrySkill: HubSkill): HubSkil
   }
 }
 
-async function fetchSkills(): Promise<void> {
+async function fetchSkills(force = false): Promise<void> {
+  const id = ++skillsReadId
+  skillsController?.abort()
+  skillsController = new AbortController()
   isLoading.value = true
   error.value = ''
   try {
-    const resp = await fetch('/codex-api/skills-hub')
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-    const data = (await resp.json()) as SkillsHubPayload
-    applySkillsPayload(data)
+    const params = new URLSearchParams({ forceReload: String(force) })
+    if (props.cwd) params.set('cwd', props.cwd)
+    const resp = await fetch(`/codex-api/skills-hub?${params}`, { signal: skillsController.signal })
+    const data = await resp.json() as SkillsHubPayload
+    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`)
+    if (!disposed && id === skillsReadId) applySkillsPayload(data)
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to load skills'
+    if (!disposed && id === skillsReadId) error.value = e instanceof Error ? e.message : 'Failed to load skills'
   } finally {
-    isLoading.value = false
+    if (id === skillsReadId) isLoading.value = false
   }
 }
+defineExpose({ refresh: fetchSkills })
 
 function openDetail(skill: HubSkill): void {
-  const installedSkill = skill.installed ? installedSkills.value.find((candidate) => candidate.name === skill.name) : undefined
+  const installedSkill = skill.installed ? installedSkills.value.find((candidate) => candidate.path === skill.path) : undefined
   detailSkill.value = installedSkill ? localSearchSkill(installedSkill, skill) : skill
   isDetailOpen.value = true
 }
@@ -277,10 +301,10 @@ async function searchSkills(): Promise<void> {
     const resp = await fetch(`/codex-api/skills-hub/search?${params}`)
     const data = (await resp.json()) as SkillsSearchPayload
     if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`)
-    const installedByName = new Map(installedSkills.value.map((skill) => [skill.name, skill]))
+    const installedByName = new Map(installedSkills.value.filter(skill => skill.scope === 'user' && !skill.pluginId).map((skill) => [skill.name, skill]))
     skillSearchResults.value = (data.results ?? []).map((skill) => {
       const installed = installedByName.get(skill.name)
-      return installed ? registrySearchSkillWithLocalState(skill, installed) : skill
+      return installed ? registrySearchSkillWithLocalState(skill, installed) : { ...skill, installed: false, path: undefined, enabled: undefined }
     })
     isSearchResultsOpen.value = true
     if (skillSearchResults.value.length === 0) {
@@ -294,7 +318,7 @@ async function searchSkills(): Promise<void> {
 }
 
 async function handleInstall(skill: HubSkill): Promise<void> {
-  actionSkillKey.value = `${skill.owner}/${skill.name}`
+  actionSkillKey.value = skillIdentity(skill)
   isInstallActionInFlight.value = true
   try {
     const resp = await fetch('/codex-api/skills-hub/install', {
@@ -305,8 +329,8 @@ async function handleInstall(skill: HubSkill): Promise<void> {
     const data = (await resp.json()) as { ok?: boolean; error?: string; path?: string }
     if (!data.ok) throw new Error(data.error || 'Install failed')
     if (!data.path) throw new Error('Install completed but no local skill path was returned')
-    await fetchSkills()
-    const installed = installedSkills.value.find((candidate) => candidate.name === skill.name)
+    await fetchSkills(true)
+    const installed = installedSkills.value.find((candidate) => candidate.path === data.path)
     if (!installed?.path) {
       throw new Error('Install completed but the local skill was not found after refresh')
     }
@@ -322,7 +346,8 @@ async function handleInstall(skill: HubSkill): Promise<void> {
 }
 
 async function handleUninstall(skill: HubSkill): Promise<void> {
-  actionSkillKey.value = `${skill.owner}/${skill.name}`
+  if (skill.canUninstall !== true) return
+  actionSkillKey.value = skillIdentity(skill)
   isUninstallActionInFlight.value = true
   try {
     const resp = await fetch('/codex-api/skills-hub/uninstall', {
@@ -332,7 +357,7 @@ async function handleUninstall(skill: HubSkill): Promise<void> {
     })
     const data = (await resp.json()) as { ok?: boolean; error?: string }
     if (!data.ok) throw new Error(data.error || 'Uninstall failed')
-    installedSkills.value = installedSkills.value.filter((s) => s.name !== skill.name)
+    await fetchSkills(true)
     showToast(`${skill.displayName || skill.name} skill uninstalled`)
     isDetailOpen.value = false
     emit('skills-changed')
@@ -344,23 +369,28 @@ async function handleUninstall(skill: HubSkill): Promise<void> {
 }
 
 async function handleToggleEnabled(skill: HubSkill, enabled: boolean): Promise<void> {
+  if (isTogglingSkill.value || !skill.path) return
+  isTogglingSkill.value = true
   try {
     const resp = await fetch('/codex-api/rpc', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ method: 'skills/config/write', params: { path: skill.path, enabled } }),
     })
-    if (!resp.ok) throw new Error('Failed to update skill')
-    await fetch('/codex-api/skills-sync/push', { method: 'POST' })
-    showToast(`${skill.displayName || skill.name} skill ${enabled ? 'enabled' : 'disabled'}`)
-    await fetchSkills()
+    const data = await resp.json() as { error?: { message?: string } }
+    if (!resp.ok || data.error) throw new Error(data.error?.message || '技能设置保存失败')
+    await fetchSkills(true)
+    if (error.value) throw new Error(`设置已保存，读取有效状态失败：${error.value}`)
+    emit('skills-changed')
+    showToast(`${skill.displayName || skill.name} 设置已保存`)
   } catch (e) {
     showToast(e instanceof Error ? e.message : 'Failed to update skill', 'error')
+  } finally {
+    isTogglingSkill.value = false
   }
 }
 
 function handleTrySkill(skill: HubSkill): void {
-  if (!skill.installed || skill.enabled === false) return
+  if (!skill.installed || skill.enabled !== true) return
   if (props.tryInFlightKey) return
   emit('try-item', {
     kind: 'skill',
@@ -394,7 +424,7 @@ const {
 } = useGithubSkillsSync({
   showToast,
   onPulled: async () => {
-    await fetchSkills()
+    await fetchSkills(true)
     emit('skills-changed')
   },
 })
@@ -404,6 +434,13 @@ const visibleSkillErrors = [
   skillSearchError,
   error,
 ]
+
+onBeforeUnmount(() => {
+  disposed = true
+  skillsReadId += 1
+  skillsController?.abort()
+  if (toastTimer) clearTimeout(toastTimer)
+})
 
 onMounted(() => {
   void fetchSkills()

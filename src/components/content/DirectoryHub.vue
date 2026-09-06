@@ -12,6 +12,13 @@
       </div>
     </div>
 
+    <div class="directory-scope">
+      <label>查看范围</label>
+      <AppSelect :model-value="props.cwd || ''" :options="scopeOptions" enable-search :disabled="isPluginActionInFlight || !!appActionId" @update:model-value="emit('scope-change', $event)" />
+      <span v-if="props.threadId" class="directory-scope-note">会话 {{ props.threadId.slice(-8) }} · <a :href="`#/thread/${props.threadId}`">返回会话</a></span>
+      <p class="directory-scope-note">{{ scopeDescription }}</p>
+    </div>
+
     <div class="directory-tabs" role="tablist" :aria-label="t('Directory sections')">
       <button
         v-for="tab in tabs"
@@ -19,6 +26,7 @@
         class="directory-tab"
         :class="{ 'is-active': activeTab === tab.id }"
         type="button"
+        :disabled="isPluginActionInFlight || !!appActionId"
         role="tab"
         :aria-selected="activeTab === tab.id"
         @click="activeTab = tab.id"
@@ -95,7 +103,8 @@
               <div class="directory-card-title-row">
                 <span class="directory-card-title">{{ plugin.displayName }}</span>
                 <span v-if="plugin.installed && !plugin.enabled" class="directory-badge is-muted">{{ t('Disabled') }}</span>
-                <span v-else-if="plugin.installed" class="directory-badge">{{ t('Installed') }}</span>
+                <span v-else-if="plugin.installed" class="directory-badge">已安装 · 已启用</span>
+                <span v-if="plugin.availability === 'DISABLED_BY_ADMIN' || plugin.disabledReason" class="directory-badge is-muted">{{ pluginDisabledLabel(plugin) }}</span>
               </div>
               <span class="directory-card-meta">{{ plugin.developerName || plugin.marketplaceDisplayName || plugin.marketplaceName || 'Plugin' }}</span>
             </div>
@@ -152,6 +161,7 @@
       <div v-else-if="isLoadingApps" class="directory-loading">{{ t('Loading apps...') }}</div>
       <div v-else-if="visibleApps.length === 0" class="directory-empty">{{ t('No apps found.') }}</div>
       <div v-else class="directory-grid">
+        <p v-if="appRuntimeError" class="directory-error">{{ appRuntimeError }}</p>
         <article v-for="app in visibleApps" :key="app.id" class="directory-card">
           <div class="directory-card-top">
             <img v-if="appLogoSrc(app)" class="directory-card-icon" :src="appLogoSrc(app)" :alt="app.name" loading="lazy" />
@@ -161,6 +171,7 @@
                 <span class="directory-card-title">{{ app.name }}</span>
                 <span v-if="!app.isEnabled" class="directory-badge is-muted">{{ t('Disabled') }}</span>
                 <span v-else-if="app.isAccessible" class="directory-badge">{{ t('Connected') }}</span>
+                <span class="directory-badge is-muted">{{ appRuntimeLabel(app.id) }}</span>
               </div>
               <span class="directory-card-meta">{{ appMetaLabel(app) }}</span>
             </div>
@@ -172,7 +183,7 @@
           </div>
           <div class="directory-card-actions">
             <button class="directory-action" type="button" :disabled="appActionId === app.id" @click="toggleApp(app)">
-              {{ app.isEnabled ? t('Disable') : t('Enable') }}
+              {{ app.isEnabled ? '禁用（用户设置）' : '启用（用户设置）' }}
             </button>
             <button v-if="app.installUrl" class="directory-action-link" type="button" @click="openExternalUrl(app.installUrl)">
               {{ app.isAccessible ? t('Manage') : t('Login') }}
@@ -369,8 +380,10 @@
 
     <section v-else-if="activeTab === 'skills'" class="directory-section">
       <SkillsHub
+        ref="skillsHubRef"
+        :cwd="props.cwd"
         :try-in-flight-key="props.tryInFlightKey"
-        @skills-changed="emit('skills-changed')"
+        @skills-changed="onDirectorySkillsChanged"
         @try-item="(payload) => emit('try-item', payload)"
       >
         <template #before-installed>
@@ -380,6 +393,7 @@
               <span class="skills-embedded-chevron" :class="{ 'is-open': isMcpSectionOpen }">›</span>
             </button>
             <div v-if="isMcpSectionOpen" class="skills-embedded-body">
+              <AppButton v-if="supportsMcpReload" :busy="isReloadingMcps" @click="reloadMcps">重载 MCP 配置</AppButton>
               <div v-if="!supportsMcps" class="directory-empty">
                 {{ t('MCP status APIs unavailable in this Codex CLI. Update Codex CLI to inspect MCP servers.') }}
               </div>
@@ -396,12 +410,15 @@
                           <span class="mcp-skill-name">{{ server.name }}</span>
                           <span class="mcp-skill-badge" :class="mcpCardBadgeClass(server.authStatus)">{{ formatMcpAuthStatus(server.name) }}</span>
                         </div>
-                        <span class="mcp-skill-owner">mcp</span>
+                        <span class="mcp-skill-owner">{{ mcpRuntimeLabel(server.runtimeStatus) }}</span>
                       </div>
                       <span class="mcp-skill-chevron" :class="{ 'is-open': expandedMcpNames.has(server.name) }">›</span>
                     </div>
-                    <p class="mcp-skill-meta">{{ server.tools.length }} tools · {{ server.resources.length + server.resourceTemplates.length }} resources</p>
+                    <p class="mcp-skill-meta">{{ server.toolCount }} tools<span v-if="server.resourceCount !== null"> · {{ server.resourceCount }} resources</span></p>
                     <div v-if="expandedMcpNames.has(server.name)" class="directory-mcp-detail">
+                      <p v-if="mcpDetailError">{{ mcpDetailError }}</p>
+                      <p v-else-if="!server.detailsLoaded">读取工具与资源…</p>
+                      <p v-if="server.truncated">每类仅预览前 200 项</p>
                       <div v-if="server.tools.length > 0">
                         <h3 class="directory-mini-heading">{{ t('Tools') }}</h3>
                         <p class="directory-mini-list">{{ server.tools.map((tool) => tool.title || tool.name).join(', ') }}</p>
@@ -470,6 +487,7 @@
                   <p class="directory-mini-list">{{ selectedPluginDetail.skills.map((skill) => skill.displayName || skill.name).join(', ') }}</p>
                 </div>
                 <div v-if="selectedPluginDetail.mcpServers.length > 0" class="directory-detail-block">
+                  <p v-if="mcpError" class="directory-error">{{ mcpError }}</p>
                   <h4 class="directory-detail-heading">{{ t('MCP servers') }}</h4>
                   <div v-for="serverName in selectedPluginDetail.mcpServers" :key="serverName" class="directory-include-row">
                     <span>
@@ -662,7 +680,11 @@ import { useUiLanguage } from '../../composables/useUiLanguage'
 const { t } = useUiLanguage()
 
 import { vModalBackdrop } from '../../composables/modalBackdrop'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import AppSelect from '../common/AppSelect.vue'
+import AppButton from '../common/AppButton.vue'
+import { mcpRuntimeLabel, type InstalledDirectoryApp } from '../../directory'
+import { subscribeTaskNotifications } from '../../subtasks'
 import { useRoute, useRouter } from 'vue-router'
 import {
   getDirectoryComposioStatus,
@@ -671,6 +693,7 @@ import {
   installDirectoryComposioCli,
   listDirectoryComposioConnectors,
   listDirectoryApps,
+  listInstalledDirectoryApps,
   listDirectoryMcpServers,
   listDirectoryPlugins,
   readDirectoryComposioConnector,
@@ -747,6 +770,7 @@ const POPULAR_MCP_NAME_BONUSES: Array<[RegExp, number]> = [
 const props = defineProps<{
   cwd?: string
   threadId?: string
+  projects?: Array<{ value: string; label: string }>
   tryInFlightKey?: string
 }>()
 
@@ -760,6 +784,7 @@ export type DirectoryTryItemPayload = {
 }
 
 const emit = defineEmits<{
+  'scope-change': [cwd: string]
   'skills-changed': []
   'try-item': [payload: DirectoryTryItemPayload]
 }>()
@@ -882,6 +907,55 @@ let toastTimer: ReturnType<typeof setTimeout> | null = null
 let composioSearchTimer: ReturnType<typeof setTimeout> | null = null
 let isComposioLoadQueued = false
 
+const skillsHubRef = ref<{ refresh: (force?: boolean) => Promise<void> } | null>(null)
+const installedApps = ref<InstalledDirectoryApp[] | null>(null)
+const appRuntimeError = ref('')
+const mcpDetailError = ref('')
+let disposed = false
+let pluginReadId = 0
+let appReadId = 0
+let mcpReadId = 0
+let pluginDetailReadId = 0
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
+let lastAppsNotification = ''
+let pluginLoad: Promise<void> | null = null
+let appLoad: Promise<void> | null = null
+let mcpLoad: Promise<void> | null = null
+const scopeOptions = computed(() => [{ value: '', label: '全局' }, ...(props.projects || [])])
+const scopeDescription = computed(() => props.threadId
+  ? '插件与技能按项目读取，Apps 与 MCP 显示此会话状态。安装与启停保存到用户设置。'
+  : props.cwd ? '插件与技能按项目读取；Apps 与 MCP 使用全局配置。安装与启停保存到用户设置。'
+    : '显示用户配置中的扩展。安装与启停保存到用户设置。')
+function directoryReadError(error: unknown, fallback: string): string {
+  const message = error instanceof Error ? error.message : fallback
+  return props.threadId && /thread not found|not loaded/i.test(message)
+    ? '会话状态尚未载入。请先返回会话，再打开扩展页。'
+    : message
+}
+function appRuntimeLabel(id: string): string {
+  if (installedApps.value === null) return '运行状态未知'
+  const state = installedApps.value.find(app => app.id === id)
+  if (!state) return '未载入运行快照'
+  if (!state.enabled) return '运行配置已禁用'
+  return state.callable ? '可调用' : '暂无可调用工具'
+}
+function pluginDisabledLabel(plugin: DirectoryPluginSummary): string {
+  return ({ disabled_by_admin: '管理员禁用', plan_not_eligible: '套餐不适用', required_app_unavailable: '所需 App 不可用' } as Record<string, string>)[plugin.disabledReason] || '不可用'
+}
+function onDirectorySkillsChanged(): void {
+  emit('skills-changed')
+  scheduleDirectoryRefresh()
+}
+function scheduleDirectoryRefresh(): void {
+  if (refreshTimer) clearTimeout(refreshTimer)
+  refreshTimer = setTimeout(() => {
+    refreshTimer = null
+    if (!disposed) {
+      refreshActiveTab()
+      if (activeTab.value === 'skills') void skillsHubRef.value?.refresh()
+    }
+  }, 200)
+}
 const activeCopy = computed(() => tabs.find((tab) => tab.id === activeTab.value) ?? tabs[0])
 const supportsPlugins = computed(() =>
   !methodsLoaded.value ||
@@ -920,6 +994,7 @@ const selectedPluginRequiresMissingApp = computed(() => {
   })
 })
 const selectedPluginInstallUnavailable = computed(() =>
+  selectedPlugin.value?.availability === 'DISABLED_BY_ADMIN' ||
   selectedPlugin.value?.installPolicy === 'NOT_AVAILABLE' ||
   (selectedPluginDetail.value?.apps.some((app) => isPluginDetailAppUnavailable(app)) ?? false),
 )
@@ -1305,35 +1380,65 @@ async function loadMethods(): Promise<void> {
   }
 }
 
-async function loadPlugins(): Promise<void> {
-  if (!supportsPlugins.value) return
+async function loadPlugins(force = false): Promise<void> {
+  if (!supportsPlugins.value || disposed) return
+  if (pluginLoad) {
+    await pluginLoad
+    if (!force || disposed) return
+  }
+  const id = ++pluginReadId
   isLoadingPlugins.value = true
   pluginError.value = ''
-  try {
-    const cwd = props.cwd?.trim()
-    const [nextPlugins] = await Promise.all([
-      listDirectoryPlugins(cwd ? [cwd] : undefined),
-      supportsApps.value ? loadApps() : Promise.resolve(),
-    ])
-    plugins.value = nextPlugins
-  } catch (error) {
-    pluginError.value = error instanceof Error ? error.message : 'Failed to load plugins'
-  } finally {
-    isLoadingPlugins.value = false
-  }
+  pluginLoad = (async () => {
+    try {
+      const next = await listDirectoryPlugins(props.cwd ? [props.cwd] : undefined, force)
+      if (!disposed && id === pluginReadId) plugins.value = next
+    } catch (error) {
+      if (!disposed && id === pluginReadId) {
+        plugins.value = []
+        pluginError.value = error instanceof Error ? error.message : '插件读取失败'
+      }
+    } finally {
+      if (id === pluginReadId) {
+        isLoadingPlugins.value = false
+        pluginLoad = null
+      }
+    }
+  })()
+  await pluginLoad
 }
 
-async function loadApps(): Promise<void> {
-  if (!supportsApps.value) return
+async function loadApps(force = false): Promise<void> {
+  if (!supportsApps.value || disposed) return
+  if (appLoad) {
+    await appLoad
+    if (!force || disposed) return
+  }
+  const id = ++appReadId
   isLoadingApps.value = true
   appError.value = ''
-  try {
-    apps.value = await listDirectoryApps(props.threadId?.trim() || undefined)
-  } catch (error) {
-    appError.value = error instanceof Error ? error.message : 'Failed to load apps'
-  } finally {
-    isLoadingApps.value = false
-  }
+  appRuntimeError.value = ''
+  installedApps.value = null
+  appLoad = (async () => {
+    const results = await Promise.allSettled([
+      listDirectoryApps(props.threadId || undefined, force),
+      methodSet.value.has('app/installed') ? listInstalledDirectoryApps(props.threadId || undefined, force) : Promise.reject(new Error('当前 CLI 不提供 App 运行状态')),
+    ])
+    if (disposed || id !== appReadId) return
+    if (results[0].status === 'fulfilled') apps.value = results[0].value
+    else {
+      apps.value = []
+      appError.value = directoryReadError(results[0].reason, 'App 目录读取失败')
+    }
+    if (results[1].status === 'fulfilled') installedApps.value = results[1].value
+    else appRuntimeError.value = directoryReadError(results[1].reason, 'App 运行状态读取失败')
+  })().finally(() => {
+    if (id === appReadId) {
+      isLoadingApps.value = false
+      appLoad = null
+    }
+  })
+  await appLoad
 }
 
 async function loadComposio(append = false): Promise<void> {
@@ -1377,52 +1482,72 @@ async function loadMoreComposio(): Promise<void> {
   await loadComposio(true)
 }
 
-async function loadMcps(): Promise<void> {
-  if (!supportsMcps.value) return
-  isLoadingMcps.value = true
-  mcpError.value = ''
-  try {
-    mcpServers.value = await listDirectoryMcpServers()
-  } catch (error) {
-    mcpError.value = error instanceof Error ? error.message : 'Failed to load MCP servers'
-  } finally {
-    isLoadingMcps.value = false
+async function loadMcps(full = false, force = false): Promise<void> {
+  if (!supportsMcps.value || disposed) return
+  if (mcpLoad) {
+    await mcpLoad
+    if ((!full && !force) || disposed) return
   }
+  const id = ++mcpReadId
+  isLoadingMcps.value = !full
+  if (full) mcpDetailError.value = ''
+  else mcpError.value = ''
+  mcpLoad = (async () => {
+    try {
+      const next = await listDirectoryMcpServers(props.threadId || undefined, full)
+      if (!disposed && id === mcpReadId) mcpServers.value = next
+    } catch (error) {
+      if (!disposed && id === mcpReadId) {
+        if (full) mcpDetailError.value = error instanceof Error ? error.message : 'MCP 详情读取失败'
+        else {
+          mcpServers.value = []
+          mcpError.value = directoryReadError(error, 'MCP 状态读取失败')
+        }
+      }
+    } finally {
+      if (id === mcpReadId) {
+        isLoadingMcps.value = false
+        mcpLoad = null
+      }
+    }
+  })()
+  await mcpLoad
 }
 
 async function refreshMcpStatusesForPluginDetail(): Promise<void> {
-  if (!supportsMcps.value || !selectedPluginDetail.value?.mcpServers.length) return
-  try {
-    mcpServers.value = await listDirectoryMcpServers()
-  } catch {
-    // Keep plugin detail usable even if status lookup is temporarily unavailable.
-  }
+  if (selectedPluginDetail.value?.mcpServers.length) await loadMcps()
 }
 
-function refreshActiveTab(forceReload = false): void {
-  if (activeTab.value === 'plugins') void loadPlugins()
-  if (activeTab.value === 'apps') void loadApps()
+function refreshActiveTab(force = false): void {
+  if (!methodsLoaded.value || disposed) return
+  if (activeTab.value === 'plugins') void loadPlugins(force)
+  if (activeTab.value === 'apps') void loadApps(force)
   if (activeTab.value === 'composio') void loadComposio()
   if (activeTab.value === 'skills') {
-    if (forceReload && supportsMcpReload.value) void reloadMcps()
-    else void loadMcps()
+    expandedMcpNames.value = new Set()
+    void loadMcps(false, force)
+    if (force) void skillsHubRef.value?.refresh(true)
   }
 }
 
 async function manualRefreshActiveTab(): Promise<void> {
+  if (isManualRefreshInFlight.value) return
   isManualRefreshInFlight.value = true
   try {
-    if (activeTab.value === 'plugins') await loadPlugins()
-    else if (activeTab.value === 'apps') await loadApps()
+    if (activeTab.value === 'plugins') await loadPlugins(true)
+    else if (activeTab.value === 'apps') await loadApps(true)
     else if (activeTab.value === 'composio') await loadComposio()
-    else if (activeTab.value === 'skills' && supportsMcpReload.value) await reloadMcps()
-    else if (activeTab.value === 'skills') await loadMcps()
+    else if (activeTab.value === 'skills') {
+      expandedMcpNames.value = new Set()
+      await Promise.all([loadMcps(false, true), skillsHubRef.value?.refresh(true)])
+    }
   } finally {
     isManualRefreshInFlight.value = false
   }
 }
 
 async function openPluginDetail(plugin: DirectoryPluginSummary): Promise<void> {
+  const readId = ++pluginDetailReadId
   selectedPlugin.value = plugin
   selectedPluginDetail.value = null
   pluginDetailError.value = ''
@@ -1430,14 +1555,18 @@ async function openPluginDetail(plugin: DirectoryPluginSummary): Promise<void> {
   isPluginDetailOpen.value = true
   isLoadingPluginDetail.value = true
   try {
-    selectedPluginDetail.value = await readDirectoryPlugin(plugin)
-    selectedPlugin.value = selectedPluginDetail.value.summary
-    if (supportsApps.value && apps.value.length === 0) await loadApps()
+    const detail = await readDirectoryPlugin(plugin)
+    if (disposed || readId !== pluginDetailReadId || !isPluginDetailOpen.value) return
+    selectedPluginDetail.value = detail
+    selectedPlugin.value = detail.summary
+    if (supportsApps.value) await loadApps()
+    if (disposed || readId !== pluginDetailReadId) return
+    if (appError.value) throw new Error(appError.value)
     await refreshMcpStatusesForPluginDetail()
   } catch (error) {
-    pluginDetailError.value = error instanceof Error ? error.message : 'Failed to load plugin'
+    if (!disposed && readId === pluginDetailReadId) pluginDetailError.value = error instanceof Error ? error.message : 'Failed to load plugin'
   } finally {
-    isLoadingPluginDetail.value = false
+    if (readId === pluginDetailReadId) isLoadingPluginDetail.value = false
   }
 }
 
@@ -1469,6 +1598,8 @@ async function openFirstMcpLoginIfNeeded(detail: DirectoryPluginDetail): Promise
 }
 
 function closePluginDetail(): void {
+  if (isPluginActionInFlight.value) return
+  pluginDetailReadId += 1
   isPluginDetailOpen.value = false
 }
 
@@ -1565,7 +1696,8 @@ async function installSelectedPlugin(): Promise<void> {
     installAuthApps.value = result.appsNeedingAuth
     showToast('{name} plugin installed', 'success', { name: selectedPlugin.value.displayName })
     const openedAppLogin = openFirstAppLoginIfNeeded(result.appsNeedingAuth)
-    await loadPlugins()
+    await loadPlugins(true)
+    emit('skills-changed')
     const updated = plugins.value.find((plugin) => plugin.id === selectedPlugin.value?.id)
     if (updated) {
       await openPluginDetail(updated)
@@ -1587,8 +1719,10 @@ async function uninstallSelectedPlugin(): Promise<void> {
     const name = selectedPlugin.value.displayName
     await uninstallDirectoryPlugin(selectedPlugin.value.id)
     showToast('{name} plugin uninstalled', 'success', { name: name })
-    closePluginDetail()
-    await loadPlugins()
+    isPluginDetailOpen.value = false
+    pluginDetailReadId += 1
+    await loadPlugins(true)
+    emit('skills-changed')
   } catch (error) {
     showToast(error instanceof Error ? error.message : 'Failed to uninstall plugin', 'error')
   } finally {
@@ -1602,15 +1736,12 @@ async function toggleSelectedPlugin(): Promise<void> {
   try {
     const next = !selectedPlugin.value.enabled
     await setDirectoryPluginEnabled(selectedPlugin.value.id, next)
-    selectedPlugin.value = { ...selectedPlugin.value, enabled: next }
-    if (selectedPluginDetail.value) {
-      selectedPluginDetail.value = {
-        ...selectedPluginDetail.value,
-        summary: { ...selectedPluginDetail.value.summary, enabled: next },
-      }
-    }
-    showToast(next ? '{name} plugin enabled' : '{name} plugin disabled', 'success', { name: selectedPlugin.value.displayName })
-    await loadPlugins()
+    await loadPlugins(true)
+    emit('skills-changed')
+    const updated = plugins.value.find(plugin => plugin.id === selectedPlugin.value?.id)
+    if (pluginError.value) throw new Error(`设置已保存，状态读取失败：${pluginError.value}`)
+    if (updated) await openPluginDetail(updated)
+    showToast('用户设置已保存')
   } catch (error) {
     showToast(error instanceof Error ? error.message : 'Failed to update plugin', 'error')
   } finally {
@@ -1623,8 +1754,9 @@ async function toggleApp(app: DirectoryAppInfo): Promise<void> {
   try {
     const next = !app.isEnabled
     await setDirectoryAppEnabled(app.id, next)
-    apps.value = apps.value.map((row) => row.id === app.id ? { ...row, isEnabled: next } : row)
-    showToast(next ? '{name} app enabled' : '{name} app disabled', 'success', { name: app.name })
+    await loadApps(true)
+    if (appError.value || appRuntimeError.value) throw new Error(`设置已保存，状态读取失败：${appError.value || appRuntimeError.value}`)
+    showToast('用户设置已保存')
   } catch (error) {
     showToast(error instanceof Error ? error.message : 'Failed to update app', 'error')
   } finally {
@@ -1636,7 +1768,9 @@ async function reloadMcps(): Promise<void> {
   isReloadingMcps.value = true
   try {
     await reloadDirectoryMcpServers()
-    await loadMcps()
+    expandedMcpNames.value = new Set()
+    await loadMcps(false, true)
+    if (mcpError.value) throw new Error(`配置已重载，状态读取失败：${mcpError.value}`)
     showToast('MCP servers reloaded')
   } catch (error) {
     showToast(error instanceof Error ? error.message : 'Failed to reload MCP servers', 'error')
@@ -1650,6 +1784,7 @@ function toggleMcpExpanded(name: string): void {
   if (next.has(name)) next.delete(name)
   else next.add(name)
   expandedMcpNames.value = next
+  if (next.has(name) && !mcpServers.value.find(server => server.name === name)?.detailsLoaded) void loadMcps(true)
 }
 
 watch(activeTab, (tab) => {
@@ -1675,14 +1810,33 @@ watch(composioSearchQuery, () => {
     void loadComposio()
   }, 250)
 })
-watch(() => props.cwd, () => {
-  if (activeTab.value === 'plugins') void loadPlugins()
+const stopNotifications = subscribeTaskNotifications(event => {
+  const params = event.params as { threadId?: string } | null
+  if (params?.threadId && params.threadId !== props.threadId) return
+  if (event.method === 'app/list/updated') {
+    const data = (event.params as { data?: Array<{ id: string; isEnabled?: boolean; isAccessible?: boolean }> })?.data
+    const signature = JSON.stringify(data?.map(app => [app.id, app.isEnabled, app.isAccessible])) || ''
+    if (signature === lastAppsNotification) return
+    lastAppsNotification = signature
+  }
+  if (['app/list/updated', 'mcpServer/startupStatus/updated', 'mcpServer/oauthLogin/completed', 'skills/changed', 'codexapp/reconnected'].includes(event.method)) scheduleDirectoryRefresh()
 })
-watch(() => props.threadId, () => {
-  if (activeTab.value === 'apps' || activeTab.value === 'plugins') void loadApps()
+
+onBeforeUnmount(() => {
+  disposed = true
+  pluginReadId += 1
+  appReadId += 1
+  mcpReadId += 1
+  pluginDetailReadId += 1
+  stopNotifications()
+  window.removeEventListener('focus', scheduleDirectoryRefresh)
+  if (refreshTimer) clearTimeout(refreshTimer)
+  if (toastTimer) clearTimeout(toastTimer)
+  if (composioSearchTimer) clearTimeout(composioSearchTimer)
 })
 
 onMounted(async () => {
+  window.addEventListener('focus', scheduleDirectoryRefresh)
   await loadMethods()
   refreshActiveTab()
 })
