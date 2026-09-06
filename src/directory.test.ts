@@ -6,6 +6,7 @@ describe('directory runtime evidence', () => {
   it('keeps an upstream HTTP failure readable without rendering its error document', () => {
     expect(formatDirectoryError(new Error('failed to list apps: 403 Forbidden: <html><script>long challenge</script></html>'), '失败')).toBe('failed to list apps: 403 Forbidden:')
     expect(formatDirectoryError(new Error('x'.repeat(4000)), '失败')).toHaveLength(500)
+    expect(formatDirectoryError(new Error('failed to list apps: Request failed with status 403 Forbidden: <html>challenge</html>'), '失败')).toBe('应用目录暂时无法读取（上游 HTTP 403）。')
   })
   it('keeps connected metadata separate from effective enabled and callable', () => {
     expect(normalizeInstalledApps({ apps: [{ id: 'app', enabled: true, callable: false }] })).toEqual([{ id: 'app', name: '', enabled: true, callable: false }])

@@ -164,7 +164,7 @@
       <div v-if="isLoadingApps" class="directory-loading">{{ t('Loading apps...') }}</div>
       <div v-else-if="visibleApps.length === 0 && !appError && !appRuntimeError && supportsApps" class="directory-empty">{{ t('No apps found.') }}</div>
       <div v-else class="directory-grid">
-        <article v-for="app in visibleApps" :key="app.id" class="directory-card">
+        <article v-for="app in visibleApps" :key="app.id" class="directory-card" :class="{ 'is-runtime-only': app.runtimeOnly }">
           <div class="directory-card-top">
             <img v-if="appLogoSrc(app)" class="directory-card-icon" :src="appLogoSrc(app)" :alt="app.name" loading="lazy" />
             <div v-else class="directory-card-fallback">{{ app.name.charAt(0) }}</div>

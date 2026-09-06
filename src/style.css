@@ -2303,3 +2303,13 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 :root.dark .directory-hub .skill-card-name { color: var(--ui-text); }
 :root.dark .directory-hub .mcp-skill-badge,
 :root.dark .directory-hub .directory-toast { background: var(--ui-field); border-color: var(--ui-border); }
+.directory-hub .directory-card.is-runtime-only { min-height: 0; }
+.directory-hub .is-runtime-only .directory-card-actions,
+.directory-hub .is-runtime-only .directory-chip-row { display: none; }
+:root.dark .directory-hub .directory-error,
+:root.dark .directory-hub .skills-hub-error,
+:root.dark .directory-hub .directory-toast.is-error {
+  background: color-mix(in srgb, var(--ui-danger) 8%, var(--ui-surface));
+  border-color: color-mix(in srgb, var(--ui-danger) 35%, var(--ui-border));
+  color: var(--ui-danger);
+}

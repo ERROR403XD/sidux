@@ -5,6 +5,7 @@ const text = (value: unknown, limit = 240): string => typeof value === 'string' 
 export function formatDirectoryError(error: unknown, fallback: string): string {
   const message = error instanceof Error ? error.message : fallback
   const htmlIndex = message.search(/<(?:!doctype|html|head|body|script)\b/i)
+  if (htmlIndex >= 0 && /failed to list apps/i.test(message) && /status 403\b/i.test(message)) return '应用目录暂时无法读取（上游 HTTP 403）。'
   const brief = (htmlIndex >= 0 ? message.slice(0, htmlIndex) : message).replace(/\s+/g, ' ').trim()
   return brief.slice(0, 500) || fallback
 }
