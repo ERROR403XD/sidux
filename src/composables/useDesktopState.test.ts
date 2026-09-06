@@ -1296,3 +1296,43 @@ describe('runtime reconnect capabilities', () => {
     state.stopPolling()
   })
 })
+
+
+describe('explicit question answers', () => {
+  it('does not intercept ordinary text or steer as an answer to a pending question', async () => {
+    installTestWindow()
+    let notify: (event: { method: string; params?: unknown }) => void = () => {}
+    gatewayMocks.subscribeCodexNotifications.mockImplementation(handler => { notify = handler; return vi.fn() })
+    gatewayMocks.getPendingServerRequests.mockResolvedValue([])
+    gatewayMocks.resumeThread.mockResolvedValue({ messages: [], inProgress: false, activeTurnId: '', turnIndexByTurnId: {} })
+    gatewayMocks.getThreadDetail.mockResolvedValue({ messages: [], inProgress: false, activeTurnId: '', turnIndexByTurnId: {} })
+    gatewayMocks.startThreadTurn.mockResolvedValue('t-new')
+    const state = useDesktopState()
+    state.primeSelectedThread('thread-question')
+    await state.loadMessages('thread-question')
+    state.startPolling()
+    notify({ method: 'server/request', params: { id: 21, method: 'item/tool/requestUserInput', params: { threadId: 'thread-question', turnId: 't', itemId: 'q', isBlocking: false, questions: [{ id: 'scope', question: 'Scope?' }] } } })
+    await state.sendMessageToSelectedThread('ordinary text', [], [], 'steer')
+    expect(gatewayMocks.replyToServerRequest).not.toHaveBeenCalled()
+    expect(gatewayMocks.startThreadTurn).toHaveBeenCalledWith('thread-question', 'ordinary text', [], undefined, undefined, undefined, [], 'default', null)
+    state.stopPolling()
+  })
+})
+
+
+it('does not lose a live question when an earlier pending snapshot arrives afterward', async () => {
+  installTestWindow()
+  let notify: (event: { method: string; params?: unknown }) => void = () => {}
+  let resolveSnapshot: (rows: unknown[]) => void = () => {}
+  gatewayMocks.subscribeCodexNotifications.mockImplementation(handler => { notify = handler; return vi.fn() })
+  gatewayMocks.getPendingServerRequests.mockImplementation(() => new Promise(resolve => { resolveSnapshot = resolve }))
+  const state = useDesktopState()
+  state.primeSelectedThread('question-thread')
+  state.startPolling()
+  notify({ method: 'server/request', params: { id: 901, method: 'item/tool/requestUserInput', params: { threadId: 'question-thread', turnId: 'turn', itemId: 'item', isBlocking: false, questions: [{ id: 'q', question: 'Scope?' }] } } })
+  resolveSnapshot([])
+  await Promise.resolve()
+  await Promise.resolve()
+  expect(state.selectedThreadServerRequests.value.map(request => request.id)).toEqual([901])
+  state.stopPolling()
+})

@@ -1036,6 +1036,7 @@
                     :has-more-persisted-above="hasMoreOlderMessages"
                     :is-loading-persisted-above="isLoadingOlderMessages"
                     :load-earlier-messages="loadOlderMessages"
+                    :answer-questions="answerAsyncQuestions"
                     @fork-thread="onForkThreadFromMessage"
                     @rollback="onRollback"
                     @implement-plan="onImplementPlan"
@@ -1043,6 +1044,10 @@
                 </div>
 
                 <div class="composer-with-queue">
+                  <p v-if="selectedAuthRecovery" class="thread-auth-recovery" role="status">
+                    {{ selectedAuthRecovery.phase === 'started' ? '正在恢复凭据' : '凭据恢复已结束' }}
+                    <span v-if="selectedAuthRecovery.message"> · {{ selectedAuthRecovery.message }}</span>
+                  </p>
                   <div v-if="codexCliMissingError" class="composer-runtime-error" role="alert">
                     <span>{{ t(codexCliMissingError) }}</span>
                     <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, codexCliMissingError)">{{ t('Send feedback') }}</a>
@@ -1065,14 +1070,16 @@
                     @terminal-focus-change="onTerminalFocusChange"
                   />
                   <ThreadPendingRequestPanel
-                    v-if="selectedThreadPendingRequest"
-                    :request="selectedThreadPendingRequest"
+                    v-for="request in visiblePendingRequests"
+                    :key="`${request.threadId}:${request.id}`"
+                    :request="request"
+                    :busy="pendingReplyIds.has(request.id)"
                     :request-count="selectedThreadServerRequests.length"
                     :has-queue-above="selectedThreadQueuedMessages.length > 0"
                     @respond-server-request="onRespondServerRequest"
                   />
                   <ThreadComposer
-                    v-else
+                    v-if="!selectedThreadPendingRequest || isAsyncUserInputRequest(selectedThreadPendingRequest)"
                     ref="threadComposerRef"
                     :disabled="isSwitchingAccounts"
                     :active-thread-id="composerThreadContextId"
@@ -1231,6 +1238,7 @@
 </template>
 
 <script setup lang="ts">
+import { isAsyncUserInputRequest, pendingRequestPriority } from './userQuestions'
 import { isOverlayEventInside } from './composables/overlayEvents'
 import { formatLocalDateTime, browserTimeZone } from './dateTime'
 import { vModalBackdrop } from './composables/modalBackdrop'
@@ -1544,6 +1552,8 @@ const {
   setSelectedReasoningEffort,
   updateSelectedSpeedMode,
   respondToPendingServerRequest,
+  answerAsyncQuestions,
+  selectedAuthRecovery,
   renameProject,
   removeProject,
   reorderProject,
@@ -1883,9 +1893,14 @@ const liveOverlay = computed(() => selectedLiveOverlay.value)
 const composerThreadContextId = computed(() => (isHomeRoute.value ? '__new-thread__' : selectedThreadId.value))
 const composerSelectedModelId = computed(() => readModelIdForThread(composerThreadContextId.value))
 const selectedThreadPendingRequest = computed<UiServerRequest | null>(() => {
-  const rows = selectedThreadServerRequests.value
-  return rows.length > 0 ? rows[rows.length - 1] : null
+  return [...selectedThreadServerRequests.value].sort((a, b) => pendingRequestPriority(a) - pendingRequestPriority(b))[0] ?? null
 })
+const visiblePendingRequests = computed(() => {
+  const first = selectedThreadPendingRequest.value
+  if (!first) return []
+  return isAsyncUserInputRequest(first) ? selectedThreadServerRequests.value : [first]
+})
+const pendingReplyIds = ref(new Set<number>())
 const composerCwd = computed(() => {
   if (isHomeRoute.value) return newThreadCwd.value.trim()
   return selectedThread.value?.cwd?.trim() ?? ''
@@ -3214,9 +3229,19 @@ function onRespondServerRequest(payload: UiServerRequestReply): void {
 }
 
 async function handleServerRequestResponse(payload: UiServerRequestReply): Promise<void> {
-  const responded = await respondToPendingServerRequest(payload)
+  if (pendingReplyIds.value.has(payload.id)) return
+  const requestThreadId = selectedThreadServerRequests.value.find(request => request.id === payload.id)?.threadId
+  pendingReplyIds.value = new Set([...pendingReplyIds.value, payload.id])
+  let responded = false
+  try {
+    responded = await respondToPendingServerRequest(payload)
+  } finally {
+    const next = new Set(pendingReplyIds.value)
+    next.delete(payload.id)
+    pendingReplyIds.value = next
+  }
   const followUpMessageText = payload.followUpMessageText?.trim() ?? ''
-  if (!responded || !followUpMessageText || isHomeRoute.value) return
+  if (!responded || !followUpMessageText || isHomeRoute.value || selectedThreadId.value !== requestThreadId) return
 
   try {
     await sendMessageToSelectedThread(followUpMessageText, [], [], 'steer', [])

@@ -1403,8 +1403,8 @@ export async function replyToServerRequest(
   })
 }
 
-export async function getPendingServerRequests(): Promise<unknown[]> {
-  return fetchPendingServerRequests()
+export async function getPendingServerRequests(onAuthRecovery?: (states: import('../authRecovery').AuthRecoveryState[]) => void): Promise<unknown[]> {
+  return fetchPendingServerRequests(onAuthRecovery)
 }
 
 export async function getAccountRateLimits(): Promise<UiRateLimitSnapshot | null> {

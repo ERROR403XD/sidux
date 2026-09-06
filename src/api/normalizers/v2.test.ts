@@ -184,3 +184,15 @@ describe('readThreadInProgressFromResponse', () => {
     expect(readThreadInProgressFromResponse(response)).toBe(true)
   })
 })
+
+
+describe('async question persistence', () => {
+  it('retains structured questions and delivery on an otherwise empty assistant message', () => {
+    const payload = threadReadResponseWithContent([{
+      type: 'agentMessage', id: 'async-question', text: '', delivery: 'async',
+      questions: [{ title: 'Scope?', options: ['UI', 'All'] }, { title: 'Notes?' }],
+    } as unknown as ThreadReadResponse['thread']['turns'][number]['items'][number]])
+    const [message] = normalizeThreadMessagesV2(payload)
+    expect(message).toMatchObject({ id: 'async-question', turnId: 'turn-1', delivery: 'async', questions: [{ title: 'Scope?', options: ['UI', 'All'] }, { title: 'Notes?', options: [] }] })
+  })
+})

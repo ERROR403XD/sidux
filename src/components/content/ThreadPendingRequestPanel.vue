@@ -1,6 +1,11 @@
 <template>
   <section v-if="request" class="thread-pending-request">
-    <article
+    <div v-if="collapsed && isAsyncUserInputRequest(request)" class="async-question-heading">
+      <span>问题待回答</span><button type="button" class="thread-pending-request-secondary" @click="collapsed = false">回答</button>
+    </div>
+    <fieldset
+      v-else
+      :disabled="busy"
       class="thread-pending-request-shell"
       :class="{ 'thread-pending-request-shell--no-top-radius': hasQueueAbove }"
     >
@@ -192,11 +197,11 @@
               </p>
             </div>
 
-            <label v-if="question.isOther" class="thread-pending-request-input-wrap">
+            <label v-if="question.isOther || !question.options.length" class="thread-pending-request-input-wrap">
               <span class="thread-pending-request-select-label">{{ t('Other answer') }}</span>
               <input
                 class="thread-pending-request-input"
-                type="text"
+                :type="question.isSecret ? 'password' : 'text'"
                 :value="readQuestionOtherAnswer(request.id, question.id)"
                 :placeholder="t('Other answer')"
                 @input="onQuestionOtherAnswerInput(request.id, question.id, $event)"
@@ -204,7 +209,9 @@
             </label>
           </div>
 
+          <p v-if="toolValidationError" role="alert" class="thread-pending-request-validation-error">{{ toolValidationError }}</p>
           <footer class="thread-pending-request-footer">
+            <button v-if="isAsyncUserInputRequest(request)" type="button" class="thread-pending-request-secondary" @click="collapsed = true">暂不回答</button>
             <button type="button" class="thread-pending-request-primary" @click="onRespondToolRequestUserInput(request)">
               {{ t('Send') }}
             </button>
@@ -229,11 +236,12 @@
           </button>
         </section>
       </template>
-    </article>
+    </fieldset>
   </section>
 </template>
 
 <script setup lang="ts">
+import { isAsyncUserInputRequest } from '../../userQuestions'
 import { computed, ref, watch } from 'vue'
 import type { UiServerRequest, UiServerRequestReply } from '../../types/codex'
 import { useUiLanguage } from '../../composables/useUiLanguage'
@@ -251,6 +259,7 @@ type ParsedToolQuestion = {
   header: string
   question: string
   isOther: boolean
+  isSecret: boolean
   options: Array<{ label: string; description: string }>
 }
 
@@ -275,12 +284,15 @@ const props = defineProps<{
   request: UiServerRequest | null
   requestCount?: number
   hasQueueAbove?: boolean
+  busy?: boolean
 }>()
 
 const emit = defineEmits<{
   respondServerRequest: [payload: UiServerRequestReply]
 }>()
 
+const collapsed = ref(false)
+const toolValidationError = ref('')
 const selectedApprovalDecision = ref<ApprovalDecision>('accept')
 const approvalFreeformText = ref('')
 const toolQuestionAnswers = ref<Record<string, string>>({})
@@ -356,7 +368,7 @@ function readRequestReason(request: UiServerRequest): string {
 function requestPanelTitle(request: UiServerRequest): string {
   if (isApprovalRequest(request)) return 'Awaiting approval'
   if (isMcpElicitationRequest(request)) return 'MCP server input required'
-  if (request.method === 'item/tool/requestUserInput') return 'Awaiting response'
+  if (request.method === 'item/tool/requestUserInput') return isAsyncUserInputRequest(request) ? '可随时回答' : t('Awaiting response')
   if (request.method === 'item/tool/call') return 'Tool call waiting for response'
   return request.method
 }
@@ -368,7 +380,7 @@ function requestPanelPrompt(request: UiServerRequest): string {
   if (isFileApprovalRequest(request)) return 'Do you want to make these changes?'
   if (isPermissionsApprovalRequest(request)) return 'Do you want to grant these permissions?'
   if (isMcpElicitationRequest(request)) return 'An MCP server needs your input before Codex can continue.'
-  if (request.method === 'item/tool/requestUserInput') return 'Codex needs your answer before it can continue.'
+  if (request.method === 'item/tool/requestUserInput') return isAsyncUserInputRequest(request) ? 'Codex 会继续工作。' : '请回答后继续。'
   return 'Codex is waiting for a response before it can continue.'
 }
 
@@ -502,6 +514,7 @@ function readToolQuestions(request: UiServerRequest): ParsedToolQuestion[] {
       header: readString(question.header),
       question: readString(question.question),
       isOther: question.isOther === true,
+      isSecret: question.isSecret === true,
       options,
     })
   }
@@ -928,7 +941,11 @@ function onRespondToolRequestUserInput(request: UiServerRequest): void {
   for (const question of questions) {
     const selected = readQuestionAnswer(request.id, question.id, question.options[0]?.label || '')
     const other = readQuestionOtherAnswer(request.id, question.id).trim()
-    const values = [selected, other].map((value) => value.trim()).filter((value) => value.length > 0)
+    const values = [other || selected].map(value => value.trim()).filter(Boolean)
+    if (!values.length) {
+      toolValidationError.value = '请回答每个问题后再发送。'
+      return
+    }
     answers[question.id] = { answers: values }
   }
 

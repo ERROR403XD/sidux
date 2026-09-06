@@ -1,3 +1,5 @@
+import { authRecoveryFromNotification, type AuthRecoveryState } from '../authRecovery'
+import { buildQuestionReply, isAsyncUserInputRequest, readAsyncQuestions, readQuestionReply, questionRefKey, type AsyncQuestionReply } from '../userQuestions'
 import { normalizeToolSummary } from '../api/normalizers/toolSummary'
 import { capabilityValue, modelSettingsProblem, type ModelCapability } from '../modelCapabilities'
 import type { ThreadQueueOperation, ThreadQueueResult } from '../threadQueue'
@@ -644,6 +646,12 @@ function areMessageFieldsEqual(first: UiMessage, second: UiMessage): boolean {
     first.id === second.id &&
     first.role === second.role &&
     first.text === second.text &&
+    first.delivery === second.delivery &&
+    first.questionOrdinal === second.questionOrdinal &&
+    JSON.stringify(first.questions) === JSON.stringify(second.questions) &&
+    first.questionReply?.itemId === second.questionReply?.itemId &&
+    first.questionReply?.turnId === second.questionReply?.turnId &&
+    first.questionReply?.questionOrdinal === second.questionReply?.questionOrdinal &&
     areStringArraysEqual(first.images, second.images) &&
     areUiFileChangesEqual(first.fileChanges, second.fileChanges) &&
     first.fileChangeStatus === second.fileChangeStatus &&
@@ -674,6 +682,9 @@ function mergeMessages(
 ): UiMessage[] {
   const previousById = new Map(previous.map((message) => [message.id, message]))
   const incomingById = new Map(incoming.map((message) => [message.id, message]))
+  const incomingQuestionKeys = new Set(incoming.flatMap(message => message.questions?.length && message.questionOrdinal !== undefined && message.turnId
+    ? [questionRefKey({ itemId: message.id, turnId: message.turnId, questionOrdinal: message.questionOrdinal })]
+    : []))
 
   const mergedIncoming = incoming.map((incomingMessage) => {
     const previousMessage = previousById.get(incomingMessage.id)
@@ -698,7 +709,11 @@ function mergeMessages(
       }
       return nextMessage
     })
-    .filter((message) => !isOptimisticUserMessage(message) || !hasEquivalentUserMessage(message, incoming))
+    .filter(message => {
+      if (message.questions?.length && message.questionOrdinal !== undefined && message.turnId && !incomingById.has(message.id)
+        && incomingQuestionKeys.has(questionRefKey({ itemId: message.id, turnId: message.turnId, questionOrdinal: message.questionOrdinal }))) return false
+      return !isOptimisticUserMessage(message) || !hasEquivalentUserMessage(message, incoming)
+    })
 
   const previousIdSet = new Set(previous.map((message) => message.id))
   const appended = mergedIncoming.filter((message) => !previousIdSet.has(message.id))
@@ -771,13 +786,12 @@ function removeRedundantLiveAgentMessages(previous: UiMessage[], incoming: UiMes
       .filter((text) => text.length > 0),
   )
 
-  if (incomingAssistantTexts.size === 0) {
-    return previous
-  }
+  if (incomingMessageIds.size === 0) return previous
 
   const next = previous.filter((message) => {
     if (message.messageType !== 'agentMessage.live') return true
     if (incomingMessageIds.has(message.id)) return false
+    if (message.questions?.length) return true
     const normalized = normalizeMessageText(message.text)
     if (normalized.length === 0) return false
     return !incomingAssistantTexts.has(normalized)
@@ -1502,6 +1516,12 @@ export function useDesktopState() {
   const threadListedByServerById = ref<Record<string, boolean>>({})
   const persistedUserMessageByThreadId = ref<Record<string, boolean>>({})
   const pendingServerRequestsByThreadId = ref<Record<string, UiServerRequest[]>>({})
+  const authRecoveryByThreadId = ref<Record<string, AuthRecoveryState>>({})
+  const selectedAuthRecovery = computed(() => authRecoveryByThreadId.value[selectedThreadId.value] ?? null)
+  let pendingSnapshot: {
+    requests: Map<number, UiServerRequest | null>
+    auth: Map<string, AuthRecoveryState | null>
+  } | null = null
   const pendingTurnRequestByThreadId = ref<Record<string, PendingTurnRequest>>({})
   const codexRateLimit = ref<UiRateLimitSnapshot | null>(null)
   const threadTokenUsageByThreadId = ref<Record<string, UiThreadTokenUsage>>(loadThreadTokenUsageMap())
@@ -2212,7 +2232,7 @@ export function useDesktopState() {
     if (requests.some((request) => isApprovalRequestMethod(request.method))) {
       return 'approval'
     }
-    return requests.length > 0 ? 'response' : null
+    return requests.some(request => !isAsyncUserInputRequest(request)) ? 'response' : null
   }
 
   function applyThreadFlags(): void {
@@ -2598,7 +2618,7 @@ export function useDesktopState() {
     const nextMessage: UiMessage = {
       id: `optimistic-user:${threadId}:${Date.now()}`,
       role: 'user',
-      text,
+      ...readQuestionReply(text),
       images: imageUrls.length > 0 ? [...imageUrls] : undefined,
       skills: skills.length > 0 ? skills.map((skill) => ({ name: skill.name, path: skill.path })) : undefined,
       fileAttachments: fileAttachments.length > 0 ? fileAttachments.map((file) => ({ ...file })) : undefined,
@@ -3139,24 +3159,8 @@ export function useDesktopState() {
     )
   }
 
-  function readToolRequestUserInputQuestionIds(request: UiServerRequest): string[] {
-    if (request.method !== 'item/tool/requestUserInput') return []
-    const params = asRecord(request.params)
-    const questions = Array.isArray(params?.questions) ? params.questions : []
-    const questionIds: string[] = []
-
-    for (const row of questions) {
-      const question = asRecord(row)
-      const id = readString(question?.id).trim()
-      if (id) {
-        questionIds.push(id)
-      }
-    }
-
-    return questionIds
-  }
-
   function upsertPendingServerRequest(request: UiServerRequest): void {
+    pendingSnapshot?.requests.set(request.id, request)
     const threadId = request.threadId || GLOBAL_SERVER_REQUEST_SCOPE
     const current = pendingServerRequestsByThreadId.value[threadId] ?? []
     const index = current.findIndex((row) => row.id === request.id)
@@ -3175,6 +3179,7 @@ export function useDesktopState() {
   }
 
   function removePendingServerRequestById(requestId: number): void {
+    pendingSnapshot?.requests.set(requestId, null)
     const next: Record<string, UiServerRequest[]> = {}
     for (const [threadId, requests] of Object.entries(pendingServerRequestsByThreadId.value)) {
       const filtered = requests.filter((request) => request.id !== requestId)
@@ -3570,11 +3575,15 @@ export function useDesktopState() {
       if (!item || item.type !== 'agentMessage') return null
       const id = readString(item.id)
       const text = readString(item.text)
-      if (!id || !text) return null
+      const questions = readAsyncQuestions(item.questions)
+      if (!id || (!text && !questions.length)) return null
       return {
         id,
         role: 'assistant',
         text,
+        delivery: item.delivery === 'async' ? 'async' : undefined,
+        questions,
+        turnId: readString(params.turnId) || undefined,
         messageType: 'agentMessage.live',
       }
     }
@@ -3806,6 +3815,22 @@ export function useDesktopState() {
     if (['account/updated', 'model/list/updated', 'models/updated', 'config/updated'].includes(notification.method)) {
       invalidateModelCatalog()
       void refreshModelPreferences()
+    }
+    const authRecovery = authRecoveryFromNotification(notification.method, notification.params)
+    if (authRecovery) {
+      pendingSnapshot?.auth.set(authRecovery.threadId, authRecovery)
+      const states = { ...authRecoveryByThreadId.value, [authRecovery.threadId]: authRecovery }
+      const ids = Object.keys(states)
+      if (ids.length > 100) delete states[ids[0]]
+      authRecoveryByThreadId.value = states
+      return
+    }
+    if (notification.method === 'turn/started' || notification.method === 'turn/completed' || notification.method === 'turn/cancelled') {
+      const threadId = extractThreadIdFromNotification(notification)
+      if (threadId) {
+        pendingSnapshot?.auth.set(threadId, null)
+        authRecoveryByThreadId.value = omitKey(authRecoveryByThreadId.value, threadId)
+      }
     }
     if (notification.method === 'model/rerouted') {
       const params = asRecord(notification.params)
@@ -4893,34 +4918,28 @@ export function useDesktopState() {
     }
   }
 
-  async function maybeReplyToPendingUserInputRequest(
-    threadId: string,
-    text: string,
-    imageUrls: string[] = [],
-    skills: Array<{ name: string; path: string }> = [],
-    fileAttachments: FileAttachment[] = [],
-  ): Promise<boolean> {
-    if (!threadId || !text.trim()) return false
-    if (imageUrls.length > 0 || skills.length > 0 || fileAttachments.length > 0) return false
-
-    const requests = pendingServerRequestsByThreadId.value[threadId] ?? []
-    const userInputRequests = requests.filter((request) => request.method === 'item/tool/requestUserInput')
-    if (userInputRequests.length !== 1) return false
-
-    const [request] = userInputRequests
-    const questionIds = readToolRequestUserInputQuestionIds(request)
-    if (questionIds.length !== 1) return false
-
-    return respondToPendingServerRequest({
-      id: request.id,
-      result: {
-        answers: {
-          [questionIds[0]]: {
-            answers: [text.trim()],
-          },
-        },
-      },
-    })
+  async function answerAsyncQuestions(reply: AsyncQuestionReply): Promise<void> {
+    const known = [
+      ...(persistedMessagesByThreadId.value[reply.threadId] ?? []),
+      ...(liveAgentMessagesByThreadId.value[reply.threadId] ?? []),
+    ].find(message => message.id === reply.itemId && message.turnId === reply.turnId && message.questions?.length)
+    if (!known) throw new Error('找不到对应问题，请刷新会话后重试。')
+    // While a turn is running the CLI may reconstruct item-N IDs, then publish
+    // the original call ID on completion. Resolve an ordinal in the native turn
+    // once on explicit submission; never infer an answer from ordinary text.
+    const detail = await getThreadDetail(reply.threadId)
+    const candidates = detail.messages.filter(message => message.turnId === reply.turnId && message.questions?.length)
+    const question = candidates.find(message => reply.questionOrdinal !== undefined
+      ? message.questionOrdinal === reply.questionOrdinal
+      : message.id === reply.itemId)
+      ?? (candidates.filter(message => JSON.stringify(message.questions) === JSON.stringify(known.questions)).length === 1
+        ? candidates.find(message => JSON.stringify(message.questions) === JSON.stringify(known.questions))
+        : undefined)
+    if (!question) throw new Error('问题状态已变化，请刷新会话后重试。')
+    const key = questionRefKey({ itemId: question.id, turnId: reply.turnId, questionOrdinal: question.questionOrdinal })
+    if (detail.messages.some(message => message.questionReply && questionRefKey(message.questionReply) === key)) return
+    setPersistedMessagesForThread(reply.threadId, mergeMessages(persistedMessagesByThreadId.value[reply.threadId] ?? [], detail.messages, { preserveMissing: true }))
+    await startTurnForThread(reply.threadId, buildQuestionReply(question, reply.answers))
   }
 
   async function sendMessageToSelectedThread(
@@ -4959,10 +4978,6 @@ export function useDesktopState() {
           ...checkedModelSettings(readModelIdForThread(threadId), imageUrls.length > 0),
         },
       })
-      return
-    }
-
-    if (await maybeReplyToPendingUserInputRequest(threadId, nextText, imageUrls, skills, fileAttachments)) {
       return
     }
 
@@ -5633,14 +5648,39 @@ export function useDesktopState() {
   }
 
   async function loadPendingServerRequestsFromBridge(): Promise<void> {
+    const changes = {
+      requests: new Map<number, UiServerRequest | null>(),
+      auth: new Map<string, AuthRecoveryState | null>(),
+    }
+    pendingSnapshot = changes
+    let recoverySnapshot: AuthRecoveryState[] | undefined
     try {
-      const rows = await getPendingServerRequests()
-      const normalizedRequests = rows
-        .map((row) => normalizeServerRequest(row))
+      const rows = await getPendingServerRequests(states => { recoverySnapshot = states })
+      if (pendingSnapshot !== changes) return
+      const requests = new Map(rows
+        .map(row => normalizeServerRequest(row))
         .filter((request): request is UiServerRequest => request !== null)
-      replacePendingServerRequests(normalizedRequests)
+        .map(request => [request.id, request]))
+      // Live events that arrive during the read are newer than its snapshot.
+      // Apply both additions and resolutions without another network request.
+      for (const [id, request] of changes.requests) {
+        if (request) requests.set(id, request)
+        else requests.delete(id)
+      }
+      replacePendingServerRequests([...requests.values()])
+      if (recoverySnapshot) {
+        const recovery = new Map(recoverySnapshot.map(state => [state.threadId, state]))
+        for (const [id, state] of changes.auth) {
+          if (state) recovery.set(id, state)
+          else recovery.delete(id)
+        }
+        authRecoveryByThreadId.value = Object.fromEntries(recovery)
+      }
+      applyThreadFlags()
     } catch {
-      // Keep UI usable when pending request endpoint is temporarily unavailable.
+      // Keep current requests and drafts available for a later reconnect.
+    } finally {
+      if (pendingSnapshot === changes) pendingSnapshot = null
     }
   }
 
@@ -5659,7 +5699,9 @@ export function useDesktopState() {
   }
 
   function stopPolling(): void {
+    pendingSnapshot = null
     modelRefreshGeneration++
+    authRecoveryByThreadId.value = {}
     invalidateModelCatalog()
     availableModels.value = []
     recentRateLimitsAt = 0
@@ -5829,7 +5871,9 @@ export function useDesktopState() {
 
     setSelectedReasoningEffort,
     updateSelectedSpeedMode,
+    selectedAuthRecovery,
     respondToPendingServerRequest,
+    answerAsyncQuestions,
     renameProject,
     removeProject,
     reorderProject,

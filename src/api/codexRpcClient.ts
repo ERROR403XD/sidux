@@ -1,3 +1,4 @@
+import { readAuthRecovery, type AuthRecoveryState } from '../authRecovery'
 import type { RpcEnvelope, RpcMethodCatalog } from '../types/codex'
 import { CodexApiError, extractErrorMessage } from './codexErrors'
 
@@ -339,7 +340,7 @@ export async function respondServerRequest(body: ServerRequestReplyBody): Promis
   }
 }
 
-export async function fetchPendingServerRequests(): Promise<unknown[]> {
+export async function fetchPendingServerRequests(onAuthRecovery?: (states: AuthRecoveryState[]) => void): Promise<unknown[]> {
   const response = await fetch('/codex-api/server-requests/pending')
 
   let payload: unknown = null
@@ -361,6 +362,8 @@ export async function fetchPendingServerRequests(): Promise<unknown[]> {
   }
 
   const record = asRecord(payload)
+  const recovery = Array.isArray(record?.authRecovery) ? record.authRecovery.map(readAuthRecovery).filter((state): state is AuthRecoveryState => state !== null) : []
+  onAuthRecovery?.(recovery)
   const data = record?.data
   return Array.isArray(data) ? data : []
 }

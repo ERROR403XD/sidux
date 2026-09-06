@@ -1,3 +1,4 @@
+import { AuthRecoveryRegistry } from '../authRecovery'
 import { MethodCatalog } from './runtimeCapabilities.js'
 import { version as appVersion } from '../../package.json'
 import { capabilityValue } from '../modelCapabilities.js'
@@ -5952,6 +5953,7 @@ const MERGEABLE_ITEM_TYPES = new Set([
 ])
 
 class AppServerProcess {
+  readonly authRecovery = new AuthRecoveryRegistry()
   automationActivity: () => string[] = () => []
   private process: ChildProcessWithoutNullStreams | null = null
   private initialized = false
@@ -6122,6 +6124,7 @@ class AppServerProcess {
   }
 
   private emitNotification(notification: { method: string; params: unknown }): void {
+    this.authRecovery.observe(notification.method, notification.params)
     const notificationThreadId = this.extractThreadIdFromParams(notification.params)
     if (notificationThreadId && notification.method === 'turn/started') {
       this.activeTurnThreadIds.add(notificationThreadId)
@@ -6579,6 +6582,7 @@ class AppServerProcess {
     this.pending.clear()
     this.pendingServerRequests.clear()
     this.activeTurnThreadIds.clear()
+    this.authRecovery.clear()
 
     try {
       proc.stdin.end()
@@ -7950,7 +7954,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
       }
 
       if (req.method === 'GET' && url.pathname === '/codex-api/server-requests/pending') {
-        setJson(res, 200, { data: appServer.listPendingServerRequests() })
+        setJson(res, 200, { data: appServer.listPendingServerRequests(), authRecovery: appServer.authRecovery.snapshot() })
         return
       }
 

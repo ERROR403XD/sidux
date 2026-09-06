@@ -1,3 +1,4 @@
+import { readAsyncQuestions, readQuestionReply } from '../../userQuestions'
 import { normalizeToolSummary } from './toolSummary'
 import { parseAutomationMessage, type AutomationMessageMetadata } from '../../automationMessage'
 import type {
@@ -412,6 +413,8 @@ function toUiMessages(item: ThreadItem): UiMessage[] {
         role: 'assistant',
         text: item.text,
         messageType: item.type,
+        delivery: (item as unknown as { delivery?: string }).delivery === 'async' ? 'async' : undefined,
+        questions: readAsyncQuestions((item as unknown as { questions?: unknown }).questions),
       },
     ]
   }
@@ -425,7 +428,7 @@ function toUiMessages(item: ThreadItem): UiMessage[] {
       messages.push({
         id: item.id,
         role: 'user',
-        text: parsed.text,
+        ...readQuestionReply(parsed.text),
         images: parsed.images,
         skills: parsed.skills.length > 0 ? parsed.skills : undefined,
         fileAttachments: parsed.fileAttachments.length > 0 ? parsed.fileAttachments : undefined,
@@ -644,9 +647,10 @@ export function normalizeThreadMessagesV2(payload: ThreadReadResponse, baseTurnI
     const rawTurnId = typeof turn?.id === 'string' ? turn.id.trim() : ''
     const turnId = rawTurnId.length > 0 ? rawTurnId : undefined
     const items = Array.isArray(turn.items) ? turn.items : []
+    let questionOrdinal = 0
     for (const item of items) {
       for (const msg of toUiMessages(item)) {
-        messages.push({ ...msg, turnId, turnIndex })
+        messages.push({ ...msg, turnId, turnIndex, ...(msg.questions?.length ? { questionOrdinal: questionOrdinal++ } : {}) })
       }
     }
     const errorText = readTurnErrorText(turn)

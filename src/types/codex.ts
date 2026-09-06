@@ -227,6 +227,10 @@ export type UiMessage = {
   isAutomationRun?: boolean
   automationDisplayName?: string | null
   automationRun?: import('../automationMessage').AutomationMessageMetadata
+  delivery?: 'async'
+  questionOrdinal?: number
+  questions?: import('../userQuestions').AsyncQuestion[]
+  questionReply?: import('../userQuestions').QuestionReplyRef
 }
 
 export type UiServerRequest = {
