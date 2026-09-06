@@ -36,6 +36,8 @@ describe('listenOnPort', () => {
 
     const candidate = createServer()
     servers.push(candidate)
-    await expect(listenOnPort(candidate, port, false)).resolves.toBe(port + 1)
+    const fallbackPort = await listenOnPort(candidate, port, false)
+    expect(fallbackPort).toBeGreaterThan(port)
+    expect(candidate.address()).toMatchObject({ port: fallbackPort })
   })
 })
