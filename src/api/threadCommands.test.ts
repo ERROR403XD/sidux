@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 vi.mock('./codexRpcClient', () => ({ rpcCall: vi.fn() }))
 import { rpcCall } from './codexRpcClient'
-import { validateGoalInput, parseGoalTokenBudget, formatGoalTokenBudget, getLatestCompletedReply, setThreadGoal, compactThread } from './threadCommands'
+import { validateGoalInput, parseGoalTokenBudget, formatGoalTokenBudget, getLatestCompletedReply, setThreadGoal, compactThread, getGoalModelSettings, applyGoalModelSettings } from './threadCommands'
 describe('native thread commands', () => {
   it('validates goals and budgets without silently inventing a limit', () => {
     expect(validateGoalInput(' 完成内部样本 ', '')).toEqual({ objective: '完成内部样本', tokenBudget: null })
@@ -25,6 +25,13 @@ describe('native thread commands', () => {
     expect(rpcCall).toHaveBeenLastCalledWith('thread/goal/set', { threadId: 'fixture', status: 'paused' })
     await compactThread('fixture')
     expect(rpcCall).toHaveBeenLastCalledWith('thread/compact/start', { threadId: 'fixture' })
+  })
+  it('reads persisted thread settings without history and updates only model and effort', async () => {
+    vi.mocked(rpcCall).mockResolvedValueOnce({ thread: { model: 'gpt-6-astra', reasoningEffort: 'ultra' } })
+    expect(await getGoalModelSettings('fixture')).toEqual({ model: 'gpt-6-astra', effort: 'ultra' })
+    expect(rpcCall).toHaveBeenLastCalledWith('thread/read', { threadId: 'fixture', includeTurns: false })
+    await applyGoalModelSettings('fixture', { model: 'gpt-5.6-luna', effort: 'max' })
+    expect(rpcCall).toHaveBeenLastCalledWith('thread/settings/update', { threadId: 'fixture', model: 'gpt-5.6-luna', effort: 'max' })
   })
   it('copies only the last completed reply, excluding a newer in-progress answer', async () => {
     vi.mocked(rpcCall).mockResolvedValue({ thread: { turns: [{ status: 'completed', items: [{ type: 'agentMessage', text: '已完成回复' }] }, { status: 'inProgress', items: [{ type: 'agentMessage', text: '未完成回复' }] }] } })

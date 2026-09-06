@@ -1,0 +1,102 @@
+{
+  "tests": 299,
+  "files": 42,
+  "browser": [
+    {
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000018",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "settings": {
+        "model": "gpt-6-astra",
+        "reasoningEffort": "ultra"
+      },
+      "settingsBeforeGoal": true,
+      "failureDoesNotActivate": true,
+      "persistedAfterReload": true,
+      "screenshot": "output/playwright/0200-goal-model-1440x900-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000018",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "settings": {
+        "model": "gpt-6-astra",
+        "reasoningEffort": "ultra"
+      },
+      "settingsBeforeGoal": true,
+      "failureDoesNotActivate": true,
+      "persistedAfterReload": true,
+      "screenshot": "output/playwright/0200-goal-model-1440x900-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000018",
+      "width": 375,
+      "height": 812,
+      "theme": "light",
+      "settings": {
+        "model": "gpt-6-astra",
+        "reasoningEffort": "ultra"
+      },
+      "settingsBeforeGoal": true,
+      "failureDoesNotActivate": true,
+      "persistedAfterReload": true,
+      "screenshot": "output/playwright/0200-goal-model-375x812-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000018",
+      "width": 375,
+      "height": 812,
+      "theme": "dark",
+      "settings": {
+        "model": "gpt-6-astra",
+        "reasoningEffort": "ultra"
+      },
+      "settingsBeforeGoal": true,
+      "failureDoesNotActivate": true,
+      "persistedAfterReload": true,
+      "screenshot": "output/playwright/0200-goal-model-375x812-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000018",
+      "width": 768,
+      "height": 1024,
+      "theme": "light",
+      "settings": {
+        "model": "gpt-6-astra",
+        "reasoningEffort": "ultra"
+      },
+      "settingsBeforeGoal": true,
+      "failureDoesNotActivate": true,
+      "persistedAfterReload": true,
+      "screenshot": "output/playwright/0200-goal-model-768x1024-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000018",
+      "width": 768,
+      "height": 1024,
+      "theme": "dark",
+      "settings": {
+        "model": "gpt-6-astra",
+        "reasoningEffort": "ultra"
+      },
+      "settingsBeforeGoal": true,
+      "failureDoesNotActivate": true,
+      "persistedAfterReload": true,
+      "screenshot": "output/playwright/0200-goal-model-768x1024-dark.png"
+    }
+  ],
+  "native": {
+    "base": "http://127.0.0.1:59001",
+    "threadId": "01a07704-2543-73e2-8606-6ca9379b2bac",
+    "model": "gpt-5.6-luna",
+    "effort": "max",
+    "pausedGoal": true,
+    "turnCount": 0
+  },
+  "candidateArtifactsMatched": 30,
+  "image": "sha256:2adb13d741c38734b8cbd7f81257c2da39e3114b107f8d1817f7de99f63a2826",
+  "buildAndCjsPassed": true,
+  "productionUnchanged": true
+}

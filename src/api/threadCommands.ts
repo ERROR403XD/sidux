@@ -42,3 +42,12 @@ export async function getLatestCompletedReply(threadId: string): Promise<string>
   if (!text) throw new Error('当前没有已完成的助手回复可复制')
   return text
 }
+
+export type GoalModelSettings = { model: string; effort: string }
+export async function getGoalModelSettings(threadId: string): Promise<GoalModelSettings> {
+  const { thread } = await rpcCall<{ thread: { model?: string | null; reasoningEffort?: string | null } }>('thread/read', { threadId, includeTurns: false })
+  return { model: thread.model ?? '', effort: thread.reasoningEffort ?? '' }
+}
+export async function applyGoalModelSettings(threadId: string, settings: GoalModelSettings): Promise<void> {
+  await rpcCall('thread/settings/update', { threadId, ...(settings.model ? { model: settings.model } : {}), ...(settings.effort ? { effort: settings.effort } : {}) })
+}

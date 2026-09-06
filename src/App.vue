@@ -1111,7 +1111,8 @@
     v-if="appCommandRequest" :request="appCommandRequest"
     :thread-id="isHomeRoute ? '' : selectedThreadId || ''" :thread-name="isHomeRoute ? '' : selectedThread?.title || ''"
     :cwd="composerCwd" :model="composerSelectedModelId" :effort="selectedReasoningEffort"
-    :busy="isSelectedThreadInProgress" :context-summary="commandContextSummary"
+    :busy="isSelectedThreadInProgress" :context-summary="commandContextSummary" :models="availableModels"
+    @model-change="onGoalModelChange"
     :run="runAppCommand" :ensure-thread="ensureCommandThread" @goal-change="updateThreadGoal" @close="appCommandRequest = null"
   />
   <div v-if="projectZipExportStatus.phase !== 'idle'" class="project-zip-modal-backdrop" role="presentation">
@@ -3590,6 +3591,10 @@ function onComposerCommand(request: AppCommandRequest) {
     return
   }
   appCommandRequest.value = request
+}
+function onGoalModelChange(model: string, effort: string): void {
+  setSelectedModelIdForThread(composerThreadContextId.value, model)
+  setSelectedReasoningEffort(effort)
 }
 async function ensureCommandThread(objective?: string): Promise<string> {
   if (!isHomeRoute.value && selectedThreadId.value) return selectedThreadId.value

@@ -8,11 +8,17 @@
         <p>目标会保存在会话中，由 Codex 持续推进；可随时暂停或清除。保存为运行中后会自动开始。</p>
         <p v-if="goal" class="thread-goal-status">{{ goalLabels[goal.status] }} · 已用 {{ goal.tokensUsed.toLocaleString() }} tokens · {{ Math.round(goal.timeUsedSeconds / 60) }} 分钟</p>
         <label>目标<textarea v-model="objective" data-autofocus rows="5" maxlength="8000" :disabled="working || loading" placeholder="说明希望完成什么，以及如何验收" /></label>
+        <div class="goal-model-fields">
+          <div><span class="goal-model-label">模型</span><AppSelect v-model="selectedModel" class="goal-model-picker" :options="modelOptions" enable-search search-placeholder="搜索模型" :disabled="working || loading || !supported" /></div>
+          <div><span class="goal-model-label">推理强度</span><AppSelect v-model="selectedEffort" class="goal-effort-picker" :options="goalEffortOptions" :disabled="working || loading || !supported" /></div>
+        </div>
+        <p v-if="settingsProblem" class="thread-command-error">{{ settingsProblem }}</p>
+        <p class="thread-command-hint">保存或继续目标时应用于会话后续回合；当前已开始的回合保持原配置。</p>
         <label>Token 预算（默认 M，可填 M/B）<input v-model="budget" maxlength="50" spellcheck="false" :disabled="working || loading" placeholder="如 1、1.5M 或 0.01B；留空不设预算" /></label>
         <p class="thread-command-hint">M = 100 万 tokens；B = 10 亿 tokens。不写单位时按 M 计算。</p>
         <p v-if="goal && objective.trim() !== goal.objective" class="thread-command-hint">修改目标内容会重置该目标的用量统计。</p>
         <div class="thread-command-actions">
-          <AppButton type="button" :disabled="working || loading || !supported || !objective.trim()" @click="saveGoal">{{ goal ? '保存目标' : '保存并开始' }}</AppButton>
+          <AppButton type="button" :disabled="working || loading || !supported || !!settingsProblem || !objective.trim()" @click="saveGoal">{{ goal ? '保存目标' : '保存并开始' }}</AppButton>
           <AppButton v-if="goal" type="button" :disabled="working || loading || !supported" @click="changeGoalStatus(goal.status === 'active' ? 'paused' : 'active')">{{ goal.status === 'active' ? '暂停目标' : '继续目标' }}</AppButton>
           <AppButton v-if="goal" type="button" :disabled="working || loading || !supported" @click="clearGoal">清除目标</AppButton>
         </div>
@@ -41,15 +47,19 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppButton from '../common/AppButton.vue'
+import AppSelect from '../common/AppSelect.vue'
+import { effortOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
+import { getGoalModelSettings, applyGoalModelSettings } from '../../api/threadCommands'
 import { APP_COMMANDS, buildComposerCommands, type AppCommandName, type AppCommandRequest } from './composerCommands'
 import { getMethodCatalog, subscribeCodexNotifications } from '../../api/codexGateway'
 import { compactThread, getThreadGoal, setThreadGoal, clearThreadGoal, validateGoalInput, formatGoalTokenBudget, goalStatusLabels, type ThreadGoal } from '../../api/threadCommands'
 const props = defineProps<{
   request: AppCommandRequest; threadId: string; threadName: string; cwd: string; model: string; effort: string; busy: boolean; contextSummary: string
+  models: ModelCapability[]
   run: (name: AppCommandName, value?: string) => Promise<void>
   ensureThread: (objective?: string) => Promise<string>
 }>()
-const emit = defineEmits<{ close: []; 'goal-change': [goal: ThreadGoal | null, threadId: string] }>()
+const emit = defineEmits<{ close: []; 'goal-change': [goal: ThreadGoal | null, threadId: string]; 'model-change': [model: string, effort: string] }>()
 const descriptor = computed(() => APP_COMMANDS.find(command => command.id === props.request.name))
 const title = computed(() => ({ goal: '持续目标', help: '命令帮助', status: '会话状态' }[props.request.name as 'goal' | 'help' | 'status'] ?? descriptor.value?.description ?? '会话操作'))
 const value = ref(props.threadName), objective = ref(''), budget = ref(''), goal = ref<ThreadGoal | null>(null)
@@ -57,6 +67,17 @@ const working = ref(false), loading = ref(false), supported = ref(true), error =
 let disposed = false, consumed = false, threadId = props.threadId, unsubscribe: (() => void) | undefined
 let pendingGoalNotification: ThreadGoal | null | undefined
 const consume = () => { if (!consumed) { props.request.complete(); consumed = true } }
+const selectedModel = ref(props.model)
+const selectedEffort = ref(props.effort)
+const modelOptions = computed(() => [...new Set([...props.models.map(model => model.id), selectedModel.value].filter(Boolean))].map(value => ({ value, label: value })))
+const selectedCapability = computed(() => props.models.find(model => model.id === selectedModel.value))
+const goalEffortOptions = computed(() => effortOptions(selectedCapability.value, selectedEffort.value))
+const settingsProblem = computed(() => modelSettingsProblem(selectedCapability.value, selectedEffort.value, ''))
+async function saveModelSettings(): Promise<void> {
+  if (settingsProblem.value) throw new Error(settingsProblem.value)
+  const effort = selectedEffort.value || selectedCapability.value?.defaultEffort || ''
+  await applyGoalModelSettings(threadId, { model: selectedModel.value, effort })
+}
 const goalLabels = goalStatusLabels
 const helpCommands = buildComposerCommands([], [])
 const unavailable = computed(() => descriptor.value?.requiresThread && !props.threadId ? '请先进入一个会话。' : descriptor.value?.idleOnly && props.busy ? '当前任务运行中，请等待结束后再操作。' : '')
@@ -78,15 +99,22 @@ async function saveGoal() {
     const patch = validateGoalInput(objective.value, budget.value)
     if (!supported.value) return
     if (!threadId) { consume(); threadId = await props.ensureThread(patch.objective) }
+    await saveModelSettings()
     const next = await setThreadGoal(threadId, { ...patch, status: goal.value?.status === 'paused' ? 'paused' : 'active' })
     if (disposed) return
     goal.value = next; consume();
     if (props.threadId !== threadId) await props.run('goal', threadId)
+    emit('model-change', selectedModel.value, selectedEffort.value || selectedCapability.value?.defaultEffort || '')
     feedback.value = '目标已保存。运行状态和进度会随会话更新。'
   })
 }
 async function changeGoalStatus(status: 'active' | 'paused') {
-  await action(async () => { goal.value = await setThreadGoal(threadId, { status }); consume() })
+  await action(async () => {
+    if (status === 'active') await saveModelSettings()
+    goal.value = await setThreadGoal(threadId, { status })
+    if (status === 'active') emit('model-change', selectedModel.value, selectedEffort.value || selectedCapability.value?.defaultEffort || '')
+    consume()
+  })
 }
 async function clearGoal() {
   await action(async () => { await clearThreadGoal(threadId); goal.value = null; objective.value = ''; budget.value = ''; consume(); feedback.value = '目标已清除，原会话仍保留。' })
@@ -110,12 +138,14 @@ onMounted(async () => {
     loading.value = true
     try {
       const methods = await getMethodCatalog()
-      const required = props.request.name === 'goal' ? ['thread/goal/get', 'thread/goal/set', 'thread/goal/clear'] : ['thread/compact/start']
+      const required = props.request.name === 'goal' ? ['thread/goal/get', 'thread/goal/set', 'thread/goal/clear', 'thread/settings/update'] : ['thread/compact/start']
       supported.value = required.every(method => methods.includes(method))
       if (!supported.value) throw new Error('当前 Codex 运行时不支持此命令，请检查 CLI 版本。')
       if (props.request.name === 'goal' && threadId) {
-        const current = await getThreadGoal(threadId)
+        const [current, settings] = await Promise.all([getThreadGoal(threadId), getGoalModelSettings(threadId)])
         if (disposed) return
+        selectedModel.value = settings.model || props.model
+        selectedEffort.value = settings.effort
         goal.value = current; objective.value = current?.objective ?? ''; budget.value = formatGoalTokenBudget(current?.tokenBudget)
       }
     } catch (cause) { if (!disposed) { supported.value = false; error.value = cause instanceof Error ? cause.message : '读取失败' } }
