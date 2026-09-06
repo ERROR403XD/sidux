@@ -28,3 +28,4 @@ Return to the [manual test index](../../tests.md).
 | [弹窗视觉统一至持续目标窗口](unified-dialog-visuals.md) |
 | [共用弹窗、浮层、单选和按钮组件](shared-ui-components.md) |
 | [PWA 首页缓存故障恢复](pwa-shell-network-recovery.md) |
+| [跨版本 HTTP 缓存与白屏恢复（已复现，待修复）](release-cache-refresh.md) |
