@@ -46,3 +46,7 @@
 自动回归：`pnpm exec vitest run src/server/automationExecutionSettings.test.ts src/server/automation.test.ts`。性能：模型选择复用已有目录，无逐键 API；时间 formatter 有界缓存；不增加任务执行的 RPC 次数。
 
 清理：等待虚构执行结束，移除临时定义或恢复 PAUSED；还原测试设置，保留真实历史与认证。
+
+### 自动化来源与 TestChat 文件链接回归（0.1.90 收尾）
+
+前置：4173 内部 TestChat 夹具或隔离内部任务，浅/深主题，Asia/Shanghai 与 America/New_York。发送带唯一标记的自动化运行消息及 ``[`/tmp/codexapp-0190-browser-home/qwe.txt`](/tmp/codexapp-0190-browser-home/qwe.txt)``；重新加载后检查实际消息行。预期：内部信封隐藏，任务名与本地时间可见；文件链接 href 为 `/codex-local-browse/tmp/codexapp-0190-browser-home/qwe.txt`，title 和文本为原绝对路径，`hrefOk/titleOk/textOk` 全部通过。清理：关闭夹具或删除自己创建的测试任务，保留其他任务。
