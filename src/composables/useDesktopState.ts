@@ -1420,6 +1420,7 @@ export function useDesktopState() {
     fallbackRetried: boolean
   }
   const queuedMessagesByThreadId = ref<Record<string, QueuedMessage[]>>({})
+  const queueErrorByThreadId = ref<Record<string, string>>({})
   const queueProcessingByThreadId = ref<Record<string, boolean>>({})
   let hasLoadedPersistedQueueState = false
   const eventUnreadByThreadId = ref<Record<string, boolean>>({})
@@ -4181,9 +4182,11 @@ export function useDesktopState() {
       try {
         const result = await mutateThreadQueueState(operation)
         queuedMessagesByThreadId.value = result.state
+        queueErrorByThreadId.value = omitKey(queueErrorByThreadId.value, operation.threadId)
         return result
       } catch (cause) {
         error.value = cause instanceof Error ? cause.message : '队列保存失败，请重试'
+        queueErrorByThreadId.value = { ...queueErrorByThreadId.value, [operation.threadId]: error.value }
         throw cause
       }
     })
@@ -5600,6 +5603,8 @@ export function useDesktopState() {
     threadTokenUsageByThreadId.value = {}
   }
 
+  const selectedThreadQueueError = computed(() => queueErrorByThreadId.value[selectedThreadId.value] ?? '')
+
   const selectedThreadQueuedMessages = computed<QueuedMessage[]>(() => {
     const threadId = selectedThreadId.value
     if (!threadId) return []
@@ -5641,7 +5646,8 @@ export function useDesktopState() {
       await startTurnForThread(threadId, message.text, message.imageUrls, message.skills, message.fileAttachments, message.collaborationMode)
     } catch (cause) {
       await commitQueueOperation({ type: 'add', threadId, message }).catch(() => {})
-      error.value = cause instanceof Error ? cause.message : '引导失败，消息已保留在队列中'
+      error.value = cause instanceof Error ? cause.message : '引导失败，请检查队列后重试'
+      queueErrorByThreadId.value = { ...queueErrorByThreadId.value, [threadId]: error.value }
     }
   }
 
@@ -5699,6 +5705,7 @@ export function useDesktopState() {
     sendMessageToNewThread,
     interruptSelectedThreadTurn,
     selectedThreadQueuedMessages,
+    selectedThreadQueueError,
     removeQueuedMessage,
     restoreQueuedMessage,
     reorderQueuedMessage,

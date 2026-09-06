@@ -1021,6 +1021,7 @@
                     <span>{{ t(codexCliMissingError) }}</span>
                     <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, codexCliMissingError)">{{ t('Send feedback') }}</a>
                   </div>
+                  <p v-if="selectedThreadQueueError" class="composer-runtime-error" role="alert">{{ selectedThreadQueueError }}</p>
                   <QueuedMessages
                     :messages="selectedThreadQueuedMessages"
                     @edit="onEditQueuedMessage"
@@ -1499,6 +1500,7 @@ const {
   sendMessageToNewThread,
   interruptSelectedThreadTurn,
   selectedThreadQueuedMessages,
+  selectedThreadQueueError,
   removeQueuedMessage,
   restoreQueuedMessage,
   reorderQueuedMessage,
