@@ -86,12 +86,16 @@ describe('durable automation execution', () => {
     const run = await f.engine.manual('test', f.home, 'runtime-inspection')
     run.threadId = 'thread-1'; run.turnId = 'turn-1'
     const response = { thread: { status: { type: 'notLoaded' }, turns: [{ id: 'turn-1', status: 'inProgress', items: [] as unknown[] }] } }
-    const runtime = createAutomationRuntime({ rpc: async () => response, accountBusy: () => false, hasQueuedMessages: async () => false, pendingRequests: () => [], buildParams: async () => ({}) })
+    const runtime = createAutomationRuntime({ rpc: async () => response, accountBusy: () => false, hasQueuedMessages: async () => false, pendingRequests: () => [], readHistory: async () => response, buildParams: async () => ({}) })
     expect((await runtime.inspect(run)).status).toBe('interrupted')
     run.turnId = null
     response.thread.turns[0]!.status = 'completed'
     response.thread.turns[0]!.items = [{ type: 'userMessage', content: [{ type: 'text', text: 'unrelated prompt' }] }]
     expect((await runtime.inspect(run)).status).toBe('unknown')
+    response.thread.turns[0]!.items = [{ type: 'userMessage', id: run.runId, clientId: 'other-run', content: [] }]
+    expect((await runtime.inspect(run)).status).toBe('unknown')
+    response.thread.turns[0]!.items = [{ type: 'userMessage', id: 'native-item', clientId: run.runId, content: [] }]
+    expect(await runtime.inspect(run)).toEqual({ status: 'completed', turnId: 'turn-1' })
     response.thread.turns[0]!.items = [{ type: 'userMessage', content: [{ type: 'text', text: `[CodexApp automation run:${run.runId}]` }] }]
     expect(await runtime.inspect(run)).toEqual({ status: 'completed', turnId: 'turn-1' })
   })

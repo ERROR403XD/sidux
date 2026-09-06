@@ -24,7 +24,7 @@ describe('automation execution settings and local reference time', () => {
   })
   it('applies explicit model/effort to new and reused threads and retains defaults when unspecified', async () => {
     const rpc = vi.fn(async (method: string) => method === 'thread/start' ? { thread: { id: 'new-thread' }, model: 'chosen-model' } : {})
-    const runtime = createAutomationRuntime({ rpc, accountBusy: () => false, hasQueuedMessages: async () => false, pendingRequests: () => [], buildParams: async () => ({ collaborationMode: { mode: 'default', settings: { model: 'default-model', reasoning_effort: 'medium', developer_instructions: null } } }) })
+    const runtime = createAutomationRuntime({ rpc, accountBusy: () => false, hasQueuedMessages: async () => false, pendingRequests: () => [], readHistory: async () => ({}), buildParams: async () => ({ collaborationMode: { mode: 'default', settings: { model: 'default-model', reasoning_effort: 'medium', developer_instructions: null } } }) })
     await runtime.createThread('/tmp', 'fixture', { model: 'chosen-model' })
     expect(rpc).toHaveBeenCalledWith('thread/start', { cwd: '/tmp', model: 'chosen-model' })
     const params = await runtime.prepare('existing-thread', 'fixture', 'run', { model: 'chosen-model', reasoningEffort: 'high' })
@@ -36,7 +36,7 @@ describe('automation execution settings and local reference time', () => {
 
 describe('automation model defaults', () => {
   it('clears inherited effort and speed when selecting another model without overrides', async () => {
-    const runtime = createAutomationRuntime({ rpc: async () => ({}), accountBusy: () => false, hasQueuedMessages: async () => false, pendingRequests: () => [], buildParams: async () => ({ effort: 'ultra', serviceTier: 'priority', collaborationMode: { mode: 'default', settings: { model: 'old', reasoning_effort: 'ultra' } } }) })
+    const runtime = createAutomationRuntime({ rpc: async () => ({}), accountBusy: () => false, hasQueuedMessages: async () => false, pendingRequests: () => [], readHistory: async () => ({}), buildParams: async () => ({ effort: 'ultra', serviceTier: 'priority', collaborationMode: { mode: 'default', settings: { model: 'old', reasoning_effort: 'ultra' } } }) })
     const params = await runtime.prepare('fixture', 'fixture', 'run', { model: 'other' })
     expect(params).not.toHaveProperty('effort')
     expect(params).toMatchObject({ model: 'other', serviceTier: null, collaborationMode: { settings: { model: 'other', reasoning_effort: null } } })

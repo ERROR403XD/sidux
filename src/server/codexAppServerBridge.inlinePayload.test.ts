@@ -362,7 +362,7 @@ describe('backend queue scheduling', () => {
     vi.useFakeTimers()
     const processor = new BackendQueueProcessor({
       onNotification: () => () => undefined,
-    } as never)
+    } as never, { startRecovery: false })
     const processThreadQueue = vi
       .spyOn(processor as unknown as { processThreadQueue: (threadId: string) => Promise<void> }, 'processThreadQueue')
       .mockResolvedValue(undefined)
@@ -377,7 +377,7 @@ describe('backend queue scheduling', () => {
     await vi.advanceTimersByTimeAsync(5000)
     expect(processThreadQueue).toHaveBeenCalledTimes(1)
 
-    processor.dispose()
+    await processor.dispose()
   })
 })
 

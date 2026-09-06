@@ -9,6 +9,7 @@ export function createAutomationRuntime(options: {
   accountBusy: () => boolean
   hasQueuedMessages: (id: string) => Promise<boolean>
   pendingRequests: () => unknown[]
+  readHistory: (threadId: string) => Promise<unknown>
   buildParams: (threadId: string, text: string, runId: string) => Promise<Record<string, unknown>>
 }): AutomationRuntime {
   const rpc = options.rpc
@@ -31,7 +32,7 @@ export function createAutomationRuntime(options: {
       return { threadId: thread.id, model: typeof response.model === 'string' ? response.model : undefined }
     },
     async prepare(threadId, text, runId, settings = {}) {
-      await rpc('thread/resume', { threadId, ...(settings.model ? { model: settings.model } : {}) })
+      await rpc('thread/resume', { threadId, excludeTurns: true, ...(settings.model ? { model: settings.model } : {}) })
       const params = await options.buildParams(threadId, text, runId)
       if (settings.model) params.model = settings.model
       if (settings.reasoningEffort) params.effort = settings.reasoningEffort
@@ -50,13 +51,14 @@ export function createAutomationRuntime(options: {
       return { turnId }
     },
     async inspect(run: AutomationRun): Promise<AutomationInspection> {
-      const response = record(await rpc('thread/read', { threadId: run.threadId, includeTurns: true }))
+      if (!run.threadId) return { status: 'unknown' }
+      const response = record(await options.readHistory(run.threadId))
       const turns = record(response.thread).turns
       if (!Array.isArray(turns)) return { status: 'unknown' }
       const turn = turns.map(record).find((turn) => run.turnId ? turn.id === run.turnId : Array.isArray(turn.items) && turn.items.some((item) => {
         const value = record(item)
         if (value.type !== 'userMessage') return false
-        return value.id === run.runId || (Array.isArray(value.content) && value.content.some((content) => String(record(content).text ?? '').includes(`[CodexApp automation run:${run.runId}]`)))
+        return value.clientId === run.runId || (Array.isArray(value.content) && value.content.some((content) => String(record(content).text ?? '').includes(`[CodexApp automation run:${run.runId}]`)))
       }))
       if (!turn) return { status: 'unknown' }
       const turnId = String(turn.id)

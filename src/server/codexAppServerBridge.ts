@@ -1,11 +1,15 @@
 import { changesThreadSearch } from '../threadSearchEvents.js'
+import { deliveryView } from '../delivery.js'
+import { DeliveryStore } from './deliveryStore.js'
+import { DeliveryService } from './deliveryService.js'
+import { inspectDelivery } from './deliveryHistory.js'
 import { ThreadSearch, SEARCH_BODY_TURN_LIMIT } from './threadSearch.js'
 import { ThreadHistory } from './threadHistory.js'
 import { AuthRecoveryRegistry } from '../authRecovery'
 import { MethodCatalog } from './runtimeCapabilities.js'
 import { version as appVersion } from '../../package.json'
 import { capabilityValue } from '../modelCapabilities.js'
-import { applyThreadQueueOperation, normalizeThreadQueueState, type StoredQueuedMessage, type ThreadQueueState } from '../threadQueue.js'
+import { normalizeStoredQueuedMessage, normalizeThreadQueueState, type StoredQueuedMessage, type ThreadQueueState } from '../threadQueue.js'
 import { ThreadGoalReader } from './threadGoalReader.js'
 import { normalizeAutomationModelSettings } from '../automationOptions.js'
 import { AutomationEngine } from './automationEngine.js'
@@ -5266,58 +5270,43 @@ type BackendQueuedTurn = {
   message: StoredQueuedMessage
 }
 
-type ThreadQueueStateUpdate<T> = {
-  nextState: ThreadQueueState
-  result: T
-}
-
 type ResolvedCollaborationModeSettings = {
   model: string
   reasoningEffort: ReasoningEffort | null
 }
 
-let threadQueueMutationChain: Promise<unknown> = Promise.resolve()
-
-async function readThreadQueueState(): Promise<ThreadQueueState> {
+async function readLegacyThreadQueueState(): Promise<ThreadQueueState> {
   const statePath = getCodexGlobalStatePath()
   try {
     const raw = await readFile(statePath, 'utf8')
     const payload = asRecord(JSON.parse(raw)) ?? {}
-    return normalizeThreadQueueState(payload[THREAD_QUEUE_STATE_KEY])
-  } catch {
-    return {}
+    const legacy = payload[THREAD_QUEUE_STATE_KEY]
+    if (legacy === undefined) return {}
+    const queues = asRecord(legacy)
+    if (!queues || Object.entries(queues).some(([id, rows]) => !id.trim() || !Array.isArray(rows) || rows.some(row => !normalizeStoredQueuedMessage(row)))) throw new Error('旧队列内容无效，已停止迁移')
+    return normalizeThreadQueueState(queues)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {}
+    throw error
   }
 }
 
-async function writeThreadQueueStateUnlocked(nextState: ThreadQueueState): Promise<void> {
-  const statePath = getCodexGlobalStatePath()
-  let payload: Record<string, unknown> = {}
-  try {
-    const raw = await readFile(statePath, 'utf8')
-    payload = asRecord(JSON.parse(raw)) ?? {}
-  } catch {
-    payload = {}
-  }
-  const normalized = normalizeThreadQueueState(nextState)
-  if (Object.keys(normalized).length > 0) {
-    payload[THREAD_QUEUE_STATE_KEY] = normalized
-  } else {
+async function clearLegacyThreadQueueState(): Promise<void> {
+  await queueWorkspaceRootsMutation(async () => {
+    const statePath = getCodexGlobalStatePath()
+    let payload: Record<string, unknown>
+    try {
+      const parsed = asRecord(JSON.parse(await readFile(statePath, 'utf8')))
+      if (!parsed) throw new Error('全局状态文件无效，已停止队列迁移')
+      payload = parsed
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return
+      throw error
+    }
+    if (!(THREAD_QUEUE_STATE_KEY in payload)) return
     delete payload[THREAD_QUEUE_STATE_KEY]
-  }
-  await writeFile(statePath, JSON.stringify(payload), 'utf8')
-}
-
-async function withThreadQueueStateUpdate<T>(
-  update: (state: ThreadQueueState) => ThreadQueueStateUpdate<T> | Promise<ThreadQueueStateUpdate<T>>,
-): Promise<T> {
-  const run = threadQueueMutationChain.then(async () => {
-    const currentState = await readThreadQueueState()
-    const { nextState, result } = await update(currentState)
-    await writeThreadQueueStateUnlocked(nextState)
-    return result
+    await writeAutomationFileAtomic(statePath, JSON.stringify(payload))
   })
-  threadQueueMutationChain = run.catch(() => {})
-  return run
 }
 
 function normalizeReasoningEffort(value: unknown): ReasoningEffort | '' {
@@ -5993,6 +5982,7 @@ const MERGEABLE_ITEM_TYPES = new Set([
 class AppServerProcess {
   readonly authRecovery = new AuthRecoveryRegistry()
   automationActivity: () => string[] = () => []
+  queueStateReader: () => Promise<ThreadQueueState> = readLegacyThreadQueueState
   private process: ChildProcessWithoutNullStreams | null = null
   private initialized = false
   private initializePromise: Promise<void> | null = null
@@ -6547,7 +6537,7 @@ class AppServerProcess {
     } while (cursor && pageCount < 10)
     if (cursor) activeTurnThreadIds.add('__thread_inventory_truncated__')
 
-    const queuedState = await readThreadQueueState()
+    const queuedState = await this.queueStateReader()
     const queuedThreadIds = Object.entries(queuedState)
       .filter(([, messages]) => messages.length > 0)
       .map(([threadId]) => threadId)
@@ -6618,44 +6608,180 @@ class AppServerProcess {
 }
 
 export class BackendQueueProcessor {
+  readonly store: DeliveryStore
+  readonly deliveries: DeliveryService
+  readonly history: ThreadHistory
   private readonly processingThreadIds = new Set<string>()
   private readonly queueDrainTimersByThreadId = new Map<string, ReturnType<typeof setTimeout>>()
   private readonly queueDrainDueAtByThreadId = new Map<string, number>()
+  private readonly recoveryChecks = new Map<string, number>()
   private readonly unsubscribe: () => void
+  private pruneTimer: ReturnType<typeof setInterval> | null = null
+  private disposed = false
+  private providerChanging = false
 
-  constructor(private readonly appServer: AppServerProcess) {
-    this.unsubscribe = appServer.onNotification((notification) => {
-      if (!isTurnCompletedNotification(notification)) return
-      const threadId = extractThreadIdFromNotificationParams(notification.params)
-      if (!threadId) return
-      void this.processThreadQueue(threadId)
+  constructor(private readonly appServer: AppServerProcess, options: {
+    startRecovery?: boolean
+    directory?: string
+    features?: ConstructorParameters<typeof ThreadHistory>[1]
+    context?: () => Promise<string>
+  } = {}) {
+    this.store = new DeliveryStore(options.directory ?? join(getCodexHomeDir(), 'codexapp-delivery'), options.directory ? {} : {
+      readLegacy: readLegacyThreadQueueState,
+      clearLegacy: clearLegacyThreadQueueState,
     })
-    void this.scheduleAllQueuedThreads(1000)
+    const catalog = new MethodCatalog()
+    this.history = new ThreadHistory(
+      (method, params) => callRpcWithArchiveRecovery(appServer, method, params),
+      options.features ?? (async () => (await catalog.snapshot()).features),
+    )
+    this.deliveries = new DeliveryService(this.store, {
+      accountBusy: () => this.providerChanging || getAccountAuthCoordinator().isAccountOperationInProgress(),
+      context: options.context ?? (() => this.deliveryContext()),
+      canStart: threadId => this.canStartQueuedTurn(threadId),
+      prepare: async row => {
+        await appServer.rpc('thread/resume', { threadId: row.threadId, excludeTurns: true })
+        return row.params ?? this.buildQueuedTurnParams(row)
+      },
+      start: async params => {
+        const response = asRecord(await appServer.rpc('turn/start', params))
+        const turnId = readNonEmptyString(asRecord(response?.turn)?.id)
+        if (!turnId) throw new Error('未收到回合 ID，请核对发送状态')
+        return { turnId }
+      },
+      inspect: row => inspectDelivery(this.history, row),
+      changed: threadId => appServer.notifyQueueChanged(threadId),
+    })
+    appServer.queueStateReader = () => this.readState()
+    this.unsubscribe = appServer.onNotification(notification => {
+      const threadId = extractThreadIdFromNotificationParams(notification.params)
+      if (threadId) this.history.invalidate(threadId)
+      void this.deliveries.observe(notification).catch(() => {})
+      if (threadId && isTurnCompletedNotification(notification)) this.scheduleThreadQueueDrain(threadId, 0)
+    })
+    if (options.startRecovery !== false) {
+      void this.scheduleAllQueuedThreads(1000)
+      this.pruneTimer = setInterval(() => { void this.store.pruneReceipts().catch(() => {}) }, 3600000)
+      this.pruneTimer.unref?.()
+    }
   }
 
-  dispose(): void {
-    this.unsubscribe()
-    for (const timer of this.queueDrainTimersByThreadId.values()) {
-      clearTimeout(timer)
+  private async deliveryContext(): Promise<string> {
+    const [account, auth, response] = await Promise.all([
+      getAccountAuthCoordinator().store.readState(),
+      readCodexAuth(),
+      this.appServer.rpc('config/read', {}),
+    ])
+    const config = asRecord(asRecord(response)?.config)
+    const provider = readNonEmptyString(config?.model_provider) || 'openai'
+    const settings = asRecord(asRecord(config?.model_providers)?.[provider])
+    // Persist only the identity digest, never the credential or unrelated model settings.
+    return createHash('sha256').update(JSON.stringify({
+      account: account.activeStorageId ?? auth?.accountId ?? null,
+      provider, baseUrl: settings?.base_url ?? null, wireApi: settings?.wire_api ?? null,
+    })).digest('hex')
+  }
+
+  beginProviderChange(): () => void {
+    if (this.providerChanging || getAccountAuthCoordinator().isAccountOperationInProgress()) throw new Error('账号或供应方正在切换，请稍后重试')
+    this.providerChanging = true
+    return () => { this.providerChanging = false }
+  }
+
+  async readState(): Promise<ThreadQueueState> {
+    const state: ThreadQueueState = {}
+    for (const row of await this.store.records()) {
+      (state[row.threadId] ??= []).push({ ...row.message, delivery: deliveryView(row) })
     }
+    return state
+  }
+
+  async submit(input: unknown): Promise<Record<string, unknown>> {
+    const body = asRecord(input)
+    if (body?.protocol !== 2) throw new Error('发送接口已更新，请刷新页面后重试')
+    const threadId = readNonEmptyString(body.threadId)
+    const message = normalizeStoredQueuedMessage(body.message)
+    const params = asRecord(body.params)
+    if (!threadId || !message || !params || params.threadId !== threadId || !Array.isArray(params.input)) throw new Error('无效的发送内容')
+    const result = await this.deliveries.submit({
+      threadId, message, params,
+      mode: body.mode === 'steer' ? 'steer' : 'immediate',
+    })
+    this.scheduleThreadQueueDrain(threadId, 1000)
+    if (!result) throw new Error('找不到发送记录，请核对状态')
+    return 'message' in result
+      ? { id: result.message.id, ...deliveryView(result) }
+      : { id: result.id, status: result.status, turnId: result.turnId }
+  }
+
+  async mutate(input: unknown): Promise<{ state: ThreadQueueState; removed?: StoredQueuedMessage }> {
+    const body = asRecord(input)
+    if (body?.protocol !== 2) throw new Error('队列接口已更新，请刷新页面后重试；队列未修改')
+    const threadId = readNonEmptyString(body.threadId)
+    if (!threadId) throw new Error('缺少会话 ID')
+    let removed: StoredQueuedMessage | undefined
+    if (body.type === 'add') {
+      const message = normalizeStoredQueuedMessage(body.message)
+      if (!message) throw new Error('无效的排队消息')
+      await this.deliveries.submit({ threadId, message, mode: 'queue' }, readNonEmptyString(body.beforeId) || undefined)
+    } else {
+      const id = readNonEmptyString(body.messageId)
+      const row = await this.deliveries.result(id)
+      if (!row || row.threadId !== threadId) throw new Error('该消息状态已变化，请刷新队列')
+      if (!('message' in row)) {
+        if (!['reconcile', 'steer'].includes(String(body.type))) throw new Error('该消息已发送或已移除，请刷新队列')
+      } else if (body.type === 'reconcile') {
+        await this.deliveries.reconcile(id)
+      } else {
+        const revision = Number(body.revision)
+        if (!Number.isInteger(revision) || revision < 1) throw new Error('缺少消息版本，请刷新队列')
+        if (body.type === 'remove' || body.type === 'abandon') {
+          removed = await this.store.remove(id, revision, body.type === 'abandon')
+        } else if (body.type === 'move') {
+          await this.store.move(id, revision, readNonEmptyString(body.targetId))
+        } else if (body.type === 'edit' || body.type === 'update') {
+          const contents = body.type === 'update' ? normalizeStoredQueuedMessage({ ...asRecord(body.message), id }) : undefined
+          if (body.type === 'update' && !contents) throw new Error('无效的编辑内容')
+          // Queue editing keeps the original execution settings and position.
+          await this.store.edit(id, revision, readNonEmptyString(body.editToken), contents ? {
+            text: contents.text, imageUrls: contents.imageUrls, skills: contents.skills, fileAttachments: contents.fileAttachments,
+          } : undefined)
+        } else if (body.type === 'resume') {
+          await this.store.resume(id, revision)
+        } else if (body.type === 'steer') {
+          await this.deliveries.steer(id, revision)
+        } else {
+          throw new Error('无效的队列操作')
+        }
+      }
+    }
+    this.appServer.notifyQueueChanged(threadId)
+    this.scheduleThreadQueueDrain(threadId, 0)
+    return { state: await this.readState(), ...(removed ? { removed } : {}) }
+  }
+
+  async dispose(): Promise<void> {
+    this.disposed = true
+    this.unsubscribe()
+    if (this.pruneTimer) clearInterval(this.pruneTimer)
+    for (const timer of this.queueDrainTimersByThreadId.values()) clearTimeout(timer)
     this.queueDrainTimersByThreadId.clear()
     this.queueDrainDueAtByThreadId.clear()
-    this.processingThreadIds.clear()
+    this.recoveryChecks.clear()
+    this.history.clear()
+    await this.deliveries.dispose()
   }
 
   async scheduleAllQueuedThreads(delayMs = 0): Promise<void> {
     try {
-      const state = await readThreadQueueState()
-      for (const threadId of Object.keys(state)) {
-        this.scheduleThreadQueueDrain(threadId, delayMs)
-      }
-    } catch {
-      // Queue recovery is best-effort; normal turn-completed events can still drain later.
+      for (const threadId of Object.keys(await this.readState())) this.scheduleThreadQueueDrain(threadId, delayMs)
+    } catch (error) {
+      console.error('[delivery] 自动恢复已停止:', getErrorMessage(error, '无法读取发送记录'))
     }
   }
 
   scheduleThreadQueueDrain(threadId: string, delayMs = 5000): void {
-    if (!threadId) return
+    if (!threadId || this.disposed) return
     const normalizedDelayMs = Math.max(0, delayMs)
     const nextDueAt = Date.now() + normalizedDelayMs
     const existingDueAt = this.queueDrainDueAtByThreadId.get(threadId)
@@ -6663,8 +6789,6 @@ export class BackendQueueProcessor {
     if (existingTimer) {
       if (existingDueAt !== undefined && existingDueAt <= nextDueAt) return
       clearTimeout(existingTimer)
-      this.queueDrainTimersByThreadId.delete(threadId)
-      this.queueDrainDueAtByThreadId.delete(threadId)
     }
     const timer = setTimeout(() => {
       this.queueDrainTimersByThreadId.delete(threadId)
@@ -6677,83 +6801,44 @@ export class BackendQueueProcessor {
   }
 
   async processThreadQueue(threadId: string): Promise<void> {
-    if (this.processingThreadIds.has(threadId)) return
+    if (this.disposed || this.processingThreadIds.has(threadId)) return
     this.processingThreadIds.add(threadId)
     try {
-      const canStart = await this.canStartQueuedTurn(threadId)
-      if (!canStart) {
-        if (await this.hasQueuedTurns(threadId)) {
-          this.scheduleThreadQueueDrain(threadId)
-        }
+      const rows = await this.store.records(threadId)
+      const uncertain = rows.find(row => ['sending', 'unknown'].includes(row.status))
+      if (uncertain) {
+        const count = this.recoveryChecks.get(uncertain.message.id) ?? 0
+        if (count >= 3) return
+        this.recoveryChecks.set(uncertain.message.id, count + 1)
+        await this.deliveries.reconcile(uncertain.message.id)
+        this.scheduleThreadQueueDrain(threadId, [1000, 5000, 15000][count])
         return
       }
-      const next = await this.popNextQueuedTurn(threadId)
-      if (!next) return
-      try {
-        await this.startQueuedTurn(next)
-        if (await this.hasQueuedTurns(threadId)) {
-          this.scheduleThreadQueueDrain(threadId)
-        }
-      } catch {
-        await this.restoreQueuedTurn(next)
-        this.scheduleThreadQueueDrain(threadId)
-      }
-    } catch {
-      // Queue processing is best-effort. Keep the bridge alive if app-server is unavailable.
-      this.scheduleThreadQueueDrain(threadId)
+      const head = rows[0]
+      if (!head || head.status !== 'queued') return
+      await this.deliveries.process(threadId)
+      if ((await this.store.records(threadId)).length) this.scheduleThreadQueueDrain(threadId)
+    } catch (error) {
+      // A persisted failure remains visible through readState; it never authorizes replay.
+      console.error('[delivery] 队列已暂停:', getErrorMessage(error, '发送状态读取失败'))
     } finally {
       this.processingThreadIds.delete(threadId)
     }
   }
 
-  private async hasQueuedTurns(threadId: string): Promise<boolean> {
-    const state = await readThreadQueueState()
-    const queue = state[threadId]
-    return Array.isArray(queue) && queue.length > 0
-  }
-
   private async canStartQueuedTurn(threadId: string): Promise<boolean> {
-    const response = asRecord(await this.appServer.rpc('thread/read', { threadId, includeTurns: true }))
+    if (this.appServer.listPendingServerRequests().some(row => extractThreadIdFromNotificationParams(row.params) === threadId)) return false
+    let response: Record<string, unknown> | null
+    try {
+      response = asRecord(await this.appServer.rpc('thread/read', { threadId, includeTurns: false }))
+    } catch (error) {
+      if (!isEmptyThreadReadError(error)) throw error
+      response = asRecord(this.appServer.getLastThreadReadSnapshot(threadId))
+    }
     const thread = asRecord(response?.thread)
-    if (!thread) return false
-
-    const status = asRecord(thread.status)
-    const statusType = readNonEmptyString(status?.type)
-    if (statusType === 'inProgress' || statusType === 'running' || statusType === 'active') return false
-
-    const turns = Array.isArray(thread.turns) ? thread.turns : []
-    return !turns.some((turn) => readNonEmptyString(asRecord(turn)?.status) === 'inProgress')
-  }
-
-  private async popNextQueuedTurn(threadId: string): Promise<BackendQueuedTurn | null> {
-    return withThreadQueueStateUpdate((state) => {
-      const queue = state[threadId]
-      if (!queue || queue.length === 0) {
-        return { nextState: state, result: null }
-      }
-
-      const [message, ...rest] = queue
-      const nextState = { ...state }
-      if (rest.length > 0) {
-        nextState[threadId] = rest
-      } else {
-        delete nextState[threadId]
-      }
-      return { nextState, result: { threadId, message } }
-    })
-  }
-
-  private async restoreQueuedTurn(turn: BackendQueuedTurn): Promise<void> {
-    await withThreadQueueStateUpdate((state) => {
-      const queue = state[turn.threadId] ?? []
-      return {
-        nextState: {
-          ...state,
-          [turn.threadId]: [turn.message, ...queue],
-        },
-        result: undefined,
-      }
-    })
+    if (!thread) throw new Error('无法读取会话状态')
+    const statusType = readNonEmptyString(asRecord(thread.status)?.type) || readNonEmptyString(thread.status)
+    return !['inProgress', 'running', 'active'].includes(statusType)
   }
 
   private async resolveCollaborationModeSettings(mode: CollaborationModeKind): Promise<ResolvedCollaborationModeSettings> {
@@ -6837,31 +6922,20 @@ export class BackendQueueProcessor {
       params.attachments = dedupedFileAttachments.map((f) => ({ label: f.label, path: f.path, fsPath: f.fsPath }))
     }
 
-    try {
-      const defaults = turn.message.model ? null : await this.resolveCollaborationModeSettings(turn.message.collaborationMode)
-      const settings = { model: turn.message.model || defaults!.model, reasoningEffort: turn.message.effort !== undefined ? turn.message.effort || null : defaults?.reasoningEffort || null }
-      if (turn.message.model) params.model = turn.message.model
-      if (turn.message.effort) params.effort = turn.message.effort
-      if (turn.message.serviceTier !== undefined) params.serviceTier = turn.message.serviceTier
-      params.collaborationMode = {
-        mode: turn.message.collaborationMode,
-        settings: {
-          model: settings.model,
-          reasoning_effort: settings.reasoningEffort,
-          developer_instructions: null,
-        },
-      }
-    } catch {
-      // Older app-server versions still accept a plain turn/start without collaborationMode.
+    const defaults = turn.message.model ? null : await this.resolveCollaborationModeSettings(turn.message.collaborationMode)
+    const model = turn.message.model || defaults!.model
+    const reasoningEffort = turn.message.effort !== undefined ? turn.message.effort || null : defaults?.reasoningEffort || null
+    params.model = model
+    if (turn.message.effort) params.effort = turn.message.effort
+    if (turn.message.serviceTier !== undefined) params.serviceTier = turn.message.serviceTier
+    params.collaborationMode = {
+      mode: turn.message.collaborationMode,
+      settings: { model, reasoning_effort: reasoningEffort, developer_instructions: null },
     }
 
     return params
   }
 
-  private async startQueuedTurn(turn: BackendQueuedTurn): Promise<void> {
-    await this.appServer.rpc('thread/resume', { threadId: turn.threadId })
-    await this.appServer.rpc('turn/start', await this.buildQueuedTurnParams(turn))
-  }
 }
 
 type CodexBridgeMiddleware = ((req: IncomingMessage, res: ServerResponse, next: () => void) => Promise<void>) & {
@@ -6882,7 +6956,7 @@ type SharedBridgeState = {
 }
 
 const SHARED_BRIDGE_KEY = '__codexRemoteSharedBridge__'
-const SHARED_BRIDGE_VERSION = 'automations-0190-v4'
+const SHARED_BRIDGE_VERSION = 'delivery-0203-v1'
 
 function getSharedBridgeState(): SharedBridgeState {
   const globalScope = globalThis as typeof globalThis & {
@@ -6896,19 +6970,21 @@ function getSharedBridgeState(): SharedBridgeState {
     }
     void existing.automationEngine?.dispose()
     existing.appServer.dispose()
-    existing.backendQueueProcessor?.dispose()
+    void existing.backendQueueProcessor?.dispose().catch(() => {})
     existing.terminalManager?.dispose()
   }
 
   const appServer = new AppServerProcess()
   const terminalManager = new ThreadTerminalManager()
-  const backendQueueProcessor = new BackendQueueProcessor(appServer)
+  const methodCatalog = new MethodCatalog()
+  const backendQueueProcessor = new BackendQueueProcessor(appServer, { features: async () => (await methodCatalog.snapshot()).features })
   const threadGoalReader = new ThreadGoalReader((method, params) => appServer.rpc(method, params))
   const automationEngine = new AutomationEngine(getCodexHomeDir(), createAutomationRuntime({
     rpc: (method, params) => appServer.rpc(method, params),
     accountBusy: () => getAccountAuthCoordinator().isAccountOperationInProgress(),
-    hasQueuedMessages: async (id) => Boolean((await readThreadQueueState())[id]?.length),
+    hasQueuedMessages: async (id) => Boolean((await backendQueueProcessor.readState())[id]?.length),
     pendingRequests: () => appServer.listPendingServerRequests(),
+    readHistory: async threadId => (await backendQueueProcessor.history.page(threadId, { limit: 50 })).result,
     buildParams: (threadId, text, id) => backendQueueProcessor.buildQueuedTurnParams({ threadId, message: {
       id, text, imageUrls: [], skills: [], fileAttachments: [], collaborationMode: 'default',
     } }),
@@ -6922,7 +6998,7 @@ function getSharedBridgeState(): SharedBridgeState {
     version: SHARED_BRIDGE_VERSION,
     appServer,
     terminalManager,
-    methodCatalog: new MethodCatalog(),
+    methodCatalog,
     backendQueueProcessor,
     telegramBridge: new TelegramThreadBridge(appServer, {
       onChatSeen: (chatId) => {
@@ -6995,6 +7071,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
       : null
     let responseBodyBytes = 0
     let rpcMethod: string | null = null
+    let releaseProviderChange: (() => void) | undefined
     const originalWrite = res.write.bind(res)
     const originalEnd = res.end.bind(res)
     res.write = ((chunk: unknown, encoding?: unknown, cb?: unknown) => {
@@ -7078,6 +7155,13 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
       }
 
       if (url.pathname.startsWith('/codex-api/free-mode')) {
+        if (req.method === 'POST') {
+          releaseProviderChange = backendQueueProcessor.beginProviderChange()
+          if (!(await appServer.getRuntimeQuiescenceSnapshot()).idle) {
+            setJson(res, 409, { error: '请先结束当前任务并处理队列，再切换供应方或密钥' })
+            return
+          }
+        }
         const statePath = join(getCodexHomeDir(), FREE_MODE_STATE_FILE)
 
         function readFreeModeState(): FreeModeState {
@@ -7458,6 +7542,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         let rpcResult: unknown
         try {
           const params = asRecord(body.params) ?? {}
+          if (body.method === 'turn/start' || body.method === 'turn/steer') throw new Error('发送接口已更新，请刷新页面后重试')
           if (body.method === 'thread/rollback') await history.assertRollbackAllowed(readNonEmptyString(params.threadId))
           if (body.method === 'thread/resume' || (body.method === 'thread/read' && params.includeTurns === true)) {
             rpcResult = await history.initial(body.method, params)
@@ -8001,7 +8086,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
       }
 
       if (req.method === 'GET' && url.pathname === '/codex-api/thread-queue-state') {
-        const state = await readThreadQueueState()
+        const state = await backendQueueProcessor.readState()
         setJson(res, 200, { data: state })
         return
       }
@@ -8599,6 +8684,16 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         return
       }
 
+      if (req.method === 'POST' && url.pathname === '/codex-api/delivery') {
+        try {
+          const result = await backendQueueProcessor.submit(await readJsonBody(req))
+          setJson(res, 200, { data: result })
+        } catch (error) {
+          setJson(res, 409, { error: getErrorMessage(error, '提交消息失败') })
+        }
+        return
+      }
+
       if (req.method === 'PUT' && url.pathname === '/codex-api/thread-queue-state') {
         setJson(res, 409, { error: '队列接口已更新，请刷新页面后重试；服务器队列未修改' })
         return
@@ -8607,13 +8702,8 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
       if (req.method === 'POST' && url.pathname === '/codex-api/thread-queue-state') {
         const operation = await readJsonBody(req)
         try {
-          const result = await withThreadQueueStateUpdate((state) => {
-            const result = applyThreadQueueOperation(state, operation)
-            return { nextState: result.state, result }
-          })
+          const result = await backendQueueProcessor.mutate(operation)
           setJson(res, 200, { data: result })
-          appServer.notifyQueueChanged(String(asRecord(operation)?.threadId ?? ''))
-          backendQueueProcessor.scheduleThreadQueueDrain(String(asRecord(operation)?.threadId ?? ''), 0)
         } catch (error) {
           setJson(res, 409, { error: error instanceof Error ? error.message : '队列保存失败' })
         }
@@ -9181,6 +9271,8 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
     } catch (error) {
       const message = getErrorMessage(error, 'Unknown bridge error')
       setJson(res, 502, { error: message })
+    } finally {
+      releaseProviderChange?.()
     }
   }
 
@@ -9193,9 +9285,9 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
     history.clear()
     telegramBridge.stop()
     terminalManager.dispose()
-    backendQueueProcessor.dispose()
+    const deliveryDisposal = backendQueueProcessor.dispose()
     appServer.dispose()
-    return automationDisposal
+    return Promise.all([automationDisposal, deliveryDisposal]).then(() => {})
   }
   middleware.subscribeNotifications = (
     listener: (value: { method: string; params: unknown; atIso: string }) => void,
