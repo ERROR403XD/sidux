@@ -35,3 +35,7 @@ The composer control row uses one `Skills` dropdown for both skills and saved pr
 - Delete any temporary verification prompt created during the test
 
 ---
+
+## 0.2.9 concurrent reads and freshness
+
+With DevTools open, refresh Home and open a thread: simultaneously mounted composers share one pending `GET /codex-api/prompts`. A later independent opening can read again. Create/delete a disposable prompt while an earlier read is delayed; the new list must reflect the mutation and a late older response must not overwrite it. Simulate a failed GET and reopen/retry: failure must not be cached. Remove the disposable prompt and restore the original draft.

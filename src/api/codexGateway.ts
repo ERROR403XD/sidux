@@ -3594,7 +3594,18 @@ export async function getSkillsList(cwds?: string[]): Promise<SkillInfo[]> {
   }
 }
 
-export async function getComposerPrompts(): Promise<ComposerPromptInfo[]> {
+let composerPromptsRead: Promise<ComposerPromptInfo[]> | null = null
+
+export function getComposerPrompts(): Promise<ComposerPromptInfo[]> {
+  if (composerPromptsRead) return composerPromptsRead
+  const task = readComposerPrompts().finally(() => {
+    if (composerPromptsRead === task) composerPromptsRead = null
+  })
+  composerPromptsRead = task
+  return task
+}
+
+async function readComposerPrompts(): Promise<ComposerPromptInfo[]> {
   try {
     const response = await fetch('/codex-api/prompts')
     if (!response.ok) return []
@@ -3614,6 +3625,7 @@ export async function createComposerPrompt(name: string, content: string): Promi
     })
     if (!response.ok) return null
     const payload = (await response.json()) as { data?: ComposerPromptInfo }
+    composerPromptsRead = null
     return payload.data ?? null
   } catch {
     return null
@@ -3626,6 +3638,7 @@ export async function removeComposerPrompt(path: string): Promise<boolean> {
     const response = await fetch(`/codex-api/prompts?${params.toString()}`, {
       method: 'DELETE',
     })
+    if (response.ok) composerPromptsRead = null
     return response.ok
   } catch {
     return false

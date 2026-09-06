@@ -1754,8 +1754,11 @@ function appendTextToDraft(text: string): void {
   nextTick(() => inputRef.value?.focus())
 }
 
+let promptsRevision = 0
 async function reloadPrompts(): Promise<void> {
-  savedPrompts.value = await getComposerPrompts()
+  const revision = ++promptsRevision
+  const prompts = await getComposerPrompts()
+  if (revision === promptsRevision) savedPrompts.value = prompts
 }
 
 function promptOptionValue(path: string): string {
@@ -1901,6 +1904,7 @@ defineExpose<ThreadComposerExposed>({
 })
 
 onBeforeUnmount(() => {
+  promptsRevision++
   document.removeEventListener('click', onDocumentClick, true)
   window.removeEventListener('drop', onWindowDragCleanup)
   window.removeEventListener('dragend', onWindowDragCleanup)
