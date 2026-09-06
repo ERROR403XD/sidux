@@ -97,3 +97,5 @@ Validate `scripts/codexapp-release-switch.sh`: prepare an immutable release whil
 - 成功时顺序必须为构建镜像 → 停止领取 → 完整空闲检查 → 切换 → 健康检查 → 清理旧容器。
 
 清理：删除桩测试临时目录；真实验证只取消测试任务，不删除认证和状态卷。发布 prepare 与 activate 仍为独立步骤。
+
+候选健康检查同时验证首页和 scheduler ready；清理旧容器失败不会回滚已健康的新容器。若镜像仓库临时不可达，可通过 `CODEXAPP_MULTI_ACCOUNT_DOCKERFILE` 指向本地构建配方；复用已有依赖层前必须逐项核对当前包的 dependencies、optionalDependencies、engines，一致才允许复用。最终仍需新包安装、CLI 和 CJS 验证。

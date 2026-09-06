@@ -57,7 +57,7 @@ pnpm --dir "$ROOT_DIR" run build
 pnpm --dir "$ROOT_DIR" pack --pack-destination "$pack_dir"
 mkdir -p "$(dirname "$PACK_TARGET")"
 cp "$pack_dir/codexapp-${PACKAGE_VERSION}.tgz" "$PACK_TARGET"
-docker build -t "$IMAGE_NAME" -f "$ROOT_DIR/scripts/docker-multi-account-dev.Dockerfile" "$ROOT_DIR"
+docker build -t "$IMAGE_NAME" -f "${CODEXAPP_MULTI_ACCOUNT_DOCKERFILE:-$ROOT_DIR/scripts/docker-multi-account-dev.Dockerfile}" "$ROOT_DIR"
 docker volume create "$CODEX_HOME_VOLUME" >/dev/null
 
 if [[ "$existing" == 1 ]]; then
@@ -79,9 +79,10 @@ docker run -d \
   "$IMAGE_NAME" >/dev/null
 
 for _ in $(seq 1 "${CODEXAPP_DEV_HEALTH_ATTEMPTS:-60}"); do
-  if curl --fail --silent --max-time 3 "$BASE_URL/" >/dev/null; then
-    if [[ "$renamed" == 1 ]]; then docker rm "$BACKUP_NAME" >/dev/null; fi
+  if curl --fail --silent --max-time 3 "$BASE_URL/" >/dev/null &&
+    curl --fail --silent --max-time 3 "$BASE_URL/codex-api/automation-runtime" | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{try{const d=JSON.parse(s).data;if(d?.ready!==true||d.error)process.exit(1)}catch{process.exit(1)}})'; then
     finished=1
+    if [[ "$renamed" == 1 ]]; then docker rm "$BACKUP_NAME" >/dev/null || echo "Candidate ready; previous container retained: $BACKUP_NAME" >&2; fi
     echo "Multi-account development server: $BASE_URL/"
     echo "Container: $CONTAINER_NAME"
     echo "CODEX_HOME volume: $CODEX_HOME_VOLUME"
