@@ -25,7 +25,10 @@ describe('manual compaction dispatch gate', () => {
     status = 'active'
     await expect(gate.start('thread', true)).rejects.toThrow('尚未空闲')
     expect(rpc.mock.calls.filter(([method]) => method === 'thread/compact/start')).toHaveLength(1)
-    status = 'idle'
+    status = 'notLoaded'
+    await expect(gate.start('thread', true)).rejects.toThrow('尚未空闲')
+    expect(rpc.mock.calls.filter(([method]) => method === 'thread/compact/start')).toHaveLength(1)
+    status = 'systemError'
     await expect(gate.start('thread', true)).rejects.toThrow('connection lost')
     expect(rpc.mock.calls.filter(([method]) => method === 'thread/compact/start')).toHaveLength(2)
   })

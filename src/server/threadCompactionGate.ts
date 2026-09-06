@@ -31,8 +31,8 @@ export class ThreadCompactionGate {
       if (await this.blocked(threadId)) throw new Error('账号操作或待发送队列尚未结束，请稍后压缩。')
       const metadata = record(await this.rpc('thread/read', { threadId, includeTurns: false }))
       const status = record(record(metadata.thread).status).type
-      if (status !== 'idle') throw new Error('会话尚未空闲或未载入，请刷新会话后再压缩。')
-        if (await this.blocked(threadId)) throw new Error('账号操作或待发送队列尚未结束，请稍后压缩。')
+      if (status !== 'idle' && status !== 'systemError') throw new Error('会话尚未空闲或未载入，请刷新会话后再压缩。')
+      if (await this.blocked(threadId)) throw new Error('账号操作或待发送队列尚未结束，请稍后压缩。')
       submitted = true
       return await this.rpc('thread/compact/start', { threadId })
     } finally {
