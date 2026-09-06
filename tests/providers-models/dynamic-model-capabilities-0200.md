@@ -15,3 +15,5 @@
 UI 覆盖 Chromium/WebKit、1440×900、375×812、768×1024、浅深主题，截图保存在 output/playwright。Provider/Auth 工作流另跑打包镜像无认证、畸形认证、失效认证刷新、Zen→OpenRouter；失效错误刷新保留，重复 live overlay=0。
 
 清理：测试线程/自动化限内部夹具；临时容器按精确名称停止，保留候选状态卷。候选回滚前检查空闲，只还原镜像，不覆盖认证、队列、自动化或草稿。生产 5900 另行授权后才切换。
+
+启动去重回归：无认证 Zen 首页首次启动，provider 状态读取只更新设置显示，初始模型目录由统一初始化流程读取。实测 thread/list、skills/list、rateLimits/read、provider-models 各一次；用户后续切换 provider/导入认证仍触发完整失效刷新。

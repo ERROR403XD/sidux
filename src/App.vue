@@ -2231,7 +2231,7 @@ onMounted(() => {
   void refreshDefaultProjectName()
   void refreshTelegramConfig()
   void refreshTelegramStatus()
-  void loadFreeModeStatus()
+  void loadFreeModeStatus({ refreshModels: false })
   void refreshThreadTerminalStatus()
   void refreshTerminalQuickCommands()
 })
@@ -4647,7 +4647,7 @@ async function clearFreeModeCustomKey(): Promise<void> {
   }
 }
 
-async function loadFreeModeStatus(): Promise<void> {
+async function loadFreeModeStatus(options: { refreshModels?: boolean } = {}): Promise<void> {
   try {
     const previousProvider = selectedProvider.value
     const status = await getFreeModeStatus()
@@ -4673,7 +4673,7 @@ async function loadFreeModeStatus(): Promise<void> {
       externalAuthImportAttempted = false
     }
     const providerChanged = selectedProvider.value !== previousProvider
-    if (providerChanged) {
+    if (providerChanged && options.refreshModels !== false) {
       await refreshAll({
         includeSelectedThreadMessages: false,
         providerChanged: true,
