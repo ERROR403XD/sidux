@@ -7253,8 +7253,12 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
       if (url.pathname.startsWith('/codex-api/free-mode')) {
         if (req.method === 'POST') {
           releaseProviderChange = backendQueueProcessor.beginProviderChange()
-          if (!(await appServer.getRuntimeQuiescenceSnapshot()).idle) {
-            setJson(res, 409, { error: '请先结束当前任务并处理队列，再切换供应方或密钥' })
+          const quiescence = await appServer.getRuntimeQuiescenceSnapshot()
+          if (!quiescence.idle) {
+            const error = quiescence.backgroundThreadIds?.length
+              ? '请先处理 Codex 后台终端，再切换供应方或密钥。'
+              : '请先结束当前任务并处理队列，再切换供应方或密钥'
+            setJson(res, 409, { error })
             return
           }
         }
