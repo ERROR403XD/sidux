@@ -18,6 +18,7 @@ async function fixture() {
   const store = new DeliveryStore(dir, { now: () => now })
   const dependencies = {
     accountBusy: vi.fn(() => false), context: vi.fn(async () => 'account/provider'), canStart: vi.fn(async () => true),
+    submissionBlocked: vi.fn(() => false),
     prepare: vi.fn(async (row: DeliveryRecord): Promise<Record<string, unknown>> => ({ threadId: row.threadId, input: [{ type: 'text', text: row.message.text }], model: row.message.model })),
     start: vi.fn(async (_params: Record<string, unknown>) => ({ turnId: 'native-turn' })),
     inspect: vi.fn(async (_row: DeliveryRecord): Promise<{ turnId?: string }> => ({})), changed: vi.fn(),
@@ -32,6 +33,24 @@ afterEach(async () => {
 })
 
 describe('delivery before replay', () => {
+  it('persists during credential refresh and waits to dispatch until refresh ends', async () => {
+    const { service, dependencies } = await fixture()
+    dependencies.accountBusy.mockReturnValue(true)
+    expect(await service.submit(input())).toMatchObject({ status: 'queued' })
+    expect(dependencies.start).not.toHaveBeenCalled()
+    dependencies.accountBusy.mockReturnValue(false)
+    await service.process('thread')
+    expect(await service.result(input().message.id)).toMatchObject({ status: 'accepted' })
+    expect(dependencies.start).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects a new submission during an explicit account change', async () => {
+    const { service, dependencies, store } = await fixture()
+    dependencies.submissionBlocked.mockReturnValue(true)
+    await expect(service.submit(input())).rejects.toThrow('账号操作')
+    expect(await store.records()).toEqual([])
+  })
+
   it('keeps the browser account snapshot when an offline submission arrives after a switch', async () => {
     const { service, dependencies, store } = await fixture()
     dependencies.context.mockResolvedValue('new-account/provider')
@@ -129,6 +148,7 @@ describe('delivery before replay', () => {
     expect(await service.submit(input())).toMatchObject({ status: 'queued' })
     expect(dependencies.start).not.toHaveBeenCalled()
     dependencies.accountBusy.mockReturnValue(true)
+    dependencies.submissionBlocked.mockReturnValue(true)
     await expect(service.submit(input(2))).rejects.toThrow('账号操作')
   })
 

@@ -6638,6 +6638,7 @@ export class BackendQueueProcessor {
     )
     this.deliveries = new DeliveryService(this.store, {
       accountBusy: () => this.providerChanging || getAccountAuthCoordinator().isAccountOperationInProgress(),
+      submissionBlocked: () => this.providerChanging || getAccountAuthCoordinator().blocksNewSubmissions(),
       context: options.context ?? (() => this.deliveryContext()),
       canStart: threadId => this.canStartQueuedTurn(threadId),
       prepare: async row => {

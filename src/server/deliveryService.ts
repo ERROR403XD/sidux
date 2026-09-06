@@ -14,6 +14,7 @@ export class DeliveryService {
 
   constructor(readonly store: DeliveryStore, private readonly dependencies: {
     accountBusy: () => boolean
+    submissionBlocked?: () => boolean
     context: () => Promise<string>
     canStart: (threadId: string) => Promise<boolean>
     prepare: (delivery: DeliveryRecord) => Promise<Record<string, unknown>>
@@ -31,7 +32,7 @@ export class DeliveryService {
   }
 
   async submit(input: Omit<Submission, 'contextId'> & { expectedContextId?: string }, beforeId?: string): Promise<Result> {
-    if (this.disposed || this.dependencies.accountBusy()) throw new Error('账号操作期间暂不能提交消息')
+    if (this.disposed || (this.dependencies.submissionBlocked?.() ?? this.dependencies.accountBusy())) throw new Error('账号操作期间暂不能提交消息')
     const { expectedContextId, ...submission } = input
     const contextId = expectedContextId || await this.dependencies.context()
     const row = await this.store.add({ ...submission, contextId }, beforeId)

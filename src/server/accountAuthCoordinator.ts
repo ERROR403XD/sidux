@@ -151,6 +151,7 @@ function sameContinuity(left: ReturnType<typeof threadContinuity>, right: Return
 
 export class AccountAuthCoordinator {
   isAccountOperationInProgress(): boolean { return this.operation !== null }
+  blocksNewSubmissions(): boolean { return this.operation !== null && this.operation.kind !== 'refresh' }
   private operation: CoordinatorOperation | null = null
   private loginSession: LoginSession | null = null
   private readonly refreshFlights = new Map<string, Promise<StoredAccountEntry>>()
