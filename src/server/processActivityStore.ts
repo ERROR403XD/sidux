@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
+import type { CommandObservation } from './commandToolOutput.js'
 import { hookRunKey, OUTPUT_LIMIT, readCommandOutput, readHookRun, type CommandOutput, type HookRun, type HookSnapshot } from '../processActivity.js'
 
 const MAX_BYTES = 4 * 1024 * 1024
@@ -11,6 +12,7 @@ export class ProcessActivityStore {
   private sizes = new Map<string, number>()
   private bytes = 0
   private outputs = new Map<string, CommandOutput>()
+  private commands = new Map<string, CommandObservation>()
   private observedSince = Date.now()
   private limited = false
   private error = ''
@@ -90,6 +92,11 @@ export class ProcessActivityStore {
       const output = readCommandOutput(params.item, 'observed')
       if (output) {
         const key = keyOf(threadId, output.itemId)
+        if (notification.method === 'item/started' && typeof params.item.processId === 'string' && typeof params.turnId === 'string' && typeof params.startedAtMs === 'number') {
+          this.commands.delete(key)
+          this.commands.set(key, { processId: params.item.processId, turnId: params.turnId, startedAtMs: params.startedAtMs })
+          while (this.commands.size > 200) this.commands.delete(this.commands.keys().next().value!)
+        }
         const previous = this.outputs.get(key)
         if (previous && previous.status !== 'inProgress' && output.status === 'inProgress') return
         this.outputs.delete(key)
@@ -110,12 +117,17 @@ export class ProcessActivityStore {
 
   runtimeStopped() {
     this.outputs.clear()
+    this.commands.clear()
     for (const run of this.runs.values()) run.currentRuntime = false
     this.schedule()
   }
 
   output(threadId: string, itemId: string): CommandOutput | null {
     return this.outputs.get(keyOf(threadId, itemId)) || null
+  }
+
+  command(threadId: string, itemId: string): CommandObservation | null {
+    return this.commands.get(keyOf(threadId, itemId)) || null
   }
 
   async snapshot(threadId: string): Promise<HookSnapshot> {

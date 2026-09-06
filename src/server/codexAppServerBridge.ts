@@ -1,6 +1,7 @@
 import { DirectoryMcpReader } from './directoryMcpReader.js'
 import { BackgroundTerminalReader } from './backgroundTerminalReader.js'
 import { ProcessActivityStore } from './processActivityStore.js'
+import { readCommandToolOutput } from './commandToolOutput.js'
 import { hookRunKey, readCommandOutput, readHookConfiguration } from '../processActivity.js'
 import { extractTaskExcerpt } from '../taskExcerpt'
 import { maySupplementImportedThreads } from './threadListCompatibility'
@@ -7708,16 +7709,24 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           const itemId = url.searchParams.get('itemId')?.trim() || ''
           if (!itemId) throw new Error('缺少命令项 ID')
           let output = sharedState.processActivity.output(threadId, itemId)
-          if (!output) {
+          if (!output?.text) {
             const page = await history.page(threadId, { limit: 10 })
-            const turns = asRecord(asRecord(page.result)?.thread)?.turns
+            const thread = asRecord(asRecord(page.result)?.thread)
+            const turns = thread?.turns
             if (Array.isArray(turns)) {
               for (const turn of turns) {
                 const items = asRecord(turn)?.items
                 if (!Array.isArray(items)) continue
                 const item = items.find(item => asRecord(item)?.id === itemId)
-                if (item) output = readCommandOutput(item, 'history')
+                const saved = item ? readCommandOutput(item, 'history') : null
+                if (saved?.text || !output) output = saved || output
               }
+            }
+            const command = sharedState.processActivity.command(threadId, itemId)
+            const path = readNonEmptyString(thread?.path)
+            if (!output?.text && command && path) {
+              const text = await readCommandToolOutput(path, command)
+              if (text) output = { itemId, text, status: output?.status || 'unknown', exitCode: output?.exitCode ?? null, truncated: true, source: 'toolResult' }
             }
           }
           setJson(res, 200, { data: output || { itemId, text: '', status: 'unknown', exitCode: null, truncated: false, source: 'unavailable' } })

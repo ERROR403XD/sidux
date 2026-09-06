@@ -29,7 +29,7 @@ export type BackgroundTerminal = {
 }
 export type CommandOutput = {
   itemId: string; text: string; status: string; exitCode: number | null; truncated: boolean
-  source: 'observed' | 'history' | 'unavailable'
+  source: 'observed' | 'history' | 'toolResult' | 'unavailable'
 }
 export const OUTPUT_LIMIT = 32768
 export const hookRunKey = (run: HookRun): string => JSON.stringify([run.threadId, run.turnId, run.id, run.startedAt])

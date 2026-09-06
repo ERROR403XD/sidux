@@ -45,7 +45,7 @@
         <p v-if="outputLoading">读取输出中…</p><p v-if="outputError" class="process-error" role="alert">{{ outputError }}</p>
         <template v-if="output">
           <p v-if="output.source === 'unavailable'">当前观察记录及最近 10 回合中没有这条命令的输出。</p>
-          <template v-else><small>{{ output.source === 'history' ? '会话历史' : '已观察的输出' }} · {{ commandStatusLabel(output.status) }}<template v-if="output.exitCode !== null"> · 退出码 {{ output.exitCode }}</template></small><pre>{{ output.text || '暂无输出。' }}</pre><small v-if="output.truncated">只显示已观察到的尾部，最多 32k 字符。</small></template>
+          <template v-else><small>{{ output.source === 'toolResult' ? '工具返回片段' : output.source === 'history' ? '会话历史' : '已观察的输出' }} · {{ commandStatusLabel(output.status) }}<template v-if="output.exitCode !== null"> · 退出码 {{ output.exitCode }}</template></small><pre>{{ output.text || '尚未收到输出。' }}</pre><small v-if="output.truncated">只显示已记录的片段或尾部，最多 32k 字符。</small></template>
         </template>
       </section>
     </template>
@@ -214,7 +214,7 @@ async function terminate() {
     if (!response.ok || !payload.data) throw new Error(payload.error || '停止结果无法确认')
     if (!disposed) notice.value = payload.data.absent ? '进程已不在后台列表。' : payload.data.terminated ? '已收到原生停止确认。' : '原生接口未停止该进程，请检查当前状态。'
   } catch (cause) {
-    if (!disposed) notice.value = formatDirectoryError(cause, '停止结果无法确认') + '；正在重新读取状态。'
+    if (!disposed) notice.value = formatDirectoryError(cause, '停止结果无法确认') + '；请核对当前列表。'
   } finally {
     stopping.value = false
     confirming.value = null
