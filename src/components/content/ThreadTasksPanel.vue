@@ -2,7 +2,7 @@
   <section class="thread-tasks-panel" aria-label="任务导航">
     <div class="thread-task-toolbar">
       <AppButton v-if="identity?.parentThreadId" @click="emit('returnTask', identity.parentThreadId)">返回上级任务</AppButton>
-      <span v-if="identity?.parentThreadId" class="task-identity">{{ identity.nickname || identity.path || identity.id.slice(0, 12) }}<small v-if="identity.role"> · {{ identity.role }}</small></span>
+      <span v-if="identity?.parentThreadId" class="task-identity">{{ identity.nickname || identity.path || shortTaskId(identity.id) }}<small v-if="identity.role"> · {{ identity.role }}</small></span>
       <AppButton :aria-expanded="open" @click="toggle">{{ open ? '收起子任务' : '子任务' }}</AppButton>
       <AppButton @click="emit('searchTasks')">搜索任务</AppButton>
     </div>
@@ -29,7 +29,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AppButton from '../common/AppButton.vue'
 import { listTaskPage } from '../../api/tasks'
-import { subscribeTaskNotifications, taskStatusLabel, type TaskIdentity } from '../../subtasks'
+import { shortTaskId, subscribeTaskNotifications, taskStatusLabel, type TaskIdentity } from '../../subtasks'
 const props = defineProps<{ threadId: string; identity: TaskIdentity | null }>()
 const emit = defineEmits<{ openTask: [threadId: string]; returnTask: [threadId: string]; searchTasks: [] }>()
 const open = ref(false)

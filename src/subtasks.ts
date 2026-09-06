@@ -21,6 +21,7 @@ export type SubtaskEvent = {
 const object = (value: unknown): Record<string, any> => value && typeof value === 'object' ? value as Record<string, any> : {}
 const text = (value: unknown, limit = 2000): string => typeof value === 'string' ? value.slice(0, limit) : ''
 export const taskId = (value: unknown): string => typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value) ? value : ''
+export const shortTaskId = (id: string): string => id.length > 14 ? `${id.slice(0, 4)}…${id.slice(-6)}` : id
 export const taskStatusLabel = (status: string): string => ({ pendingInit: '准备中', running: '运行中', active: '运行中', interrupted: '已中断', completed: '已完成', errored: '出错', systemError: '出错', shutdown: '已关闭', notFound: '不可用', idle: '空闲', notLoaded: '未载入' }[status] || '状态未知')
 export const taskActionLabel = (action: string): string => ({ spawnAgent: '创建子任务', sendInput: '发送指令', resumeAgent: '恢复子任务', wait: '等待子任务', closeAgent: '关闭子任务', sendMessage: '发送消息', followupTask: '继续子任务', interruptAgent: '中断子任务', listAgents: '查看子任务', started: '子任务启动', interacted: '子任务交互', interrupted: '子任务中断', completed: '子任务完成' }[action] || '子任务活动')
 
@@ -32,7 +33,7 @@ export function readTaskIdentity(value: unknown): TaskIdentity | null {
   const spawn = object(source.thread_spawn)
   return {
     id,
-    title: text(row.name || row.title || row.preview, 120) || id.slice(0, 12),
+    title: text(row.name || row.title || row.preview, 120) || shortTaskId(id),
     parentThreadId: taskId(row.parentThreadId) || taskId(spawn.parent_thread_id),
     nickname: text(row.agentNickname || spawn.agent_nickname, 120),
     role: text(row.agentRole || spawn.agent_role, 120),

@@ -3,7 +3,7 @@
     <summary>
       <span>{{ taskActionLabel(event.action) }}</span>
       <small v-if="event.status">调用{{ callStatus }}</small>
-      <span v-for="target in event.targets.slice(0, 3)" :key="target.id" class="subtask-event-preview">{{ target.path || target.id.slice(0, 8) }} · {{ taskStatusLabel(target.status) }}</span>
+      <span v-for="target in event.targets.slice(0, 3)" :key="target.id" class="subtask-event-preview">{{ target.path || shortTaskId(target.id) }} · {{ taskStatusLabel(target.status) }}</span>
     </summary>
     <p v-if="event.prompt" class="subtask-text">{{ event.prompt }}</p>
     <ul class="task-result-list">
@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { taskActionLabel, taskStatusLabel, type SubtaskEvent } from '../../subtasks'
+import { shortTaskId, taskActionLabel, taskStatusLabel, type SubtaskEvent } from '../../subtasks'
 const props = defineProps<{ event: SubtaskEvent }>()
 const emit = defineEmits<{ openTask: [threadId: string] }>()
 const callStatus = computed(() => ({ inProgress: '进行中', completed: '完成', failed: '失败', interrupted: '中断' }[props.event.status] || '状态未知'))
