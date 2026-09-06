@@ -5,7 +5,6 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { writeFile } from 'node:fs/promises'
-import { resolvePythonCommand, resolveSkillInstallerScriptPath } from '../commandResolution.js'
 import { getSpawnInvocation } from '../utils/commandInvocation.js'
 
 type AppServerLike = {

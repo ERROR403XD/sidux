@@ -1013,7 +1013,7 @@
                     @fork-thread="onForkThreadFromMessage"
                     @rollback="onRollback"
                     @implement-plan="onImplementPlan"
-                    @respond-server-request="onRespondServerRequest" />
+                    />
                 </div>
 
                 <div class="composer-with-queue">

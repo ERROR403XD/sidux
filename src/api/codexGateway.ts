@@ -1,4 +1,4 @@
-import { normalizeThreadQueueState, type StoredQueuedMessage, type ThreadQueueState, type ThreadQueueOperation, type ThreadQueueResult } from '../threadQueue'
+import { normalizeThreadQueueState, type ThreadQueueState, type ThreadQueueOperation, type ThreadQueueResult } from '../threadQueue'
 export type { StoredQueuedMessage, ThreadQueueState } from '../threadQueue'
 import {
   fetchRpcMethodCatalog,

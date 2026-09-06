@@ -1,5 +1,5 @@
 import { createServer } from 'node:http'
-import { chmodSync, existsSync, mkdirSync } from 'node:fs'
+import { chmodSync, mkdirSync } from 'node:fs'
 import { readFile, stat, writeFile } from 'node:fs/promises'
 import { homedir, networkInterfaces } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'

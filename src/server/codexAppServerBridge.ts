@@ -8,7 +8,7 @@ import { parseAutomationToml, serializeAutomationToml, toAutomationApiRecord, wr
 export { parseAutomationToml, toAutomationApiRecord } from './automationDefinition.js'
 import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
-import { mkdtemp, readFile, readdir, rename, rm, mkdir, stat, cp, lstat, readlink, symlink, realpath, utimes } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rename, rm, mkdir, stat, lstat, realpath, utimes } from 'node:fs/promises'
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { request as httpRequest } from 'node:http'
@@ -5306,30 +5306,6 @@ function buildTextWithAttachments(prompt: string, files: StoredQueuedMessage['fi
     prefix += `\n## ${f.label}: ${f.path}\n`
   }
   return `${prefix}\n## My request for Codex:\n\n${prompt}\n`
-}
-
-function escapeHeartbeatXmlText(value: string): string {
-  return value
-    .replace(/&/gu, '&amp;')
-    .replace(/</gu, '&lt;')
-    .replace(/>/gu, '&gt;')
-}
-
-function buildHeartbeatQueuedMessage(automation: ThreadAutomationRecord): StoredQueuedMessage {
-  return {
-    id: `automation-${automation.id}-${Date.now()}-${randomBytes(3).toString('hex')}`,
-    text: `<heartbeat>
-<automation_id>${escapeHeartbeatXmlText(automation.id)}</automation_id>
-<current_time_iso>${new Date().toISOString()}</current_time_iso>
-<instructions>
-${escapeHeartbeatXmlText(automation.prompt)}
-</instructions>
-</heartbeat>`,
-    imageUrls: [],
-    skills: [],
-    fileAttachments: [],
-    collaborationMode: 'default',
-  }
 }
 
 function fileNameFromPath(pathValue: string): string {
