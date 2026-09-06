@@ -2085,6 +2085,8 @@
   font-size: 13px;
 }
 :root .app-input:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 1px; }
+:root .sidebar-settings-panel .composer-dropdown-trigger,
+:root .review-pane .review-pane-branch-dropdown .composer-dropdown-trigger,
 :root [role="dialog"][aria-modal="true"] .composer-dropdown-trigger {
   background: var(--ui-field);
   border-color: var(--ui-border);
