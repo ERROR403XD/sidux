@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { compactMcpStatus, normalizeDirectorySkills, normalizeInstalledApps, readDirectoryPages } from './directory'
+import { compactMcpStatus, formatDirectoryError, normalizeDirectorySkills, normalizeInstalledApps, readDirectoryPages } from './directory'
 import { DirectoryMcpReader } from './server/directoryMcpReader'
 
 describe('directory runtime evidence', () => {
+  it('keeps an upstream HTTP failure readable without rendering its error document', () => {
+    expect(formatDirectoryError(new Error('failed to list apps: 403 Forbidden: <html><script>long challenge</script></html>'), '失败')).toBe('failed to list apps: 403 Forbidden:')
+    expect(formatDirectoryError(new Error('x'.repeat(4000)), '失败')).toHaveLength(500)
+  })
   it('keeps connected metadata separate from effective enabled and callable', () => {
     expect(normalizeInstalledApps({ apps: [{ id: 'app', enabled: true, callable: false }] })).toEqual([{ id: 'app', name: '', enabled: true, callable: false }])
     expect(() => normalizeInstalledApps({ apps: [{ id: 'bad', isAccessible: true }] })).toThrow()

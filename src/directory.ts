@@ -2,6 +2,13 @@ type Row = Record<string, unknown>
 const row = (value: unknown): Row => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Row : {}
 const text = (value: unknown, limit = 240): string => typeof value === 'string' ? value.slice(0, limit) : ''
 
+export function formatDirectoryError(error: unknown, fallback: string): string {
+  const message = error instanceof Error ? error.message : fallback
+  const htmlIndex = message.search(/<(?:!doctype|html|head|body|script)\b/i)
+  const brief = (htmlIndex >= 0 ? message.slice(0, htmlIndex) : message).replace(/\s+/g, ' ').trim()
+  return brief.slice(0, 500) || fallback
+}
+
 export type InstalledDirectoryApp = { id: string; enabled: boolean; callable: boolean; name: string }
 export function normalizeInstalledApps(value: unknown): InstalledDirectoryApp[] {
   const apps = row(value).apps

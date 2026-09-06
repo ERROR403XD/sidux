@@ -138,6 +138,7 @@ export type DirectoryPluginInstallResult = {
 }
 
 export type DirectoryAppInfo = {
+  runtimeOnly?: boolean
   id: string
   name: string
   description: string
@@ -2362,6 +2363,13 @@ export async function listDirectoryApps(threadId?: string, forceRefetch = false)
 
 export async function listInstalledDirectoryApps(threadId?: string, forceRefresh = false): Promise<InstalledDirectoryApp[]> {
   return normalizeInstalledApps(await callRpc('app/installed', { ...(threadId ? { threadId } : {}), ...(forceRefresh ? { forceRefresh: true } : {}) }))
+}
+
+export function directoryAppsFromRuntime(apps: InstalledDirectoryApp[]): DirectoryAppInfo[] {
+  return apps.map((app, index) => ({
+    ...normalizeDirectoryApp({ id: app.id, name: app.name || app.id, isEnabled: app.enabled, isAccessible: false }, index)!,
+    runtimeOnly: true,
+  }))
 }
 
 export async function setDirectoryAppEnabled(appId: string, enabled: boolean): Promise<void> {

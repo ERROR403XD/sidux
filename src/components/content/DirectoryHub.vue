@@ -159,11 +159,11 @@
       <div v-if="!supportsApps" class="directory-empty">
         {{ t('Apps APIs unavailable in this Codex CLI. Update Codex CLI to manage apps.') }}
       </div>
-      <div v-else-if="appError" class="directory-error">{{ t(appError) }}</div>
-      <div v-else-if="isLoadingApps" class="directory-loading">{{ t('Loading apps...') }}</div>
-      <div v-else-if="visibleApps.length === 0" class="directory-empty">{{ t('No apps found.') }}</div>
+      <div v-if="appError" class="directory-error">{{ t(appError) }}<span v-if="installedApps?.length"> 目录暂不可用，以下仅显示运行快照。</span></div>
+      <p v-if="appRuntimeError" class="directory-error">{{ appRuntimeError }}</p>
+      <div v-if="isLoadingApps" class="directory-loading">{{ t('Loading apps...') }}</div>
+      <div v-else-if="visibleApps.length === 0 && !appError && !appRuntimeError && supportsApps" class="directory-empty">{{ t('No apps found.') }}</div>
       <div v-else class="directory-grid">
-        <p v-if="appRuntimeError" class="directory-error">{{ appRuntimeError }}</p>
         <article v-for="app in visibleApps" :key="app.id" class="directory-card">
           <div class="directory-card-top">
             <img v-if="appLogoSrc(app)" class="directory-card-icon" :src="appLogoSrc(app)" :alt="app.name" loading="lazy" />
@@ -184,7 +184,7 @@
             <span v-for="name in app.pluginDisplayNames.slice(0, 2)" :key="name" class="directory-chip">{{ name }}</span>
           </div>
           <div class="directory-card-actions">
-            <button class="directory-action" type="button" :disabled="appActionId === app.id" @click="toggleApp(app)">
+            <button v-if="!app.runtimeOnly" class="directory-action" type="button" :disabled="appActionId === app.id" @click="toggleApp(app)">
               {{ app.isEnabled ? '禁用（用户设置）' : '启用（用户设置）' }}
             </button>
             <button v-if="app.installUrl" class="directory-action-link" type="button" @click="openExternalUrl(app.installUrl)">
@@ -685,7 +685,7 @@ import { vModalBackdrop } from '../../composables/modalBackdrop'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AppSelect from '../common/AppSelect.vue'
 import AppButton from '../common/AppButton.vue'
-import { mcpRuntimeLabel, type InstalledDirectoryApp } from '../../directory'
+import { formatDirectoryError, mcpRuntimeLabel, type InstalledDirectoryApp } from '../../directory'
 import { subscribeTaskNotifications } from '../../subtasks'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -696,6 +696,7 @@ import {
   listDirectoryComposioConnectors,
   listDirectoryApps,
   listInstalledDirectoryApps,
+  directoryAppsFromRuntime,
   listDirectoryMcpServers,
   listDirectoryPlugins,
   readDirectoryComposioConnector,
@@ -930,7 +931,7 @@ const scopeDescription = computed(() => props.threadId
   : props.cwd ? '插件与技能按项目读取；Apps 与 MCP 使用全局配置。安装与启停保存到用户设置。'
     : '显示用户配置中的扩展。安装与启停保存到用户设置。')
 function directoryReadError(error: unknown, fallback: string): string {
-  const message = error instanceof Error ? error.message : fallback
+  const message = formatDirectoryError(error, fallback)
   return props.threadId && /thread not found|not loaded/i.test(message)
     ? '会话状态尚未载入。请先返回会话，再打开扩展页。'
     : message
@@ -1106,6 +1107,7 @@ function formatDistributionChannel(value: string): string {
 }
 
 function appMetaLabel(app: DirectoryAppInfo): string {
+  if (app.runtimeOnly) return '运行快照'
   return app.developer || formatDistributionChannel(app.distributionChannel) || 'App'
 }
 
@@ -1244,7 +1246,7 @@ function sortMcpServers(rows: DirectoryMcpServerStatus[], sortMode: DirectorySor
 }
 
 function showToast(text: string, type: 'success' | 'error' = 'success', params?: Record<string, string | number>): void {
-  toast.value = { text, type, params }
+  toast.value = { text: type === 'error' ? formatDirectoryError(new Error(text), '扩展操作失败') : text, type, params }
   if (toastTimer) clearTimeout(toastTimer)
   toastTimer = setTimeout(() => { toast.value = null }, 3000)
 }
@@ -1380,7 +1382,7 @@ async function loadMethods(): Promise<void> {
     methodSet.value = new Set(await getMethodCatalog())
   } catch (error) {
     methodSet.value = new Set()
-    methodsError.value = error instanceof Error ? error.message : '扩展能力读取失败'
+    methodsError.value = formatDirectoryError(error, '扩展能力读取失败')
   } finally {
     methodsLoaded.value = true
   }
@@ -1402,7 +1404,7 @@ async function loadPlugins(force = false): Promise<void> {
     } catch (error) {
       if (!disposed && id === pluginReadId) {
         plugins.value = []
-        pluginError.value = error instanceof Error ? error.message : '插件读取失败'
+        pluginError.value = formatDirectoryError(error, '插件读取失败')
       }
     } finally {
       if (id === pluginReadId) {
@@ -1436,7 +1438,10 @@ async function loadApps(force = false): Promise<void> {
       apps.value = []
       appError.value = directoryReadError(results[0].reason, 'App 目录读取失败')
     }
-    if (results[1].status === 'fulfilled') installedApps.value = results[1].value
+    if (results[1].status === 'fulfilled') {
+      installedApps.value = results[1].value
+      if (results[0].status === 'rejected') apps.value = directoryAppsFromRuntime(results[1].value)
+    }
     else appRuntimeError.value = directoryReadError(results[1].reason, 'App 运行状态读取失败')
   })().finally(() => {
     if (id === appReadId) {
@@ -1569,12 +1574,12 @@ async function openPluginDetail(plugin: DirectoryPluginSummary): Promise<void> {
     if (disposed || readId !== pluginDetailReadId || !isPluginDetailOpen.value) return
     selectedPluginDetail.value = detail
     selectedPlugin.value = detail.summary
-    if (supportsApps.value) await loadApps()
+    if (supportsApps.value && detail.apps.length) await loadApps()
     if (disposed || readId !== pluginDetailReadId) return
-    if (appError.value) throw new Error(appError.value)
+    if (detail.apps.length && appError.value) throw new Error(appError.value)
     await refreshMcpStatusesForPluginDetail()
   } catch (error) {
-    if (!disposed && readId === pluginDetailReadId) pluginDetailError.value = error instanceof Error ? error.message : 'Failed to load plugin'
+    if (!disposed && readId === pluginDetailReadId) pluginDetailError.value = formatDirectoryError(error, 'Failed to load plugin')
   } finally {
     if (readId === pluginDetailReadId) isLoadingPluginDetail.value = false
   }

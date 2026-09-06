@@ -3,6 +3,7 @@ afterEach(() => invalidateModelCatalog())
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   completeCodexLogin,
+  directoryAppsFromRuntime,
   getAccounts,
   getAvailableModelIds,
   getThreadDetail,
@@ -12,6 +13,11 @@ import {
   startThreadTurn,
   switchAccount,
 } from './codexGateway'
+
+it('shows runtime-only Apps without inventing catalog connectivity or install actions', () => {
+  const apps = directoryAppsFromRuntime([{ id: 'app', name: 'Runtime App', enabled: true, callable: true }])
+  expect(apps[0]).toMatchObject({ id: 'app', name: 'Runtime App', runtimeOnly: true, isEnabled: true, isAccessible: false, installUrl: '' })
+})
 
 function mockRpcFetch(): { requests: Array<{ method: string, params: Record<string, unknown> }> } {
   const requests: Array<{ method: string, params: Record<string, unknown> }> = []
