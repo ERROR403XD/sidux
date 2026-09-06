@@ -440,6 +440,10 @@ describe('incremental historical skill recovery', () => {
       const rewritten = await readCachedSessionSkillInputsByTurn(path)
       expect(rewritten.has('old')).toBe(false)
       expect(rewritten.has('new')).toBe(true)
+      await writeFile(path, start.replace('old', 'replacement') + skill + '\n')
+      const largerRewrite = await readCachedSessionSkillInputsByTurn(path)
+      expect(largerRewrite.has('new')).toBe(false)
+      expect(largerRewrite.has('replacement')).toBe(true)
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

@@ -15,7 +15,7 @@ import { parseAutomationToml, serializeAutomationToml, toAutomationApiRecord, wr
 export { parseAutomationToml, toAutomationApiRecord } from './automationDefinition.js'
 import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
-import { mkdtemp, readFile, readdir, rename, rm, mkdir, stat, lstat, realpath, utimes } from 'node:fs/promises'
+import { mkdtemp, open, readFile, readdir, rename, rm, mkdir, stat, lstat, realpath, utimes } from 'node:fs/promises'
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { request as httpRequest } from 'node:http'
@@ -257,6 +257,7 @@ type SessionRecoveredSkillInput = {
 
 type SessionSkillInputCacheEntry = {
   size: number
+  boundary: string
   mtimeNs: bigint
   ctimeNs: bigint
   inode: bigint
@@ -323,14 +324,32 @@ function buildSessionSkillInputsByTurn(sessionLogRaw: string, state = { currentT
   return skillsByTurnId
 }
 
+async function readSessionBoundary(sessionPath: string, size: number): Promise<string> {
+  const file = await open(sessionPath, 'r')
+  try {
+    const length = Math.min(4096, size)
+    const head = Buffer.alloc(length)
+    const tail = Buffer.alloc(length)
+    await file.read(head, 0, length, 0)
+    await file.read(tail, 0, length, Math.max(0, size - length))
+    return createHash('sha256').update(head).update(tail).digest('hex')
+  } finally {
+    await file.close()
+  }
+}
+
 export async function readCachedSessionSkillInputsByTurn(sessionPath: string): Promise<Map<string, SessionRecoveredSkillInput[]>> {
   const rawInfo = await stat(sessionPath, { bigint: true })
   const info = { ...rawInfo, size: Number(rawInfo.size) }
   const cached = sessionSkillInputCache.get(sessionPath)
-  if (cached && cached.inode === info.ino && cached.size === info.size && cached.mtimeNs === info.mtimeNs && cached.ctimeNs === info.ctimeNs) return cached.skillsByTurnId
-  const canAppend = cached && cached.inode === info.ino && info.size > cached.size
+  // Rapid rewrites can share filesystem timestamps. Check a bounded prefix and the old EOF too.
+  const unchangedBoundary = cached && info.size >= cached.size && cached.inode === info.ino
+    && await readSessionBoundary(sessionPath, cached.size) === cached.boundary
+  if (cached && unchangedBoundary && cached.size === info.size && cached.mtimeNs === info.mtimeNs && cached.ctimeNs === info.ctimeNs) return cached.skillsByTurnId
+  const canAppend = cached && unchangedBoundary && info.size > cached.size
   const state: SessionSkillInputCacheEntry = {
     size: info.size,
+    boundary: await readSessionBoundary(sessionPath, info.size),
     mtimeNs: info.mtimeNs,
     ctimeNs: info.ctimeNs,
     inode: info.ino,
