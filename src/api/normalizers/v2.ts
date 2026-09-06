@@ -1,3 +1,4 @@
+import { parseAutomationMessage, type AutomationMessageMetadata } from '../../automationMessage'
 import type {
   Thread,
   ThreadItem,
@@ -129,6 +130,7 @@ function parseUserMessageContent(
   rawBlocks: UiMessage[]
   isAutomationRun: boolean
   automationDisplayName: string | null
+  automationRun?: AutomationMessageMetadata
 } {
   if (!Array.isArray(content)) {
     return { text: '', images: [], skills: [], fileAttachments: [], rawBlocks: [], isAutomationRun: false, automationDisplayName: null }
@@ -171,16 +173,18 @@ function parseUserMessageContent(
 
   const fullText = textChunks.join('\n')
   const fileAttachments = extractFileAttachments(fullText)
+  const automation = parseAutomationMessage(fullText)
   const heartbeat = parseHeartbeatEnvelope(fullText)
 
   return {
-    text: heartbeat?.instructions ?? extractCodexUserRequestText(fullText),
+    text: automation?.prompt ?? heartbeat?.instructions ?? extractCodexUserRequestText(fullText),
     images,
     skills,
     fileAttachments,
     rawBlocks,
-    isAutomationRun: heartbeat !== null,
-    automationDisplayName: heartbeat?.automationId || null,
+    isAutomationRun: automation !== null || heartbeat !== null,
+    automationDisplayName: automation?.metadata?.name || heartbeat?.automationId || null,
+    automationRun: automation?.metadata,
   }
 }
 
@@ -427,6 +431,7 @@ function toUiMessages(item: ThreadItem): UiMessage[] {
         messageType: item.type,
         isAutomationRun: parsed.isAutomationRun,
         automationDisplayName: parsed.automationDisplayName,
+        automationRun: parsed.automationRun,
       })
     }
 

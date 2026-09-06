@@ -266,6 +266,7 @@
                 <div v-if="message.isAutomationRun" class="automation-message-label">
                   <span>Sent via automation</span>
                   <code v-if="message.automationDisplayName">{{ message.automationDisplayName }}</code>
+                  <time v-if="message.automationRun" :datetime="new Date(message.automationRun.startedAt).toISOString()" :title="formatLocalDateTime(message.automationRun.startedAt, { second: '2-digit', timeZoneName: 'short' })">{{ formatLocalDateTime(message.automationRun.startedAt) }}</time>
                 </div>
                 <div v-if="message.messageType === 'worked'" class="worked-separator-wrap" aria-live="polite">
                   <button type="button" class="worked-separator" @click="toggleWorkedExpand(message)">
@@ -917,6 +918,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatLocalDateTime } from '../../dateTime'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { UiFileChange, UiLiveOverlay, UiMessage, UiPlanStep, UiServerRequest } from '../../types/codex'
 import { updateThreadFileChanges } from '../../api/codexGateway'

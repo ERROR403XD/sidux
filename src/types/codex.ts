@@ -225,6 +225,7 @@ export type UiMessage = {
   turnIndex?: number
   isAutomationRun?: boolean
   automationDisplayName?: string | null
+  automationRun?: import('../automationMessage').AutomationMessageMetadata
 }
 
 export type UiServerRequest = {

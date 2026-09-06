@@ -1,3 +1,5 @@
+import { DEFAULT_TIME_ZONE } from '../dateTime.js'
+import { buildAutomationMessage } from '../automationMessage.js'
 import { AutomationHistory } from './automationHistory.js'
 import type { AutomationModelSettings } from '../automationOptions.js'
 import { automationTimeContext, formatAutomationTime } from './automationTime.js'
@@ -54,7 +56,7 @@ export class AutomationEngine {
   private lastRenew = 0
   private lastInspect = 0
   private listeners = new Set<() => void>()
-  readonly timezone = validateAutomationTimezone(process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC')
+  readonly timezone = validateAutomationTimezone(process.env.CODEXAPP_DEFAULT_TIMEZONE || DEFAULT_TIME_ZONE)
   readonly readyPromise: Promise<void>
   constructor(private home: string, private runtime: AutomationRuntime, private now = Date.now, private automatic = true) {
     this.store = new AutomationStore(join(home, 'codexapp-automations'))
@@ -275,7 +277,10 @@ export class AutomationEngine {
         run.threadId = thread.threadId; run.model = thread.model ?? null
         await this.persist()
       }
-      const text = `[CodexApp automation run:${run.runId}]\n${automationTimeContext(run)}\n\n${record.prompt}`
+      const text = buildAutomationMessage({
+        runId: run.runId, automationId: record.id, name: record.name,
+        scheduledAt: run.scheduledAt, startedAt: run.startedAt ?? run.scheduledAt, timezone: run.timezone,
+      }, automationTimeContext(run), record.prompt)
       const params = await bounded(this.runtime.prepare(run.threadId, text, run.runId, record))
       const execution = params as { model?: string; effort?: string; collaborationMode?: { settings?: { model?: string; reasoning_effort?: string } } }
       const model = execution.collaborationMode?.settings?.model ?? execution.model
