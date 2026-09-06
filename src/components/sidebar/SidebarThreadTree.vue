@@ -1152,15 +1152,23 @@ const openThreadMenuPanelRef = ref<HTMLElement | null>(null)
 const isOrganizeMenuOpen = ref(false)
 const THREAD_VIEW_MODE_STORAGE_KEY = 'codex-web-local.thread-view-mode.v1'
 const threadViewMode = ref<'project' | 'chronological'>(loadThreadViewMode())
+let projectMeasureFrame = 0
+const pendingProjectMeasurements = new Set<HTMLElement>()
 const projectGroupResizeObserver =
   typeof window !== 'undefined'
     ? new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          const element = entry.target as HTMLElement
-          const projectName = projectNameByElement.get(element)
-          if (!projectName) continue
-          updateMeasuredProjectHeight(projectName, element)
-        }
+        for (const entry of entries) pendingProjectMeasurements.add(entry.target as HTMLElement)
+        if (projectMeasureFrame) return
+        projectMeasureFrame = requestAnimationFrame(() => {
+          projectMeasureFrame = 0
+          for (const element of pendingProjectMeasurements) {
+            const projectName = projectNameByElement.get(element)
+            if (projectName && element.isConnected && projectGroupElementByName.get(projectName) === element) {
+              updateMeasuredProjectHeight(projectName, element)
+            }
+          }
+          pendingProjectMeasurements.clear()
+        })
       })
     : null
 const COLLAPSED_STORAGE_KEY = 'codex-web-local.collapsed-projects.v1'
@@ -3015,6 +3023,8 @@ watch(openThreadMenuId, (threadId) => {
 })
 
 onBeforeUnmount(() => {
+  cancelAnimationFrame(projectMeasureFrame)
+  pendingProjectMeasurements.clear()
   for (const element of projectGroupElementByName.values()) {
     projectGroupResizeObserver?.unobserve(element)
   }
