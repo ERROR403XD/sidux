@@ -170,58 +170,7 @@ require_cutover_commands() {
 check_idle_runtime() {
   local base_url="$PRODUCTION_URL" legacy_scheduler=0
   if running_release_has_no_scheduler; then legacy_scheduler=1; fi
-  CODEXAPP_LEGACY_SCHEDULER="$legacy_scheduler" CODEXAPP_IDLE_CHECK_URL="$base_url" "$NODE_BIN" <<'NODE'
-const baseUrl = process.env.CODEXAPP_IDLE_CHECK_URL
-
-async function readJson(path, init) {
-  const response = await fetch(`${baseUrl}${path}`, init)
-  if (!response.ok) throw new Error(`${path} returned HTTP ${response.status}`)
-  return await response.json()
-}
-
-if (process.env.CODEXAPP_LEGACY_SCHEDULER !== '1') {
-  const schedulerResponse = await fetch(`${baseUrl}/codex-api/automation-runtime`)
-  if (!schedulerResponse.ok) throw new Error('Unable to inspect automation scheduler')
-  const scheduler = (await schedulerResponse.json()).data
-  if (!scheduler?.ready || scheduler.activeCount || scheduler.queuedCount) throw new Error('Automation scheduler is unavailable or still has active/queued runs')
-}
-
-const queuePayload = await readJson('/codex-api/thread-queue-state')
-const queue = queuePayload?.data && typeof queuePayload.data === 'object' ? queuePayload.data : {}
-const queuedCount = Object.values(queue).reduce((count, rows) => count + (Array.isArray(rows) ? rows.length : 0), 0)
-
-const pendingPayload = await readJson('/codex-api/server-requests/pending')
-const pendingCount = Array.isArray(pendingPayload?.data) ? pendingPayload.data.length : 0
-
-let cursor = null
-let pageCount = 0
-const activeThreadIds = []
-do {
-  const rpcPayload = await readJson('/codex-api/rpc', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: pageCount + 1,
-      method: 'thread/list',
-      params: { archived: false, limit: 100, sortKey: 'updated_at', modelProviders: [], cursor },
-    }),
-  })
-  const result = rpcPayload?.result ?? {}
-  for (const thread of Array.isArray(result.data) ? result.data : []) {
-    const status = typeof thread?.status === 'string' ? thread.status : thread?.status?.type
-    if (status === 'inProgress' || status === 'running' || status === 'active') {
-      activeThreadIds.push(String(thread?.id ?? 'unknown'))
-    }
-  }
-  cursor = typeof result.nextCursor === 'string' && result.nextCursor ? result.nextCursor : null
-  pageCount += 1
-} while (cursor && pageCount < 20)
-
-if (cursor) throw new Error('Thread inventory exceeded the bounded 2000-thread idle check.')
-console.log(`idle-check|activeTurns=${activeThreadIds.length}|queued=${queuedCount}|pendingApprovals=${pendingCount}|pages=${pageCount}`)
-if (activeThreadIds.length > 0 || queuedCount > 0 || pendingCount > 0) process.exit(3)
-NODE
+  CODEXAPP_LEGACY_SCHEDULER="$legacy_scheduler" CODEXAPP_IDLE_CHECK_URL="$base_url" "$NODE_BIN" "$REPO_DIR/scripts/check-codexapp-idle.cjs"
 }
 
 snapshot_auth_state() {

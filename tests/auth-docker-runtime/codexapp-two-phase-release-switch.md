@@ -86,3 +86,14 @@ Validate `scripts/codexapp-release-switch.sh`: prepare an immutable release whil
 4. 当前 Codex turn 尚在运行时，`check latest` 应报告 activeTurns 并返回 3；这表示空闲保护生效。结束当前 turn 后才在独立终端重试。
 
 验证命令：`pnpm exec vitest run src/cli/codexappReleaseSwitch.test.ts`。清理沿用上述临时目录自动清理和独立终端回滚步骤；测试不修改生产任务或账号。
+
+### 0.1.90 候选更新保护
+
+前提：使用独立候选容器和 CODEX_HOME；生产 5900 不参与本用例。自动测试可使用 `candidateDeploy.test.ts` 的工具桩。
+
+- 模拟构建失败：旧容器应保持运行，未执行 stop/rm。
+- 分别准备普通活动 turn、排队消息、待审批，或让状态接口返回错误/无效结构：禁止替换，恢复自动化领取状态。
+- 模拟新容器启动失败：恢复之前的容器名称并 start，保留旧数据卷。
+- 成功时顺序必须为构建镜像 → 停止领取 → 完整空闲检查 → 切换 → 健康检查 → 清理旧容器。
+
+清理：删除桩测试临时目录；真实验证只取消测试任务，不删除认证和状态卷。发布 prepare 与 activate 仍为独立步骤。

@@ -8,62 +8,86 @@ CODEX_HOME_VOLUME="${CODEXAPP_MULTI_ACCOUNT_HOME:-codexapp-multi-account-dev-hom
 HOST_PORT="${CODEXAPP_MULTI_ACCOUNT_PORT:-59001}"
 TEST_WORKSPACE_VOLUME="${CODEXAPP_TEST_WORKSPACE_VOLUME:-codexapp-0190-test-workspace}"
 PACKAGE_VERSION="$(node -p "require('${ROOT_DIR}/package.json').version")"
-PACK_PATH="/tmp/codexapp-${PACKAGE_VERSION}.tgz"
 PACK_TARGET="${ROOT_DIR}/output/package/codexapp.tgz"
+BASE_URL="http://127.0.0.1:${HOST_PORT}"
+BACKUP_NAME="${CONTAINER_NAME}-previous-$$"
+existing=0
+drained=0
+stopped=0
+renamed=0
+finished=0
+pack_dir=""
+
+cleanup() {
+  local result=$?
+  trap - EXIT
+  if [[ "$finished" != 1 && "$stopped" == 1 ]]; then
+    if [[ "$renamed" == 1 ]]; then
+      docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
+      docker rename "$BACKUP_NAME" "$CONTAINER_NAME" || true
+    fi
+    docker start "$CONTAINER_NAME" >/dev/null || true
+    echo "Candidate replacement failed; attempted to restore the previous container." >&2
+  fi
+  if [[ "$finished" != 1 && "$drained" == 1 ]]; then
+    for _ in $(seq 1 10); do
+      if curl --fail --silent --max-time 3 -X POST -H 'Content-Type: application/json' --data '{"draining":false}' "$BASE_URL/codex-api/automation-runtime/drain" >/dev/null; then break; fi
+      sleep 1
+    done
+  fi
+  if [[ -n "$pack_dir" ]]; then rm -rf "$pack_dir"; fi
+  exit "$result"
+}
+trap cleanup EXIT
 
 if docker container inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
-  if [[ "${CODEXAPP_REPLACE_DEV:-0}" != "1" ]]; then
-    echo "Container ${CONTAINER_NAME} already exists. Set CODEXAPP_REPLACE_DEV=1 to replace only this development container." >&2
+  existing=1
+  if [[ "${CODEXAPP_REPLACE_DEV:-0}" != 1 ]]; then
+    echo "Container ${CONTAINER_NAME} exists. Set CODEXAPP_REPLACE_DEV=1 to replace this candidate." >&2
     exit 1
   fi
-  # Keep active automation turns intact; a failed preflight leaves the candidate running.
-  runtime="$(curl --silent --show-error --max-time 10 "http://127.0.0.1:${HOST_PORT}/codex-api/automation-runtime" || true)"
-  if [[ "$runtime" == *'"activeCount"'* ]]; then
-    runtime="$(curl --fail --silent --show-error --max-time 40 -X POST -H 'Content-Type: application/json' --data '{"draining":true}' "http://127.0.0.1:${HOST_PORT}/codex-api/automation-runtime/drain")"
-    printf '%s' "$runtime" | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{const d=JSON.parse(s).data;if(!d.ready||d.activeCount||d.queuedCount)process.exit(1)})' || {
-      curl --silent --max-time 10 -X POST -H 'Content-Type: application/json' --data '{"draining":false}' "http://127.0.0.1:${HOST_PORT}/codex-api/automation-runtime/drain" >/dev/null || true
-      echo "Candidate has active/queued automation runs or the scheduler is unavailable." >&2; exit 1;
-    }
-  fi
-  docker stop --timeout 10 "$CONTAINER_NAME" >/dev/null
-  docker rm "$CONTAINER_NAME" >/dev/null
-fi
-
-if lsof -nP -iTCP:"$HOST_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
-  echo "Port ${HOST_PORT} is already occupied; strict development deployment aborted." >&2
+elif lsof -nP -iTCP:"$HOST_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "Port ${HOST_PORT} is occupied; deployment aborted." >&2
   exit 1
 fi
 
+# Complete all build work while the existing candidate remains available.
+pack_dir="$(mktemp -d /tmp/codexapp-candidate-pack.XXXXXX)"
 pnpm --dir "$ROOT_DIR" run build
-pnpm --dir "$ROOT_DIR" pack --pack-destination /tmp
+pnpm --dir "$ROOT_DIR" pack --pack-destination "$pack_dir"
 mkdir -p "$(dirname "$PACK_TARGET")"
-cp "$PACK_PATH" "$PACK_TARGET"
-
-docker build \
-  -t "$IMAGE_NAME" \
-  -f "$ROOT_DIR/scripts/docker-multi-account-dev.Dockerfile" \
-  "$ROOT_DIR"
-
+cp "$pack_dir/codexapp-${PACKAGE_VERSION}.tgz" "$PACK_TARGET"
+docker build -t "$IMAGE_NAME" -f "$ROOT_DIR/scripts/docker-multi-account-dev.Dockerfile" "$ROOT_DIR"
 docker volume create "$CODEX_HOME_VOLUME" >/dev/null
+
+if [[ "$existing" == 1 ]]; then
+  drained=1
+  runtime="$(curl --fail --silent --show-error --max-time 40 -X POST -H 'Content-Type: application/json' --data '{"draining":true}' "$BASE_URL/codex-api/automation-runtime/drain")"
+  printf '%s' "$runtime" | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{const d=JSON.parse(s).data;if(d?.ready!==true||d.draining!==true||d.activeCount!==0||d.queuedCount!==0)process.exit(1)})'
+  CODEXAPP_IDLE_CHECK_URL="$BASE_URL" node "$ROOT_DIR/scripts/check-codexapp-idle.cjs"
+  docker stop --timeout 10 "$CONTAINER_NAME" >/dev/null
+  stopped=1
+  docker rename "$CONTAINER_NAME" "$BACKUP_NAME"
+  renamed=1
+fi
+
 docker run -d \
-  --name "$CONTAINER_NAME" \
-  --restart unless-stopped \
-  -p "0.0.0.0:${HOST_PORT}:59001" \
-  -e CODEX_HOME=/codex-home \
-  -v "$CODEX_HOME_VOLUME:/codex-home" \
-  -v /home/Code:/home/Code \
+  --name "$CONTAINER_NAME" --restart unless-stopped \
+  -p "0.0.0.0:${HOST_PORT}:59001" -e CODEX_HOME=/codex-home -e TZ=Asia/Shanghai \
+  -v "$CODEX_HOME_VOLUME:/codex-home" -v /home/Code:/home/Code \
   -v "$TEST_WORKSPACE_VOLUME:/test-workspace/automation-0190" \
   "$IMAGE_NAME" >/dev/null
 
-for _ in $(seq 1 60); do
-  if curl -fsS "http://127.0.0.1:${HOST_PORT}/" >/dev/null 2>&1; then
-    echo "Multi-account development server: http://127.0.0.1:${HOST_PORT}/"
-    echo "Container: ${CONTAINER_NAME}"
-    echo "CODEX_HOME volume: ${CODEX_HOME_VOLUME}"
+for _ in $(seq 1 "${CODEXAPP_DEV_HEALTH_ATTEMPTS:-60}"); do
+  if curl --fail --silent --max-time 3 "$BASE_URL/" >/dev/null; then
+    if [[ "$renamed" == 1 ]]; then docker rm "$BACKUP_NAME" >/dev/null; fi
+    finished=1
+    echo "Multi-account development server: $BASE_URL/"
+    echo "Container: $CONTAINER_NAME"
+    echo "CODEX_HOME volume: $CODEX_HOME_VOLUME"
     exit 0
   fi
   sleep 1
 done
-
-docker logs --tail 120 "$CONTAINER_NAME" >&2 || true
+echo "Candidate health check failed." >&2
 exit 1
