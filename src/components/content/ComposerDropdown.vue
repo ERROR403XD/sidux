@@ -255,7 +255,7 @@ defineExpose({ open: () => { if (!props.disabled) isOpen.value = true }, close: 
 
 .composer-dropdown-menu-wrap {
   @apply absolute left-0;
-  z-index: 1200;
+  z-index: 16010;
 }
 
 .composer-dropdown-menu-wrap-down {

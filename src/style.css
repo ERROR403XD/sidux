@@ -2024,3 +2024,23 @@
 
 :root.dark .rename-thread-overlay .automation-thread-panel .automation-thread-dropdown .composer-dropdown-trigger { border-color: #52525b; background: #3f3f46; color: #f4f4f5; }
 :root.dark .rename-thread-overlay .automation-thread-panel .rename-thread-actions { border-color: #52525b; background: #27272a; }
+
+/* Shared dialog visuals follow the Goal dialog; layout stays with each flow. */
+:root { --dialog-bg: #fff; --dialog-fg: #27272a; --dialog-border: #d4d4d8; --dialog-field-bg: #fff; --dialog-field-border: #d4d4d8; --dialog-muted: #71717a; --dialog-hover: #f4f4f5; --dialog-danger: #be123c; --dialog-danger-border: #fda4af; }
+:root.dark { --dialog-bg: #18181b; --dialog-fg: #e4e4e7; --dialog-border: #52525b; --dialog-field-bg: #27272a; --dialog-field-border: #52525b; --dialog-muted: #a1a1aa; --dialog-hover: #27272a; --dialog-danger: #fda4af; --dialog-danger-border: #9f1239; }
+:root [role="dialog"][aria-modal="true"] { border: 1px solid var(--dialog-border); border-radius: 16px; background: var(--dialog-bg); color: var(--dialog-fg); box-shadow: 0 20px 80px #0003; }
+:root [role="dialog"][aria-modal="true"] button { border: 1px solid var(--dialog-border); border-radius: 8px; background: var(--dialog-bg); color: var(--dialog-fg); padding: 6px 10px; font-size: 13px; line-height: 1.4; cursor: pointer; box-shadow: none; }
+:root [role="dialog"][aria-modal="true"] button:hover:not(:disabled) { background: var(--dialog-hover); }
+:root [role="dialog"][aria-modal="true"] button:disabled { opacity: .5; cursor: default; }
+:root [role="dialog"][aria-modal="true"] button:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }
+:root [role="dialog"][aria-modal="true"] button:is(.rename-thread-button-danger, .is-danger, [data-danger]) { color: var(--dialog-danger); border-color: var(--dialog-danger-border); background: var(--dialog-bg); }
+:root [role="dialog"][aria-modal="true"] :is(input:not([type="checkbox"]):not([type="radio"]), textarea) { border: 1px solid var(--dialog-field-border); border-radius: 8px; background: var(--dialog-field-bg); color: var(--dialog-fg); padding: 8px 10px; font-size: 13px; }
+:root [role="dialog"][aria-modal="true"] .composer-dropdown-trigger { background: var(--dialog-field-bg); border-color: var(--dialog-field-border); color: var(--dialog-fg); padding: 8px 10px; }
+:root [role="dialog"][aria-modal="true"] :is(.automation-thread-label, .automation-schedule-copy, .automation-schedule-preview, .rename-thread-subtitle) { color: var(--dialog-muted); font-size: 13px; text-transform: none; letter-spacing: normal; }
+:root [role="dialog"][aria-modal="true"] :is(.automation-thread-list-item.is-active, .automation-schedule-mode.is-active, .automation-target-mode.is-active) { background: var(--dialog-hover); border-color: #818cf8; }
+:root .app-dialog.compact-dialog { width: min(460px,100%); }
+:root .app-dialog.automation-thread-panel { max-width: none; max-height: min(88dvh,900px); overflow: hidden; padding: 0; }
+:root .app-dialog[role="dialog"][aria-modal="true"] .rename-thread-actions { position: static; margin: 0; padding: 0; width: 100%; border: 0; background: transparent; flex-wrap: wrap; }
+:root .app-dialog[role="dialog"][aria-modal="true"] .automation-thread-textarea { min-height: 140px; }
+:root .app-dialog .rename-thread-subtitle { flex: none; }
+:root .app-dialog .automation-thread-list { max-height: 100px; flex-shrink: 0; }

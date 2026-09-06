@@ -652,10 +652,7 @@
       </div>
     </Teleport>
 
-    <Teleport to="body">
-      <div v-if="renameThreadDialogVisible" class="rename-thread-overlay" v-modal-backdrop="closeRenameThreadDialog">
-        <div class="rename-thread-panel" role="dialog" aria-modal="true" :aria-label="t('Thread title')">
-          <h3 class="rename-thread-title">{{ t('Rename thread') }}</h3>
+    <AppDialog :open="renameThreadDialogVisible" :title="t('Rename thread')" panel-class="compact-dialog" @close="closeRenameThreadDialog">
           <p class="rename-thread-subtitle">{{ t('Make it short and recognizable.') }}</p>
           <input
             ref="renameThreadInputRef"
@@ -666,18 +663,15 @@
             @keydown.enter.prevent="submitRenameThread"
             @keydown.esc.prevent="closeRenameThreadDialog"
           />
+      <template #footer>
           <div class="rename-thread-actions">
             <button class="rename-thread-button" type="button" @click="closeRenameThreadDialog">{{ t('Cancel') }}</button>
             <button class="rename-thread-button rename-thread-button-primary" type="button" @click="submitRenameThread">{{ t('Save') }}</button>
           </div>
-        </div>
-      </div>
-    </Teleport>
+      </template>
+    </AppDialog>
 
-    <Teleport to="body">
-      <div v-if="deleteThreadDialogVisible" class="rename-thread-overlay" v-modal-backdrop="closeDeleteThreadDialog">
-        <div class="rename-thread-panel" role="dialog" aria-modal="true" :aria-label="t('Delete thread')">
-          <h3 class="rename-thread-title">{{ deleteThreadHasAutomation ? t('Archive chat and remove automations?') : t('Delete thread?') }}</h3>
+    <AppDialog :open="deleteThreadDialogVisible" :title="deleteThreadHasAutomation ? t('Archive chat and remove automations?') : t('Delete thread?')" panel-class="compact-dialog" @close="closeDeleteThreadDialog">
           <p class="rename-thread-subtitle">
             <template v-if="deleteThreadHasAutomation">
               {{ t('Archive {title} and remove its heartbeat automations.', { title: deleteThreadTitle }) }}
@@ -686,20 +680,17 @@
               {{ t('Archive {title}. You can find it later in archived threads.', { title: deleteThreadTitle }) }}
             </template>
           </p>
+      <template #footer>
           <div class="rename-thread-actions">
             <button class="rename-thread-button" type="button" @click="closeDeleteThreadDialog">{{ t('Cancel') }}</button>
             <button class="rename-thread-button rename-thread-button-danger" type="button" @click="submitDeleteThread">
               {{ deleteThreadHasAutomation ? t('Archive and remove') : t('Delete') }}
             </button>
           </div>
-        </div>
-      </div>
-    </Teleport>
+      </template>
+    </AppDialog>
 
-    <Teleport to="body">
-      <div v-if="automationDialogVisible" class="rename-thread-overlay" v-modal-backdrop="closeAutomationDialog">
-        <div class="rename-thread-panel automation-thread-panel" role="dialog" aria-modal="true" :aria-label="automationDialogScope === 'project' ? t('Project automation') : t('Thread automation')">
-          <h3 class="rename-thread-title">{{ automationDialogMode === 'edit' ? t('Edit automation') : t('Add automation') }}</h3>
+    <AppDialog :open="automationDialogVisible" :title="automationDialogMode === 'edit' ? t('Edit automation') : t('Add automation')" panel-class="automation-thread-panel" @close="closeAutomationDialog">
           <p class="rename-thread-subtitle">{{ t(automationDialogSubtitle) }}</p>
 
           <div v-if="automationTargetPickerVisible && automationDialogMode === 'create'" class="automation-target-picker">
@@ -854,7 +845,7 @@
 
           <p v-if="automationDialogError" class="rename-thread-subtitle automation-thread-error">{{ t(automationDialogError) }}</p>
           <p v-else-if="automationDialogNotice" class="rename-thread-subtitle automation-thread-notice">{{ t(automationDialogNotice) }}</p>
-
+      <template #footer>
           <div class="rename-thread-actions">
             <button
               v-if="automationDialogMode === 'edit'"
@@ -881,15 +872,14 @@
               {{ isSavingAutomation ? t('Saving…') : t('Save') }}
             </button>
           </div>
-        </div>
-      </div>
-    </Teleport>
+      </template>
+    </AppDialog>
   </section>
 </template>
 
 <script setup lang="ts">
 import { getAutomationRuntime, runAutomationNow, createAutomationRequestId } from '../../api/automationGateway'
-import { vModalBackdrop } from '../../composables/modalBackdrop'
+import AppDialog from '../common/AppDialog.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { ComponentPublicInstance } from 'vue'
 import {

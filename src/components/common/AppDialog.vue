@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <div v-if="open" class="app-dialog-backdrop" v-modal-backdrop="close" @keydown="onKeydown">
-      <section ref="panel" class="app-dialog" role="dialog" aria-modal="true" :aria-label="title" tabindex="-1">
+      <section ref="panel" class="app-dialog" :class="panelClass" role="dialog" aria-modal="true" :aria-label="title" tabindex="-1">
         <header class="app-dialog-header"><h2>{{ title }}</h2><button type="button" aria-label="关闭窗口" @click="close">×</button></header>
         <div ref="body" class="app-dialog-body"><slot /></div>
         <footer v-if="$slots.footer" class="app-dialog-footer"><slot name="footer" /></footer>
@@ -11,7 +11,7 @@
 </template>
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
-const props = defineProps<{ open: boolean; title: string }>()
+const props = defineProps<{ open: boolean; title: string; panelClass?: string }>()
 const emit = defineEmits<{ close: [] }>()
 const panel = ref<HTMLElement | null>(null)
 const body = ref<HTMLElement | null>(null)
