@@ -86,6 +86,14 @@
 - Browser assertions must inspect the real changed UI, not sidebar previews or base page load.
 - For refresh-persistence fixes, include post-refresh evidence that the state persisted.
 
+### Shared UI component conventions
+
+- New modal flows use `src/components/common/AppDialog.vue`; anchored floating panels use `AppPopover.vue`; ordinary single-choice controls use `AppSelect.vue`; outlined actions use `AppButton.vue` (`variant="danger"` for destructive actions).
+- Read [UI component and code conventions](docs/plans/20260906-0016-codexapp-UI组件与代码风格约定.md) before extending these primitives. Existing `ComposerDropdown` is a compatibility adapter, not a second implementation.
+- Shared colors, radii, focus styles and layers come from the `--ui-*` tokens in `src/style.css`. Keep business layout in its component; do not copy overlay positioning, window event listeners, focus trapping or per-dialog button themes.
+- Keep primitives independent of RPC, router, storage and business status. Use typed props/events and slots; callers own saving, errors and domain state. Do not create a generic schema-driven form framework for a single use case.
+- In new or changed shared UI code, use two-space indentation, explicit imports, descriptive handlers, and one state transition per statement. Expand async cleanup and branching into readable blocks; avoid unrelated repository-wide formatting.
+
 ## Provider/Auth Docker Workflow
 
 - Use this only when changes touch Docker startup, Codex auth detection, OpenCode Zen/OpenRouter/custom providers, provider model loading, app-server config, chat send/reply handling, or failed-turn error rendering.
