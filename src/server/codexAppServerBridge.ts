@@ -1,4 +1,7 @@
 import { DirectoryMcpReader } from './directoryMcpReader.js'
+import { BackgroundTerminalReader } from './backgroundTerminalReader.js'
+import { ProcessActivityStore } from './processActivityStore.js'
+import { hookRunKey, readCommandOutput, readHookConfiguration } from '../processActivity.js'
 import { extractTaskExcerpt } from '../taskExcerpt'
 import { maySupplementImportedThreads } from './threadListCompatibility'
 import { changesThreadSearch } from '../threadSearchEvents.js'
@@ -6100,6 +6103,7 @@ class AppServerProcess {
       this.initialized = false
       this.initializePromise = null
       this.readBuffer = ''
+      this.emitNotification({ method: 'codexapp/runtime/stopped', params: {} })
     })
   }
 
@@ -6554,6 +6558,7 @@ class AppServerProcess {
       || request.method === 'thread/compact/start'
       || request.method === 'thread/goal/set'
       || request.method === 'thread/settings/update'
+      || request.method === 'thread/backgroundTerminals/terminate'
     )).length
     const pendingServerRequestCount = this.pendingServerRequests.size
     const automationRunIds = this.automationActivity()
@@ -6589,6 +6594,7 @@ class AppServerProcess {
     this.pendingServerRequests.clear()
     this.activeTurnThreadIds.clear()
     this.authRecovery.clear()
+    this.emitNotification({ method: 'codexapp/runtime/stopped', params: {} })
 
     try {
       proc.stdin.end()
@@ -6986,10 +6992,11 @@ type SharedBridgeState = {
   automationEngine: AutomationEngine
   threadGoalReader: ThreadGoalReader
   threadCompactionGate: ThreadCompactionGate
+  processActivity: ProcessActivityStore
 }
 
 const SHARED_BRIDGE_KEY = '__codexRemoteSharedBridge__'
-const SHARED_BRIDGE_VERSION = 'project-extensions-0206-v1'
+const SHARED_BRIDGE_VERSION = 'hooks-terminals-0207-v1'
 
 function getSharedBridgeState(): SharedBridgeState {
   const globalScope = globalThis as typeof globalThis & {
@@ -7003,11 +7010,13 @@ function getSharedBridgeState(): SharedBridgeState {
     }
     void existing.automationEngine?.dispose()
     existing.appServer.dispose()
+    void existing.processActivity?.flush()
     void existing.backendQueueProcessor?.dispose().catch(() => {})
     existing.terminalManager?.dispose()
   }
 
   const appServer = new AppServerProcess()
+  const processActivity = existing?.processActivity ?? new ProcessActivityStore(join(getCodexHomeDir(), 'codexapp-hook-observations.json'))
   const terminalManager = new ThreadTerminalManager()
   const methodCatalog = new MethodCatalog()
   const backendQueueProcessor = new BackendQueueProcessor(appServer, { features: async () => (await methodCatalog.snapshot()).features })
@@ -7029,12 +7038,14 @@ function getSharedBridgeState(): SharedBridgeState {
     automationEngine.notification(notification)
     threadGoalReader.observe(notification)
     threadCompactionGate.observe(notification)
+    processActivity.observe(notification)
   })
   const created: SharedBridgeState = {
     disposed: false,
     automationEngine,
     threadGoalReader,
     threadCompactionGate,
+    processActivity,
     version: SHARED_BRIDGE_VERSION,
     appServer,
     terminalManager,
@@ -7054,6 +7065,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
   const sharedState = getSharedBridgeState()
   const { appServer, terminalManager, methodCatalog, telegramBridge, backendQueueProcessor, automationEngine, threadGoalReader, threadCompactionGate } = sharedState
   const directoryMcps = new DirectoryMcpReader((method, params) => appServer.rpc(method, params))
+  const backgroundTerminals = new BackgroundTerminalReader((method, params) => appServer.rpc(method, params), () => backendQueueProcessor.isIdentityChanging())
   const history = new ThreadHistory(
     (method, params) => callRpcWithArchiveRecovery(appServer, method, params),
     async () => (await methodCatalog.snapshot()).features,
@@ -7654,6 +7666,64 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         }
 
         setJson(res, 200, { result })
+        return
+      }
+
+      if (url.pathname.startsWith('/codex-api/process-activity/')) {
+        const body = req.method === 'POST' ? asRecord(await readJsonBody(req)) : null
+        const threadId = readNonEmptyString(body?.threadId) || url.searchParams.get('threadId')?.trim() || ''
+        if (!threadId || threadId.length > 200) {
+          setJson(res, 400, { error: '缺少有效会话 ID' })
+          return
+        }
+        if (req.method === 'GET' && url.pathname.endsWith('/hooks')) {
+          const snapshot = await sharedState.processActivity.snapshot(threadId)
+          setJson(res, 200, { data: { ...snapshot, runs: snapshot.runs.map(run => ({ ...run, entries: run.entries.slice(0, 1).map(entry => ({ ...entry, text: entry.text.slice(0, 160) })) })) } })
+          return
+        }
+        if (req.method === 'GET' && url.pathname.endsWith('/hook-detail')) {
+          const snapshot = await sharedState.processActivity.snapshot(threadId)
+          const run = snapshot.runs.find(run => hookRunKey(run) === url.searchParams.get('runKey'))
+          setJson(res, run ? 200 : 404, run ? { data: run } : { error: 'Hook 记录已不在保留范围内' })
+          return
+        }
+        if (req.method === 'GET' && url.pathname.endsWith('/hook-config')) {
+          const cwd = url.searchParams.get('cwd')?.trim() || ''
+          if (!cwd) throw new Error('缺少会话目录')
+          setJson(res, 200, { data: readHookConfiguration(await appServer.rpc('hooks/list', { cwds: [cwd] }), cwd) })
+          return
+        }
+        if (req.method === 'GET' && url.pathname.endsWith('/terminals')) {
+          setJson(res, 200, { data: await backgroundTerminals.list(threadId) })
+          return
+        }
+        if (req.method === 'POST' && url.pathname.endsWith('/terminate')) {
+          const processId = readNonEmptyString(body?.processId)
+          const itemId = readNonEmptyString(body?.itemId)
+          if (!processId || !itemId) throw new Error('缺少进程或命令项 ID')
+          setJson(res, 200, { data: await backgroundTerminals.terminate(threadId, processId, itemId) })
+          return
+        }
+        if (req.method === 'GET' && url.pathname.endsWith('/output')) {
+          const itemId = url.searchParams.get('itemId')?.trim() || ''
+          if (!itemId) throw new Error('缺少命令项 ID')
+          let output = sharedState.processActivity.output(threadId, itemId)
+          if (!output) {
+            const page = await history.page(threadId, { limit: 10 })
+            const turns = asRecord(asRecord(page.result)?.thread)?.turns
+            if (Array.isArray(turns)) {
+              for (const turn of turns) {
+                const items = asRecord(turn)?.items
+                if (!Array.isArray(items)) continue
+                const item = items.find(item => asRecord(item)?.id === itemId)
+                if (item) output = readCommandOutput(item, 'history')
+              }
+            }
+          }
+          setJson(res, 200, { data: output || { itemId, text: '', status: 'unknown', exitCode: null, truncated: false, source: 'unavailable' } })
+          return
+        }
+        setJson(res, 404, { error: '未知进程操作' })
         return
       }
 
@@ -9362,7 +9432,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
     terminalManager.dispose()
     const deliveryDisposal = backendQueueProcessor.dispose()
     appServer.dispose()
-    return Promise.all([automationDisposal, deliveryDisposal]).then(() => {})
+    return Promise.all([automationDisposal, deliveryDisposal, sharedState.processActivity.flush()]).then(() => {})
   }
   middleware.subscribeNotifications = (
     listener: (value: { method: string; params: unknown; atIso: string }) => void,

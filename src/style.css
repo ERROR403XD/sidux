@@ -2313,3 +2313,17 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
   border-color: color-mix(in srgb, var(--ui-danger) 35%, var(--ui-border));
   color: var(--ui-danger);
 }
+/* Hooks and Codex processes share the dialog tokens in both themes. */
+.thread-process-dialog { color: var(--ui-text); background: var(--ui-surface); }
+.thread-process-dialog .process-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.thread-process-dialog .process-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.thread-process-dialog .process-note, .thread-process-dialog small { opacity: .8; font-size: 12px; overflow-wrap: anywhere; }
+.thread-process-dialog .process-card { border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); padding: 12px; margin: 10px 0; background: var(--ui-field); }
+.thread-process-dialog summary { cursor: pointer; overflow-wrap: anywhere; }
+.thread-process-dialog summary > span + span { margin-left: 12px; font-size: 12px; }
+.thread-process-dialog pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 300px; overflow-y: auto; font-size: 12px; }
+.thread-process-dialog p { margin: 10px 0; font-size: 13px; overflow-wrap: anywhere; }
+.thread-process-dialog .process-error, .thread-process-dialog [data-status="failed"] summary, .thread-process-dialog [data-status="blocked"] summary { color: var(--ui-danger); }
+.thread-process-dialog .process-id { display: block; margin-top: 8px; }
+.thread-process-dialog .process-config { margin-top: 18px; }
+:root.dark .thread-process-dialog, :root.dark .thread-process-dialog .process-card { color: var(--ui-text); background: var(--ui-surface); border-color: var(--ui-border); }

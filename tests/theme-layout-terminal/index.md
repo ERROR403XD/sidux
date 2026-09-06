@@ -29,3 +29,5 @@ Return to the [manual test index](../../tests.md).
 | [共用弹窗、浮层、单选和按钮组件](shared-ui-components.md) |
 | [PWA 首页缓存故障恢复](pwa-shell-network-recovery.md) |
 | [跨版本 HTTP 缓存与白屏恢复](release-cache-refresh.md) |
+
+- [Hooks 观察与 Codex 后台终端](hooks-and-background-processes.md)：只读 Hooks、观察恢复、单项停止与输出。

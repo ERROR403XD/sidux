@@ -5,6 +5,7 @@
       <span v-if="identity?.parentThreadId" class="task-identity">{{ identity.nickname || identity.path || shortTaskId(identity.id) }}<small v-if="identity.role"> · {{ identity.role }}</small></span>
       <AppButton :aria-expanded="open" @click="toggle">{{ open ? '收起子任务' : '子任务' }}</AppButton>
       <AppButton @click="emit('searchTasks')">搜索任务</AppButton>
+      <slot name="tools" />
     </div>
     <p v-if="identity?.canAcceptDirectInput === false" class="task-input-note">{{ identity?.parentThreadId ? '此子任务由上级控制，可返回上级继续沟通。' : '当前任务不接受直接输入。' }}</p>
     <div v-if="open" class="thread-tasks-body">

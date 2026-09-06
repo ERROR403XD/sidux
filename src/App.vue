@@ -1036,7 +1036,9 @@
                 <div class="content-thread">
                   <p v-if="threadGoalsError" class="thread-goal-read-error" role="alert">{{ threadGoalsError }} <AppButton @click="refreshThreadGoals">重新读取</AppButton></p>
                   <p v-if="pendingCompactionRequest" class="thread-compaction-pending" role="status">压缩请求等待确认。<AppButton @click="onComposerCommand({ name: 'compact', complete: () => {} })">检查压缩</AppButton></p>
-                  <ThreadTasksPanel :thread-id="selectedThreadId" :identity="selectedThread?.task || null" @return-task="onReturnTask" @open-task="onOpenRelatedTask" @search-tasks="isTaskSearchOpen = true" />
+                  <ThreadTasksPanel :thread-id="selectedThreadId" :identity="selectedThread?.task || null" @return-task="onReturnTask" @open-task="onOpenRelatedTask" @search-tasks="isTaskSearchOpen = true">
+                    <template #tools><ThreadProcessPanel :key="`${selectedThreadId}:${composerCwd}:${directoryAccountRevision}`" :thread-id="selectedThreadId" :cwd="composerCwd" /></template>
+                  </ThreadTasksPanel>
                   <AppButton v-if="taskReturnId" class="task-return-button" @click="onReturnTask(taskReturnId)">返回原会话</AppButton>
                   <ThreadGoalCard v-if="selectedGoal" :goal="selectedGoal" @manage="onComposerCommand({ name: 'goal', complete: () => {} })" />
                   <ThreadConversation ref="threadConversationRef" :messages="filteredMessages" :is-loading="isLoadingMessages"
@@ -1287,6 +1289,7 @@ import ContentHeader from './components/content/ContentHeader.vue'
 import ThreadComposer from './components/content/ThreadComposer.vue'
 import ThreadGoalCard from './components/content/ThreadGoalCard.vue'
 import ThreadTasksPanel from './components/content/ThreadTasksPanel.vue'
+import ThreadProcessPanel from './components/content/ThreadProcessPanel.vue'
 import TaskSearchDialog from './components/content/TaskSearchDialog.vue'
 import { taskId } from './subtasks'
 import { compactionRequests } from './api/threadCompaction'
