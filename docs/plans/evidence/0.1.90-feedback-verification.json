@@ -1,0 +1,486 @@
+{
+  "historyPerformance": {
+    "records": 10000,
+    "archiveMs": 4007.883519,
+    "coldPreviewMs": 6.682847999999922,
+    "warmPreviewP95Ms": 0.22068400000080146,
+    "page100P95Ms": 3.669855000000098,
+    "maxConcurrentReads": 8,
+    "fullHistoryBodiesLoaded": false
+  },
+  "historyHttp": {
+    "port": 59013,
+    "preview": 5,
+    "pages": [
+      100,
+      100,
+      7
+    ],
+    "unique": 207,
+    "actualArchivedFiles": true,
+    "cleanup": true
+  },
+  "historyUi": [
+    {
+      "url": "http://127.0.0.1:4173/#/automations?automationId=0190-pages",
+      "viewport": "1440x900",
+      "theme": "light",
+      "preview": 5,
+      "pages": [
+        100,
+        100,
+        7
+      ],
+      "requests": [
+        {
+          "limit": 5,
+          "offset": 0
+        },
+        {
+          "limit": 100,
+          "offset": 0
+        },
+        {
+          "limit": 100,
+          "offset": 100
+        },
+        {
+          "limit": 100,
+          "offset": 200
+        },
+        {
+          "limit": 100,
+          "offset": 100
+        }
+      ],
+      "screenshot": "output/playwright/0190-history-pages-1440x900-light.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:4173/#/automations?automationId=0190-pages",
+      "viewport": "1440x900",
+      "theme": "dark",
+      "preview": 5,
+      "pages": [
+        100,
+        100,
+        7
+      ],
+      "requests": [
+        {
+          "limit": 5,
+          "offset": 0
+        },
+        {
+          "limit": 100,
+          "offset": 0
+        },
+        {
+          "limit": 100,
+          "offset": 100
+        },
+        {
+          "limit": 100,
+          "offset": 200
+        },
+        {
+          "limit": 100,
+          "offset": 100
+        },
+        {
+          "limit": 5,
+          "offset": 0
+        }
+      ],
+      "screenshot": "output/playwright/0190-history-pages-1440x900-dark.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:4173/#/automations?automationId=0190-pages",
+      "viewport": "375x812",
+      "theme": "light",
+      "preview": 5,
+      "pages": [
+        100,
+        100,
+        7
+      ],
+      "requests": [
+        {
+          "limit": 5,
+          "offset": 0
+        },
+        {
+          "limit": 100,
+          "offset": 0
+        },
+        {
+          "limit": 100,
+          "offset": 100
+        },
+        {
+          "limit": 100,
+          "offset": 200
+        },
+        {
+          "limit": 100,
+          "offset": 100
+        }
+      ],
+      "screenshot": "output/playwright/0190-history-pages-375x812-light.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:4173/#/automations?automationId=0190-pages",
+      "viewport": "375x812",
+      "theme": "dark",
+      "preview": 5,
+      "pages": [
+        100,
+        100,
+        7
+      ],
+      "requests": [
+        {
+          "limit": 5,
+          "offset": 0
+        },
+        {
+          "limit": 100,
+          "offset": 0
+        },
+        {
+          "limit": 100,
+          "offset": 100
+        },
+        {
+          "limit": 100,
+          "offset": 200
+        },
+        {
+          "limit": 100,
+          "offset": 100
+        }
+      ],
+      "screenshot": "output/playwright/0190-history-pages-375x812-dark.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:4173/#/automations?automationId=0190-pages",
+      "viewport": "768x1024",
+      "theme": "dark",
+      "preview": 5,
+      "pages": [
+        100,
+        100,
+        7
+      ],
+      "requests": [
+        {
+          "limit": 5,
+          "offset": 0
+        },
+        {
+          "limit": 100,
+          "offset": 0
+        },
+        {
+          "limit": 100,
+          "offset": 100
+        },
+        {
+          "limit": 100,
+          "offset": 200
+        },
+        {
+          "limit": 100,
+          "offset": 100
+        }
+      ],
+      "screenshot": "output/playwright/0190-history-pages-768x1024-dark.png",
+      "errors": []
+    }
+  ],
+  "commandUi": [
+    {
+      "url": "http://127.0.0.1:4173/#/thread/01900000-0000-7000-8000-000000000004",
+      "viewport": "1440x900",
+      "theme": "light",
+      "builtins": 22,
+      "nativeGoalLifecycle": true,
+      "compactUsesRpc": true,
+      "renameAndReview": true,
+      "copyCompletedReply": true,
+      "initDraft": true,
+      "mention": true,
+      "chatTurns": 0,
+      "screenshot": "output/playwright/0190-command-goal-1440x900-light.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:4173/#/thread/01900000-0000-7000-8000-000000000003",
+      "viewport": "1440x900",
+      "theme": "dark",
+      "builtins": 22,
+      "nativeGoalLifecycle": true,
+      "compactUsesRpc": true,
+      "renameAndReview": true,
+      "copyCompletedReply": true,
+      "initDraft": true,
+      "mention": true,
+      "chatTurns": 0,
+      "screenshot": "output/playwright/0190-command-goal-1440x900-dark.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:4173/#/thread/01900000-0000-7000-8000-000000000003",
+      "viewport": "375x812",
+      "theme": "light",
+      "builtins": 22,
+      "nativeGoalLifecycle": true,
+      "compactUsesRpc": true,
+      "renameAndReview": true,
+      "copyCompletedReply": true,
+      "initDraft": true,
+      "mention": true,
+      "chatTurns": 0,
+      "screenshot": "output/playwright/0190-command-goal-375x812-light.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:4173/#/thread/01900000-0000-7000-8000-000000000003",
+      "viewport": "375x812",
+      "theme": "dark",
+      "builtins": 22,
+      "nativeGoalLifecycle": true,
+      "compactUsesRpc": true,
+      "renameAndReview": true,
+      "copyCompletedReply": true,
+      "initDraft": true,
+      "mention": true,
+      "chatTurns": 0,
+      "screenshot": "output/playwright/0190-command-goal-375x812-dark.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:4173/#/thread/01900000-0000-7000-8000-000000000003",
+      "viewport": "768x1024",
+      "theme": "dark",
+      "builtins": 22,
+      "nativeGoalLifecycle": true,
+      "compactUsesRpc": true,
+      "renameAndReview": true,
+      "copyCompletedReply": true,
+      "initDraft": true,
+      "mention": true,
+      "chatTurns": 0,
+      "screenshot": "output/playwright/0190-command-goal-768x1024-dark.png",
+      "errors": []
+    }
+  ],
+  "busyQueue": {
+    "oldSteerPreferenceIgnored": true,
+    "editedMessageRequeued": true,
+    "explicitSteerSent": true,
+    "cancelRemoved": true,
+    "subsequentInputQueued": true,
+    "calls": [
+      "turn/start"
+    ]
+  },
+  "settingsUi": [
+    {
+      "theme": "light",
+      "globalSettingRemoved": true,
+      "composerSettingRemoved": true,
+      "screenshot": "output/playwright/0190-settings-light.png"
+    },
+    {
+      "theme": "dark",
+      "globalSettingRemoved": true,
+      "composerSettingRemoved": true,
+      "screenshot": "output/playwright/0190-settings-dark.png"
+    }
+  ],
+  "composerPerformance": [
+    {
+      "count": 100,
+      "p95Ms": 2.4000000953674316,
+      "maxMs": 54.19999980926514,
+      "renderedOptions": 8,
+      "keyPressApiRequests": 0
+    },
+    {
+      "count": 1000,
+      "p95Ms": 2.5999999046325684,
+      "maxMs": 19.799999952316284,
+      "renderedOptions": 8,
+      "keyPressApiRequests": 0
+    }
+  ],
+  "realCommands": {
+    "base": "http://127.0.0.1:59001",
+    "cwd": "/test-workspace/automation-0190",
+    "goalThread": "01a07474-d3d2-7e00-88f0-c386b0e2e160",
+    "goalCompletedTurn": "01a07474-df0c-7db2-9c0c-3db7ac3a6019",
+    "nativeBudget": 20000,
+    "goalStatus": "complete",
+    "goalScreenshot": "output/playwright/0190-real-goal-dark.png",
+    "compactionCompleted": true,
+    "compactionItemTypes": [
+      "reasoning",
+      "agentMessage",
+      "agentMessage",
+      "contextCompaction"
+    ],
+    "queueVisibleBeforeCompletion": true,
+    "queuedTurnCompleted": true,
+    "completedTurns": 4,
+    "pageErrors": []
+  },
+  "authMatrix": [
+    {
+      "url": "http://127.0.0.1:59012/#/thread/01a07475-c4ea-7e41-ab41-75fdb447b64e",
+      "viewport": "1440x900",
+      "theme": "light",
+      "invalidAuthPersistedAfterReload": true,
+      "duplicateLiveOverlayCount": 0,
+      "screenshot": "output/playwright/0190-invalid-auth-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59012/#/thread/01a07475-c4ea-7e41-ab41-75fdb447b64e",
+      "viewport": "1440x900",
+      "theme": "dark",
+      "invalidAuthPersistedAfterReload": true,
+      "duplicateLiveOverlayCount": 0,
+      "screenshot": "output/playwright/0190-invalid-auth-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:59011/#/",
+      "viewport": "1440x900",
+      "provider": "opencode-zen",
+      "enabled": true,
+      "hasCodexAuth": false,
+      "screenshot": "output/playwright/0190-provider-59011.png"
+    },
+    {
+      "url": "http://127.0.0.1:59013/#/",
+      "viewport": "1440x900",
+      "provider": "opencode-zen",
+      "enabled": true,
+      "hasCodexAuth": false,
+      "screenshot": "output/playwright/0190-provider-59013.png"
+    },
+    {
+      "url": "http://127.0.0.1:59014/#/",
+      "viewport": "1440x900",
+      "provider": "openrouter",
+      "enabled": true,
+      "hasCodexAuth": false,
+      "screenshot": "output/playwright/0190-provider-59014.png"
+    }
+  ],
+  "finalState": {
+    "runtime": {
+      "ready": true,
+      "draining": false,
+      "error": null,
+      "timezone": "Asia/Shanghai",
+      "activeCount": 0,
+      "queuedCount": 0,
+      "definitions": [
+        {
+          "id": "0190",
+          "error": null,
+          "revision": "579a8c1046407488",
+          "timezone": "Asia/Shanghai",
+          "anchor": 1788635614353,
+          "cursor": 1788635614354,
+          "nextRunAtMs": null
+        },
+        {
+          "id": "0190-heartbeat",
+          "error": null,
+          "revision": "41686961e2f24aa0",
+          "timezone": "Asia/Shanghai",
+          "anchor": 1788637410686,
+          "cursor": 1788637410686,
+          "nextRunAtMs": null
+        }
+      ]
+    },
+    "queued": 0,
+    "activeThreads": [],
+    "goalCleared": true,
+    "image": "sha256:c05b1c9807f55b2c36785faa42c162edd0a457ac444564b3cf3e65658a8d1f3c",
+    "release": "/home/docker/codexapp-releases/codexapp-0.1.90-0327c0e2e6fa-20260906-100329",
+    "production": "MainPID=87226\nActiveState=active"
+  },
+  "homeProfile": {
+    "targetUrl": "http://127.0.0.1:4173/",
+    "finalUrl": "http://127.0.0.1:4173/#/",
+    "totalApiKB": 19.9,
+    "duplicateCounts": {
+      "threadList": 1,
+      "threadListFirstPage": 1,
+      "threadListCursor": 0,
+      "threadResume": 0,
+      "threadRead": 0,
+      "threadReadWithTurns": 0,
+      "threadReadDuplicateKeys": 0,
+      "skillsList": 1,
+      "rateLimitsRead": 2,
+      "providerModels": 2
+    },
+    "warnings": [
+      "rateLimitsRead=2"
+    ],
+    "pageState": {
+      "threadLoadingText": "Loading threads...",
+      "threadLoadTimeoutMs": 15000,
+      "stillLoadingThreads": false
+    }
+  },
+  "threadProfile": {
+    "targetUrl": "http://127.0.0.1:59001/#/thread/01a07474-d3d2-7e00-88f0-c386b0e2e160",
+    "finalUrl": "http://127.0.0.1:59001/#/thread/01a07474-d3d2-7e00-88f0-c386b0e2e160",
+    "totalApiKB": 64.1,
+    "duplicateCounts": {
+      "threadList": 1,
+      "threadListFirstPage": 1,
+      "threadListCursor": 0,
+      "threadResume": 1,
+      "threadRead": 0,
+      "threadReadWithTurns": 0,
+      "threadReadDuplicateKeys": 0,
+      "skillsList": 1,
+      "rateLimitsRead": 1,
+      "providerModels": 0
+    },
+    "warnings": [],
+    "pageState": {
+      "threadLoadingText": "Loading threads...",
+      "threadLoadTimeoutMs": 15000,
+      "stillLoadingThreads": false
+    }
+  },
+  "codeCommit": "0327c0e",
+  "unit": {
+    "files": 29,
+    "passed": 232
+  },
+  "build": true,
+  "cjsHelp": true,
+  "preparedNativePty": true,
+  "faultContainersStopped": true,
+  "productionIdleCheck": {
+    "exitCode": 3,
+    "activeTurns": 1,
+    "queued": 0,
+    "pendingApprovals": 0
+  },
+  "frontendArtifactParity": {
+    "sourcePreparedCandidateEqual": true,
+    "files": 28
+  }
+}
