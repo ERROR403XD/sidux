@@ -66,6 +66,21 @@ async function fixture(options: { rule?: string; heartbeat?: boolean } = {}) {
 }
 
 describe('durable automation execution', () => {
+  it('archives records beyond the scheduling window without losing manual idempotency or retry links', async () => {
+    const f = await fixture()
+    const original = await f.engine.manual('test', f.home, 'archive-idempotency')
+    await f.engine.tick()
+    f.engine.notification({ method: 'turn/completed', params: { threadId: 'thread-1', turn: { id: 'turn-1', status: 'completed' } } })
+    await f.engine.refresh()
+    f.advance(31 * 86400000); await f.engine.refresh()
+    expect(f.engine.runs('test').data.find(run => run.runId === original.runId)).toBeUndefined()
+    expect((await f.engine.historyPage('test', null, 100)).data.find(run => run.runId === original.runId)?.status).toBe('completed')
+    const duplicate = await f.engine.manual('test', f.home, 'archive-idempotency')
+    expect(duplicate.runId).toBe(original.runId)
+    const retry = await f.engine.manual('test', f.home, 'archive-retry', original.runId)
+    expect(retry.retryOf).toBe(original.runId); expect(retry.attempt).toBe(2)
+  })
+
   it('treats an unloaded interrupted process as interrupted, and correlates only its own run marker', async () => {
     const f = await fixture()
     const run = await f.engine.manual('test', f.home, 'runtime-inspection')

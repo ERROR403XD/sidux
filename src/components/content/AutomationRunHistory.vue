@@ -2,59 +2,78 @@
   <section class="automation-history" aria-label="执行记录">
     <div class="automation-history-heading">
       <h3>执行记录</h3>
-      <button type="button" :disabled="busy || !runtime?.ready || runtime.draining" @click="runNow()">{{ busy ? '提交中…' : '立即运行' }}</button>
+      <button type="button" :disabled="runDisabled" @click="runNow()">{{ busy ? '提交中…' : '立即运行' }}</button>
     </div>
     <p class="automation-history-schedule">{{ nextTime }} · {{ metadata?.timezone || automation.timezone || runtime?.timezone }}</p>
     <p v-if="error" class="automations-error" role="alert">{{ error }}</p>
-    <p v-if="!runs.length" class="automation-history-muted">尚无执行记录。完成表示模型回合正常结束；业务产物可在执行会话中核对。</p>
-    <ol v-else class="automation-history-list">
-      <li v-for="run in runs" :key="run.runId" :data-run-status="run.status">
-        <div class="automation-history-line"><strong>{{ statusLabels[run.status] }}</strong><span>{{ triggerLabels[run.trigger] }} · 第 {{ run.attempt }} 次</span></div>
-        <div class="automation-history-line"><time>{{ formatTime(run.scheduledAt, run.timezone) }}</time><span>{{ duration(run) }}</span></div>
-        <p v-if="run.target !== target" class="automation-history-muted">{{ run.target }}</p>
-        <p v-if="run.error" class="automation-history-error">{{ run.error }}</p>
-        <div class="automation-history-links">
-          <a v-if="run.threadId" :href="`#/thread/${encodeURIComponent(run.threadId)}`">打开会话</a>
-          <button v-if="['failed', 'interrupted', 'missed'].includes(run.status)" type="button" :disabled="busy || !runtime?.ready || runtime.draining" @click="runNow(run)">检查结果后重试</button>
-          <small v-if="run.model">{{ run.model }}</small>
+    <p v-if="!runs.length" class="automation-history-muted">{{ loading ? '读取中…' : '尚无执行记录。' }}</p>
+    <AutomationRunList :runs="runs" :target="target" :disabled="runDisabled" @retry="runNow" />
+    <button class="automation-history-all" type="button" @click="openHistory">查看全部</button>
+    <AppDialog ref="historyDialog" :open="allOpen" :title="`${automation.name} · 全部执行记录`" @close="closeHistory">
+      <section class="automation-history automation-history-full" :aria-busy="pageLoading">
+        <p v-if="pageError" class="automation-history-error" role="alert">{{ pageError }}</p>
+        <p v-if="pageLoading" class="automation-history-muted">读取中…</p>
+        <p v-else-if="!pageRuns.length" class="automation-history-muted">尚无执行记录。</p>
+        <AutomationRunList :runs="pageRuns" :target="target" :disabled="runDisabled" @retry="runNow" />
+      </section>
+      <template #footer>
+        <span>第 {{ pageIndex + 1 }} 页 · 每页 100 条</span>
+        <div class="automation-history-pagination">
+          <button type="button" :disabled="pageLoading || pageIndex === 0" @click="loadPage(pageIndex - 1)">上一页</button>
+          <button type="button" :disabled="pageLoading || !nextCursor" @click="loadPage(pageIndex + 1)">下一页</button>
+          <button type="button" :disabled="pageLoading" @click="refreshHistory">刷新</button>
         </div>
-      </li>
-    </ol>
-    <button v-if="cursor" class="automation-history-more" type="button" :disabled="loading" @click="load(true)">更早记录</button>
+      </template>
+    </AppDialog>
   </section>
 </template>
-
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import AppDialog from '../common/AppDialog.vue'
+import AutomationRunList from './AutomationRunList.vue'
 import { getAutomationRuns, createAutomationRequestId, getAutomationRuntime, runAutomationNow, subscribeCodexNotifications, type AutomationRuntimeStatus } from '../../api/automationGateway'
 import type { UiThreadAutomation } from '../../types/codex'
 import type { AutomationRun } from '../../server/automationStore'
 const props = defineProps<{ automation: UiThreadAutomation; target: string }>()
-const runs = ref<AutomationRun[]>([])
+const runs = ref<AutomationRun[]>([]), pageRuns = ref<AutomationRun[]>([])
 const runtime = ref<AutomationRuntimeStatus | null>(null)
-const cursor = ref<number | null>(null)
 const busy = ref(false), loading = ref(false), error = ref('')
+const allOpen = ref(false), pageLoading = ref(false), pageError = ref(''), pageIndex = ref(0)
+const nextCursor = ref<string | null>(null)
+const historyDialog = ref<{ scrollToTop(): void } | null>(null)
+let cursors: (string | null)[] = [null], pageGeneration = 0
 let generation = 0, reloadTimer: ReturnType<typeof setTimeout> | undefined, interval: ReturnType<typeof setInterval> | undefined
 let unsubscribe: (() => void) | undefined
-const metadata = computed(() => runtime.value?.definitions.find((row) => row.id === props.automation.id))
-const nextTime = computed(() => props.automation.status === 'PAUSED' ? '已暂停' : metadata.value?.nextRunAtMs ? `下次 ${formatTime(metadata.value.nextRunAtMs, metadata.value.timezone)}` : '暂无下次运行时间')
-const statusLabels = { queued: '排队中', starting: '启动 / 核对中', running: '运行中', waiting_input: '等待处理', completed: '完成', failed: '失败', interrupted: '中断，需检查', missed: '漏跑', skipped: '已合并', cancelled: '已取消' }
-const triggerLabels = { manual: '手动', schedule: '定时', retry: '重试' }
-function formatTime(at: number, zone?: string) { return new Date(at).toLocaleString('zh-CN', { timeZone: zone, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }
-function duration(run: AutomationRun) { return run.startedAt ? `${Math.max(0, Math.round(((run.finishedAt ?? Date.now()) - run.startedAt) / 1000))} 秒` : '—' }
-async function load(older = false) {
+const metadata = computed(() => runtime.value?.definitions.find(row => row.id === props.automation.id))
+const runDisabled = computed(() => busy.value || !runtime.value?.ready || runtime.value.draining)
+const nextTime = computed(() => props.automation.status === 'PAUSED' ? '已暂停' : metadata.value?.nextRunAtMs ? `下次 ${new Date(metadata.value.nextRunAtMs).toLocaleString('zh-CN', { timeZone: metadata.value.timezone })}` : '暂无下次运行时间')
+async function load() {
   const current = ++generation
   loading.value = true
   try {
-    const [history, state] = await Promise.all([getAutomationRuns(props.automation.id, older ? cursor.value : null), getAutomationRuntime()])
+    const [history, state] = await Promise.all([getAutomationRuns(props.automation.id, null, 5), getAutomationRuntime()])
     if (current !== generation) return
-    runs.value = older ? [...runs.value, ...history.data] : history.data
-    cursor.value = history.nextCursor; runtime.value = state
+    runs.value = history.data; runtime.value = state; error.value = ''
   } catch (cause) { if (current === generation) error.value = cause instanceof Error ? cause.message : '读取记录失败' }
   finally { if (current === generation) loading.value = false }
 }
+async function loadPage(index: number) {
+  const current = ++pageGeneration
+  pageLoading.value = true; pageError.value = ''
+  try {
+    const history = await getAutomationRuns(props.automation.id, cursors[index] ?? null, 100)
+    if (current !== pageGeneration || !allOpen.value) return
+    pageRuns.value = history.data; nextCursor.value = history.nextCursor; pageIndex.value = index
+    cursors[index + 1] = history.nextCursor
+    await nextTick(); historyDialog.value?.scrollToTop()
+  } catch (cause) { if (current === pageGeneration) pageError.value = cause instanceof Error ? cause.message : '读取历史失败' }
+  finally { if (current === pageGeneration) pageLoading.value = false }
+}
+function refreshHistory() { cursors = [null]; pageIndex.value = 0; pageRuns.value = []; nextCursor.value = null; void loadPage(0) }
+function openHistory() { allOpen.value = true; pageRuns.value = []; refreshHistory() }
+function closeHistory() { allOpen.value = false; pageGeneration++; pageLoading.value = false }
 async function runNow(previous?: AutomationRun) {
-  if (busy.value) return
+  if (runDisabled.value) return
   busy.value = true; error.value = ''
   try {
     await runAutomationNow({ automationId: props.automation.id, target: previous?.target ?? props.target, kind: props.automation.kind, requestId: createAutomationRequestId(), retryOf: previous?.runId })
@@ -62,14 +81,14 @@ async function runNow(previous?: AutomationRun) {
   } catch (cause) { error.value = cause instanceof Error ? cause.message : '提交失败' }
   finally { busy.value = false }
 }
-watch(() => props.automation.id, () => { runs.value = []; cursor.value = null; void load() })
+watch(() => props.automation.id, () => { closeHistory(); runs.value = []; void load() })
 onMounted(() => {
   void load()
-  unsubscribe = subscribeCodexNotifications((notification) => {
+  unsubscribe = subscribeCodexNotifications(notification => {
     if (notification.method !== 'automation/changed' || reloadTimer) return
     reloadTimer = setTimeout(() => { reloadTimer = undefined; if (document.visibilityState === 'visible') void load() }, 500)
   })
   interval = setInterval(() => { if (document.visibilityState === 'visible' && !loading.value) void load() }, 30000)
 })
-onBeforeUnmount(() => { generation++; unsubscribe?.(); clearTimeout(reloadTimer); clearInterval(interval) })
+onBeforeUnmount(() => { generation++; pageGeneration++; unsubscribe?.(); clearTimeout(reloadTimer); clearInterval(interval) })
 </script>

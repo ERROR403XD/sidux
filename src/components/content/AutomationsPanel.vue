@@ -101,12 +101,12 @@
           </div>
         </dl>
 
-        <AutomationRunHistory :key="selectedRow.rowKey" :automation="selectedRow.automation" :target="selectedRow.targetTitle" />
-
         <section class="automation-detail-prompt">
           <h3>{{ t('Prompt') }}</h3>
           <p>{{ selectedRow.automation.prompt }}</p>
         </section>
+
+        <AutomationRunHistory :key="selectedRow.rowKey" :automation="selectedRow.automation" :target="selectedRow.targetTitle" />
       </aside>
     </div>
   </div>

@@ -11,9 +11,9 @@ async function request(path: string, init?: RequestInit) {
   return payload
 }
 export async function getAutomationRuntime(): Promise<AutomationRuntimeStatus> { return (await request('/codex-api/automation-runtime')).data }
-export async function getAutomationRuns(id: string, before?: number | null): Promise<{ data: AutomationRun[]; nextCursor: number | null }> {
-  const query = new URLSearchParams({ automationId: id, limit: '20' })
-  if (before) query.set('before', String(before))
+export async function getAutomationRuns(id: string, cursor: string | null = null, limit = 5): Promise<{ data: AutomationRun[]; nextCursor: string | null }> {
+  const query = new URLSearchParams({ automationId: id, limit: String(limit) })
+  if (cursor) query.set('cursor', cursor)
   return request(`/codex-api/automation-runs?${query}`)
 }
 export async function runAutomationNow(input: { automationId: string; target: string; kind: 'heartbeat' | 'cron'; requestId: string; retryOf?: string }) {

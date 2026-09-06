@@ -1,3 +1,4 @@
+import { AutomationHistory } from './automationHistory.js'
 import { createHash, randomUUID } from 'node:crypto'
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { join, isAbsolute } from 'node:path'
@@ -89,7 +90,11 @@ export class AutomationEngine {
   }
   subscribe(listener: () => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   private async persist() {
-    this.state.runs = pruneAutomationRuns(this.state.runs, this.now())
+    const hot = pruneAutomationRuns(this.state.runs, this.now())
+    const retained = new Set(hot.map(run => run.runId))
+    await this.store.assertOwnership()
+    await this.history.archive(this.state.runs.filter(run => !retained.has(run.runId)))
+    this.state.runs = hot
     await this.store.write(this.state)
     for (const listener of this.listeners) listener()
   }
@@ -106,6 +111,9 @@ export class AutomationEngine {
     const meta = this.state.definitions[record.id]
     return { ...record, timezone: meta?.timezone ?? this.timezone, nextRunAtMs: record.status === 'ACTIVE' ? meta?.nextRunAtMs ?? null : null }
   }
+  private get history() { return this.historyStore ??= new AutomationHistory(this.store.directory) }
+  private historyStore?: AutomationHistory
+  async historyPage(id: string, cursor: string | null, limit: number) { await this.readyPromise; return this.history.page(id, this.state.runs, cursor, limit) }
   runs(id: string, before = Infinity, limit = 20) {
     const items = this.state.runs.filter((run) => (!id || run.automationId === id) && run.createdAt < before).sort((a, b) => b.createdAt - a.createdAt)
     const data = items.slice(0, Math.max(1, Math.min(100, limit)))
@@ -182,10 +190,10 @@ export class AutomationEngine {
       const record = this.definitions.get(id)?.record
       if (!record || !(record.kind === 'heartbeat' ? record.targetThreadId === target : record.cwds.includes(target))) throw new Error('找不到有效任务或执行目标')
       const key = `manual:${id}:${target}:${requestId}`
-      const existing = this.state.runs.find((run) => run.key === key)
+      const existing = this.state.runs.find((run) => run.key === key) ?? await this.history.findByKey(key)
       if (existing) return { ...existing }
-      const previous = retryOf ? this.state.runs.find((run) => run.runId === retryOf && run.automationId === id && run.target === target) : undefined
-      if (retryOf && (!previous || isPendingAutomationRun(previous))) throw new Error('原运行不存在或仍未结束')
+      const previous = retryOf ? this.state.runs.find((run) => run.runId === retryOf && run.automationId === id) ?? await this.history.findById(id, retryOf) : undefined
+      if (retryOf && (!previous || previous.target !== target || isPendingAutomationRun(previous))) throw new Error('原运行不存在或仍未结束')
       if (this.state.runs.some((run) => run.automationId === id && run.target === target && run.status === 'queued')) throw new Error('此目标已有待执行任务，请等待队列')
       const run = this.enqueue(record, target, this.now(), key, previous ? 'retry' : 'manual')
       if (previous) { run.retryOf = previous.runId; run.attempt = previous.attempt + 1 }

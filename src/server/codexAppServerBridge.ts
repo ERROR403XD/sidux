@@ -9133,7 +9133,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         return
       }
       if (req.method === 'GET' && url.pathname === '/codex-api/automation-runs') {
-        setJson(res, 200, automationEngine.runs(url.searchParams.get('automationId') ?? '', Number(url.searchParams.get('before') || Infinity), Number(url.searchParams.get('limit') || 20)))
+        setJson(res, 200, await automationEngine.historyPage(url.searchParams.get('automationId') ?? '', url.searchParams.get('cursor'), Number(url.searchParams.get('limit') || 5)))
         return
       }
       if (req.method === 'POST' && url.pathname === '/codex-api/automation-runtime/drain') {
