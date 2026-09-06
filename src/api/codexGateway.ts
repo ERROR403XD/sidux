@@ -339,6 +339,12 @@ export type GitRepositoryStatus = {
 export type ThreadSearchResult = {
   threadIds: string[]
   indexedThreadCount: number
+  titleScopeComplete?: boolean
+  bodyThreadCount?: number
+  bodyTurnLimit?: number
+  bodyThreadLimit?: number
+  partialBodyCount?: number
+  failedBodyCount?: number
 }
 
 export type TelegramStatus = {
@@ -3311,9 +3317,11 @@ export async function searchComposerFiles(cwd: string, query: string, limit = 20
 export async function searchThreads(
   query: string,
   limit = 200,
+  signal?: AbortSignal,
 ): Promise<ThreadSearchResult> {
   const response = await fetch('/codex-api/thread-search', {
     method: 'POST',
+    signal,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, limit }),
   })

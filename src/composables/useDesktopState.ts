@@ -1,3 +1,4 @@
+import { changesThreadSearch } from '../threadSearchEvents'
 import { bindMessageTurnOrder, mergeTurnOrder, orderedTurnIds } from '../historyOrder'
 import { authRecoveryFromNotification, type AuthRecoveryState } from '../authRecovery'
 import { buildQuestionReply, isAsyncUserInputRequest, readAsyncQuestions, readQuestionReply, questionRefKey, type AsyncQuestionReply } from '../userQuestions'
@@ -1508,6 +1509,7 @@ export function useDesktopState() {
   const projectDisplayNameById = ref<Record<string, string>>(loadProjectDisplayNames())
   const loadedVersionByThreadId = ref<Record<string, string>>({})
   const loadedMessagesByThreadId = ref<Record<string, boolean>>({})
+  const threadSearchVersion = ref(0)
   const historyPositionByThreadId = ref<Record<string, ThreadHistoryPosition>>({})
   const hasMoreOlderMessagesByThreadId = ref<Record<string, boolean>>({})
   const loadingOlderMessagesByThreadId = ref<Record<string, boolean>>({})
@@ -3808,6 +3810,7 @@ export function useDesktopState() {
   }
 
   function applyRealtimeUpdates(notification: RpcNotification): void {
+    if (changesThreadSearch(notification.method)) threadSearchVersion.value += 1
     if (notification.method === 'item/started' || notification.method === 'item/completed') {
       const params = asRecord(notification.params)
       const threadId = readString(params?.threadId)
@@ -4794,6 +4797,7 @@ export function useDesktopState() {
 
     try {
       await archiveThread(threadId)
+      threadSearchVersion.value += 1
       removeArchivedThreadFromLoadedLists(threadId)
       await loadThreads()
 
@@ -4813,7 +4817,8 @@ export function useDesktopState() {
       await renameThread(threadId, normalizedName)
       threadTitleById.value = { ...threadTitleById.value, [threadId]: normalizedName }
       applyThreadFlags()
-      void persistThreadTitle(threadId, normalizedName)
+      await persistThreadTitle(threadId, normalizedName)
+      threadSearchVersion.value += 1
     } catch (unknownError) {
       error.value = unknownError instanceof Error ? unknownError.message : 'Unknown application error'
     }
@@ -5799,6 +5804,7 @@ export function useDesktopState() {
     accountRateLimitSnapshots,
     messages,
     hasMoreOlderMessages,
+    threadSearchVersion,
     isLoadingThreads,
     isThreadListFullyLoaded,
     isLoadingMessages,

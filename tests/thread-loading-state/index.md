@@ -35,3 +35,4 @@ Return to the [manual test index](../../tests.md).
 | [Missing thread route errors render in chat](missing-thread-route-errors-render-in-chat.md) |
 | [Non-thread startup selection priming](non-thread-startup-selection-priming.md) |
 | [0.2.2 原生历史分页与精确分支](native-history-and-exact-fork.md) |
+| [0.2.2 搜索更新、范围与取消](thread-search-freshness-and-cancellation.md) |

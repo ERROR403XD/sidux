@@ -1,3 +1,5 @@
+import { changesThreadSearch } from '../threadSearchEvents.js'
+import { ThreadSearch, SEARCH_BODY_TURN_LIMIT } from './threadSearch.js'
 import { ThreadHistory } from './threadHistory.js'
 import { AuthRecoveryRegistry } from '../authRecovery'
 import { MethodCatalog } from './runtimeCapabilities.js'
@@ -119,18 +121,6 @@ type PendingServerRequest = {
   receivedAtIso: string
 }
 
-type ThreadSearchDocument = {
-  id: string
-  title: string
-  preview: string
-  messageText: string
-  searchableText: string
-}
-
-type ThreadSearchIndex = {
-  docsById: Map<string, ThreadSearchDocument>
-}
-
 type ProviderModelsResponse = {
   data: string[]
   providerId: string
@@ -234,7 +224,6 @@ const PROVIDER_MODELS_FETCH_TIMEOUT_MS = 5_000
 const THREAD_RESPONSE_TURN_LIMIT = 10
 const THREAD_METHODS_WITH_TURNS = new Set(['thread/read', 'thread/resume', 'thread/fork', 'thread/rollback'])
 const THREAD_METHODS_WITH_THREAD_SNAPSHOT = new Set([...THREAD_METHODS_WITH_TURNS, 'thread/start'])
-const THREAD_SEARCH_FULL_TEXT_THREAD_LIMIT = 100
 const PROJECTLESS_THREAD_DIRECTORY_MAX_ATTEMPTS = 100
 const PROJECTLESS_THREAD_READABLE_DIRECTORY_ATTEMPTS = 20
 const PROJECTLESS_THREAD_SLUG_MAX_LENGTH = 80
@@ -2477,6 +2466,20 @@ function extractThreadMessageText(threadReadPayload: unknown): string {
   const thread = asRecord(payload?.thread)
   const turns = Array.isArray(thread?.turns) ? thread.turns : []
   const parts: string[] = []
+  const limit = 200_002
+  let length = 0
+  const append = (value: string): void => {
+    const tail = value.slice(-limit)
+    parts.push(tail)
+    length += tail.length + 1
+    while (parts.length > 1 && length - parts[0].length - 1 >= limit) {
+      length -= parts.shift()!.length + 1
+    }
+    if (length > limit && parts.length) {
+      parts[0] = parts[0].slice(length - limit)
+      length = limit
+    }
+  }
 
   for (const turn of turns) {
     const turnRecord = asRecord(turn)
@@ -2485,7 +2488,7 @@ function extractThreadMessageText(threadReadPayload: unknown): string {
       const itemRecord = asRecord(item)
       const type = typeof itemRecord?.type === 'string' ? itemRecord.type : ''
       if (type === 'agentMessage' && typeof itemRecord?.text === 'string' && itemRecord.text.trim().length > 0) {
-        parts.push(itemRecord.text.trim())
+        append(itemRecord.text.trim())
         continue
       }
       if (type === 'userMessage') {
@@ -2493,7 +2496,7 @@ function extractThreadMessageText(threadReadPayload: unknown): string {
         for (const block of content) {
           const blockRecord = asRecord(block)
           if (blockRecord?.type === 'text' && typeof blockRecord.text === 'string' && blockRecord.text.trim().length > 0) {
-            parts.push(blockRecord.text.trim())
+            append(blockRecord.text.trim())
           }
         }
         continue
@@ -2501,8 +2504,8 @@ function extractThreadMessageText(threadReadPayload: unknown): string {
       if (type === 'commandExecution') {
         const command = typeof itemRecord?.command === 'string' ? itemRecord.command.trim() : ''
         const output = typeof itemRecord?.aggregatedOutput === 'string' ? itemRecord.aggregatedOutput.trim() : ''
-        if (command) parts.push(command)
-        if (output) parts.push(output)
+        if (command) append(command)
+        if (output) append(output)
       }
     }
   }
@@ -4020,16 +4023,6 @@ function mergeSessionCommandsIntoTurns(turns: unknown[], sessionLogRaw: string):
       items: interleaved,
     }
   })
-}
-
-function isExactPhraseMatch(query: string, doc: ThreadSearchDocument): boolean {
-  const q = query.trim().toLowerCase()
-  if (!q) return false
-  return (
-    doc.title.toLowerCase().includes(q) ||
-    doc.preview.toLowerCase().includes(q) ||
-    doc.messageText.toLowerCase().includes(q)
-  )
 }
 
 function scoreFileCandidate(path: string, query: string): number {
@@ -6922,82 +6915,6 @@ function getSharedBridgeState(): SharedBridgeState {
   return created
 }
 
-async function loadAllThreadsForSearch(appServer: AppServerProcess): Promise<ThreadSearchDocument[]> {
-  const threads: Array<{ id: string; title: string; preview: string }> = []
-  let cursor: string | null = null
-
-  do {
-    const response = asRecord(await appServer.rpc('thread/list', {
-      archived: false,
-      limit: 100,
-      sortKey: 'updated_at',
-      modelProviders: [],
-      cursor,
-    }))
-    const data = Array.isArray(response?.data) ? response.data : []
-    for (const row of data) {
-      const record = asRecord(row)
-      const id = typeof record?.id === 'string' ? record.id : ''
-      if (!id) continue
-      const title = typeof record?.name === 'string' && record.name.trim().length > 0
-        ? record.name.trim()
-        : (typeof record?.preview === 'string' && record.preview.trim().length > 0 ? record.preview.trim() : 'Untitled thread')
-      const preview = typeof record?.preview === 'string' ? record.preview : ''
-      threads.push({ id, title, preview })
-    }
-    cursor = typeof response?.nextCursor === 'string' && response.nextCursor.length > 0 ? response.nextCursor : null
-  } while (cursor)
-
-  const docs: ThreadSearchDocument[] = threads.map((thread) => {
-    const searchableText = [thread.title, thread.preview].filter(Boolean).join('\n')
-    return {
-      id: thread.id,
-      title: thread.title,
-      preview: thread.preview,
-      messageText: '',
-      searchableText,
-    } satisfies ThreadSearchDocument
-  })
-
-  const docsById = new Map<string, ThreadSearchDocument>(docs.map((doc) => [doc.id, doc]))
-  const fullTextThreads = threads.slice(0, THREAD_SEARCH_FULL_TEXT_THREAD_LIMIT)
-  const concurrency = 4
-  for (let offset = 0; offset < fullTextThreads.length; offset += concurrency) {
-    const batch = fullTextThreads.slice(offset, offset + concurrency)
-    const loaded = await Promise.all(batch.map(async (thread) => {
-      try {
-        const readResponse = await appServer.rpc('thread/read', {
-          threadId: thread.id,
-          includeTurns: true,
-        })
-        const messageText = extractThreadMessageText(readResponse)
-        const searchableText = [thread.title, thread.preview, messageText].filter(Boolean).join('\n')
-        return [thread.id, {
-          id: thread.id,
-          title: thread.title,
-          preview: thread.preview,
-          messageText,
-          searchableText,
-        } satisfies ThreadSearchDocument] as const
-      } catch {
-        return null
-      }
-    }))
-    for (const row of loaded) {
-      if (!row) continue
-      docsById.set(row[0], row[1])
-    }
-  }
-
-  return Array.from(docsById.values())
-}
-
-async function buildThreadSearchIndex(appServer: AppServerProcess): Promise<ThreadSearchIndex> {
-  const docs = await loadAllThreadsForSearch(appServer)
-  const docsById = new Map<string, ThreadSearchDocument>(docs.map((doc) => [doc.id, doc]))
-  return { docsById }
-}
-
 export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
   const sharedState = getSharedBridgeState()
   const { appServer, terminalManager, methodCatalog, telegramBridge, backendQueueProcessor, automationEngine, threadGoalReader } = sharedState
@@ -7010,23 +6927,30 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
     const threadId = readNonEmptyString(value?.threadId) || readNonEmptyString(value?.thread_id) || readNonEmptyString(asRecord(value?.thread)?.id)
     if (threadId) history.invalidate(threadId)
   })
-  let threadSearchIndex: ThreadSearchIndex | null = null
-  let threadSearchIndexPromise: Promise<ThreadSearchIndex> | null = null
-
-  async function getThreadSearchIndex(): Promise<ThreadSearchIndex> {
-    if (threadSearchIndex) return threadSearchIndex
-    if (!threadSearchIndexPromise) {
-      threadSearchIndexPromise = buildThreadSearchIndex(appServer)
-        .then((index) => {
-          threadSearchIndex = index
-          return index
-        })
-        .finally(() => {
-          threadSearchIndexPromise = null
-        })
-    }
-    return threadSearchIndexPromise
-  }
+  const search = new ThreadSearch({
+    list: async cursor => {
+      const raw = await callRpcWithArchiveRecovery(appServer, 'thread/list', { archived: false, limit: 100, sortKey: 'updated_at', modelProviders: [], cursor })
+      const result = asRecord(await mergeImportedThreadsIntoThreadListResult(raw))
+      return { data: Array.isArray(result?.data) ? result.data : [], nextCursor: readNonEmptyString(result?.nextCursor) || null }
+    },
+    body: async thread => {
+      const page = await history.page(thread.id, { metadata: { thread }, limit: SEARCH_BODY_TURN_LIMIT })
+      return { text: extractThreadMessageText(page.result), truncated: page.hasMoreOlder }
+    },
+    titles: async () => (await readMergedThreadTitleCache()).titles,
+    version: async thread => {
+      const path = readNonEmptyString(thread.path)
+      if (!path || !isAbsolute(path)) return ''
+      const info = await stat(path, { bigint: true }).catch(() => null)
+      return info ? `${info.ino}:${info.size}:${info.mtimeNs}` : ''
+    },
+  })
+  const unsubscribeSearch = appServer.onNotification(({ method, params }) => {
+    if (!changesThreadSearch(method)) return
+    const value = asRecord(params)
+    const threadId = readNonEmptyString(value?.threadId) || readNonEmptyString(value?.thread_id) || readNonEmptyString(asRecord(value?.thread)?.id)
+    search.invalidate(threadId || undefined)
+  })
   void initializeSkillsSyncOnStartup(appServer)
   void readTelegramBridgeConfig()
     .then((config) => {
@@ -7522,7 +7446,10 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           }
           if (['turn/start', 'turn/steer', 'thread/rollback', 'thread/archive', 'thread/unarchive', 'thread/name/set'].includes(body.method)) {
             const threadId = readNonEmptyString(params.threadId)
-            if (threadId) history.invalidate(threadId)
+            if (threadId) {
+              history.invalidate(threadId)
+              search.invalidate(threadId)
+            }
           }
         } catch (error) {
 	          if (body.method === 'account/rateLimits/read' && isUnauthenticatedRateLimitError(error)) {
@@ -7629,7 +7556,9 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           setJson(res, 400, { error: 'Missing threadId or lastTurnId' })
           return
         }
-        setJson(res, 200, { result: await history.fork(threadId, lastTurnId) })
+        const result = await history.fork(threadId, lastTurnId)
+        search.invalidate()
+        setJson(res, 200, { result })
         return
       }
 
@@ -8734,6 +8663,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
             return
           }
           const result = await importProjectZip(buffer, parent)
+          search.invalidate()
           setJson(res, 200, { data: { path: result.projectPath, importedSessions: result.importedSessions } })
         } catch (error) {
           setJson(res, 400, { error: getErrorMessage(error, 'Failed to import project') })
@@ -9029,13 +8959,17 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           return
         }
 
-        const index = await getThreadSearchIndex()
-        const matchedIds = Array.from(index.docsById.entries())
-          .filter(([, doc]) => isExactPhraseMatch(query, doc))
-          .slice(0, limit)
-          .map(([id]) => id)
-
-        setJson(res, 200, { data: { threadIds: matchedIds, indexedThreadCount: index.docsById.size } })
+        const controller = new AbortController()
+        const cancel = () => { if (!res.writableEnded) controller.abort() }
+        res.on('close', cancel)
+        try {
+          const data = await search.search(query, limit, controller.signal)
+          if (!controller.signal.aborted) setJson(res, 200, { data })
+        } catch (cause) {
+          if (!controller.signal.aborted) throw cause
+        } finally {
+          res.off('close', cancel)
+        }
         return
       }
 
@@ -9050,6 +8984,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         const cache = await readThreadTitleCache()
         const next = title ? updateThreadTitleCache(cache, id, title) : removeFromThreadTitleCache(cache, id)
         await writeThreadTitleCache(next)
+        search.invalidate(id)
         setJson(res, 200, { ok: true })
         return
       }
@@ -9230,7 +9165,8 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
   middleware.dispose = () => {
     sharedState.disposed = true
     const automationDisposal = automationEngine.dispose()
-    threadSearchIndex = null
+    unsubscribeSearch()
+    search.invalidate()
     unsubscribeHistory()
     history.clear()
     telegramBridge.stop()

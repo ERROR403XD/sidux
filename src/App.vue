@@ -35,6 +35,7 @@
               class="sidebar-search-input"
               type="text"
               :placeholder="t('Filter threads...')"
+              maxlength="500"
               @keydown="onSidebarSearchKeydown"
             />
             <button
@@ -47,6 +48,8 @@
               <IconTablerX class="sidebar-search-clear-icon" />
             </button>
           </div>
+
+          <p v-if="!isSidebarCollapsed && isSidebarSearchVisible && sidebarSearchQuery.trim()" class="sidebar-search-status" :title="threadSearchScope" role="status">{{ threadSearchStatus }}</p>
 
           <button
             v-if="!isSidebarCollapsed"
@@ -1516,6 +1519,7 @@ const {
   accountRateLimitSnapshots,
   messages,
   hasMoreOlderMessages,
+  threadSearchVersion,
   isLoadingThreads,
   isThreadListFullyLoaded,
   isLoadingMessages,
@@ -1648,6 +1652,9 @@ const settingsAreaRef = ref<HTMLElement | null>(null)
 const settingsPanelRef = ref<HTMLElement | null>(null)
 const settingsButtonRef = ref<HTMLElement | null>(null)
 const serverMatchedThreadIds = ref<string[] | null>(null)
+const threadSearchStatus = ref('')
+const threadSearchScope = ref('')
+let threadSearchController: AbortController | null = null
 let threadSearchTimer: ReturnType<typeof setTimeout> | null = null
 let terminalKeyboardFocusFallbackTimer: ReturnType<typeof setTimeout> | null = null
 let sidebarScrollTop = 0
@@ -2299,6 +2306,7 @@ onUnmounted(() => {
     clearTimeout(threadSearchTimer)
     threadSearchTimer = null
   }
+  threadSearchController?.abort()
   clearTerminalKeyboardFocusFallbackTimer()
   stopPolling()
 })
@@ -2310,26 +2318,37 @@ function updateVisualViewportState(): void {
   visualViewportOffsetTop.value = window.visualViewport?.offsetTop ?? 0
 }
 
-watch(sidebarSearchQuery, (value) => {
+watch([sidebarSearchQuery, threadSearchVersion], ([value]) => {
   const query = value.trim()
+  threadSearchController?.abort()
+  threadSearchController = null
   if (threadSearchTimer) {
     clearTimeout(threadSearchTimer)
     threadSearchTimer = null
   }
-  if (!query) {
-    serverMatchedThreadIds.value = null
-    return
-  }
+  serverMatchedThreadIds.value = null
+  threadSearchStatus.value = query ? '搜索中…' : ''
+  threadSearchScope.value = ''
+  if (!query) return
 
+  const controller = new AbortController()
+  threadSearchController = controller
   threadSearchTimer = setTimeout(() => {
-    void searchThreads(query, 1000)
+    threadSearchTimer = null
+    void searchThreads(query, 1000, controller.signal)
       .then((result) => {
-        if (sidebarSearchQuery.value.trim() !== query) return
+        if (controller.signal.aborted || threadSearchController !== controller) return
         serverMatchedThreadIds.value = result.threadIds
+        const titleScope = result.titleScopeComplete === false ? `最近 ${result.indexedThreadCount} 个标题/摘要` : `${result.indexedThreadCount} 个标题/摘要`
+        const bodyScope = `正文 ${result.bodyThreadCount ?? 0} 个会话（最近 ${result.bodyTurnLimit ?? 50} 回合）`
+        const incomplete = result.failedBodyCount ? `；${result.failedBodyCount} 个正文未能读取` : ''
+        threadSearchStatus.value = `${titleScope} · ${bodyScope}${incomplete}`
+        threadSearchScope.value = `仅非归档会话；正文覆盖最近 ${result.bodyThreadLimit ?? 100} 个会话，每个最多 20 万字符。${result.partialBodyCount ? ` ${result.partialBodyCount} 个会话的正文按范围截取。` : ''}`
       })
-      .catch(() => {
-        if (sidebarSearchQuery.value.trim() !== query) return
+      .catch((cause) => {
+        if (controller.signal.aborted || threadSearchController !== controller) return
         serverMatchedThreadIds.value = null
+        threadSearchStatus.value = cause instanceof Error ? cause.message : '正文搜索失败，请重试。'
       })
   }, 220)
 })
