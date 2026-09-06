@@ -36,3 +36,5 @@
 回归：`pnpm exec vitest run src/components/content/composerCommands.test.ts src/api/threadCommands.test.ts`；检查选择器搜索没有逐键 API 请求，命令窗口按需懒加载，完整历史/完整线程请求只能由相应明确操作触发。
 
 清理：测试目标暂停/清除，等待已开始的回合结束；移除虚构队列和临时导出。生产版本与认证不参与此验收。
+
+预算单位修订：未写单位按 M（百万 tokens），支持 1.5M、0.01B（十亿 tokens）及小写单位。验证输入 1 实际 RPC tokenBudget=1000000，0.003M=3000；重开后显示 0.003M。留空为 null，无自动默认预算；非正数、非整数 token 或超出安全整数范围应在提交前报错。

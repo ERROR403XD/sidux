@@ -8,7 +8,8 @@
         <p>目标会保存在会话中，由 Codex 持续推进；可随时暂停或清除。保存为运行中后会自动开始。</p>
         <p v-if="goal" class="thread-goal-status">{{ goalLabels[goal.status] }} · 已用 {{ goal.tokensUsed.toLocaleString() }} tokens · {{ Math.round(goal.timeUsedSeconds / 60) }} 分钟</p>
         <label>目标<textarea v-model="objective" data-autofocus rows="5" maxlength="8000" :disabled="working || loading" placeholder="说明希望完成什么，以及如何验收" /></label>
-        <label>Token 预算（可选）<input v-model="budget" inputmode="numeric" :disabled="working || loading" placeholder="留空表示不设预算" /></label>
+        <label>Token 预算（默认 M，可填 M/B）<input v-model="budget" maxlength="50" spellcheck="false" :disabled="working || loading" placeholder="如 1、1.5M 或 0.01B；留空不设预算" /></label>
+        <p class="thread-command-hint">M = 100 万 tokens；B = 10 亿 tokens。不写单位时按 M 计算。</p>
         <p v-if="goal && objective.trim() !== goal.objective" class="thread-command-hint">修改目标内容会重置该目标的用量统计。</p>
         <div class="thread-command-actions">
           <button type="button" :disabled="working || loading || !supported || !objective.trim()" @click="saveGoal">{{ goal ? '保存目标' : '保存并开始' }}</button>
@@ -41,7 +42,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import AppDialog from '../common/AppDialog.vue'
 import { APP_COMMANDS, buildComposerCommands, type AppCommandName, type AppCommandRequest } from './composerCommands'
 import { getMethodCatalog, subscribeCodexNotifications } from '../../api/codexGateway'
-import { compactThread, getThreadGoal, setThreadGoal, clearThreadGoal, validateGoalInput, type ThreadGoal } from '../../api/threadCommands'
+import { compactThread, getThreadGoal, setThreadGoal, clearThreadGoal, validateGoalInput, formatGoalTokenBudget, type ThreadGoal } from '../../api/threadCommands'
 const props = defineProps<{
   request: AppCommandRequest; threadId: string; threadName: string; cwd: string; model: string; effort: string; busy: boolean; contextSummary: string
   run: (name: AppCommandName, value?: string) => Promise<void>
@@ -109,7 +110,7 @@ onMounted(async () => {
       if (props.request.name === 'goal' && threadId) {
         const current = await getThreadGoal(threadId)
         if (disposed) return
-        goal.value = current; objective.value = current?.objective ?? ''; budget.value = current?.tokenBudget?.toString() ?? ''
+        goal.value = current; objective.value = current?.objective ?? ''; budget.value = formatGoalTokenBudget(current?.tokenBudget)
       }
     } catch (cause) { if (!disposed) { supported.value = false; error.value = cause instanceof Error ? cause.message : '读取失败' } }
     finally { loading.value = false }
