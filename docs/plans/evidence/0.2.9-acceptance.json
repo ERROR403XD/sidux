@@ -1,0 +1,4304 @@
+{
+  "version": "0.2.9",
+  "base": "http://127.0.0.1:59001",
+  "artifacts": {
+    "matchingFiles": 30,
+    "image": "sha256:c444771e20da82c88123698cd087803c483b6af3a1a6307c4532f29632add25a",
+    "source": "c2619a3413c4ed70cdb59c59db08c9f2e2d1885f",
+    "packageHash": "05762672359d8b0a82c23e1218ff2f867ce3526345644c65fc057ffebb743c0a",
+    "files": {
+      "dist/assets/ApiProxyPanel-BbAP-7JH.js": "c69d11485f53227f4acdab2d0d51b2c2955fa70778f59c299fe668c8880226b0",
+      "dist/assets/AutomationsPanel-B9vqy9C0.css": "b884001ecf65f92485cc8291b8b396b6ba6fc78edcf106e2253373066890d3ff",
+      "dist/assets/AutomationsPanel-BlWa08qP.js": "43b45835b43f96e69ac4597d7bdaaed8f1a2b0ba1985496f786b305146a09847",
+      "dist/assets/DirectoryHub-Dd6Z-xnX.js": "9a7c8e981575e0c0b3409e1882f88f79df6180f8430adfc8776d4aeedee54f30",
+      "dist/assets/DirectoryHub-Hq58Xj8c.css": "e77242d4cd4df35ea6308f87f392059130a97059f847d959dc9730263d095211",
+      "dist/assets/ReviewPane-Bf0DO-uW.css": "86cc57d5566772694386ce6c97e7b9d9510b45cd625c915a42e8c8455581cc53",
+      "dist/assets/ReviewPane-HW_Ze5sL.js": "2da3de0e20b0427a5f1ff017aa04e29b8ed65a9faab7eeb11149eafefab49de6",
+      "dist/assets/ThreadCommandDialog-BeuKR8nM.js": "29fb729e68c1495830a8159eae1e51dda42d385e0b2bff6fa02baa9f9f98e1a8",
+      "dist/assets/ThreadConversation-BzykzA63.css": "4a8866bd04ef7da512c99c58708cf9a908d2fa3de7a33e12705adbf8f6390955",
+      "dist/assets/ThreadConversation-t6hwa7gl.js": "d2ff4582463f69f8dbd77629e76886da7c18212198e86aaa375dd483c69024d4",
+      "dist/assets/ThreadTerminalPanel-Mu3fWVjX.css": "e813e1ab8f9be776b2cc180307e42232e96bfd18f616863e3a1240a49f0fbdc5",
+      "dist/assets/ThreadTerminalPanel-ixpFKM3H.js": "b0a85b070049b4d0278a5da704628c0434895426a38600c2fb0439a88018fa18",
+      "dist/assets/common-DEPjExR-.js": "9201c7b04cc783c8c7c1e6e71a40243ac7a9c5de26ec96a2f4f27c8fdeb80133",
+      "dist/assets/index-B50R0m3-.js": "1e0fb9c8f6572425634b5ffe8031edbbd69a2311502d46a04cf7893206890484",
+      "dist/assets/index-CPQC-6wa.css": "53714e833ff5e8d688476d69f60dd3040a5a2a327aaddc29463e739fc607e032",
+      "dist/assets/index.esm-2HJYXsJb.js": "dfc12df9a4ad4ceffba861a4459ba78938a090a418acefcd8a0518a9c13911af",
+      "dist/assets/index.esm-DPL2_UNC.js": "f161f16725130ba82666855934d0d204e97e40069040aed9fae26191650b645e",
+      "dist/assets/index.esm-pVe5Qgek.js": "46afc69201e85fc921817e4fb7aad10e97aa5e69832a63b44cc3f71abd0fdbff",
+      "dist/icons/apple-touch-icon.png": "64fbe48cc3852a74ceea4896eaba5fa08835078eadc32f87d995e1715e2dda5c",
+      "dist/icons/codexui-icon.svg": "913006d9ed761ab3e349deb7eaea75cc473657837dedb12934c1d346f71b3d63",
+      "dist/icons/maskable-512x512.png": "91c23b97b97101c699f6e7e8f3164638d5b551eccb03b8bc9c4596870ca855e7",
+      "dist/icons/pwa-192x192.png": "bcd7d9b1c33279efa6f4ac079c6ff6ec0436d6beffdf69aba23f3aa181ce5b7e",
+      "dist/icons/pwa-512x512.png": "ba28d1422c2f01fa76cf4f423c8c98f937375fba55d46abef956d3e32c4ec623",
+      "dist/icons/pwa-icon.svg": "f5876b447fc272caba34567415803a508703c76d8becf77d8d9574ea9e16138a",
+      "dist/icons/pwa-maskable.svg": "2b6264ea203116794043f981162a51eee86c6bb423b7a9aa8091e4ca90923190",
+      "dist/index.html": "8ff19bc683f71e0e6fb3bb3f86d581c474b76ba938b3a203179df9eb33ae3981",
+      "dist/manifest.webmanifest": "abb062c2bfb76d3c3c07ab8286ba51817541b51b6beae1eb67de978e332afb01",
+      "dist/sw.js": "dc0793fed9010bd766f2059142effcb79fc3c423eee1cc573111c6177d21910c",
+      "dist-cli/index.js": "a51b179006be6fed81551ed9d0b4e547b1a21902405ab522ac70c7ab613a9ee9",
+      "dist-cli/index.js.map": "da77feb37b9c7ef2343b7c80b1a31e99c28cd1f30d5bb0dc29d7aa99edd5abf6"
+    }
+  },
+  "checks": {
+    "unitFiles": 67,
+    "unitTests": 436,
+    "typecheck": true,
+    "build": true,
+    "cjsHelpExitCode": 0,
+    "pty": {
+      "out": "PTY_0209_PACKED_OK",
+      "exitCode": 0
+    },
+    "crossFeatureUiCases": 52
+  },
+  "regressions": {
+    "questions": [
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02010000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "light",
+        "asyncLiveAndRefresh": true,
+        "explicitAnswerBinding": true,
+        "freeTextLegacy": true,
+        "approvalPriority": true,
+        "legacyBlocking": true,
+        "authRecoveryRefresh": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "pageErrors": [],
+        "beforeShot": "output/playwright/0209-questions-questions-1440x900-light.png",
+        "screenshot": "output/playwright/testchat-0209-questions-questions-1440-light-cjs.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02010000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "dark",
+        "asyncLiveAndRefresh": true,
+        "explicitAnswerBinding": true,
+        "freeTextLegacy": true,
+        "approvalPriority": true,
+        "legacyBlocking": true,
+        "authRecoveryRefresh": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "pageErrors": [],
+        "beforeShot": "output/playwright/0209-questions-questions-1440x900-dark.png",
+        "screenshot": "output/playwright/testchat-0209-questions-questions-1440-dark-cjs.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02010000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "light",
+        "asyncLiveAndRefresh": true,
+        "explicitAnswerBinding": true,
+        "freeTextLegacy": true,
+        "approvalPriority": true,
+        "legacyBlocking": true,
+        "authRecoveryRefresh": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "pageErrors": [],
+        "beforeShot": "output/playwright/0209-questions-questions-375x812-light.png",
+        "screenshot": "output/playwright/testchat-0209-questions-questions-375-light-cjs.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02010000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "dark",
+        "asyncLiveAndRefresh": true,
+        "explicitAnswerBinding": true,
+        "freeTextLegacy": true,
+        "approvalPriority": true,
+        "legacyBlocking": true,
+        "authRecoveryRefresh": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "pageErrors": [],
+        "beforeShot": "output/playwright/0209-questions-questions-375x812-dark.png",
+        "screenshot": "output/playwright/testchat-0209-questions-questions-375-dark-cjs.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02010000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "light",
+        "asyncLiveAndRefresh": true,
+        "explicitAnswerBinding": true,
+        "freeTextLegacy": true,
+        "approvalPriority": true,
+        "legacyBlocking": true,
+        "authRecoveryRefresh": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "pageErrors": [],
+        "beforeShot": "output/playwright/0209-questions-questions-768x1024-light.png",
+        "screenshot": "output/playwright/testchat-0209-questions-questions-768-light-cjs.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02010000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "dark",
+        "asyncLiveAndRefresh": true,
+        "explicitAnswerBinding": true,
+        "freeTextLegacy": true,
+        "approvalPriority": true,
+        "legacyBlocking": true,
+        "authRecoveryRefresh": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "pageErrors": [],
+        "beforeShot": "output/playwright/0209-questions-questions-768x1024-dark.png",
+        "screenshot": "output/playwright/testchat-0209-questions-questions-768-dark-cjs.png"
+      }
+    ],
+    "api-ui": [
+      {
+        "url": "http://127.0.0.1:59001/#/api-proxy",
+        "width": 1440,
+        "height": 900,
+        "theme": "light",
+        "background": "rgb(255, 255, 255)",
+        "settingsPersisted": true,
+        "createRotateRevoke": true,
+        "forceCancelDoesNotSave": true,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-api-ui-api-1440x900-light.png",
+        "keyDialogScreenshot": "output/playwright/0209-api-ui-api-key-1440x900-light.png",
+        "nameAndDurationSeparateRows": true,
+        "defaultUnlimitedPositiveIntegerDays": true
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/api-proxy",
+        "width": 1440,
+        "height": 900,
+        "theme": "dark",
+        "background": "rgb(24, 24, 27)",
+        "settingsPersisted": true,
+        "createRotateRevoke": true,
+        "forceCancelDoesNotSave": true,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-api-ui-api-1440x900-dark.png",
+        "keyDialogScreenshot": "output/playwright/0209-api-ui-api-key-1440x900-dark.png",
+        "nameAndDurationSeparateRows": true,
+        "defaultUnlimitedPositiveIntegerDays": true
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/api-proxy",
+        "width": 375,
+        "height": 812,
+        "theme": "light",
+        "background": "rgb(255, 255, 255)",
+        "settingsPersisted": true,
+        "createRotateRevoke": true,
+        "forceCancelDoesNotSave": true,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-api-ui-api-375x812-light.png",
+        "keyDialogScreenshot": "output/playwright/0209-api-ui-api-key-375x812-light.png",
+        "nameAndDurationSeparateRows": true,
+        "defaultUnlimitedPositiveIntegerDays": true
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/api-proxy",
+        "width": 375,
+        "height": 812,
+        "theme": "dark",
+        "background": "rgb(24, 24, 27)",
+        "settingsPersisted": true,
+        "createRotateRevoke": true,
+        "forceCancelDoesNotSave": true,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-api-ui-api-375x812-dark.png",
+        "keyDialogScreenshot": "output/playwright/0209-api-ui-api-key-375x812-dark.png",
+        "nameAndDurationSeparateRows": true,
+        "defaultUnlimitedPositiveIntegerDays": true
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/api-proxy",
+        "width": 768,
+        "height": 1024,
+        "theme": "light",
+        "background": "rgb(255, 255, 255)",
+        "settingsPersisted": true,
+        "createRotateRevoke": true,
+        "forceCancelDoesNotSave": true,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-api-ui-api-768x1024-light.png",
+        "keyDialogScreenshot": "output/playwright/0209-api-ui-api-key-768x1024-light.png",
+        "nameAndDurationSeparateRows": true,
+        "defaultUnlimitedPositiveIntegerDays": true
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/api-proxy",
+        "width": 768,
+        "height": 1024,
+        "theme": "dark",
+        "background": "rgb(24, 24, 27)",
+        "settingsPersisted": true,
+        "createRotateRevoke": true,
+        "forceCancelDoesNotSave": true,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-api-ui-api-768x1024-dark.png",
+        "keyDialogScreenshot": "output/playwright/0209-api-ui-api-key-768x1024-dark.png",
+        "nameAndDurationSeparateRows": true,
+        "defaultUnlimitedPositiveIntegerDays": true
+      }
+    ],
+    "history": [
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02020000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "light",
+        "oldPages": true,
+        "emptyTurn": true,
+        "oldQuestionAnsweredAfterRefresh": true,
+        "exactForkId": true,
+        "pageFailureRetry": true,
+        "skillsAndImage": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "pageRequests": 5,
+        "screenshot": "output/playwright/testchat-0209-history-history-light-cjs.png",
+        "pageErrors": [],
+        "emptyRecentPageCanLoadOlder": true
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02020000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "dark",
+        "oldPages": true,
+        "emptyTurn": true,
+        "oldQuestionAnsweredAfterRefresh": true,
+        "exactForkId": true,
+        "pageFailureRetry": true,
+        "skillsAndImage": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "pageRequests": 6,
+        "screenshot": "output/playwright/testchat-0209-history-history-dark-cjs.png",
+        "pageErrors": [],
+        "emptyRecentPageCanLoadOlder": true
+      }
+    ],
+    "search": [
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02020000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "light",
+        "obsoleteQueryIgnored": true,
+        "scopeVisible": true,
+        "refreshOnItemComplete": true,
+        "failureRecovery": true,
+        "clearCancels": true,
+        "queryCount": 5,
+        "screenshot": "output/playwright/0209-search-search-light.png",
+        "pageErrors": []
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02020000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "dark",
+        "obsoleteQueryIgnored": true,
+        "scopeVisible": true,
+        "refreshOnItemComplete": true,
+        "failureRecovery": true,
+        "clearCancels": true,
+        "queryCount": 5,
+        "screenshot": "output/playwright/0209-search-search-dark.png",
+        "pageErrors": []
+      }
+    ],
+    "delivery": [
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02030000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "light",
+        "beforeArrivalSameId": true,
+        "acceptedLostResponseNoDuplicate": true,
+        "editSurvivesReload": true,
+        "editKeepsIdPositionSettings": true,
+        "staleEditorRejected": true,
+        "unknownHasNoReplayAction": true,
+        "newDraftPreservedAfterAck": true,
+        "versionedDragAndServerSteer": true,
+        "explicitAbandon": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "screenshot": "output/playwright/testchat-0209-delivery-delivery-1440-light-cjs.png",
+        "pageErrors": []
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02030000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "dark",
+        "beforeArrivalSameId": true,
+        "acceptedLostResponseNoDuplicate": true,
+        "editSurvivesReload": true,
+        "editKeepsIdPositionSettings": true,
+        "staleEditorRejected": true,
+        "unknownHasNoReplayAction": true,
+        "newDraftPreservedAfterAck": false,
+        "versionedDragAndServerSteer": false,
+        "explicitAbandon": false,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "screenshot": "output/playwright/testchat-0209-delivery-delivery-1440-dark-cjs.png",
+        "pageErrors": []
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02030000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "light",
+        "beforeArrivalSameId": true,
+        "acceptedLostResponseNoDuplicate": true,
+        "editSurvivesReload": true,
+        "editKeepsIdPositionSettings": true,
+        "staleEditorRejected": false,
+        "unknownHasNoReplayAction": true,
+        "newDraftPreservedAfterAck": false,
+        "versionedDragAndServerSteer": false,
+        "explicitAbandon": false,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "screenshot": "output/playwright/testchat-0209-delivery-delivery-375-light-cjs.png",
+        "pageErrors": []
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02030000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "dark",
+        "beforeArrivalSameId": true,
+        "acceptedLostResponseNoDuplicate": true,
+        "editSurvivesReload": true,
+        "editKeepsIdPositionSettings": true,
+        "staleEditorRejected": false,
+        "unknownHasNoReplayAction": true,
+        "newDraftPreservedAfterAck": false,
+        "versionedDragAndServerSteer": false,
+        "explicitAbandon": false,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "screenshot": "output/playwright/testchat-0209-delivery-delivery-375-dark-cjs.png",
+        "pageErrors": []
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02030000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "light",
+        "beforeArrivalSameId": true,
+        "acceptedLostResponseNoDuplicate": true,
+        "editSurvivesReload": true,
+        "editKeepsIdPositionSettings": true,
+        "staleEditorRejected": false,
+        "unknownHasNoReplayAction": true,
+        "newDraftPreservedAfterAck": false,
+        "versionedDragAndServerSteer": false,
+        "explicitAbandon": false,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "screenshot": "output/playwright/testchat-0209-delivery-delivery-768-light-cjs.png",
+        "pageErrors": []
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02030000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "dark",
+        "beforeArrivalSameId": true,
+        "acceptedLostResponseNoDuplicate": true,
+        "editSurvivesReload": true,
+        "editKeepsIdPositionSettings": true,
+        "staleEditorRejected": false,
+        "unknownHasNoReplayAction": true,
+        "newDraftPreservedAfterAck": false,
+        "versionedDragAndServerSteer": false,
+        "explicitAbandon": false,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "screenshot": "output/playwright/testchat-0209-delivery-delivery-768-dark-cjs.png",
+        "pageErrors": []
+      }
+    ],
+    "goal": [
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02040000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "light",
+        "goalDialogScreenshot": "output/playwright/0209-goal-dialog-1440-light.png",
+        "budgetPauseHelpCollapsed": true,
+        "goalBudgetPreservesStatusUsage": true,
+        "explicitResume": true,
+        "externalEditConflict": true,
+        "goalReconnect": true,
+        "goalReadRetry": true,
+        "goalDraftRetained": true,
+        "clearKeepsThread": true,
+        "compactLifecycle": true,
+        "compactFailureReload": true,
+        "compactInterruptedReload": true,
+        "compactLostResponseNoReplay": true,
+        "compactManualCheckNoReplay": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "screenshot": "output/playwright/testchat-0209-goal-goal-compact-1440-light-cjs.png",
+        "pageErrors": []
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02040000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "dark",
+        "goalDialogScreenshot": "output/playwright/0209-goal-dialog-1440-dark.png",
+        "budgetPauseHelpCollapsed": true,
+        "goalBudgetPreservesStatusUsage": true,
+        "explicitResume": true,
+        "externalEditConflict": true,
+        "goalReconnect": true,
+        "goalReadRetry": true,
+        "goalDraftRetained": true,
+        "clearKeepsThread": true,
+        "compactLifecycle": true,
+        "compactFailureReload": true,
+        "compactInterruptedReload": true,
+        "compactLostResponseNoReplay": true,
+        "compactManualCheckNoReplay": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "screenshot": "output/playwright/testchat-0209-goal-goal-compact-1440-dark-cjs.png",
+        "pageErrors": []
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02040000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "light",
+        "goalDialogScreenshot": "output/playwright/0209-goal-dialog-375-light.png",
+        "budgetPauseHelpCollapsed": true,
+        "goalBudgetPreservesStatusUsage": true,
+        "explicitResume": true,
+        "externalEditConflict": true,
+        "goalReconnect": true,
+        "goalReadRetry": true,
+        "goalDraftRetained": true,
+        "clearKeepsThread": true,
+        "compactLifecycle": true,
+        "compactFailureReload": true,
+        "compactInterruptedReload": true,
+        "compactLostResponseNoReplay": true,
+        "compactManualCheckNoReplay": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "screenshot": "output/playwright/testchat-0209-goal-goal-compact-375-light-cjs.png",
+        "pageErrors": []
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02040000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "dark",
+        "goalDialogScreenshot": "output/playwright/0209-goal-dialog-375-dark.png",
+        "budgetPauseHelpCollapsed": true,
+        "goalBudgetPreservesStatusUsage": true,
+        "explicitResume": true,
+        "externalEditConflict": true,
+        "goalReconnect": true,
+        "goalReadRetry": true,
+        "goalDraftRetained": true,
+        "clearKeepsThread": true,
+        "compactLifecycle": true,
+        "compactFailureReload": true,
+        "compactInterruptedReload": true,
+        "compactLostResponseNoReplay": true,
+        "compactManualCheckNoReplay": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "screenshot": "output/playwright/testchat-0209-goal-goal-compact-375-dark-cjs.png",
+        "pageErrors": []
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02040000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "light",
+        "goalDialogScreenshot": "output/playwright/0209-goal-dialog-768-light.png",
+        "budgetPauseHelpCollapsed": true,
+        "goalBudgetPreservesStatusUsage": true,
+        "explicitResume": true,
+        "externalEditConflict": true,
+        "goalReconnect": true,
+        "goalReadRetry": true,
+        "goalDraftRetained": true,
+        "clearKeepsThread": true,
+        "compactLifecycle": true,
+        "compactFailureReload": true,
+        "compactInterruptedReload": true,
+        "compactLostResponseNoReplay": true,
+        "compactManualCheckNoReplay": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "screenshot": "output/playwright/testchat-0209-goal-goal-compact-768-light-cjs.png",
+        "pageErrors": []
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02040000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "dark",
+        "goalDialogScreenshot": "output/playwright/0209-goal-dialog-768-dark.png",
+        "budgetPauseHelpCollapsed": true,
+        "goalBudgetPreservesStatusUsage": true,
+        "explicitResume": true,
+        "externalEditConflict": true,
+        "goalReconnect": true,
+        "goalReadRetry": true,
+        "goalDraftRetained": true,
+        "clearKeepsThread": true,
+        "compactLifecycle": true,
+        "compactFailureReload": true,
+        "compactInterruptedReload": true,
+        "compactLostResponseNoReplay": true,
+        "compactManualCheckNoReplay": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "screenshot": "output/playwright/testchat-0209-goal-goal-compact-768-dark-cjs.png",
+        "pageErrors": []
+      }
+    ],
+    "tasks": [
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02050000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "light",
+        "noHiddenChildRequest": true,
+        "toolAndChildStatusesSeparate": true,
+        "lateStartIgnored": true,
+        "childReadRetry": true,
+        "openPanelReconnect": true,
+        "childReadonly": true,
+        "parentAfterReload": true,
+        "draftRetained": true,
+        "missingTaskReturn": true,
+        "searchReadRetry": true,
+        "searchCancellation": true,
+        "bodySearch": true,
+        "explicitExcerpt": true,
+        "excerptPersists": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "pageErrors": [],
+        "screenshot": "output/playwright/testchat-0209-tasks-tasks-1440-light-cjs.png",
+        "searchShot": "output/playwright/0209-tasks-task-search-1440-light.png",
+        "eventShot": "output/playwright/0209-tasks-subtask-event-1440-light.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02050000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "dark",
+        "noHiddenChildRequest": true,
+        "toolAndChildStatusesSeparate": true,
+        "lateStartIgnored": true,
+        "childReadRetry": true,
+        "openPanelReconnect": true,
+        "childReadonly": true,
+        "parentAfterReload": true,
+        "draftRetained": true,
+        "missingTaskReturn": true,
+        "searchReadRetry": true,
+        "searchCancellation": true,
+        "bodySearch": true,
+        "explicitExcerpt": true,
+        "excerptPersists": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "pageErrors": [],
+        "screenshot": "output/playwright/testchat-0209-tasks-tasks-1440-dark-cjs.png",
+        "searchShot": "output/playwright/0209-tasks-task-search-1440-dark.png",
+        "eventShot": "output/playwright/0209-tasks-subtask-event-1440-dark.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02050000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "light",
+        "noHiddenChildRequest": true,
+        "toolAndChildStatusesSeparate": true,
+        "lateStartIgnored": true,
+        "childReadRetry": true,
+        "openPanelReconnect": true,
+        "childReadonly": true,
+        "parentAfterReload": true,
+        "draftRetained": true,
+        "missingTaskReturn": true,
+        "searchReadRetry": true,
+        "searchCancellation": true,
+        "bodySearch": true,
+        "explicitExcerpt": true,
+        "excerptPersists": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "pageErrors": [],
+        "screenshot": "output/playwright/testchat-0209-tasks-tasks-375-light-cjs.png",
+        "searchShot": "output/playwright/0209-tasks-task-search-375-light.png",
+        "eventShot": "output/playwright/0209-tasks-subtask-event-375-light.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02050000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "dark",
+        "noHiddenChildRequest": true,
+        "toolAndChildStatusesSeparate": true,
+        "lateStartIgnored": true,
+        "childReadRetry": true,
+        "openPanelReconnect": true,
+        "childReadonly": true,
+        "parentAfterReload": true,
+        "draftRetained": true,
+        "missingTaskReturn": true,
+        "searchReadRetry": true,
+        "searchCancellation": true,
+        "bodySearch": true,
+        "explicitExcerpt": true,
+        "excerptPersists": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "pageErrors": [],
+        "screenshot": "output/playwright/testchat-0209-tasks-tasks-375-dark-cjs.png",
+        "searchShot": "output/playwright/0209-tasks-task-search-375-dark.png",
+        "eventShot": "output/playwright/0209-tasks-subtask-event-375-dark.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02050000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "light",
+        "noHiddenChildRequest": true,
+        "toolAndChildStatusesSeparate": true,
+        "lateStartIgnored": true,
+        "childReadRetry": true,
+        "openPanelReconnect": true,
+        "childReadonly": true,
+        "parentAfterReload": true,
+        "draftRetained": true,
+        "missingTaskReturn": true,
+        "searchReadRetry": true,
+        "searchCancellation": true,
+        "bodySearch": true,
+        "explicitExcerpt": true,
+        "excerptPersists": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "pageErrors": [],
+        "screenshot": "output/playwright/testchat-0209-tasks-tasks-768-light-cjs.png",
+        "searchShot": "output/playwright/0209-tasks-task-search-768-light.png",
+        "eventShot": "output/playwright/0209-tasks-subtask-event-768-light.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02050000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "dark",
+        "noHiddenChildRequest": true,
+        "toolAndChildStatusesSeparate": true,
+        "lateStartIgnored": true,
+        "childReadRetry": true,
+        "openPanelReconnect": true,
+        "childReadonly": true,
+        "parentAfterReload": true,
+        "draftRetained": true,
+        "missingTaskReturn": true,
+        "searchReadRetry": true,
+        "searchCancellation": true,
+        "bodySearch": true,
+        "explicitExcerpt": true,
+        "excerptPersists": true,
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "pageErrors": [],
+        "screenshot": "output/playwright/testchat-0209-tasks-tasks-768-dark-cjs.png",
+        "searchShot": "output/playwright/0209-tasks-task-search-768-dark.png",
+        "eventShot": "output/playwright/0209-tasks-subtask-event-768-dark.png"
+      }
+    ],
+    "directory": [
+      {
+        "url": "http://127.0.0.1:59001/#/skills?tab=skills&cwd=%2Ftmp%2Fcodexapp-0206-A&fromThread=02060000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "light",
+        "scopeAndReload": true,
+        "initialAccountNoDuplicate": true,
+        "sameNameByPath": true,
+        "projectUninstallHidden": true,
+        "toggleFailureNotOptimistic": true,
+        "explicitMcpReload": true,
+        "staleScopeIgnored": true,
+        "appCallableSeparate": true,
+        "catalogFailureRuntimeFallback": true,
+        "errorHtmlClipped": true,
+        "pluginReread": true,
+        "nativeMcpNotification": true,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-directory-directory-1440-light.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/skills?tab=skills&cwd=%2Ftmp%2Fcodexapp-0206-A&fromThread=02060000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "dark",
+        "scopeAndReload": true,
+        "initialAccountNoDuplicate": true,
+        "sameNameByPath": true,
+        "projectUninstallHidden": true,
+        "toggleFailureNotOptimistic": true,
+        "explicitMcpReload": true,
+        "staleScopeIgnored": true,
+        "appCallableSeparate": true,
+        "catalogFailureRuntimeFallback": true,
+        "errorHtmlClipped": true,
+        "pluginReread": true,
+        "nativeMcpNotification": true,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-directory-directory-1440-dark.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/skills?tab=skills&cwd=%2Ftmp%2Fcodexapp-0206-A&fromThread=02060000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "light",
+        "scopeAndReload": true,
+        "initialAccountNoDuplicate": true,
+        "sameNameByPath": true,
+        "projectUninstallHidden": true,
+        "toggleFailureNotOptimistic": true,
+        "explicitMcpReload": true,
+        "staleScopeIgnored": true,
+        "appCallableSeparate": true,
+        "catalogFailureRuntimeFallback": true,
+        "errorHtmlClipped": true,
+        "pluginReread": true,
+        "nativeMcpNotification": true,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-directory-directory-375-light.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/skills?tab=skills&cwd=%2Ftmp%2Fcodexapp-0206-A&fromThread=02060000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "dark",
+        "scopeAndReload": true,
+        "initialAccountNoDuplicate": true,
+        "sameNameByPath": true,
+        "projectUninstallHidden": true,
+        "toggleFailureNotOptimistic": true,
+        "explicitMcpReload": true,
+        "staleScopeIgnored": true,
+        "appCallableSeparate": true,
+        "catalogFailureRuntimeFallback": true,
+        "errorHtmlClipped": true,
+        "pluginReread": true,
+        "nativeMcpNotification": true,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-directory-directory-375-dark.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/skills?tab=skills&cwd=%2Ftmp%2Fcodexapp-0206-A&fromThread=02060000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "light",
+        "scopeAndReload": true,
+        "initialAccountNoDuplicate": true,
+        "sameNameByPath": true,
+        "projectUninstallHidden": true,
+        "toggleFailureNotOptimistic": true,
+        "explicitMcpReload": true,
+        "staleScopeIgnored": true,
+        "appCallableSeparate": true,
+        "catalogFailureRuntimeFallback": true,
+        "errorHtmlClipped": true,
+        "pluginReread": true,
+        "nativeMcpNotification": true,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-directory-directory-768-light.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/skills?tab=skills&cwd=%2Ftmp%2Fcodexapp-0206-A&fromThread=02060000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "dark",
+        "scopeAndReload": true,
+        "initialAccountNoDuplicate": true,
+        "sameNameByPath": true,
+        "projectUninstallHidden": true,
+        "toggleFailureNotOptimistic": true,
+        "explicitMcpReload": true,
+        "staleScopeIgnored": true,
+        "appCallableSeparate": true,
+        "catalogFailureRuntimeFallback": true,
+        "errorHtmlClipped": true,
+        "pluginReread": true,
+        "nativeMcpNotification": true,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-directory-directory-768-dark.png"
+      }
+    ],
+    "process": [
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02070000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "light",
+        "closedZeroRequests": true,
+        "nativeSeconds": true,
+        "repeatedHookIds": true,
+        "configNoMutation": true,
+        "eventNoConfigRead": true,
+        "hookReadRetry": true,
+        "lateReadClosed": true,
+        "deltaNoHttp": true,
+        "outputThreadIsolation": true,
+        "stopCancel": true,
+        "ambiguousStopNoRepeat": true,
+        "stopReadFailureDisabled": true,
+        "preciseStop": true,
+        "otherProcessRetained": true,
+        "reloadHistory": true,
+        "pageErrors": [],
+        "hookShot": "output/playwright/0209-process-hooks-1440-light.png",
+        "stopShot": "output/playwright/0209-process-stop-1440-light.png",
+        "outputShot": "output/playwright/0209-process-output-1440-light.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02070000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "dark",
+        "closedZeroRequests": true,
+        "nativeSeconds": true,
+        "repeatedHookIds": true,
+        "configNoMutation": true,
+        "eventNoConfigRead": true,
+        "hookReadRetry": true,
+        "lateReadClosed": true,
+        "deltaNoHttp": true,
+        "outputThreadIsolation": true,
+        "stopCancel": true,
+        "ambiguousStopNoRepeat": true,
+        "stopReadFailureDisabled": true,
+        "preciseStop": true,
+        "otherProcessRetained": true,
+        "reloadHistory": true,
+        "pageErrors": [],
+        "hookShot": "output/playwright/0209-process-hooks-1440-dark.png",
+        "stopShot": "output/playwright/0209-process-stop-1440-dark.png",
+        "outputShot": "output/playwright/0209-process-output-1440-dark.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02070000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "light",
+        "closedZeroRequests": true,
+        "nativeSeconds": true,
+        "repeatedHookIds": true,
+        "configNoMutation": true,
+        "eventNoConfigRead": true,
+        "hookReadRetry": true,
+        "lateReadClosed": true,
+        "deltaNoHttp": true,
+        "outputThreadIsolation": true,
+        "stopCancel": true,
+        "ambiguousStopNoRepeat": true,
+        "stopReadFailureDisabled": true,
+        "preciseStop": true,
+        "otherProcessRetained": true,
+        "reloadHistory": true,
+        "pageErrors": [],
+        "hookShot": "output/playwright/0209-process-hooks-375-light.png",
+        "stopShot": "output/playwright/0209-process-stop-375-light.png",
+        "outputShot": "output/playwright/0209-process-output-375-light.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02070000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "dark",
+        "closedZeroRequests": true,
+        "nativeSeconds": true,
+        "repeatedHookIds": true,
+        "configNoMutation": true,
+        "eventNoConfigRead": true,
+        "hookReadRetry": true,
+        "lateReadClosed": true,
+        "deltaNoHttp": true,
+        "outputThreadIsolation": true,
+        "stopCancel": true,
+        "ambiguousStopNoRepeat": true,
+        "stopReadFailureDisabled": true,
+        "preciseStop": true,
+        "otherProcessRetained": true,
+        "reloadHistory": true,
+        "pageErrors": [],
+        "hookShot": "output/playwright/0209-process-hooks-375-dark.png",
+        "stopShot": "output/playwright/0209-process-stop-375-dark.png",
+        "outputShot": "output/playwright/0209-process-output-375-dark.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02070000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "light",
+        "closedZeroRequests": true,
+        "nativeSeconds": true,
+        "repeatedHookIds": true,
+        "configNoMutation": true,
+        "eventNoConfigRead": true,
+        "hookReadRetry": true,
+        "lateReadClosed": true,
+        "deltaNoHttp": true,
+        "outputThreadIsolation": true,
+        "stopCancel": true,
+        "ambiguousStopNoRepeat": true,
+        "stopReadFailureDisabled": true,
+        "preciseStop": true,
+        "otherProcessRetained": true,
+        "reloadHistory": true,
+        "pageErrors": [],
+        "hookShot": "output/playwright/0209-process-hooks-768-light.png",
+        "stopShot": "output/playwright/0209-process-stop-768-light.png",
+        "outputShot": "output/playwright/0209-process-output-768-light.png"
+      },
+      {
+        "url": "http://127.0.0.1:59001/#/thread/02070000-0000-7000-8000-000000000001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "dark",
+        "closedZeroRequests": true,
+        "nativeSeconds": true,
+        "repeatedHookIds": true,
+        "configNoMutation": true,
+        "eventNoConfigRead": true,
+        "hookReadRetry": true,
+        "lateReadClosed": true,
+        "deltaNoHttp": true,
+        "outputThreadIsolation": true,
+        "stopCancel": true,
+        "ambiguousStopNoRepeat": true,
+        "stopReadFailureDisabled": true,
+        "preciseStop": true,
+        "otherProcessRetained": true,
+        "reloadHistory": true,
+        "pageErrors": [],
+        "hookShot": "output/playwright/0209-process-hooks-768-dark.png",
+        "stopShot": "output/playwright/0209-process-stop-768-dark.png",
+        "outputShot": "output/playwright/0209-process-output-768-dark.png"
+      }
+    ],
+    "timezone": [
+      {
+        "base": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "light",
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "clipboardFallback": true,
+        "focusSelection": true,
+        "imeNoSend": true,
+        "draftSwitchReload": true,
+        "timezones": [
+          "Asia/Shanghai",
+          "America/New_York",
+          "UTC",
+          "system"
+        ],
+        "crossTab": true,
+        "reload": true,
+        "failedWriteVisible": true,
+        "invalidStoredFallback": true,
+        "executionTimezoneUnchanged": true,
+        "automationWrites": 0,
+        "errors": [],
+        "shots": [
+          "output/playwright/testchat-0209-timezone-1440-light-cjs.png",
+          "output/playwright/0209-timezone-timezone-1440-light.png",
+          "output/playwright/0209-timezone-global-dates-1440-light.png"
+        ]
+      },
+      {
+        "base": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "dark",
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "clipboardFallback": true,
+        "focusSelection": true,
+        "imeNoSend": true,
+        "draftSwitchReload": true,
+        "timezones": [
+          "Asia/Shanghai",
+          "America/New_York",
+          "UTC",
+          "system"
+        ],
+        "crossTab": true,
+        "reload": true,
+        "failedWriteVisible": true,
+        "invalidStoredFallback": true,
+        "executionTimezoneUnchanged": true,
+        "automationWrites": 0,
+        "errors": [],
+        "shots": [
+          "output/playwright/testchat-0209-timezone-1440-dark-cjs.png",
+          "output/playwright/0209-timezone-timezone-1440-dark.png",
+          "output/playwright/0209-timezone-global-dates-1440-dark.png"
+        ]
+      },
+      {
+        "base": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "light",
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "clipboardFallback": true,
+        "focusSelection": true,
+        "imeNoSend": true,
+        "draftSwitchReload": true,
+        "timezones": [
+          "Asia/Shanghai",
+          "America/New_York",
+          "UTC",
+          "system"
+        ],
+        "crossTab": true,
+        "reload": true,
+        "failedWriteVisible": true,
+        "invalidStoredFallback": true,
+        "executionTimezoneUnchanged": true,
+        "automationWrites": 0,
+        "errors": [],
+        "shots": [
+          "output/playwright/testchat-0209-timezone-375-light-cjs.png",
+          "output/playwright/0209-timezone-timezone-375-light.png",
+          "output/playwright/0209-timezone-global-dates-375-light.png"
+        ]
+      },
+      {
+        "base": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "dark",
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "clipboardFallback": true,
+        "focusSelection": true,
+        "imeNoSend": true,
+        "draftSwitchReload": true,
+        "timezones": [
+          "Asia/Shanghai",
+          "America/New_York",
+          "UTC",
+          "system"
+        ],
+        "crossTab": true,
+        "reload": true,
+        "failedWriteVisible": true,
+        "invalidStoredFallback": true,
+        "executionTimezoneUnchanged": true,
+        "automationWrites": 0,
+        "errors": [],
+        "shots": [
+          "output/playwright/testchat-0209-timezone-375-dark-cjs.png",
+          "output/playwright/0209-timezone-timezone-375-dark.png",
+          "output/playwright/0209-timezone-global-dates-375-dark.png"
+        ]
+      },
+      {
+        "base": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "light",
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "clipboardFallback": true,
+        "focusSelection": true,
+        "imeNoSend": true,
+        "draftSwitchReload": true,
+        "timezones": [
+          "Asia/Shanghai",
+          "America/New_York",
+          "UTC",
+          "system"
+        ],
+        "crossTab": true,
+        "reload": true,
+        "failedWriteVisible": true,
+        "invalidStoredFallback": true,
+        "executionTimezoneUnchanged": true,
+        "automationWrites": 0,
+        "errors": [],
+        "shots": [
+          "output/playwright/testchat-0209-timezone-768-light-cjs.png",
+          "output/playwright/0209-timezone-timezone-768-light.png",
+          "output/playwright/0209-timezone-global-dates-768-light.png"
+        ]
+      },
+      {
+        "base": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "dark",
+        "hrefOk": true,
+        "titleOk": true,
+        "textOk": true,
+        "clipboardFallback": true,
+        "focusSelection": true,
+        "imeNoSend": true,
+        "draftSwitchReload": true,
+        "timezones": [
+          "Asia/Shanghai",
+          "America/New_York",
+          "UTC",
+          "system"
+        ],
+        "crossTab": true,
+        "reload": true,
+        "failedWriteVisible": true,
+        "invalidStoredFallback": true,
+        "executionTimezoneUnchanged": true,
+        "automationWrites": 0,
+        "errors": [],
+        "shots": [
+          "output/playwright/testchat-0209-timezone-768-dark-cjs.png",
+          "output/playwright/0209-timezone-timezone-768-dark.png",
+          "output/playwright/0209-timezone-global-dates-768-dark.png"
+        ]
+      }
+    ]
+  },
+  "reports": {
+    "auth-matrix": [
+      {
+        "kind": "noauth",
+        "port": 59011,
+        "name": "codexapp-0209-noauth",
+        "hasCodexAuth": false,
+        "enabled": true,
+        "provider": "opencode-zen",
+        "proxyInstalled": true,
+        "proxyEnabled": false,
+        "missingKeyStatus": 401
+      },
+      {
+        "kind": "invalid",
+        "port": 59012,
+        "name": "codexapp-0209-invalid",
+        "hasCodexAuth": true,
+        "enabled": false,
+        "provider": "openrouter",
+        "proxyInstalled": true,
+        "proxyEnabled": false,
+        "missingKeyStatus": 401
+      },
+      {
+        "kind": "malformed",
+        "port": 59013,
+        "name": "codexapp-0209-malformed",
+        "hasCodexAuth": false,
+        "enabled": true,
+        "provider": "opencode-zen",
+        "proxyInstalled": true,
+        "proxyEnabled": false,
+        "missingKeyStatus": 401
+      },
+      {
+        "kind": "provider",
+        "port": 59014,
+        "name": "codexapp-0209-provider",
+        "hasCodexAuth": false,
+        "enabled": true,
+        "provider": "opencode-zen",
+        "proxyInstalled": true,
+        "proxyEnabled": false,
+        "missingKeyStatus": 401
+      },
+      {
+        "kind": "provider-after",
+        "provider": "openrouter",
+        "enabled": true
+      }
+    ],
+    "auth-ui": [
+      {
+        "url": "http://127.0.0.1:59012/#/thread/01a078e4-20ba-7330-b89b-9ac5d863d3b1",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "invalidAuthPersistsAfterReload": true,
+        "duplicateLiveOverlays": 0,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-invalid-light.png"
+      },
+      {
+        "url": "http://127.0.0.1:59012/#/thread/01a078e4-20ba-7330-b89b-9ac5d863d3b1",
+        "theme": "dark",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "invalidAuthPersistsAfterReload": true,
+        "duplicateLiveOverlays": 0,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-invalid-dark.png"
+      }
+    ],
+    "auth-other-ui": [
+      {
+        "kind": "noauth",
+        "theme": "light",
+        "port": 59011,
+        "provider": "opencode-zen",
+        "enabled": true,
+        "hasCodexAuth": false,
+        "duplicateLiveOverlays": 0,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-noauth-light.png"
+      },
+      {
+        "kind": "noauth",
+        "theme": "dark",
+        "port": 59011,
+        "provider": "opencode-zen",
+        "enabled": true,
+        "hasCodexAuth": false,
+        "duplicateLiveOverlays": 0,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-noauth-dark.png"
+      },
+      {
+        "kind": "malformed",
+        "theme": "light",
+        "port": 59013,
+        "provider": "opencode-zen",
+        "enabled": true,
+        "hasCodexAuth": false,
+        "duplicateLiveOverlays": 0,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-malformed-light.png"
+      },
+      {
+        "kind": "malformed",
+        "theme": "dark",
+        "port": 59013,
+        "provider": "opencode-zen",
+        "enabled": true,
+        "hasCodexAuth": false,
+        "duplicateLiveOverlays": 0,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-malformed-dark.png"
+      },
+      {
+        "kind": "provider",
+        "theme": "light",
+        "port": 59014,
+        "provider": "openrouter",
+        "enabled": true,
+        "hasCodexAuth": false,
+        "duplicateLiveOverlays": 0,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-provider-light.png"
+      },
+      {
+        "kind": "provider",
+        "theme": "dark",
+        "port": 59014,
+        "provider": "openrouter",
+        "enabled": true,
+        "hasCodexAuth": false,
+        "duplicateLiveOverlays": 0,
+        "pageErrors": [],
+        "screenshot": "output/playwright/0209-provider-dark.png"
+      }
+    ],
+    "keyboard": [
+      {
+        "base": "http://127.0.0.1:59001",
+        "theme": "light",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "simulatedVisualViewportHeight": 430,
+        "physicalDevice": false,
+        "normal": {
+          "x": 17,
+          "y": 302.3125,
+          "width": 303,
+          "height": 61.6875
+        },
+        "expanded": {
+          "x": 17,
+          "y": 77,
+          "width": 303,
+          "height": 291
+        },
+        "unsentDraftPreserved": true,
+        "shot": "output/playwright/0209-keyboard-light.png"
+      },
+      {
+        "base": "http://127.0.0.1:59001",
+        "theme": "dark",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "simulatedVisualViewportHeight": 430,
+        "physicalDevice": false,
+        "normal": {
+          "x": 17,
+          "y": 302.3125,
+          "width": 303,
+          "height": 61.6875
+        },
+        "expanded": {
+          "x": 17,
+          "y": 77,
+          "width": 303,
+          "height": 291
+        },
+        "unsentDraftPreserved": true,
+        "shot": "output/playwright/0209-keyboard-dark.png"
+      }
+    ],
+    "quota": [
+      {
+        "base": "http://127.0.0.1:59001",
+        "theme": "light",
+        "browserTimezone": "Asia/Shanghai",
+        "selectedTimezone": "America/New_York",
+        "beforeDay": "9/7",
+        "afterDay": "9/6",
+        "changeAndRenderMs": 105,
+        "timezoneChangeApiCalls": 0,
+        "shot": "output/playwright/0209-quota-light.png"
+      },
+      {
+        "base": "http://127.0.0.1:59001",
+        "theme": "dark",
+        "browserTimezone": "Asia/Shanghai",
+        "selectedTimezone": "America/New_York",
+        "beforeDay": "9/7",
+        "afterDay": "9/6",
+        "changeAndRenderMs": 98,
+        "timezoneChangeApiCalls": 0,
+        "shot": "output/playwright/0209-quota-dark.png"
+      }
+    ],
+    "recovery": [
+      {
+        "base": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "light",
+        "coldFailedEntryVisible": true,
+        "reloadRecovered": true,
+        "lazyFailureVisible": true,
+        "dismissPreservedDraft": true,
+        "physicalDevice": false,
+        "expectedErrors": [],
+        "background": "rgb(255, 255, 255)",
+        "coldShot": "output/playwright/0209-recovery-375-light.png",
+        "lazyShot": "output/playwright/0209-lazy-375-light.png"
+      },
+      {
+        "base": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "dark",
+        "coldFailedEntryVisible": true,
+        "reloadRecovered": true,
+        "lazyFailureVisible": true,
+        "dismissPreservedDraft": true,
+        "physicalDevice": false,
+        "expectedErrors": [],
+        "background": "rgb(24, 24, 27)",
+        "coldShot": "output/playwright/0209-recovery-375-dark.png",
+        "lazyShot": "output/playwright/0209-lazy-375-dark.png"
+      },
+      {
+        "base": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "light",
+        "coldFailedEntryVisible": true,
+        "reloadRecovered": true,
+        "lazyFailureVisible": true,
+        "dismissPreservedDraft": true,
+        "physicalDevice": false,
+        "expectedErrors": [],
+        "background": "rgb(255, 255, 255)",
+        "coldShot": "output/playwright/0209-recovery-768-light.png",
+        "lazyShot": "output/playwright/0209-lazy-768-light.png"
+      },
+      {
+        "base": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "dark",
+        "coldFailedEntryVisible": true,
+        "reloadRecovered": true,
+        "lazyFailureVisible": true,
+        "dismissPreservedDraft": true,
+        "physicalDevice": false,
+        "expectedErrors": [],
+        "background": "rgb(24, 24, 27)",
+        "coldShot": "output/playwright/0209-recovery-768-dark.png",
+        "lazyShot": "output/playwright/0209-lazy-768-dark.png"
+      }
+    ],
+    "cache": [
+      {
+        "base": "http://127.0.0.1:37881",
+        "serviceWorkers": "block",
+        "theme": "light",
+        "versionSequence": [
+          "0.2.8",
+          "0.2.9",
+          "0.2.8",
+          "0.2.9"
+        ],
+        "draftPreserved": true,
+        "timezonePreserved": true,
+        "entryStatus": 200,
+        "entryNoStore": true,
+        "entryNoETag": true,
+        "oldAssetStatus": 404,
+        "pageErrors": [],
+        "shot": "output/playwright/0209-cache-block-light.png",
+        "wire": [
+          {
+            "port": 59016,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/assets/index-DTzZGANE.js",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/assets/index-CXlcUx1m.css",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/assets/ThreadConversation-BzykzA63.css",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/assets/ThreadConversation--M6mp_ki.js",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          },
+          {
+            "port": 59016,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/assets/index-B50R0m3-.js",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/assets/index-CPQC-6wa.css",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/assets/ThreadConversation-t6hwa7gl.js",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          },
+          {
+            "port": 59001,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8",
+            "ifNoneMatch": "\"previous-entry\""
+          },
+          {
+            "port": 59001,
+            "path": "/assets/index-DTzZGANE.js",
+            "status": 404,
+            "etag": "W/\"9-R1yEhnOj95+nePAcK9WnIdTEFwc\"",
+            "cacheControl": "no-store",
+            "contentType": "text/plain; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          },
+          {
+            "port": 59016,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          },
+          {
+            "port": 59001,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          }
+        ]
+      },
+      {
+        "base": "http://127.0.0.1:37881",
+        "serviceWorkers": "block",
+        "theme": "dark",
+        "versionSequence": [
+          "0.2.8",
+          "0.2.9",
+          "0.2.8",
+          "0.2.9"
+        ],
+        "draftPreserved": true,
+        "timezonePreserved": true,
+        "entryStatus": 200,
+        "entryNoStore": true,
+        "entryNoETag": true,
+        "oldAssetStatus": 404,
+        "pageErrors": [],
+        "shot": "output/playwright/0209-cache-block-dark.png",
+        "wire": [
+          {
+            "port": 59016,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/assets/index-DTzZGANE.js",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/assets/index-CXlcUx1m.css",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/assets/ThreadConversation-BzykzA63.css",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/assets/ThreadConversation--M6mp_ki.js",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          },
+          {
+            "port": 59016,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/assets/index-CPQC-6wa.css",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/assets/index-B50R0m3-.js",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/assets/ThreadConversation-t6hwa7gl.js",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          },
+          {
+            "port": 59001,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8",
+            "ifNoneMatch": "\"previous-entry\""
+          },
+          {
+            "port": 59001,
+            "path": "/assets/index-DTzZGANE.js",
+            "status": 404,
+            "etag": "W/\"9-R1yEhnOj95+nePAcK9WnIdTEFwc\"",
+            "cacheControl": "no-store",
+            "contentType": "text/plain; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          },
+          {
+            "port": 59016,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          },
+          {
+            "port": 59001,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          }
+        ]
+      },
+      {
+        "base": "http://127.0.0.1:37881",
+        "serviceWorkers": "allow",
+        "theme": "light",
+        "versionSequence": [
+          "0.2.8",
+          "0.2.9",
+          "0.2.8",
+          "0.2.9"
+        ],
+        "draftPreserved": true,
+        "timezonePreserved": true,
+        "entryStatus": 200,
+        "entryNoStore": true,
+        "entryNoETag": true,
+        "oldAssetStatus": 404,
+        "pageErrors": [],
+        "shot": "output/playwright/0209-cache-allow-light.png",
+        "wire": [
+          {
+            "port": 59016,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/assets/index-DTzZGANE.js",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/assets/index-CXlcUx1m.css",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/assets/ThreadConversation-BzykzA63.css",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/assets/ThreadConversation--M6mp_ki.js",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          },
+          {
+            "port": 59016,
+            "path": "/sw.js",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/manifest.webmanifest",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "application/manifest+json; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/assets/index-CPQC-6wa.css",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/assets/index-B50R0m3-.js",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/assets/ThreadConversation-t6hwa7gl.js",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          },
+          {
+            "port": 59001,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8",
+            "ifNoneMatch": "\"previous-entry\""
+          },
+          {
+            "port": 59001,
+            "path": "/assets/index-DTzZGANE.js",
+            "status": 404,
+            "etag": "W/\"9-R1yEhnOj95+nePAcK9WnIdTEFwc\"",
+            "cacheControl": "no-store",
+            "contentType": "text/plain; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          },
+          {
+            "port": 59016,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          },
+          {
+            "port": 59001,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          }
+        ]
+      },
+      {
+        "base": "http://127.0.0.1:37881",
+        "serviceWorkers": "allow",
+        "theme": "dark",
+        "versionSequence": [
+          "0.2.8",
+          "0.2.9",
+          "0.2.8",
+          "0.2.9"
+        ],
+        "draftPreserved": true,
+        "timezonePreserved": true,
+        "entryStatus": 200,
+        "entryNoStore": true,
+        "entryNoETag": true,
+        "oldAssetStatus": 404,
+        "pageErrors": [],
+        "shot": "output/playwright/0209-cache-allow-dark.png",
+        "wire": [
+          {
+            "port": 59016,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/assets/index-DTzZGANE.js",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/assets/index-CXlcUx1m.css",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/assets/ThreadConversation-BzykzA63.css",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/assets/ThreadConversation--M6mp_ki.js",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          },
+          {
+            "port": 59016,
+            "path": "/sw.js",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/manifest.webmanifest",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "application/manifest+json; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/assets/index-B50R0m3-.js",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/assets/index-CPQC-6wa.css",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/assets/ThreadConversation-t6hwa7gl.js",
+            "status": 200,
+            "cacheControl": "public, max-age=31536000, immutable",
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          },
+          {
+            "port": 59001,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8",
+            "ifNoneMatch": "\"previous-entry\""
+          },
+          {
+            "port": 59001,
+            "path": "/assets/index-DTzZGANE.js",
+            "status": 404,
+            "etag": "W/\"9-R1yEhnOj95+nePAcK9WnIdTEFwc\"",
+            "cacheControl": "no-store",
+            "contentType": "text/plain; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          },
+          {
+            "port": 59016,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59016,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          },
+          {
+            "port": 59001,
+            "path": "/",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "port": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "status": 200,
+            "cacheControl": "no-store",
+            "contentType": "image/svg+xml"
+          }
+        ]
+      }
+    ],
+    "realtime": {
+      "base": "http://127.0.0.1:59001",
+      "url": "http://127.0.0.1:59001/#/thread/01a078ea-b9f0-77f0-9216-c41418b4a589",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "dark",
+      "marker": "TESTCHAT_0209_STREAM_1788735044067",
+      "threadId": "01a078ea-b9f0-77f0-9216-c41418b4a589",
+      "turnId": "01a078ea-c973-7742-9406-55da30e11f14",
+      "elapsedWallMs": 30261,
+      "deltaEvents": 1430,
+      "completed": true,
+      "toolCalls": 0,
+      "listItems": 80,
+      "hrefOk": true,
+      "textOk": true,
+      "requests": [
+        {
+          "path": "/codex-api/delivery-context",
+          "method": "GET"
+        },
+        {
+          "path": "/codex-api/delivery",
+          "method": "POST",
+          "threadId": "01a078ea-b9f0-77f0-9216-c41418b4a589"
+        },
+        {
+          "path": "/codex-api/thread-queue-state",
+          "method": "GET"
+        },
+        {
+          "path": "/codex-api/thread-queue-state",
+          "method": "GET"
+        },
+        {
+          "path": "/codex-api/thread-queue-state",
+          "method": "GET"
+        },
+        {
+          "path": "/codex-api/thread-queue-state",
+          "method": "GET"
+        },
+        {
+          "path": "/codex-api/rpc",
+          "method": "thread/list"
+        },
+        {
+          "path": "/codex-api/thread-titles",
+          "method": "GET"
+        },
+        {
+          "path": "/codex-api/rpc",
+          "method": "thread/read",
+          "threadId": "01a078ea-b9f0-77f0-9216-c41418b4a589"
+        },
+        {
+          "path": "/codex-api/thread-queue-state",
+          "method": "GET"
+        },
+        {
+          "path": "/codex-api/rpc",
+          "method": "thread/list"
+        },
+        {
+          "path": "/codex-api/thread-titles",
+          "method": "GET"
+        },
+        {
+          "path": "/codex-api/rpc",
+          "method": "thread/read",
+          "threadId": "01a078ea-b9f0-77f0-9216-c41418b4a589"
+        },
+        {
+          "path": "/codex-api/thread-queue-state",
+          "method": "GET"
+        },
+        {
+          "path": "/codex-api/rpc",
+          "method": "thread/read",
+          "threadId": "01a078ea-b9f0-77f0-9216-c41418b4a589"
+        },
+        {
+          "path": "/codex-api/thread-queue-state",
+          "method": "GET"
+        },
+        {
+          "path": "/codex-api/rpc",
+          "method": "thread/list"
+        },
+        {
+          "path": "/codex-api/thread-titles",
+          "method": "GET"
+        },
+        {
+          "path": "/codex-api/rpc",
+          "method": "thread/read",
+          "threadId": "01a078ea-b9f0-77f0-9216-c41418b4a589"
+        },
+        {
+          "path": "/codex-api/thread-goals",
+          "method": "POST"
+        },
+        {
+          "path": "/codex-api/rpc",
+          "method": "account/rateLimits/read"
+        },
+        {
+          "path": "/codex-api/thread-queue-state",
+          "method": "GET"
+        }
+      ],
+      "pageErrors": [],
+      "longTasks": [],
+      "frameP95": 16.700000000000728,
+      "framesOver50ms": 0,
+      "heapBytes": 14751568,
+      "shot": "output/playwright/testchat-0209-realtime-cjs.png",
+      "trace": "output/playwright/0209-realtime-trace.zip"
+    },
+    "native-background-guard": {
+      "marker": "BG_0209_1788734667056",
+      "startedAt": 1788734667056,
+      "threadId": "01a078e4-f94b-7163-8cd7-2b74cb265eb8",
+      "turnId": "01a078e4-fc9d-77b3-94ff-e019bd4ce19c",
+      "mainTurnStatus": "completed",
+      "rows": [
+        {
+          "processId": "13284",
+          "itemId": "exec-f4949b4a-42fa-49a4-baba-cbea0e983de4",
+          "command": "python3 -u -c \"import time; print('BG_0209_1788734667056', flush=True); time.sleep(180)\"",
+          "cwd": "/tmp",
+          "osPid": null,
+          "cpuPercent": null,
+          "rssKb": null
+        }
+      ],
+      "reply": [
+        "我会执行该命令一次，并返回 session_id。\n",
+        "已启动，session_id：13284。"
+      ],
+      "blockedIdle": {
+        "exit": 3,
+        "stdout": "idle-check|activeTurns=0|queued=0|pendingApprovals=0|apiConnections=0|apiActiveRequests=0|backgroundThreads=1|loadedThreads=3|pages=1\n",
+        "stderr": ""
+      },
+      "providerGuard": {
+        "path": "/codex-api/free-mode/0209-guard-proof-missing",
+        "status": 409,
+        "error": "请先处理 Codex 后台终端，再切换供应方或密钥。"
+      },
+      "providerStateUnchanged": true,
+      "processPreserved": true,
+      "cleanup": [
+        {
+          "data": {
+            "terminated": true,
+            "absent": false
+          }
+        }
+      ],
+      "remaining": [],
+      "finalIdle": {
+        "exit": 0,
+        "stdout": "idle-check|activeTurns=0|queued=0|pendingApprovals=0|apiConnections=0|apiActiveRequests=0|backgroundThreads=0|loadedThreads=3|pages=1\n",
+        "stderr": ""
+      },
+      "finishedAt": 1788734681358
+    },
+    "hmr": {
+      "base": "http://127.0.0.1:4173",
+      "reports": [
+        {
+          "iteration": 1,
+          "queueStatus": 200,
+          "queueEmpty": true,
+          "automationReady": true,
+          "apiProxyReady": true,
+          "nativeRpcReady": true
+        },
+        {
+          "iteration": 2,
+          "queueStatus": 200,
+          "queueEmpty": true,
+          "automationReady": true,
+          "apiProxyReady": true,
+          "nativeRpcReady": true
+        },
+        {
+          "iteration": 3,
+          "queueStatus": 200,
+          "queueEmpty": true,
+          "automationReady": true,
+          "apiProxyReady": true,
+          "nativeRpcReady": true
+        }
+      ],
+      "runtimeStoppedEvents": 0
+    },
+    "history-candidate": {
+      "url": "http://127.0.0.1:59001",
+      "reports": [
+        {
+          "id": "01a07750-0202-7000-8000-000000000010",
+          "size": 10,
+          "resume": {
+            "ms": 103.89298699999999,
+            "bytes": 60929
+          },
+          "read": {
+            "ms": 76.738452,
+            "bytes": 60163
+          },
+          "older": null,
+          "history": {
+            "nextCursor": null,
+            "hasMoreOlder": false,
+            "source": "native"
+          }
+        },
+        {
+          "id": "01a07750-0202-7000-8000-000000000100",
+          "size": 100,
+          "resume": {
+            "ms": 88.75299500000003,
+            "bytes": 61152
+          },
+          "read": {
+            "ms": 78.79068999999998,
+            "bytes": 60384
+          },
+          "older": {
+            "ms": 49.792921999999976,
+            "bytes": 60385
+          },
+          "history": {
+            "nextCursor": "{\"requestedThreadId\":\"01a07750-0202-7000-8000-000000000100\",\"rolloutOrdinal\":361,\"includeAnchor\":false,\"scope\":{\"kind\":\"turns\"}}",
+            "hasMoreOlder": true,
+            "source": "native"
+          }
+        },
+        {
+          "id": "01a07750-0202-7000-8000-000000001000",
+          "size": 1000,
+          "resume": {
+            "ms": 61.25469599999997,
+            "bytes": 61237
+          },
+          "read": {
+            "ms": 83.493716,
+            "bytes": 60467
+          },
+          "older": {
+            "ms": 51.75271500000008,
+            "bytes": 60468
+          },
+          "history": {
+            "nextCursor": "{\"requestedThreadId\":\"01a07750-0202-7000-8000-000000001000\",\"rolloutOrdinal\":3961,\"includeAnchor\":false,\"scope\":{\"kind\":\"turns\"}}",
+            "hasMoreOlder": true,
+            "source": "native"
+          }
+        }
+      ],
+      "forks": [
+        {
+          "index": 0,
+          "turnId": "01a07751-0202-7000-8000-000000000000",
+          "forkId": "01a078ec-0b11-7790-ad86-6a1af8b0cc04",
+          "exactFinalTurn": true,
+          "rollbackChecked": false
+        },
+        {
+          "index": 50,
+          "turnId": "01a07751-0202-7000-8000-000000000050",
+          "forkId": "01a078ec-0bdc-71b1-b6d2-8a2d44827163",
+          "exactFinalTurn": true,
+          "rollbackChecked": true
+        },
+        {
+          "index": 999,
+          "turnId": "01a07751-0202-7000-8000-000000000999",
+          "forkId": "01a078ec-0d5f-7df2-a315-23c4b2d03359",
+          "exactFinalTurn": true,
+          "rollbackChecked": false
+        }
+      ],
+      "invalidCursorRejected": true
+    },
+    "search-http-candidate": {
+      "url": "http://127.0.0.1:59001",
+      "id": "01a07750-0202-7000-8000-000000001000",
+      "cold": {
+        "ms": 1235.3360140000002,
+        "bytes": 216,
+        "data": {
+          "threadIds": [
+            "01a07750-0202-7000-8000-000000001000"
+          ],
+          "indexedThreadCount": 34,
+          "titleScopeComplete": true,
+          "bodyThreadCount": 34,
+          "bodyTurnLimit": 50,
+          "bodyThreadLimit": 100,
+          "partialBodyCount": 2,
+          "failedBodyCount": 0
+        }
+      },
+      "warm": {
+        "ms": 3.5139469999999164,
+        "bytes": 216,
+        "data": {
+          "threadIds": [
+            "01a07750-0202-7000-8000-000000001000"
+          ],
+          "indexedThreadCount": 34,
+          "titleScopeComplete": true,
+          "bodyThreadCount": 34,
+          "bodyTurnLimit": 50,
+          "bodyThreadLimit": 100,
+          "partialBodyCount": 2,
+          "failedBodyCount": 0
+        }
+      },
+      "rename": true,
+      "archive": true,
+      "unarchive": true
+    },
+    "cleanup": [
+      {
+        "name": "codexapp-0209-noauth",
+        "port": 59011,
+        "image": "sha256:c444771e20da82c88123698cd087803c483b6af3a1a6307c4532f29632add25a",
+        "idle": {
+          "activeTurns": 0,
+          "queuedCount": 0,
+          "pendingCount": 0,
+          "pages": 1,
+          "apiConnections": 0,
+          "apiActiveRequests": 0,
+          "backgroundCheck": "supported",
+          "backgroundThreads": 0,
+          "loadedThreads": 0,
+          "idle": true
+        },
+        "removed": true,
+        "retainedVolumes": [
+          "codexapp-0209-noauth-release-0907-final-0635-home"
+        ]
+      },
+      {
+        "name": "codexapp-0209-invalid",
+        "port": 59012,
+        "image": "sha256:c444771e20da82c88123698cd087803c483b6af3a1a6307c4532f29632add25a",
+        "idle": {
+          "activeTurns": 0,
+          "queuedCount": 0,
+          "pendingCount": 0,
+          "pages": 1,
+          "apiConnections": 0,
+          "apiActiveRequests": 0,
+          "backgroundCheck": "supported",
+          "backgroundThreads": 0,
+          "loadedThreads": 1,
+          "idle": true
+        },
+        "removed": true,
+        "retainedVolumes": [
+          "codexapp-0209-invalid-release-0907-final-0635-home"
+        ]
+      },
+      {
+        "name": "codexapp-0209-malformed",
+        "port": 59013,
+        "image": "sha256:c444771e20da82c88123698cd087803c483b6af3a1a6307c4532f29632add25a",
+        "idle": {
+          "activeTurns": 0,
+          "queuedCount": 0,
+          "pendingCount": 0,
+          "pages": 1,
+          "apiConnections": 0,
+          "apiActiveRequests": 0,
+          "backgroundCheck": "supported",
+          "backgroundThreads": 0,
+          "loadedThreads": 0,
+          "idle": true
+        },
+        "removed": true,
+        "retainedVolumes": [
+          "codexapp-0209-malformed-release-0907-final-0635-home"
+        ]
+      },
+      {
+        "name": "codexapp-0209-provider",
+        "port": 59014,
+        "image": "sha256:c444771e20da82c88123698cd087803c483b6af3a1a6307c4532f29632add25a",
+        "idle": {
+          "activeTurns": 0,
+          "queuedCount": 0,
+          "pendingCount": 0,
+          "pages": 1,
+          "apiConnections": 0,
+          "apiActiveRequests": 0,
+          "backgroundCheck": "supported",
+          "backgroundThreads": 0,
+          "loadedThreads": 0,
+          "idle": true
+        },
+        "removed": true,
+        "retainedVolumes": [
+          "codexapp-0209-provider-release-0907-final-0635-home"
+        ]
+      },
+      {
+        "name": "codexapp-0209-cache-old",
+        "port": 59016,
+        "image": "sha256:67313902090fd0ea1123127d95291584db01ed73efb7c67ea703cd9278b6cd65",
+        "idle": {
+          "activeTurns": 0,
+          "queuedCount": 0,
+          "pendingCount": 0,
+          "pages": 1,
+          "apiConnections": 0,
+          "apiActiveRequests": 0,
+          "backgroundCheck": "supported",
+          "backgroundThreads": 0,
+          "loadedThreads": 0,
+          "idle": true
+        },
+        "removed": true,
+        "retainedVolumes": []
+      }
+    ],
+    "final-idle": {
+      "activeTurns": 0,
+      "queuedCount": 0,
+      "pendingCount": 0,
+      "pages": 1,
+      "apiConnections": 0,
+      "apiActiveRequests": 0,
+      "backgroundCheck": "supported",
+      "backgroundThreads": 0,
+      "loadedThreads": 6,
+      "idle": true
+    }
+  },
+  "profiles": {
+    "home": {
+      "reportPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-home-2026-09-06T22-50-18-027Z.json",
+      "screenshotPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-home-2026-09-06T22-50-18-027Z.png",
+      "tracePath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-home-2026-09-06T22-50-18-027Z-trace.zip",
+      "targetUrl": "http://127.0.0.1:59001/",
+      "finalUrl": "http://127.0.0.1:59001/#/",
+      "title": "127.0.0.1",
+      "totalMs": 7298.9,
+      "duplicateCounts": {
+        "threadList": 1,
+        "threadListFirstPage": 1,
+        "threadListCursor": 0,
+        "threadResume": 0,
+        "threadRead": 0,
+        "threadReadWithTurns": 0,
+        "threadReadDuplicateKeys": 0,
+        "skillsList": 1,
+        "rateLimitsRead": 1,
+        "providerModels": 0
+      },
+      "warnings": [],
+      "pageState": {
+        "threadLoadingText": "Loading threads...",
+        "threadLoadTimeoutMs": 15000,
+        "stillLoadingThreads": false
+      },
+      "totalApiKB": 102.9,
+      "topApiSummary": [
+        {
+          "key": "account/rateLimits/read",
+          "count": 1,
+          "minMs": 1379.6,
+          "avgMs": 1379.6,
+          "p95Ms": 1379.6,
+          "maxMs": 1379.6,
+          "totalKB": 1.7
+        },
+        {
+          "key": "/codex-api/workspace-roots-state",
+          "count": 1,
+          "minMs": 73.8,
+          "avgMs": 73.8,
+          "p95Ms": 73.8,
+          "maxMs": 73.8,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/preferences/first-launch-plugins-card",
+          "count": 1,
+          "minMs": 73.7,
+          "avgMs": 73.7,
+          "p95Ms": 73.7,
+          "maxMs": 73.7,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/telegram/config",
+          "count": 1,
+          "minMs": 73.7,
+          "avgMs": 73.7,
+          "p95Ms": 73.7,
+          "maxMs": 73.7,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/thread-pins",
+          "count": 1,
+          "minMs": 73.6,
+          "avgMs": 73.6,
+          "p95Ms": 73.6,
+          "maxMs": 73.6,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/prompts",
+          "count": 1,
+          "minMs": 73.6,
+          "avgMs": 73.6,
+          "p95Ms": 73.6,
+          "maxMs": 73.6,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/home-directory",
+          "count": 1,
+          "minMs": 73.6,
+          "avgMs": 73.6,
+          "p95Ms": 73.6,
+          "maxMs": 73.6,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/telegram/status",
+          "count": 1,
+          "minMs": 73.6,
+          "avgMs": 73.6,
+          "p95Ms": 73.6,
+          "maxMs": 73.6,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/free-mode/status",
+          "count": 1,
+          "minMs": 73.6,
+          "avgMs": 73.6,
+          "p95Ms": 73.6,
+          "maxMs": 73.6,
+          "totalKB": 0.8
+        },
+        {
+          "key": "/codex-api/thread-terminal/status",
+          "count": 1,
+          "minMs": 73.6,
+          "avgMs": 73.6,
+          "p95Ms": 73.6,
+          "maxMs": 73.6,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/thread-queue-state",
+          "count": 1,
+          "minMs": 73.6,
+          "avgMs": 73.6,
+          "p95Ms": 73.6,
+          "maxMs": 73.6,
+          "totalKB": 0
+        },
+        {
+          "key": "thread/list:first-page",
+          "count": 1,
+          "minMs": 60.3,
+          "avgMs": 60.3,
+          "p95Ms": 60.3,
+          "maxMs": 60.3,
+          "totalKB": 36
+        }
+      ],
+      "slowestApiRows": [
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "account/rateLimits/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": null,
+          "status": 200,
+          "ms": 1379.6,
+          "requestBytes": 50,
+          "responseBytes": 1746,
+          "responseKB": 1.7
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/workspace-roots-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 73.8,
+          "requestBytes": 0,
+          "responseBytes": 83,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/preferences/first-launch-plugins-card",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 73.7,
+          "requestBytes": 0,
+          "responseBytes": 27,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/config",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 73.7,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-pins",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 73.6,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 73.6,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/home-directory",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 73.6,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 73.6,
+          "requestBytes": 0,
+          "responseBytes": 132,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/free-mode/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 73.6,
+          "requestBytes": 0,
+          "responseBytes": 835,
+          "responseKB": 0.8
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 73.6,
+          "requestBytes": 0,
+          "responseBytes": 32,
+          "responseKB": 0
+        }
+      ]
+    },
+    "thread": {
+      "reportPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-thread-01a07750-0202-7000-8000-000000001000-2026-09-06T22-50-26-460Z.json",
+      "screenshotPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-thread-01a07750-0202-7000-8000-000000001000-2026-09-06T22-50-26-460Z.png",
+      "tracePath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-thread-01a07750-0202-7000-8000-000000001000-2026-09-06T22-50-26-460Z-trace.zip",
+      "targetUrl": "http://127.0.0.1:59001/#/thread/01a07750-0202-7000-8000-000000001000",
+      "finalUrl": "http://127.0.0.1:59001/#/thread/01a07750-0202-7000-8000-000000001000",
+      "title": "TestChat 0202 1000 turns",
+      "totalMs": 7324,
+      "duplicateCounts": {
+        "threadList": 1,
+        "threadListFirstPage": 1,
+        "threadListCursor": 0,
+        "threadResume": 1,
+        "threadRead": 0,
+        "threadReadWithTurns": 0,
+        "threadReadDuplicateKeys": 0,
+        "skillsList": 1,
+        "rateLimitsRead": 1,
+        "providerModels": 0
+      },
+      "warnings": [],
+      "pageState": {
+        "threadLoadingText": "Loading threads...",
+        "threadLoadTimeoutMs": 15000,
+        "stillLoadingThreads": false
+      },
+      "totalApiKB": 156.8,
+      "topApiSummary": [
+        {
+          "key": "account/rateLimits/read",
+          "count": 1,
+          "minMs": 1397.2,
+          "avgMs": 1397.2,
+          "p95Ms": 1397.2,
+          "maxMs": 1397.2,
+          "totalKB": 1.7
+        },
+        {
+          "key": "thread/resume",
+          "count": 1,
+          "minMs": 201.5,
+          "avgMs": 201.5,
+          "p95Ms": 201.5,
+          "maxMs": 201.5,
+          "totalKB": 59.8
+        },
+        {
+          "key": "/codex-api/preferences/first-launch-plugins-card",
+          "count": 1,
+          "minMs": 74.8,
+          "avgMs": 74.8,
+          "p95Ms": 74.8,
+          "maxMs": 74.8,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/telegram/config",
+          "count": 1,
+          "minMs": 74.8,
+          "avgMs": 74.8,
+          "p95Ms": 74.8,
+          "maxMs": 74.8,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/workspace-roots-state",
+          "count": 1,
+          "minMs": 74.8,
+          "avgMs": 74.8,
+          "p95Ms": 74.8,
+          "maxMs": 74.8,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/telegram/status",
+          "count": 1,
+          "minMs": 74.7,
+          "avgMs": 74.7,
+          "p95Ms": 74.7,
+          "maxMs": 74.7,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/free-mode/status",
+          "count": 1,
+          "minMs": 74.7,
+          "avgMs": 74.7,
+          "p95Ms": 74.7,
+          "maxMs": 74.7,
+          "totalKB": 0.8
+        },
+        {
+          "key": "/codex-api/thread-terminal/status",
+          "count": 1,
+          "minMs": 74.7,
+          "avgMs": 74.7,
+          "p95Ms": 74.7,
+          "maxMs": 74.7,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/thread-pins",
+          "count": 1,
+          "minMs": 74.6,
+          "avgMs": 74.6,
+          "p95Ms": 74.6,
+          "maxMs": 74.6,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/prompts",
+          "count": 1,
+          "minMs": 74.6,
+          "avgMs": 74.6,
+          "p95Ms": 74.6,
+          "maxMs": 74.6,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/home-directory",
+          "count": 1,
+          "minMs": 74.6,
+          "avgMs": 74.6,
+          "p95Ms": 74.6,
+          "maxMs": 74.6,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/thread-queue-state",
+          "count": 1,
+          "minMs": 74.6,
+          "avgMs": 74.6,
+          "p95Ms": 74.6,
+          "maxMs": 74.6,
+          "totalKB": 0
+        }
+      ],
+      "slowestApiRows": [
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "account/rateLimits/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": null,
+          "status": 200,
+          "ms": 1397.2,
+          "requestBytes": 50,
+          "responseBytes": 1746,
+          "responseKB": 1.7
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "thread/resume",
+          "cursor": "",
+          "threadId": "01a07750-0202-7000-8000-000000001000",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 201.5,
+          "requestBytes": 87,
+          "responseBytes": 61237,
+          "responseKB": 59.8
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/preferences/first-launch-plugins-card",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.8,
+          "requestBytes": 0,
+          "responseBytes": 27,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/config",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.8,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/workspace-roots-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.8,
+          "requestBytes": 0,
+          "responseBytes": 83,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.7,
+          "requestBytes": 0,
+          "responseBytes": 132,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/free-mode/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.7,
+          "requestBytes": 0,
+          "responseBytes": 835,
+          "responseKB": 0.8
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.7,
+          "requestBytes": 0,
+          "responseBytes": 32,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-pins",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.6,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.6,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        }
+      ]
+    },
+    "dev-final": {
+      "reportPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-home-2026-09-06T22-50-34-946Z.json",
+      "screenshotPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-home-2026-09-06T22-50-34-946Z.png",
+      "tracePath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-home-2026-09-06T22-50-34-946Z-trace.zip",
+      "targetUrl": "http://127.0.0.1:4173/",
+      "finalUrl": "http://127.0.0.1:4173/#/",
+      "title": "127.0.0.1",
+      "totalMs": 8295.8,
+      "duplicateCounts": {
+        "threadList": 1,
+        "threadListFirstPage": 1,
+        "threadListCursor": 0,
+        "threadResume": 0,
+        "threadRead": 0,
+        "threadReadWithTurns": 0,
+        "threadReadDuplicateKeys": 0,
+        "skillsList": 1,
+        "rateLimitsRead": 1,
+        "providerModels": 1
+      },
+      "warnings": [
+        "providerModels=1223ms"
+      ],
+      "pageState": {
+        "threadLoadingText": "Loading threads...",
+        "threadLoadTimeoutMs": 15000,
+        "stillLoadingThreads": false
+      },
+      "totalApiKB": 22.2,
+      "topApiSummary": [
+        {
+          "key": "/codex-api/free-mode/status",
+          "count": 1,
+          "minMs": 1262.9,
+          "avgMs": 1262.9,
+          "p95Ms": 1262.9,
+          "maxMs": 1262.9,
+          "totalKB": 0.4
+        },
+        {
+          "key": "/codex-api/provider-models",
+          "count": 1,
+          "minMs": 1223,
+          "avgMs": 1223,
+          "p95Ms": 1223,
+          "maxMs": 1223,
+          "totalKB": 0.3
+        },
+        {
+          "key": "/codex-api/prompts",
+          "count": 1,
+          "minMs": 66.3,
+          "avgMs": 66.3,
+          "p95Ms": 66.3,
+          "maxMs": 66.3,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/preferences/first-launch-plugins-card",
+          "count": 1,
+          "minMs": 66.3,
+          "avgMs": 66.3,
+          "p95Ms": 66.3,
+          "maxMs": 66.3,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/workspace-roots-state",
+          "count": 1,
+          "minMs": 66.3,
+          "avgMs": 66.3,
+          "p95Ms": 66.3,
+          "maxMs": 66.3,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/telegram/config",
+          "count": 1,
+          "minMs": 66.3,
+          "avgMs": 66.3,
+          "p95Ms": 66.3,
+          "maxMs": 66.3,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/thread-terminal/status",
+          "count": 1,
+          "minMs": 65.2,
+          "avgMs": 65.2,
+          "p95Ms": 65.2,
+          "maxMs": 65.2,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/thread-queue-state",
+          "count": 1,
+          "minMs": 65.2,
+          "avgMs": 65.2,
+          "p95Ms": 65.2,
+          "maxMs": 65.2,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/telegram/status",
+          "count": 1,
+          "minMs": 65.1,
+          "avgMs": 65.1,
+          "p95Ms": 65.1,
+          "maxMs": 65.1,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/home-directory",
+          "count": 1,
+          "minMs": 64.6,
+          "avgMs": 64.6,
+          "p95Ms": 64.6,
+          "maxMs": 64.6,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/thread-pins",
+          "count": 1,
+          "minMs": 58.2,
+          "avgMs": 58.2,
+          "p95Ms": 58.2,
+          "maxMs": 58.2,
+          "totalKB": 0
+        },
+        {
+          "key": "thread/list:first-page",
+          "count": 1,
+          "minMs": 24,
+          "avgMs": 24,
+          "p95Ms": 24,
+          "maxMs": 24,
+          "totalKB": 2.4
+        }
+      ],
+      "slowestApiRows": [
+        {
+          "method": "GET",
+          "path": "/codex-api/free-mode/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 1262.9,
+          "requestBytes": 0,
+          "responseBytes": 397,
+          "responseKB": 0.4
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/provider-models",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 1223,
+          "requestBytes": 0,
+          "responseBytes": 278,
+          "responseKB": 0.3
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 66.3,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/preferences/first-launch-plugins-card",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 66.3,
+          "requestBytes": 0,
+          "responseBytes": 28,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/workspace-roots-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 66.3,
+          "requestBytes": 0,
+          "responseBytes": 83,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/config",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 66.3,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 65.2,
+          "requestBytes": 0,
+          "responseBytes": 32,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-queue-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 65.2,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 65.1,
+          "requestBytes": 0,
+          "responseBytes": 132,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/home-directory",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 64.6,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        }
+      ]
+    }
+  },
+  "production": {
+    "port": 5900,
+    "unchanged": true,
+    "systemd": "MainPID=3456650\nExecMainStartTimestamp=Sun 2026-09-06 22:21:46 CST\nExecStart={ path=/root/.nvm/versions/node/v24.19.0/bin/node ; argv[]=/root/.nvm/versions/node/v24.19.0/bin/node /home/docker/codexapp-releases/codexapp-0.2.0-8542ec5e58c8-20260906-221809/dist-cli/index.js --port 5900 --strict-port --no-password --no-open ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\n"
+  },
+  "screenshots": [
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-api-ui-api-1440x900-dark.png",
+      "archived": "assets/0.2.9/0209-api-ui-api-1440x900-dark.png",
+      "sha256": "8a8a705fa42b96bea8e3d09fba26909ec8276bc7c466878cadc4ba6f07639d60"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-api-ui-api-1440x900-light.png",
+      "archived": "assets/0.2.9/0209-api-ui-api-1440x900-light.png",
+      "sha256": "1701672423a0663cefa0243e46298408515cd15aa7cb6539cf8ce7af3d7d49f2"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-api-ui-api-375x812-dark.png",
+      "archived": "assets/0.2.9/0209-api-ui-api-375x812-dark.png",
+      "sha256": "e513a372f3dfab7ac42f1fd2c8925b870fa360f1f99c34e36953a89a1dc84ca6"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-api-ui-api-375x812-light.png",
+      "archived": "assets/0.2.9/0209-api-ui-api-375x812-light.png",
+      "sha256": "c8511d8180bcf626166b5f1b78397c5766f962cf61e97c56863f213bfa795a61"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-api-ui-api-768x1024-dark.png",
+      "archived": "assets/0.2.9/0209-api-ui-api-768x1024-dark.png",
+      "sha256": "f11c2e93e1111fb0d92ff71865a6bebaaf2ec97977e7d41edc3733afb56d6fc7"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-api-ui-api-768x1024-light.png",
+      "archived": "assets/0.2.9/0209-api-ui-api-768x1024-light.png",
+      "sha256": "fbf4d917e42ee16b805a1a1e77e071c423d1837e1311166d146be7b7ba9108fc"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-cache-allow-dark.png",
+      "archived": "assets/0.2.9/0209-cache-allow-dark.png",
+      "sha256": "8ab0e83f13b1b6768d48c78c55c4b8cfef92ff63018ee28c17726bd051013449"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-cache-allow-light.png",
+      "archived": "assets/0.2.9/0209-cache-allow-light.png",
+      "sha256": "ab87cbc11bd0750c1a7df5d824025690cbbaf1108a8e3960c10215157af760e8"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-cache-block-dark.png",
+      "archived": "assets/0.2.9/0209-cache-block-dark.png",
+      "sha256": "8ab0e83f13b1b6768d48c78c55c4b8cfef92ff63018ee28c17726bd051013449"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-cache-block-light.png",
+      "archived": "assets/0.2.9/0209-cache-block-light.png",
+      "sha256": "ab87cbc11bd0750c1a7df5d824025690cbbaf1108a8e3960c10215157af760e8"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-directory-directory-1440-dark.png",
+      "archived": "assets/0.2.9/0209-directory-directory-1440-dark.png",
+      "sha256": "55d9f0342d6ae868cfb42e67b6d3fd35ba6debcb28009e1d3e320f954c7285e7"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-directory-directory-1440-light.png",
+      "archived": "assets/0.2.9/0209-directory-directory-1440-light.png",
+      "sha256": "20807dd2b67b188acd2033b1f67545cc40d11791eb257e260c6c0ce4eede0de7"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-directory-directory-375-dark.png",
+      "archived": "assets/0.2.9/0209-directory-directory-375-dark.png",
+      "sha256": "9848c121def942251672c587f3c1cf1e46193e4238589caefd92101c07c10457"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-directory-directory-375-light.png",
+      "archived": "assets/0.2.9/0209-directory-directory-375-light.png",
+      "sha256": "5770a2235e7cff0fb14dd2d90c0ace5aa19e48214ded7f4bf30636adaa8ae395"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-directory-directory-768-dark.png",
+      "archived": "assets/0.2.9/0209-directory-directory-768-dark.png",
+      "sha256": "4abd54734ff4c2ee95c9f2ce15a68160e8a80bd7e19f0401004bf0e15d88a9ae"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-directory-directory-768-light.png",
+      "archived": "assets/0.2.9/0209-directory-directory-768-light.png",
+      "sha256": "eaf729d4577cd7c4b3b1c1f5ee9283d461cb55f5a5efac23be71a72e95a4d2c6"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-goal-dialog-1440-dark.png",
+      "archived": "assets/0.2.9/0209-goal-dialog-1440-dark.png",
+      "sha256": "6a1dc64ec91be4a57027bd92287fb3b81db1cfc4bee8cbd5e9ce3a27cf1e1ccb"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-goal-dialog-1440-light.png",
+      "archived": "assets/0.2.9/0209-goal-dialog-1440-light.png",
+      "sha256": "2365336fe67890f354c0e0411e257305c785e7e70a6b8a77e3d40910d1225376"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-goal-dialog-375-dark.png",
+      "archived": "assets/0.2.9/0209-goal-dialog-375-dark.png",
+      "sha256": "1bcea35f5ccca0bbb29b822ee1d8f8b54b6e63df0ce3f6564f95af6bfe23f270"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-goal-dialog-375-light.png",
+      "archived": "assets/0.2.9/0209-goal-dialog-375-light.png",
+      "sha256": "66e7926a85b99c9564f5737c5f2f408024c8776e028b8ee255f7e84557475060"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-goal-dialog-768-dark.png",
+      "archived": "assets/0.2.9/0209-goal-dialog-768-dark.png",
+      "sha256": "1249471ba71211af109fb6dee21735e2e098112b06fab929b917ba0ed29381ea"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-goal-dialog-768-light.png",
+      "archived": "assets/0.2.9/0209-goal-dialog-768-light.png",
+      "sha256": "9e82a7739e5738c1003f0311d62fed4d65d25839ce9218ccd72d270252d015f0"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-invalid-dark.png",
+      "archived": "assets/0.2.9/0209-invalid-dark.png",
+      "sha256": "cf7b36c98257396ca4095db34e67edb7c4c8a242fd5ba45b71011a12f086402d"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-invalid-light.png",
+      "archived": "assets/0.2.9/0209-invalid-light.png",
+      "sha256": "4ffe98db254b80cacbb4f0254060f4b43b5e56e540b7d1295321776fbb9fa58e"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-keyboard-dark.png",
+      "archived": "assets/0.2.9/0209-keyboard-dark.png",
+      "sha256": "1fa70a940525968e8d547d0aa4f6509ea79a4191be1b5a8c40d80a61431422ae"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-keyboard-light.png",
+      "archived": "assets/0.2.9/0209-keyboard-light.png",
+      "sha256": "6e06105653daada60790c3cc6efdafdbf656cae47ca5698f69ce785d3cd11704"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-lazy-375-dark.png",
+      "archived": "assets/0.2.9/0209-lazy-375-dark.png",
+      "sha256": "4b0b8cc87afad94485415defcf0366ffa7ec4c6217cf89565faf97a4a40fe4b8"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-lazy-375-light.png",
+      "archived": "assets/0.2.9/0209-lazy-375-light.png",
+      "sha256": "59050bcb06fc348ad42aa6ec65f721db821ab1543bf2add2d259d6684f78ee94"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-lazy-768-dark.png",
+      "archived": "assets/0.2.9/0209-lazy-768-dark.png",
+      "sha256": "0f380965c71ffe87f2a5fef4b2281c701074c8d48cadc5a61446b4257b507e62"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-lazy-768-light.png",
+      "archived": "assets/0.2.9/0209-lazy-768-light.png",
+      "sha256": "13024ab49d283e6244d96e02faf9ad0695b2e5e4cd3f9a94b017815d7a05d55d"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-malformed-dark.png",
+      "archived": "assets/0.2.9/0209-malformed-dark.png",
+      "sha256": "7291e328609110f0c5c9d65243db01f27e4531faf077c8ef09b0eebb2276d575"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-malformed-light.png",
+      "archived": "assets/0.2.9/0209-malformed-light.png",
+      "sha256": "a7dfba96001bff0ddd868bd98d0f69d862e3a8da650baaea57fa8a9521c1922d"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-noauth-dark.png",
+      "archived": "assets/0.2.9/0209-noauth-dark.png",
+      "sha256": "7291e328609110f0c5c9d65243db01f27e4531faf077c8ef09b0eebb2276d575"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-noauth-light.png",
+      "archived": "assets/0.2.9/0209-noauth-light.png",
+      "sha256": "a7dfba96001bff0ddd868bd98d0f69d862e3a8da650baaea57fa8a9521c1922d"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-process-hooks-1440-dark.png",
+      "archived": "assets/0.2.9/0209-process-hooks-1440-dark.png",
+      "sha256": "ae2be2c06038af3577c2b89395c2d64e8b498a2d695668379857d1f52243728f"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-process-hooks-1440-light.png",
+      "archived": "assets/0.2.9/0209-process-hooks-1440-light.png",
+      "sha256": "668102b4dd94688f7281c6e7635fbe0ad34a03d64999ae3e0fedca6a0daec8a9"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-process-hooks-375-dark.png",
+      "archived": "assets/0.2.9/0209-process-hooks-375-dark.png",
+      "sha256": "0203014819180879f15219f0455ef08e0b1c2012ab95799ed610aae75ec79a09"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-process-hooks-375-light.png",
+      "archived": "assets/0.2.9/0209-process-hooks-375-light.png",
+      "sha256": "457e9562e10a69e1e9258ee0c77c7a8a2794fd682fe622d9edc64fdb2844b424"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-process-hooks-768-dark.png",
+      "archived": "assets/0.2.9/0209-process-hooks-768-dark.png",
+      "sha256": "8111609b3ddf35766816ced42ab94de8e7ceaca3db4ed400bf6ed47b3da77b10"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-process-hooks-768-light.png",
+      "archived": "assets/0.2.9/0209-process-hooks-768-light.png",
+      "sha256": "5a2a7fa4dc9f56fe09c0ae9f68b585e0ddcc56e5851e7280cfdec6e8fb15a995"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-process-output-1440-dark.png",
+      "archived": "assets/0.2.9/0209-process-output-1440-dark.png",
+      "sha256": "8530e1a2f926273846a5b595009f38e278c1deab17e1e8240ef5f739a70cad6a"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-process-output-1440-light.png",
+      "archived": "assets/0.2.9/0209-process-output-1440-light.png",
+      "sha256": "18218e6ca5afdd0660b6aed9cf6a1568b7f981ff70ae364d62dab1f02d0fb544"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-process-output-375-dark.png",
+      "archived": "assets/0.2.9/0209-process-output-375-dark.png",
+      "sha256": "4e9b6a6c381d980006fa1eec125ac0ce0ed3aa83f452a36b1759d0173dd4a43d"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-process-output-375-light.png",
+      "archived": "assets/0.2.9/0209-process-output-375-light.png",
+      "sha256": "877a3ff345c9775ebbe55487452ae04c8a73d57bb87e46c4054c38d1d276066f"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-process-output-768-dark.png",
+      "archived": "assets/0.2.9/0209-process-output-768-dark.png",
+      "sha256": "1598179b58504f30cea43cb040eab798ec2758ba86bd5eea7dd5c39c1e63ae6e"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-process-output-768-light.png",
+      "archived": "assets/0.2.9/0209-process-output-768-light.png",
+      "sha256": "61e07eb5a8056bb8b87dc5b59fc832ad9d6f7fa27089a81fcfb7e7a4d50ec308"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-process-stop-1440-dark.png",
+      "archived": "assets/0.2.9/0209-process-stop-1440-dark.png",
+      "sha256": "038c5289510a2397c6282b0cf62e5e625e60b1f9b640d3cab7d411d5f73af9d1"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-process-stop-1440-light.png",
+      "archived": "assets/0.2.9/0209-process-stop-1440-light.png",
+      "sha256": "ebdaa8fc87c251682313e5523f701bc68016b20aa41a89682a428a85cd71ce4e"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-process-stop-375-dark.png",
+      "archived": "assets/0.2.9/0209-process-stop-375-dark.png",
+      "sha256": "cead6e40daa948d0aff88a0676e55e5e225bc523a380ba8092e33e8cd9dfa223"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-process-stop-375-light.png",
+      "archived": "assets/0.2.9/0209-process-stop-375-light.png",
+      "sha256": "cc5d6f971bffd4e605f6c748a7ec8484d96729f3b71460041e5e5892d2dfe55e"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-process-stop-768-dark.png",
+      "archived": "assets/0.2.9/0209-process-stop-768-dark.png",
+      "sha256": "a78c69f154f9c7a7808da24d4a9794c70d3c5ab88400aba71a37641f8cff15a2"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-process-stop-768-light.png",
+      "archived": "assets/0.2.9/0209-process-stop-768-light.png",
+      "sha256": "0601092b9084dbc24ed62a1d3c7f0533d99d8ca1e04651260a63425ae37a3adc"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-provider-dark.png",
+      "archived": "assets/0.2.9/0209-provider-dark.png",
+      "sha256": "7291e328609110f0c5c9d65243db01f27e4531faf077c8ef09b0eebb2276d575"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-provider-light.png",
+      "archived": "assets/0.2.9/0209-provider-light.png",
+      "sha256": "a7dfba96001bff0ddd868bd98d0f69d862e3a8da650baaea57fa8a9521c1922d"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-questions-questions-1440x900-dark.png",
+      "archived": "assets/0.2.9/0209-questions-questions-1440x900-dark.png",
+      "sha256": "bc33953da456fa951452fc1be0b619a1656eb0a9bf2f555d07688c850f924ffc"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-questions-questions-1440x900-light.png",
+      "archived": "assets/0.2.9/0209-questions-questions-1440x900-light.png",
+      "sha256": "6d3ab53e3d71bf71d41379caadbe10000b7dc49d713257f325aefd66bbdd203d"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-questions-questions-375x812-dark.png",
+      "archived": "assets/0.2.9/0209-questions-questions-375x812-dark.png",
+      "sha256": "a4039b4af1eadf97a968cdb52685ea0ea4724c04373cb329bc15abe52ea5c30c"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-questions-questions-375x812-light.png",
+      "archived": "assets/0.2.9/0209-questions-questions-375x812-light.png",
+      "sha256": "cdbb26f59693bed8aa59141d55500ff57084c5865bc5fb22ee0a75d962cd99d7"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-questions-questions-768x1024-dark.png",
+      "archived": "assets/0.2.9/0209-questions-questions-768x1024-dark.png",
+      "sha256": "f79dc96836c92749f55d5482bb383aa72311b51c22868709fe78e999c9eaac65"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-questions-questions-768x1024-light.png",
+      "archived": "assets/0.2.9/0209-questions-questions-768x1024-light.png",
+      "sha256": "39079b44c037bc3c4698d09f76be8f2e2840019abc22ee0bd63c199c65a5718d"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-quota-dark.png",
+      "archived": "assets/0.2.9/0209-quota-dark.png",
+      "sha256": "649b6c9aa4c163fbdc45c34d8a73b182d72d7ef6f043fdf86d348ed2db3cdeb2"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-quota-light.png",
+      "archived": "assets/0.2.9/0209-quota-light.png",
+      "sha256": "f30c46ae11b6df115ff2d2aa2d7a290ca25fb28110128fbf9c84bb79d23cab2e"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-recovery-375-dark.png",
+      "archived": "assets/0.2.9/0209-recovery-375-dark.png",
+      "sha256": "ec9b75176aee689078523d5ba9d5894479155c7340bb991aa432fb3b68e4e4ed"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-recovery-375-light.png",
+      "archived": "assets/0.2.9/0209-recovery-375-light.png",
+      "sha256": "0d7e3f33b2e1b6e6527631e4d0c3c118875ed808cfbc79b11b449a623cc02d7b"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-recovery-768-dark.png",
+      "archived": "assets/0.2.9/0209-recovery-768-dark.png",
+      "sha256": "2ffafe4327bfd53943053bb686105fed17076b4e18ba24e2ee11238f8658b826"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-recovery-768-light.png",
+      "archived": "assets/0.2.9/0209-recovery-768-light.png",
+      "sha256": "133e83674ada7338fe85e6be9efd008584b41c1716dd6aa3b903cb77d3a337a4"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-search-search-dark.png",
+      "archived": "assets/0.2.9/0209-search-search-dark.png",
+      "sha256": "ac14ba10b0a885a670594fa1cfb1b26780e9227349d74bca9405f1b00bee180f"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-search-search-light.png",
+      "archived": "assets/0.2.9/0209-search-search-light.png",
+      "sha256": "022bfac6599a91c8868e3d22029513bcc56554153746da5ef2626a14f1b0def6"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-tasks-subtask-event-1440-dark.png",
+      "archived": "assets/0.2.9/0209-tasks-subtask-event-1440-dark.png",
+      "sha256": "4a2f103fcc4b69fd88d4c45c04422fdc97bfcfa35c29f8cfe8a37520f8deb115"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-tasks-subtask-event-1440-light.png",
+      "archived": "assets/0.2.9/0209-tasks-subtask-event-1440-light.png",
+      "sha256": "8bd0c1f87172b0c07523d41633f56b9980ce17183863a25f20f45a0b221e2601"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-tasks-subtask-event-375-dark.png",
+      "archived": "assets/0.2.9/0209-tasks-subtask-event-375-dark.png",
+      "sha256": "a369b8e6012ac6141a2f8a6153d0244ec37674b722c00b4baf1afbf720f6cc4b"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-tasks-subtask-event-375-light.png",
+      "archived": "assets/0.2.9/0209-tasks-subtask-event-375-light.png",
+      "sha256": "d1ccd23c0d895fe009d481b4273a22d1c1858dd2b7f631228797a94945b8ce47"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-tasks-subtask-event-768-dark.png",
+      "archived": "assets/0.2.9/0209-tasks-subtask-event-768-dark.png",
+      "sha256": "f31c432098c204606e18484a92a7b5ad603b4413bdf20d7aed4931bf629bb310"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-tasks-subtask-event-768-light.png",
+      "archived": "assets/0.2.9/0209-tasks-subtask-event-768-light.png",
+      "sha256": "620f83a77723a4a1adce00703874ea402488d87f92832a3f201ed633608715d3"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-tasks-task-search-1440-dark.png",
+      "archived": "assets/0.2.9/0209-tasks-task-search-1440-dark.png",
+      "sha256": "7f971d79ab3a9f4b0f465c85dd2322a8840aa972e741e48bcef575a51857da39"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-tasks-task-search-1440-light.png",
+      "archived": "assets/0.2.9/0209-tasks-task-search-1440-light.png",
+      "sha256": "6746224b852759d40b6c4740cacd058883dae328a470aea40a0546523a5a8374"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-tasks-task-search-375-dark.png",
+      "archived": "assets/0.2.9/0209-tasks-task-search-375-dark.png",
+      "sha256": "06758a1b06049f583447bf6272fa614636551ea92659539538cabe3364265d4e"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-tasks-task-search-375-light.png",
+      "archived": "assets/0.2.9/0209-tasks-task-search-375-light.png",
+      "sha256": "12d8c3faa24ff429ece11a4a049ce769dc1f4636709d21195556e47049c56f8d"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-tasks-task-search-768-dark.png",
+      "archived": "assets/0.2.9/0209-tasks-task-search-768-dark.png",
+      "sha256": "154f8c42b2a2d964f7a6805fffdfe77fa18e2f946526dfaae6e64c56f5b49b61"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-tasks-task-search-768-light.png",
+      "archived": "assets/0.2.9/0209-tasks-task-search-768-light.png",
+      "sha256": "f2bc4a68039f630f01771b1967eb2b36ca6224bb34acfc2807ee794c54193048"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-timezone-global-dates-1440-dark.png",
+      "archived": "assets/0.2.9/0209-timezone-global-dates-1440-dark.png",
+      "sha256": "e3ac49686564eb07a669104ddea07ed6a0698225b24b5dc0371c15eb3850b3d6"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-timezone-global-dates-1440-light.png",
+      "archived": "assets/0.2.9/0209-timezone-global-dates-1440-light.png",
+      "sha256": "10fba9b1b9dceef6086e07a2df73cc7a06eb1e37d00282e982e93fff6bcfe7f3"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-timezone-global-dates-375-dark.png",
+      "archived": "assets/0.2.9/0209-timezone-global-dates-375-dark.png",
+      "sha256": "bda18ed594bfa6b342a2d7f05719b6b459260b4ba625e5b4e85167f9dcc8a80b"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-timezone-global-dates-375-light.png",
+      "archived": "assets/0.2.9/0209-timezone-global-dates-375-light.png",
+      "sha256": "6316953928d226ccf3df3bc9332be30f1d67dc87001835dd681995b0f6e3d38e"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-timezone-global-dates-768-dark.png",
+      "archived": "assets/0.2.9/0209-timezone-global-dates-768-dark.png",
+      "sha256": "db194d7533e588b9e1cb72c2c02ac8bf5d38f0c066310f9e3888509a0edda0d6"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-timezone-global-dates-768-light.png",
+      "archived": "assets/0.2.9/0209-timezone-global-dates-768-light.png",
+      "sha256": "8fad76614a7c06f09a0f9938b0e533c3bee422221023fd2f86eb5ceaf6fa5dbf"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-timezone-timezone-1440-dark.png",
+      "archived": "assets/0.2.9/0209-timezone-timezone-1440-dark.png",
+      "sha256": "82188b58011430cb101371c9c9e32207546278d5f0c75e8f13d51a3039b557d4",
+      "url": "http://127.0.0.1:59001/#/api-proxy",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "dark",
+      "assertions": [
+        "display preference saved across reload",
+        "timezone menu fits viewport"
+      ]
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-timezone-timezone-1440-light.png",
+      "archived": "assets/0.2.9/0209-timezone-timezone-1440-light.png",
+      "sha256": "a726def5608b7fbc1b5fea7f85f52778ec5f11f11ed1f41894c4e8acafab753e",
+      "url": "http://127.0.0.1:59001/#/api-proxy",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "light",
+      "assertions": [
+        "display preference saved across reload",
+        "timezone menu fits viewport"
+      ]
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-timezone-timezone-375-dark.png",
+      "archived": "assets/0.2.9/0209-timezone-timezone-375-dark.png",
+      "sha256": "15f47f7069b3adc96afd61e3063178e064a1ac59d07763a5540e1c99aaa95063",
+      "url": "http://127.0.0.1:59001/#/api-proxy",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "theme": "dark",
+      "assertions": [
+        "display preference saved across reload",
+        "timezone menu fits viewport"
+      ]
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-timezone-timezone-375-light.png",
+      "archived": "assets/0.2.9/0209-timezone-timezone-375-light.png",
+      "sha256": "9445a6cecbe076d58bfadbf802138d1a14428728055c27cee33538bfbc6c82c6",
+      "url": "http://127.0.0.1:59001/#/api-proxy",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "theme": "light",
+      "assertions": [
+        "display preference saved across reload",
+        "timezone menu fits viewport"
+      ]
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-timezone-timezone-768-dark.png",
+      "archived": "assets/0.2.9/0209-timezone-timezone-768-dark.png",
+      "sha256": "3a36376abecb0f7a2541c6f60b2668819fb3746b728f9cd95e00234f50e28313",
+      "url": "http://127.0.0.1:59001/#/api-proxy",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "theme": "dark",
+      "assertions": [
+        "display preference saved across reload",
+        "timezone menu fits viewport"
+      ]
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-timezone-timezone-768-light.png",
+      "archived": "assets/0.2.9/0209-timezone-timezone-768-light.png",
+      "sha256": "ad114abbc211de513be9c85bf7325c754be90cdb04f3500b428ad26c343f82b8",
+      "url": "http://127.0.0.1:59001/#/api-proxy",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "theme": "light",
+      "assertions": [
+        "display preference saved across reload",
+        "timezone menu fits viewport"
+      ]
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-delivery-delivery-1440-dark-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-delivery-delivery-1440-dark-cjs.png",
+      "sha256": "83ed2e0188250315d8f7e8bb5edde545999703f5d7f6ed4a8336106d6e211d02"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-delivery-delivery-1440-light-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-delivery-delivery-1440-light-cjs.png",
+      "sha256": "496547369cf9527fd7106dd2e0dad6ebada195bf9b6451a20e9ee3a5abe00849"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-delivery-delivery-375-dark-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-delivery-delivery-375-dark-cjs.png",
+      "sha256": "9b455dc96df535b8510cd0745d82609412f159edbd77c695df11cbd48a409cf6"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-delivery-delivery-375-light-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-delivery-delivery-375-light-cjs.png",
+      "sha256": "477735bbc72d549f56ef7615ffcf82b982b29dbb75dd8ba29d11fc0c6cbed09d"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-delivery-delivery-768-dark-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-delivery-delivery-768-dark-cjs.png",
+      "sha256": "75196acf42bcb48351df19590427a5351f3063fc6628b4bb16e1cd193c875983"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-delivery-delivery-768-light-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-delivery-delivery-768-light-cjs.png",
+      "sha256": "675c3dadfea142e7b49b2f6d5e263b4f48bd3606d2b89e1fba5c81137fc248a8"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-goal-goal-compact-1440-dark-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-goal-goal-compact-1440-dark-cjs.png",
+      "sha256": "95f9ebe7e127288df6c0cc431c9bf3ba8689e1cc42c8ec68e04c344ba93cfaa0"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-goal-goal-compact-1440-light-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-goal-goal-compact-1440-light-cjs.png",
+      "sha256": "98c8dbc0309733b9770c66bee978b6e0e5a1c127ddba9cc20efe2aa34b4db6c1"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-goal-goal-compact-375-dark-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-goal-goal-compact-375-dark-cjs.png",
+      "sha256": "1f9675d9badde13777eabdd1ceecdb474488a300936dbd7e3fcdb67c613d08be"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-goal-goal-compact-375-light-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-goal-goal-compact-375-light-cjs.png",
+      "sha256": "a65a829b5b19f82d48a401de211b142563237c35102361e8e7b6335b8808b18e"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-goal-goal-compact-768-dark-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-goal-goal-compact-768-dark-cjs.png",
+      "sha256": "60f947a45280619512179db404646fb94bffa11d9d9355a9938da324c8f5f7f3"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-goal-goal-compact-768-light-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-goal-goal-compact-768-light-cjs.png",
+      "sha256": "29030d087cd9ba02690fb2db3b7b364fb974b825f76970282a0af0fe8a8eae60"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-history-history-dark-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-history-history-dark-cjs.png",
+      "sha256": "ddb4f2a06e41175fb5a9bdc8d18d5cde4fbcb28bcbb79b7660ca15d2ec27c7ec"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-history-history-light-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-history-history-light-cjs.png",
+      "sha256": "bf966d89b020a9e04b7044655196eae1ee31e3d0cef85ab336700ad62c686a90"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-questions-questions-1440-dark-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-questions-questions-1440-dark-cjs.png",
+      "sha256": "215bcafa486fe065119f2e947b2ac19ebf3715ee40dc8497c271d4c2e313351c"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-questions-questions-1440-light-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-questions-questions-1440-light-cjs.png",
+      "sha256": "16dea5ed9648d3a0f5610ba7458bee16b32a0ef5abfbcab7ab35ddb548d50338"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-questions-questions-375-dark-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-questions-questions-375-dark-cjs.png",
+      "sha256": "9ddb34f43596ba081984f6346a463c74072510c4a49f1e10a314e755881ca668"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-questions-questions-375-light-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-questions-questions-375-light-cjs.png",
+      "sha256": "d34d2480659e94b4819abd96dfd31a8867113ab8c4276a2c476aecd1c804fe2e"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-questions-questions-768-dark-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-questions-questions-768-dark-cjs.png",
+      "sha256": "ee1dcfd75064eaa65a36bf5a3377f8fada361e79c38ec5a07788415e97745ece"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-questions-questions-768-light-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-questions-questions-768-light-cjs.png",
+      "sha256": "33397a1e67734867f2f65afdca94326747f2f056c1185cbc8e5b9301afb4d30f"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-realtime-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-realtime-cjs.png",
+      "sha256": "a03786a6b96635903ad3ed6945f2fe929612e2c783948317dc545925154d2c80"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-tasks-tasks-1440-dark-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-tasks-tasks-1440-dark-cjs.png",
+      "sha256": "deaf5c2b965ae09cb129f0077d6e45f3b4c90716061f3442265afb614630e662"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-tasks-tasks-1440-light-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-tasks-tasks-1440-light-cjs.png",
+      "sha256": "7139c27c3e4a178e209d72f1bd9f4708ad47d275374f57f7915d537c5bfff4f0"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-tasks-tasks-375-dark-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-tasks-tasks-375-dark-cjs.png",
+      "sha256": "882971809496eb846f3df124351a1c4d8b9327261a37ef8ba76059301638f429"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-tasks-tasks-375-light-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-tasks-tasks-375-light-cjs.png",
+      "sha256": "459b47ab1577793a32989137a8668de6d0ba0f00c5781df82ccaca69ad60061e"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-tasks-tasks-768-dark-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-tasks-tasks-768-dark-cjs.png",
+      "sha256": "d2cc34a7b87b57f54ab7e70bdb31b11a1a7eb5d15ebd9caee65fad6145ae04a7"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-tasks-tasks-768-light-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-tasks-tasks-768-light-cjs.png",
+      "sha256": "3cc33764db241a40f75a6888254fcf664073d1d147bb0276f9b69e1d88a378aa"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-timezone-1440-dark-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-timezone-1440-dark-cjs.png",
+      "sha256": "9e2e054d6f62bcc2e1c8e353b5e4ff1530af6b6e000c2fb13b99cd168675a26b"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-timezone-1440-light-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-timezone-1440-light-cjs.png",
+      "sha256": "554e14db6ac8733a06827c563817192489159f77893468a2693a6744b82d16e2"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-timezone-375-dark-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-timezone-375-dark-cjs.png",
+      "sha256": "273b21193f17d95168a0aee25a1169e70350ad88def9cd8833ce05d1ae4be553"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-timezone-375-light-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-timezone-375-light-cjs.png",
+      "sha256": "0f1407b4ba6ec2e1464225ae43fd98c289b0cdd62bb9a58adeaa322dcc2b9233"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-timezone-768-dark-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-timezone-768-dark-cjs.png",
+      "sha256": "71ba3c3aae0663024d7850f8ae71a25bfd02e4f4292069b1ce4b8e3043c1f9d8"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/testchat-0209-timezone-768-light-cjs.png",
+      "archived": "assets/0.2.9/testchat-0209-timezone-768-light-cjs.png",
+      "sha256": "58c8a44cafb907af6ab08c89a5baf7f4b1819318cb36856c2f53d3b66870a1c0"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-api-ui-api-key-1440x900-light.png",
+      "archived": "assets/0.2.9/0209-api-ui-api-key-1440x900-light.png",
+      "sha256": "f157ed9fc391a88ed6fc2007e4b2135b67b13ffc5dfb194a6f4c26b797f1987a",
+      "url": "http://127.0.0.1:59001/#/api-proxy",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "light"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-api-ui-api-key-1440x900-dark.png",
+      "archived": "assets/0.2.9/0209-api-ui-api-key-1440x900-dark.png",
+      "sha256": "6629477fecb7c326339f6a85e26adb3184678c450b91cbb004fee1e1979ac659",
+      "url": "http://127.0.0.1:59001/#/api-proxy",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "dark"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-api-ui-api-key-375x812-light.png",
+      "archived": "assets/0.2.9/0209-api-ui-api-key-375x812-light.png",
+      "sha256": "90a3681234fe7153ecf36a51ee0151ba49998cc9faf2e8421be293ed44448f17",
+      "url": "http://127.0.0.1:59001/#/api-proxy",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "theme": "light"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-api-ui-api-key-375x812-dark.png",
+      "archived": "assets/0.2.9/0209-api-ui-api-key-375x812-dark.png",
+      "sha256": "cb688d8812c7e28406cb0ce576006a0e788ae6afe3e66b44251cb14bf189faf1",
+      "url": "http://127.0.0.1:59001/#/api-proxy",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "theme": "dark"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-api-ui-api-key-768x1024-light.png",
+      "archived": "assets/0.2.9/0209-api-ui-api-key-768x1024-light.png",
+      "sha256": "662a86a4ebeb692e61d72fbbaf85ac6e4efe101f92a5ac63a6bafb191a193b58",
+      "url": "http://127.0.0.1:59001/#/api-proxy",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "theme": "light"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0209-api-ui-api-key-768x1024-dark.png",
+      "archived": "assets/0.2.9/0209-api-ui-api-key-768x1024-dark.png",
+      "sha256": "a3ae80bdb9fc721e2a993e84f38a77ff3153ac5b81f8e5496542ddb12babf390",
+      "url": "http://127.0.0.1:59001/#/api-proxy",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "theme": "dark"
+    }
+  ],
+  "limitations": [
+    "Browser fixtures do not prove a real second account, natural credential expiry, physical phone IME or external OAuth success.",
+    "MCP tools and native asynchronous SessionStart Hook success were not established.",
+    "Goal child usage uses native state; no real child-agent aggregation proof.",
+    "Cache proxy checks UI asset transitions; main candidate runtime rollback was not performed."
+  ],
+  "logsDirectory": "/home/Code/codexapp/output/0209"
+}
