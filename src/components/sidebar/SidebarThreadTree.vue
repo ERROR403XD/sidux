@@ -62,6 +62,7 @@
                       {{ threadAutomationCount(thread.id) }}
                     </span>
                   </span>
+                  <span v-if="goals?.[thread.id]" class="thread-row-automation-chip thread-row-goal-chip" :title="`持续目标 · ${goalStatusLabels[goals[thread.id]!.status]}`" aria-label="持续目标"><IconTablerTarget class="thread-row-automation-icon" /></span>
                   <span
                     v-if="thread.pendingRequestState"
                     class="thread-row-request-chip"
@@ -230,6 +231,7 @@
                     {{ threadAutomationCount(thread.id) }}
                   </span>
                 </span>
+                <span v-if="goals?.[thread.id]" class="thread-row-automation-chip thread-row-goal-chip" :title="`持续目标 · ${goalStatusLabels[goals[thread.id]!.status]}`" aria-label="持续目标"><IconTablerTarget class="thread-row-automation-icon" /></span>
                 <span
                   v-if="thread.pendingRequestState"
                   class="thread-row-request-chip"
@@ -435,6 +437,7 @@
                           {{ threadAutomationCount(thread.id) }}
                         </span>
                       </span>
+                      <span v-if="goals?.[thread.id]" class="thread-row-automation-chip thread-row-goal-chip" :title="`持续目标 · ${goalStatusLabels[goals[thread.id]!.status]}`" aria-label="持续目标"><IconTablerTarget class="thread-row-automation-icon" /></span>
                       <span
                         v-if="thread.pendingRequestState"
                         class="thread-row-request-chip"
@@ -564,6 +567,7 @@
                       {{ threadAutomationCount(thread.id) }}
                     </span>
                   </span>
+                  <span v-if="goals?.[thread.id]" class="thread-row-automation-chip thread-row-goal-chip" :title="`持续目标 · ${goalStatusLabels[goals[thread.id]!.status]}`" aria-label="持续目标"><IconTablerTarget class="thread-row-automation-icon" /></span>
                   <span
                     v-if="thread.pendingRequestState"
                     class="thread-row-request-chip"
@@ -909,6 +913,8 @@ import IconTablerFolder from '../icons/IconTablerFolder.vue'
 import IconTablerFolderOpen from '../icons/IconTablerFolderOpen.vue'
 import IconTablerGitFork from '../icons/IconTablerGitFork.vue'
 import IconTablerBolt from '../icons/IconTablerBolt.vue'
+import IconTablerTarget from '../icons/IconTablerTarget.vue'
+import { goalStatusLabels, type ThreadGoal } from '../../api/threadCommands'
 import IconTablerTrash from '../icons/IconTablerTrash.vue'
 import { useUiLanguage } from '../../composables/useUiLanguage'
 import { useFeedbackDiagnostics } from '../../composables/useFeedbackDiagnostics'
@@ -921,6 +927,7 @@ import { reconcilePinnedThreadIds } from './pinnedThreadUtils'
 const props = defineProps<{
   groups: UiProjectGroup[]
   models?: string[]
+  goals?: Record<string, ThreadGoal | null>
   projectDisplayNameById: Record<string, string>
   projectGitRepoByName: Record<string, boolean>
   projectCwdByName: Record<string, string>

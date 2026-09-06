@@ -42,13 +42,13 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import AppDialog from '../common/AppDialog.vue'
 import { APP_COMMANDS, buildComposerCommands, type AppCommandName, type AppCommandRequest } from './composerCommands'
 import { getMethodCatalog, subscribeCodexNotifications } from '../../api/codexGateway'
-import { compactThread, getThreadGoal, setThreadGoal, clearThreadGoal, validateGoalInput, formatGoalTokenBudget, type ThreadGoal } from '../../api/threadCommands'
+import { compactThread, getThreadGoal, setThreadGoal, clearThreadGoal, validateGoalInput, formatGoalTokenBudget, goalStatusLabels, type ThreadGoal } from '../../api/threadCommands'
 const props = defineProps<{
   request: AppCommandRequest; threadId: string; threadName: string; cwd: string; model: string; effort: string; busy: boolean; contextSummary: string
   run: (name: AppCommandName, value?: string) => Promise<void>
-  ensureThread: () => Promise<string>
+  ensureThread: (objective?: string) => Promise<string>
 }>()
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; 'goal-change': [goal: ThreadGoal | null, threadId: string] }>()
 const descriptor = computed(() => APP_COMMANDS.find(command => command.id === props.request.name))
 const title = computed(() => ({ goal: '持续目标', help: '命令帮助', status: '会话状态' }[props.request.name as 'goal' | 'help' | 'status'] ?? descriptor.value?.description ?? '会话操作'))
 const value = ref(props.threadName), objective = ref(''), budget = ref(''), goal = ref<ThreadGoal | null>(null)
@@ -56,7 +56,7 @@ const working = ref(false), loading = ref(false), supported = ref(true), error =
 let disposed = false, consumed = false, threadId = props.threadId, unsubscribe: (() => void) | undefined
 let pendingGoalNotification: ThreadGoal | null | undefined
 const consume = () => { if (!consumed) { props.request.complete(); consumed = true } }
-const goalLabels = { active: '运行中', paused: '已暂停', blocked: '需要处理', usageLimited: '用量受限', budgetLimited: '预算已到', complete: '已完成' }
+const goalLabels = goalStatusLabels
 const helpCommands = buildComposerCommands([], [])
 const unavailable = computed(() => descriptor.value?.requiresThread && !props.threadId ? '请先进入一个会话。' : descriptor.value?.idleOnly && props.busy ? '当前任务运行中，请等待结束后再操作。' : '')
 const actionLabel = computed(() => ({ compact: '开始压缩', review: '开始审查', rename: '保存名称', fork: '创建分支', copy: '复制回复', export: '导出 Markdown' }[props.request.name as 'compact' | 'review' | 'rename' | 'fork' | 'copy' | 'export'] ?? '打开'))
@@ -64,14 +64,19 @@ function close() { if (!working.value) emit('close') }
 async function action(fn: () => Promise<void>) {
   if (working.value || loading.value) return
   working.value = true; error.value = ''; feedback.value = ''
-  try { await fn() } catch (cause) { if (!disposed) error.value = cause instanceof Error ? cause.message : '操作失败' }
-  finally { working.value = false; if (pendingGoalNotification !== undefined) { goal.value = pendingGoalNotification; pendingGoalNotification = undefined } }
+  let succeeded = false
+  try { await fn(); succeeded = true } catch (cause) { if (!disposed) error.value = cause instanceof Error ? cause.message : '操作失败' }
+  finally {
+    working.value = false
+    if (pendingGoalNotification !== undefined) { goal.value = pendingGoalNotification; pendingGoalNotification = undefined }
+    if (succeeded && props.request.name === 'goal' && threadId) emit('goal-change', goal.value, threadId)
+  }
 }
 async function saveGoal() {
   await action(async () => {
     const patch = validateGoalInput(objective.value, budget.value)
     if (!supported.value) return
-    if (!threadId) { consume(); threadId = await props.ensureThread() }
+    if (!threadId) { consume(); threadId = await props.ensureThread(patch.objective) }
     const next = await setThreadGoal(threadId, { ...patch, status: goal.value?.status === 'paused' ? 'paused' : 'active' })
     if (disposed) return
     goal.value = next; consume();

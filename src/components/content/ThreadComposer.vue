@@ -198,6 +198,7 @@
               {{ t('Take photo') }}
             </button>
             <div class="thread-composer-attach-separator" />
+            <button class="thread-composer-attach-item" type="button" :disabled="isInteractionDisabled" @click="isAttachMenuOpen = false; emit('command', { name: 'goal', complete: () => {} })">持续目标</button>
             <div class="thread-composer-attach-separator" />
             <button
               v-if="isFastModeSupported"

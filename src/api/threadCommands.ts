@@ -3,6 +3,7 @@ export type ThreadGoal = {
   threadId: string; objective: string; status: 'active' | 'paused' | 'blocked' | 'usageLimited' | 'budgetLimited' | 'complete'
   tokenBudget?: number | null; tokensUsed: number; timeUsedSeconds: number; createdAt: number; updatedAt: number
 }
+export const goalStatusLabels = { active: '运行中', paused: '已暂停', blocked: '需要处理', usageLimited: '用量受限', budgetLimited: '预算已到', complete: '已完成' }
 export function parseGoalTokenBudget(value: string): number | null {
   const input = value.trim()
   if (!input) return null

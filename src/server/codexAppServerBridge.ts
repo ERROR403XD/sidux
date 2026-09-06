@@ -1,3 +1,4 @@
+import { ThreadGoalReader } from './threadGoalReader.js'
 import { normalizeAutomationModelSettings } from '../automationOptions.js'
 import { AutomationEngine } from './automationEngine.js'
 import { createAutomationRuntime } from './automationRuntime.js'
@@ -7077,10 +7078,11 @@ type SharedBridgeState = {
   telegramBridge: TelegramThreadBridge
   backendQueueProcessor: BackendQueueProcessor
   automationEngine: AutomationEngine
+  threadGoalReader: ThreadGoalReader
 }
 
 const SHARED_BRIDGE_KEY = '__codexRemoteSharedBridge__'
-const SHARED_BRIDGE_VERSION = 'automations-0190-v3'
+const SHARED_BRIDGE_VERSION = 'automations-0190-v4'
 
 function getSharedBridgeState(): SharedBridgeState {
   const globalScope = globalThis as typeof globalThis & {
@@ -7101,6 +7103,7 @@ function getSharedBridgeState(): SharedBridgeState {
   const appServer = new AppServerProcess()
   const terminalManager = new ThreadTerminalManager()
   const backendQueueProcessor = new BackendQueueProcessor(appServer)
+  const threadGoalReader = new ThreadGoalReader((method, params) => appServer.rpc(method, params))
   const automationEngine = new AutomationEngine(getCodexHomeDir(), createAutomationRuntime({
     rpc: (method, params) => appServer.rpc(method, params),
     accountBusy: () => getAccountAuthCoordinator().isAccountOperationInProgress(),
@@ -7111,10 +7114,11 @@ function getSharedBridgeState(): SharedBridgeState {
     } }),
   }))
   appServer.automationActivity = () => automationEngine.activity()
-  appServer.onNotification((notification) => automationEngine.notification(notification))
+  appServer.onNotification((notification) => { automationEngine.notification(notification); threadGoalReader.observe(notification) })
   const created: SharedBridgeState = {
     disposed: false,
     automationEngine,
+    threadGoalReader,
     version: SHARED_BRIDGE_VERSION,
     appServer,
     terminalManager,
@@ -7208,7 +7212,7 @@ async function buildThreadSearchIndex(appServer: AppServerProcess): Promise<Thre
 
 export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
   const sharedState = getSharedBridgeState()
-  const { appServer, terminalManager, methodCatalog, telegramBridge, backendQueueProcessor, automationEngine } = sharedState
+  const { appServer, terminalManager, methodCatalog, telegramBridge, backendQueueProcessor, automationEngine, threadGoalReader } = sharedState
   let threadSearchIndex: ThreadSearchIndex | null = null
   let threadSearchIndexPromise: Promise<ThreadSearchIndex> | null = null
 
@@ -9158,6 +9162,13 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         setJson(res, 200, { data: { queued: run.status === 'queued', run } })
         void automationEngine.tick()
         return
+      }
+      if (req.method === 'POST' && url.pathname === '/codex-api/thread-goals') {
+        const payload = asRecord(await readJsonBody(req))
+        if (!Array.isArray(payload?.threadIds) || payload.threadIds.length > 100 || payload.threadIds.some(id => typeof id !== 'string' || !id || id.length > 100)) {
+          setJson(res, 400, { error: '每次最多读取 100 个会话目标' }); return
+        }
+        setJson(res, 200, { data: await threadGoalReader.snapshot(payload.threadIds as string[]) }); return
       }
       if (req.method === 'GET' && url.pathname === '/codex-api/thread-automations') {
         const automationsByThreadId = await listThreadHeartbeatAutomations()

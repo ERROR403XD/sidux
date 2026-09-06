@@ -80,7 +80,7 @@
             </span>
           </button>
 
-          <SidebarThreadTree ref="sidebarThreadTreeRef" :groups="projectGroups" :models="availableModelIds" :project-display-name-by-id="projectDisplayNameById"
+          <SidebarThreadTree ref="sidebarThreadTreeRef" :groups="projectGroups" :models="availableModelIds" :goals="threadGoals" :project-display-name-by-id="projectDisplayNameById"
             :project-git-repo-by-name="projectGitRepoByName"
             :project-cwd-by-name="projectCwdByName"
             v-if="!isSidebarCollapsed"
@@ -1002,6 +1002,7 @@
 
               <template v-else>
                 <div class="content-thread">
+                  <ThreadGoalCard v-if="selectedGoal" :goal="selectedGoal" @manage="onComposerCommand({ name: 'goal', complete: () => {} })" />
                   <ThreadConversation ref="threadConversationRef" :messages="filteredMessages" :is-loading="isLoadingMessages"
                     :active-thread-id="composerThreadContextId" :cwd="composerCwd"
                     :live-overlay="liveOverlay"
@@ -1084,7 +1085,7 @@
     :thread-id="isHomeRoute ? '' : selectedThreadId || ''" :thread-name="isHomeRoute ? '' : selectedThread?.title || ''"
     :cwd="composerCwd" :model="composerSelectedModelId" :effort="selectedReasoningEffort"
     :busy="isSelectedThreadInProgress" :context-summary="commandContextSummary"
-    :run="runAppCommand" :ensure-thread="ensureCommandThread" @close="appCommandRequest = null"
+    :run="runAppCommand" :ensure-thread="ensureCommandThread" @goal-change="updateThreadGoal" @close="appCommandRequest = null"
   />
   <div v-if="projectZipExportStatus.phase !== 'idle'" class="project-zip-modal-backdrop" role="presentation">
     <div class="project-zip-modal" role="dialog" aria-modal="true" :aria-label="t('Export Project')" @click.stop>
@@ -1210,6 +1211,8 @@ import DesktopLayout from './components/layout/DesktopLayout.vue'
 import SidebarThreadTree from './components/sidebar/SidebarThreadTree.vue'
 import ContentHeader from './components/content/ContentHeader.vue'
 import ThreadComposer from './components/content/ThreadComposer.vue'
+import ThreadGoalCard from './components/content/ThreadGoalCard.vue'
+import { useThreadGoals } from './composables/useThreadGoals'
 import ThreadPendingRequestPanel from './components/content/ThreadPendingRequestPanel.vue'
 import QueuedMessages from './components/content/QueuedMessages.vue'
 import RateLimitStatus from './components/content/RateLimitStatus.vue'
@@ -3515,6 +3518,9 @@ async function syncAfterMobileResume(): Promise<void> {
   }
 }
 
+const goalThreadIds = computed(() => projectGroups.value.flatMap(group => group.threads.map(thread => thread.id)))
+const goalSelectedThreadId = computed(() => isHomeRoute.value ? '' : selectedThreadId.value || '')
+const { goals: threadGoals, selectedGoal, update: updateThreadGoal } = useThreadGoals(goalThreadIds, goalSelectedThreadId)
 const appCommandRequest = ref<AppCommandRequest | null>(null)
 const commandContextSummary = computed(() => {
   if (isHomeRoute.value) return '新会话尚无上下文用量'
@@ -3532,9 +3538,10 @@ function onComposerCommand(request: AppCommandRequest) {
   }
   appCommandRequest.value = request
 }
-async function ensureCommandThread(): Promise<string> {
+async function ensureCommandThread(objective?: string): Promise<string> {
   if (!isHomeRoute.value && selectedThreadId.value) return selectedThreadId.value
   const created = await startThread(composerCwd.value || undefined, composerSelectedModelId.value || undefined)
+  if (objective) await renameThreadById(created.threadId, '持续目标 · ' + [...objective.split('\n')[0]!].slice(0, 60).join(''))
   return created.threadId
 }
 async function runAppCommand(name: AppCommandName, value?: string): Promise<void> {
