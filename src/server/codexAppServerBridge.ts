@@ -6008,6 +6008,7 @@ export class AppServerProcess {
   private readonly liveStateCache = new Map<string, { data: unknown; turnCount: number; sessionSize: number }>()
   private chatgptAuthRefreshPromise: Promise<ChatgptAuthTokensRefreshResponse> | null = null
   private readonly activeTurnThreadIds = new Set<string>()
+  private activityRevision = 0
   private activeConfigSignature = ''
 
 
@@ -6154,6 +6155,7 @@ export class AppServerProcess {
   }
 
   notifyQueueChanged(threadId: string): void {
+    this.activityRevision++
     // Queue changes do not invalidate thread history or live item caches.
     for (const listener of this.notificationListeners) {
       listener({ method: 'codexapp/queue/changed', params: { threadId } })
@@ -6161,6 +6163,9 @@ export class AppServerProcess {
   }
 
   private emitNotification(notification: { method: string; params: unknown }): void {
+    if (/^(turn\/(started|completed|cancelled)|thread\/(started|status\/changed|goal\/updated)|server\/request(?:\/resolved)?|codexapp\/runtime\/stopped)$/.test(notification.method)) {
+      this.activityRevision++
+    }
     this.authRecovery.observe(notification.method, notification.params)
     const notificationThreadId = this.extractThreadIdFromParams(notification.params)
     if (notificationThreadId && notification.method === 'turn/started') {
@@ -6522,6 +6527,7 @@ export class AppServerProcess {
   }
 
   async getRuntimeQuiescenceSnapshot(): Promise<RuntimeQuiescenceSnapshot> {
+    const activityRevision = this.activityRevision
     const activeTurnThreadIds = new Set(this.activeTurnThreadIds)
     let cursor: string | null = null
     let pageCount = 0
@@ -6573,6 +6579,7 @@ export class AppServerProcess {
     const automationRunIds = this.automationActivity()
     const backgroundThreadIds = activeTurnThreadIds.size || queuedThreadIds.length || automationRunIds.length
       || pendingServerRequestCount || pendingTurnMutationCount ? [] : await this.backgroundActivity()
+    if (activityRevision !== this.activityRevision) throw new Error('核对期间运行状态已变化，请稍后重试')
     return {
       idle: automationRunIds.length === 0 && activeTurnThreadIds.size === 0
         && backgroundThreadIds.length === 0

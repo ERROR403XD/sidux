@@ -112,6 +112,7 @@ describe('codexapp release switch script', () => {
       if (request.url === '/codex-api/automation-runtime' || request.url === '/codex-api/automation-runtime/drain') response.end(JSON.stringify({ data: { ready: true, draining: true, activeCount: 0, queuedCount: 0 } }))
       else if (request.url === '/codex-api/thread-queue-state') response.end(JSON.stringify({ data: {} }))
       else if (request.url === '/codex-api/server-requests/pending') response.end(JSON.stringify({ data: [] }))
+      else if (request.url === '/codex-api/meta/methods') response.end(JSON.stringify({ data: [] }))
       else if (request.url === '/codex-api/rpc') response.end(JSON.stringify({ result: { data: [], nextCursor: null } }))
       else response.end('{}')
     })

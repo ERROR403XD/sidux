@@ -69,3 +69,14 @@ it('includes residual commands in account quiescence and rejects unknown thread 
   rpc.mockResolvedValue({})
   await expect(runtime.getRuntimeQuiescenceSnapshot()).rejects.toThrow('核对')
 })
+
+it('refuses an idle snapshot when native activity changes during the background scan', async () => {
+  const runtime = new AppServerProcess()
+  vi.spyOn(runtime, 'rpc').mockResolvedValue({ data: [], nextCursor: null })
+  runtime.queueStateReader = async () => ({})
+  runtime.backgroundActivity = async () => {
+    runtime.notifyQueueChanged('new-work')
+    return []
+  }
+  await expect(runtime.getRuntimeQuiescenceSnapshot()).rejects.toThrow('状态已变化')
+})

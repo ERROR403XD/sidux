@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 const exec = promisify(execFile)
 
 describe('candidate replacement', () => {
-  it.each(['build', 'busy', 'invalid', 'start', 'success'])('preserves service boundaries for %s', async (scenario) => {
+  it.each(['build', 'busy', 'background', 'invalid', 'start', 'success'])('preserves service boundaries for %s', async (scenario) => {
     const root = await mkdtemp(join(tmpdir(), 'codexapp-deploy-test-'))
     const bin = join(root, 'bin')
     const scripts = join(root, 'scripts')
@@ -24,6 +24,16 @@ describe('candidate replacement', () => {
         response.end(JSON.stringify({ data: scenario === 'invalid' ? null : {} }))
       } else if (request.url === '/codex-api/server-requests/pending') {
         response.end(JSON.stringify({ data: [] }))
+      } else if (request.url === '/codex-api/meta/methods') {
+        response.end(JSON.stringify({ data: scenario === 'background' ? ['thread/loaded/list', 'thread/backgroundTerminals/list'] : [] }))
+      } else if (request.url === '/codex-api/rpc' && scenario === 'background') {
+        let raw = ''
+        request.on('data', chunk => { raw += chunk })
+        request.on('end', () => {
+          const { method } = JSON.parse(raw)
+          const data = method === 'thread/loaded/list' ? ['fixture'] : method === 'thread/backgroundTerminals/list' ? [{ processId: '17' }] : []
+          response.end(JSON.stringify({ result: { data, nextCursor: null } }))
+        })
       } else if (request.url === '/codex-api/rpc') {
         response.end(JSON.stringify({ result: { data: scenario === 'busy' ? [{ id: 'fixture', status: { type: 'active' } }] : [], nextCursor: null } }))
       } else response.end('{}')
@@ -51,7 +61,7 @@ describe('candidate replacement', () => {
         env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, CODEXAPP_REPLACE_DEV: '1', CODEXAPP_MULTI_ACCOUNT_CONTAINER: 'fixture-only', CODEXAPP_MULTI_ACCOUNT_PORT: String(address.port), DEPLOY_TEST_LOG: log, DEPLOY_TEST_SCENARIO: scenario },
       }).then(() => 0, error => error.code)
       const calls = await readFile(log, 'utf8')
-      if (scenario === 'build' || scenario === 'busy' || scenario === 'invalid') {
+      if (scenario === 'build' || scenario === 'busy' || scenario === 'background' || scenario === 'invalid') {
         expect(result).not.toBe(0)
         expect(calls).not.toContain('docker stop')
         expect(calls).not.toContain('docker rm')
