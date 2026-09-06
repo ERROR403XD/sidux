@@ -1,3 +1,5 @@
+import { normalizeThreadQueueState, type StoredQueuedMessage, type ThreadQueueState, type ThreadQueueOperation, type ThreadQueueResult } from '../threadQueue'
+export type { StoredQueuedMessage, ThreadQueueState } from '../threadQueue'
 import {
   fetchRpcMethodCatalog,
   fetchRpcNotificationCatalog,
@@ -282,17 +284,6 @@ export type WorkspaceRootsState = {
 
 let workspaceRootsStatePromise: Promise<WorkspaceRootsState> | null = null
 let cachedWorkspaceRootsState: WorkspaceRootsState | null = null
-
-export type StoredQueuedMessage = {
-  id: string
-  text: string
-  imageUrls: string[]
-  skills: Array<{ name: string; path: string }>
-  fileAttachments: Array<{ label: string; path: string; fsPath: string }>
-  collaborationMode: CollaborationModeKind
-}
-
-export type ThreadQueueState = Record<string, StoredQueuedMessage[]>
 
 export type ComposerFileSuggestion = {
   path: string
@@ -2596,62 +2587,6 @@ function normalizeWorkspaceRootsState(payload: unknown): WorkspaceRootsState {
   }
 }
 
-function normalizeStoredQueuedMessage(value: unknown): StoredQueuedMessage | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
-  const record = value as Record<string, unknown>
-  const id = typeof record.id === 'string' ? record.id.trim() : ''
-  if (!id) return null
-
-  const imageUrls = Array.isArray(record.imageUrls)
-    ? record.imageUrls.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-    : []
-  const skills = Array.isArray(record.skills)
-    ? record.skills.flatMap((item) => {
-      if (!item || typeof item !== 'object' || Array.isArray(item)) return []
-      const itemRecord = item as Record<string, unknown>
-      const name = typeof itemRecord.name === 'string' ? itemRecord.name.trim() : ''
-      const path = typeof itemRecord.path === 'string' ? itemRecord.path.trim() : ''
-      return name && path ? [{ name, path }] : []
-    })
-    : []
-  const fileAttachments = Array.isArray(record.fileAttachments)
-    ? record.fileAttachments.flatMap((item) => {
-      if (!item || typeof item !== 'object' || Array.isArray(item)) return []
-      const itemRecord = item as Record<string, unknown>
-      const label = typeof itemRecord.label === 'string' ? itemRecord.label.trim() : ''
-      const path = typeof itemRecord.path === 'string' ? itemRecord.path.trim() : ''
-      const fsPath = typeof itemRecord.fsPath === 'string' ? itemRecord.fsPath.trim() : ''
-      return label && path && fsPath ? [{ label, path, fsPath }] : []
-    })
-    : []
-
-  return {
-    id,
-    text: typeof record.text === 'string' ? record.text : '',
-    imageUrls,
-    skills,
-    fileAttachments,
-    collaborationMode: record.collaborationMode === 'plan' ? 'plan' : 'default',
-  }
-}
-
-function normalizeThreadQueueState(value: unknown): ThreadQueueState {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
-  const state: ThreadQueueState = {}
-  for (const [threadId, rawMessages] of Object.entries(value as Record<string, unknown>)) {
-    const normalizedThreadId = threadId.trim()
-    if (!normalizedThreadId || !Array.isArray(rawMessages)) continue
-    const messages = rawMessages.flatMap((item) => {
-      const message = normalizeStoredQueuedMessage(item)
-      return message ? [message] : []
-    })
-    if (messages.length > 0) {
-      state[normalizedThreadId] = messages
-    }
-  }
-  return state
-}
-
 export async function getWorkspaceRootsState(): Promise<WorkspaceRootsState> {
   if (cachedWorkspaceRootsState) {
     return cloneWorkspaceRootsState(cachedWorkspaceRootsState)
@@ -2709,15 +2644,15 @@ export async function getThreadQueueState(): Promise<ThreadQueueState> {
   return normalizeThreadQueueState(envelope.data)
 }
 
-export async function setThreadQueueState(nextState: ThreadQueueState): Promise<void> {
+export async function mutateThreadQueueState(operation: ThreadQueueOperation): Promise<ThreadQueueResult> {
   const response = await fetch('/codex-api/thread-queue-state', {
-    method: 'PUT',
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(normalizeThreadQueueState(nextState)),
+    body: JSON.stringify(operation),
   })
-  if (!response.ok) {
-    throw new Error('Failed to save thread queue state')
-  }
+  const payload = await response.json()
+  if (!response.ok) throw new Error(payload.error || '队列保存失败，请重试')
+  return { state: normalizeThreadQueueState(payload.data?.state), removed: payload.data?.removed }
 }
 
 export async function createWorktree(sourceCwd: string, baseBranch?: string): Promise<WorktreeCreateResult> {

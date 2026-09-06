@@ -1,3 +1,4 @@
+import { applyThreadQueueOperation, normalizeThreadQueueState, type StoredQueuedMessage, type ThreadQueueState } from '../threadQueue.js'
 import { ThreadGoalReader } from './threadGoalReader.js'
 import { normalizeAutomationModelSettings } from '../automationOptions.js'
 import { AutomationEngine } from './automationEngine.js'
@@ -5216,17 +5217,6 @@ async function writePinnedThreadIds(threadIds: string[]): Promise<void> {
 const FIRST_LAUNCH_PLUGINS_CARD_DISMISSED_KEY = 'first-launch-plugins-card-dismissed'
 const THREAD_QUEUE_STATE_KEY = 'thread-queue-state'
 
-type StoredQueuedMessage = {
-  id: string
-  text: string
-  imageUrls: string[]
-  skills: Array<{ name: string; path: string }>
-  fileAttachments: Array<{ label: string; path: string; fsPath: string }>
-  collaborationMode: 'default' | 'plan'
-}
-
-type ThreadQueueState = Record<string, StoredQueuedMessage[]>
-
 type BackendQueuedTurn = {
   threadId: string
   message: StoredQueuedMessage
@@ -5240,65 +5230,6 @@ type ThreadQueueStateUpdate<T> = {
 type ResolvedCollaborationModeSettings = {
   model: string
   reasoningEffort: ReasoningEffort | null
-}
-
-function normalizeStoredQueuedMessage(value: unknown): StoredQueuedMessage | null {
-  const record = asRecord(value)
-  if (!record) return null
-
-  const id = typeof record.id === 'string' ? record.id.trim() : ''
-  if (!id) return null
-
-  const normalizeNamedPathItems = (items: unknown): Array<{ name: string; path: string }> => {
-    if (!Array.isArray(items)) return []
-    return items.flatMap((item) => {
-      const itemRecord = asRecord(item)
-      if (!itemRecord) return []
-      const name = typeof itemRecord.name === 'string' ? itemRecord.name.trim() : ''
-      const path = typeof itemRecord.path === 'string' ? itemRecord.path.trim() : ''
-      return name && path ? [{ name, path }] : []
-    })
-  }
-
-  const normalizeFileAttachments = (items: unknown): Array<{ label: string; path: string; fsPath: string }> => {
-    if (!Array.isArray(items)) return []
-    return items.flatMap((item) => {
-      const itemRecord = asRecord(item)
-      if (!itemRecord) return []
-      const label = typeof itemRecord.label === 'string' ? itemRecord.label.trim() : ''
-      const path = typeof itemRecord.path === 'string' ? itemRecord.path.trim() : ''
-      const fsPath = typeof itemRecord.fsPath === 'string' ? itemRecord.fsPath.trim() : ''
-      return label && path && fsPath ? [{ label, path, fsPath }] : []
-    })
-  }
-
-  return {
-    id,
-    text: typeof record.text === 'string' ? record.text : '',
-    imageUrls: normalizeStringArray(record.imageUrls),
-    skills: normalizeNamedPathItems(record.skills),
-    fileAttachments: normalizeFileAttachments(record.fileAttachments),
-    collaborationMode: record.collaborationMode === 'plan' ? 'plan' : 'default',
-  }
-}
-
-function normalizeThreadQueueState(value: unknown): ThreadQueueState {
-  const record = asRecord(value)
-  if (!record) return {}
-
-  const state: ThreadQueueState = {}
-  for (const [threadId, rawMessages] of Object.entries(record)) {
-    const normalizedThreadId = threadId.trim()
-    if (!normalizedThreadId || !Array.isArray(rawMessages)) continue
-    const messages = rawMessages.flatMap((item) => {
-      const message = normalizeStoredQueuedMessage(item)
-      return message ? [message] : []
-    })
-    if (messages.length > 0) {
-      state[normalizedThreadId] = messages
-    }
-  }
-  return state
 }
 
 let threadQueueMutationChain: Promise<unknown> = Promise.resolve()
@@ -5343,25 +5274,6 @@ async function withThreadQueueStateUpdate<T>(
   })
   threadQueueMutationChain = run.catch(() => {})
   return run
-}
-
-async function writeThreadQueueState(nextState: ThreadQueueState): Promise<void> {
-  await withThreadQueueStateUpdate(() => ({
-    nextState: normalizeThreadQueueState(nextState),
-    result: undefined,
-  }))
-}
-
-async function appendThreadQueuedMessage(threadId: string, message: StoredQueuedMessage): Promise<void> {
-  const normalizedThreadId = threadId.trim()
-  if (!normalizedThreadId) throw new Error('threadId is required')
-  await withThreadQueueStateUpdate((state) => ({
-    nextState: {
-      ...state,
-      [normalizedThreadId]: [...(state[normalizedThreadId] ?? []), message],
-    },
-    result: undefined,
-  }))
 }
 
 function normalizeReasoningEffort(value: unknown): ReasoningEffort | '' {
@@ -6221,6 +6133,13 @@ class AppServerProcess {
     // Handle server-initiated JSON-RPC requests (approvals, dynamic tool calls, etc.).
     if (typeof message.id === 'number' && typeof message.method === 'string') {
       this.handleServerRequest(message.id, message.method, message.params ?? null)
+    }
+  }
+
+  notifyQueueChanged(threadId: string): void {
+    // Queue changes do not invalidate thread history or live item caches.
+    for (const listener of this.notificationListeners) {
+      listener({ method: 'codexapp/queue/changed', params: { threadId } })
     }
   }
 
@@ -8848,15 +8767,23 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
       }
 
       if (req.method === 'PUT' && url.pathname === '/codex-api/thread-queue-state') {
-        const payload = await readJsonBody(req)
-        const record = asRecord(payload)
-        if (!record) {
-          setJson(res, 400, { error: 'Invalid body: expected object' })
-          return
+        setJson(res, 409, { error: '队列接口已更新，请刷新页面后重试；服务器队列未修改' })
+        return
+      }
+
+      if (req.method === 'POST' && url.pathname === '/codex-api/thread-queue-state') {
+        const operation = await readJsonBody(req)
+        try {
+          const result = await withThreadQueueStateUpdate((state) => {
+            const result = applyThreadQueueOperation(state, operation)
+            return { nextState: result.state, result }
+          })
+          setJson(res, 200, { data: result })
+          appServer.notifyQueueChanged(String(asRecord(operation)?.threadId ?? ''))
+          backendQueueProcessor.scheduleThreadQueueDrain(String(asRecord(operation)?.threadId ?? ''), 0)
+        } catch (error) {
+          setJson(res, 409, { error: error instanceof Error ? error.message : '队列保存失败' })
         }
-        await writeThreadQueueState(normalizeThreadQueueState(record))
-        void backendQueueProcessor.scheduleAllQueuedThreads()
-        setJson(res, 200, { ok: true })
         return
       }
 

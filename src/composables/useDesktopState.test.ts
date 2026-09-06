@@ -1,3 +1,4 @@
+import { applyThreadQueueOperation, type ThreadQueueState } from '../threadQueue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildWorkspaceRootsProjectOrderState,
@@ -34,7 +35,7 @@ const gatewayMocks = vi.hoisted(() => ({
   revertThreadFileChanges: vi.fn(),
   rollbackThread: vi.fn(),
   setCodexSpeedMode: vi.fn(),
-  setThreadQueueState: vi.fn(),
+  mutateThreadQueueState: vi.fn(),
   setWorkspaceRootsState: vi.fn(),
   startThread: vi.fn(),
   startThreadTurn: vi.fn(),
@@ -1193,5 +1194,49 @@ describe('findAdjacentThreadId', () => {
 
   it('returns no fallback when there is no adjacent thread', () => {
     expect(findAdjacentThreadId([thread('selected-thread', '/tmp/project')], 'selected-thread')).toBe('')
+  })
+})
+
+
+describe('durable queue lifecycle', () => {
+  async function busyState() {
+    installTestWindow()
+    gatewayMocks.resumeThread.mockResolvedValue(null)
+    gatewayMocks.getThreadDetail.mockResolvedValue({ messages: [], inProgress: true, activeTurnId: 'turn-queue', turnIndexByTurnId: {}, hasMoreOlder: false })
+    gatewayMocks.getPendingServerRequests.mockResolvedValue([])
+    gatewayMocks.subscribeCodexNotifications.mockReturnValue(() => {})
+    const state = useDesktopState()
+    state.primeSelectedThread('queue-thread')
+    await state.loadMessages('queue-thread')
+    return state
+  }
+
+  it('keeps saved queues when polling is stopped and restarted for account refresh', async () => {
+    let saved: ThreadQueueState = {}
+    gatewayMocks.mutateThreadQueueState.mockImplementation(async operation => {
+      const result = applyThreadQueueOperation(saved, operation)
+      saved = result.state
+      return result
+    })
+    gatewayMocks.getThreadQueueState.mockImplementation(async () => saved)
+    const state = await busyState()
+    await state.sendMessageToSelectedThread('keep after account refresh')
+    expect(state.selectedThreadQueuedMessages.value).toHaveLength(1)
+    const savedId = state.selectedThreadQueuedMessages.value[0]!.id
+    state.stopPolling()
+    state.startPolling()
+    expect(state.selectedThreadQueuedMessages.value[0]?.id).toBe(savedId)
+    expect(saved['queue-thread']?.[0]?.id).toBe(savedId)
+    expect(gatewayMocks.mutateThreadQueueState).toHaveBeenCalledTimes(1)
+    expect(gatewayMocks.mutateThreadQueueState.mock.calls[0]![0].type).toBe('add')
+    state.stopPolling()
+  })
+
+  it('reports failed saves and does not claim an unsaved message was queued', async () => {
+    gatewayMocks.mutateThreadQueueState.mockRejectedValueOnce(new Error('fixture save failed'))
+    const state = await busyState()
+    await expect(state.sendMessageToSelectedThread('retain draft')).rejects.toThrow('fixture save failed')
+    expect(state.error.value).toBe('fixture save failed')
+    expect(state.selectedThreadQueuedMessages.value).toEqual([])
   })
 })

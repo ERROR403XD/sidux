@@ -1498,6 +1498,7 @@ const {
   interruptSelectedThreadTurn,
   selectedThreadQueuedMessages,
   removeQueuedMessage,
+  restoreQueuedMessage,
   reorderQueuedMessage,
   steerQueuedMessage,
   setSelectedCollaborationMode,
@@ -3569,7 +3570,7 @@ async function runAppCommand(name: AppCommandName, value?: string): Promise<void
   }
 }
 
-function onSubmitThreadMessage(payload: { text: string; imageUrls: string[]; fileAttachments: Array<{ label: string; path: string; fsPath: string }>; skills: Array<{ name: string; path: string }>; mode: 'steer' | 'queue' }): void {
+function onSubmitThreadMessage(payload: { text: string; imageUrls: string[]; fileAttachments: Array<{ label: string; path: string; fsPath: string }>; skills: Array<{ name: string; path: string }>; mode: 'steer' | 'queue'; complete?: (saved: boolean) => void }): void {
   const text = payload.text
   scheduleMobileConversationJumpToLatest()
   const editingState = editingQueuedMessageState.value
@@ -3579,15 +3580,19 @@ function onSubmitThreadMessage(payload: { text: string; imageUrls: string[]; fil
     && editingState.threadId === selectedThreadId.value
       ? editingState.queueIndex
       : undefined
-  editingQueuedMessageState.value = null
   if (isHomeRoute.value) {
     void submitFirstMessageForNewThread(text, payload.imageUrls, payload.skills, payload.fileAttachments)
     return
   }
   void sendMessageToSelectedThread(text, payload.imageUrls, payload.skills, payload.mode, payload.fileAttachments, queueInsertIndex)
+    .then(() => {
+      editingQueuedMessageState.value = null
+      payload.complete?.(true)
+    })
+    .catch(() => payload.complete?.(false))
 }
 
-function onEditQueuedMessage(messageId: string): void {
+async function onEditQueuedMessage(messageId: string): Promise<void> {
   const queueIndex = selectedThreadQueuedMessages.value.findIndex((item) => item.id === messageId)
   const message = queueIndex >= 0 ? selectedThreadQueuedMessages.value[queueIndex] : undefined
   const composer = threadComposerRef.value
@@ -3596,6 +3601,15 @@ function onEditQueuedMessage(messageId: string): void {
   if (composer.hasUnsavedDraft()) {
     const shouldReplace = window.confirm('Replace the current draft with this queued message for editing?')
     if (!shouldReplace) return
+  }
+
+  const originalThreadId = selectedThreadId.value
+  const beforeId = selectedThreadQueuedMessages.value[queueIndex + 1]?.id
+  const removed = await removeQueuedMessage(messageId)
+  if (!removed) return
+  if (selectedThreadId.value !== originalThreadId) {
+    if (originalThreadId) await restoreQueuedMessage(originalThreadId, removed, beforeId).catch(() => {})
+    return
   }
 
   editingQueuedMessageState.value = selectedThreadId.value
@@ -3608,7 +3622,6 @@ function onEditQueuedMessage(messageId: string): void {
     skills: message.skills.map((skill) => ({ ...skill })),
   }
   composer.hydrateDraft(payload)
-  removeQueuedMessage(messageId)
 }
 
 

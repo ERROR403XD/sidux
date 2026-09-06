@@ -1,3 +1,4 @@
+import type { ThreadQueueOperation, ThreadQueueResult } from '../threadQueue'
 import { computed, ref } from 'vue'
 import {
 
@@ -22,7 +23,7 @@ import {
   getThreadQueueState,
   getWorkspaceRootsState,
   setCodexSpeedMode,
-  setThreadQueueState,
+  mutateThreadQueueState,
   setWorkspaceRootsState,
   getThreadTitleCache,
   persistThreadTitle,
@@ -34,7 +35,7 @@ import {
   startThreadTurn,
   type RpcNotification,
   type SkillInfo,
-  type ThreadQueueState,
+
   type WorkspaceRootsState,
 } from '../api/codexGateway'
 import { CodexApiError } from '../api/codexErrors'
@@ -2268,11 +2269,6 @@ export function useDesktopState() {
     threadListedByServerById.value = pruneThreadStateMap(threadListedByServerById.value, activeThreadIds)
     persistedUserMessageByThreadId.value = pruneThreadStateMap(persistedUserMessageByThreadId.value, activeThreadIds)
     threadModelProviderByThreadId.value = pruneThreadStateMap(threadModelProviderByThreadId.value, activeThreadIds)
-    const nextQueuedMessages = pruneThreadStateMap(queuedMessagesByThreadId.value, activeThreadIds)
-    if (nextQueuedMessages !== queuedMessagesByThreadId.value) {
-      queuedMessagesByThreadId.value = nextQueuedMessages
-      persistQueueState()
-    }
     threadTokenUsageByThreadId.value = pruneThreadStateMap(threadTokenUsageByThreadId.value, activeThreadIds)
     eventUnreadByThreadId.value = pruneThreadStateMap(eventUnreadByThreadId.value, activeThreadIds)
     inProgressById.value = pruneThreadStateMap(inProgressById.value, activeThreadIds)
@@ -4176,40 +4172,39 @@ export function useDesktopState() {
     applyThreadFlags()
   }
 
-  function normalizeQueueStateForPersistence(state: Record<string, QueuedMessage[]>): ThreadQueueState {
-    const next: ThreadQueueState = {}
-    for (const [threadId, queue] of Object.entries(state)) {
-      const normalizedThreadId = threadId.trim()
-      if (!normalizedThreadId || queue.length === 0) continue
-      next[normalizedThreadId] = queue.map((message) => ({
-        id: message.id,
-        text: message.text,
-        imageUrls: [...message.imageUrls],
-        skills: message.skills.map((skill) => ({ name: skill.name, path: skill.path })),
-        fileAttachments: message.fileAttachments.map((attachment) => ({
-          label: attachment.label,
-          path: attachment.path,
-          fsPath: attachment.fsPath,
-        })),
-        collaborationMode: message.collaborationMode,
-      }))
-    }
-    return next
+  let queueMutationChain: Promise<unknown> = Promise.resolve()
+  let queueRequestGeneration = 0
+
+  function commitQueueOperation(operation: ThreadQueueOperation): Promise<ThreadQueueResult> {
+    queueRequestGeneration += 1
+    const pending = queueMutationChain.then(async () => {
+      try {
+        const result = await mutateThreadQueueState(operation)
+        queuedMessagesByThreadId.value = result.state
+        return result
+      } catch (cause) {
+        error.value = cause instanceof Error ? cause.message : '队列保存失败，请重试'
+        throw cause
+      }
+    })
+    queueMutationChain = pending.catch(() => {})
+    return pending
   }
 
-  function persistQueueState(): void {
-    void setThreadQueueState(normalizeQueueStateForPersistence(queuedMessagesByThreadId.value)).catch(() => {
-      // Queue persistence is best-effort; keep the current in-memory queue usable.
-    })
+  async function refreshQueueState(): Promise<void> {
+    const generation = ++queueRequestGeneration
+    await queueMutationChain
+    const state = await getThreadQueueState()
+    if (generation === queueRequestGeneration) queuedMessagesByThreadId.value = state
   }
 
   async function loadPersistedQueueStateIfNeeded(): Promise<void> {
     if (hasLoadedPersistedQueueState) return
-    hasLoadedPersistedQueueState = true
     try {
-      queuedMessagesByThreadId.value = await getThreadQueueState()
+      await refreshQueueState()
+      hasLoadedPersistedQueueState = true
     } catch {
-      // Backend queue state is optional during startup.
+      // Retry at the next refresh; a temporary read failure must not erase queues.
     }
   }
 
@@ -4856,28 +4851,22 @@ export function useDesktopState() {
 
     if (isInProgress && mode === 'queue') {
       const queue = queuedMessagesByThreadId.value[threadId] ?? []
-      const id = `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-      const nextQueue = [...queue]
       const insertIndex = typeof queueInsertIndex === 'number'
-        ? Math.max(0, Math.min(queueInsertIndex, nextQueue.length))
-        : nextQueue.length
-      nextQueue.splice(insertIndex, 0, {
-        id,
-        text: nextText,
-        imageUrls,
-        skills,
-        fileAttachments,
-        collaborationMode: collaborationModeOverride === 'plan'
-          ? 'plan'
-          : collaborationModeOverride === 'default'
-            ? 'default'
-            : selectedCollaborationMode.value,
+        ? Math.max(0, Math.min(queueInsertIndex, queue.length))
+        : queue.length
+      await commitQueueOperation({
+        type: 'add',
+        threadId,
+        beforeId: queue[insertIndex]?.id,
+        message: {
+          id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          text: nextText,
+          imageUrls,
+          skills,
+          fileAttachments,
+          collaborationMode: collaborationModeOverride ?? selectedCollaborationMode.value,
+        },
       })
-      queuedMessagesByThreadId.value = {
-        ...queuedMessagesByThreadId.value,
-        [threadId]: nextQueue,
-      }
-      persistQueueState()
       return
     }
 
@@ -5153,7 +5142,7 @@ export function useDesktopState() {
       [threadId]: true,
     }
     try {
-      queuedMessagesByThreadId.value = await getThreadQueueState()
+      await refreshQueueState()
     } catch {
       // Backend queue state is optional during transient bridge failures.
     } finally {
@@ -5521,6 +5510,10 @@ export function useDesktopState() {
     if (stopNotificationStream) return
     void loadPendingServerRequestsFromBridge()
     stopNotificationStream = subscribeCodexNotifications((notification) => {
+      if (notification.method === 'codexapp/queue/changed') {
+        void refreshQueueState().catch(() => {})
+        return
+      }
       if (notification.method === 'ready') {
         clearAllTransientTurnErrors()
         void recoverBridgeState()
@@ -5600,9 +5593,9 @@ export function useDesktopState() {
     interruptBlockedUntilPersistedByThreadId.value = {}
     threadListedByServerById.value = {}
     persistedUserMessageByThreadId.value = {}
-    queuedMessagesByThreadId.value = {}
+    hasLoadedPersistedQueueState = false
+    queueRequestGeneration += 1
     queueProcessingByThreadId.value = {}
-    persistQueueState()
     codexRateLimit.value = null
     threadTokenUsageByThreadId.value = {}
   }
@@ -5613,48 +5606,43 @@ export function useDesktopState() {
     return queuedMessagesByThreadId.value[threadId] ?? []
   })
 
-  function removeQueuedMessage(messageId: string): void {
+  async function removeQueuedMessage(messageId: string): Promise<QueuedMessage | null> {
     const threadId = selectedThreadId.value
-    if (!threadId) return
-    const queue = queuedMessagesByThreadId.value[threadId]
-    if (!queue) return
-    const next = queue.filter((m) => m.id !== messageId)
-    queuedMessagesByThreadId.value = next.length > 0
-      ? { ...queuedMessagesByThreadId.value, [threadId]: next }
-      : omitKey(queuedMessagesByThreadId.value, threadId)
-    persistQueueState()
-  }
-
-  function reorderQueuedMessage(draggedId: string, targetId: string): void {
-    const threadId = selectedThreadId.value
-    if (!threadId) return
-    const queue = queuedMessagesByThreadId.value[threadId]
-    if (!queue) return
-
-    const fromIndex = queue.findIndex((m) => m.id === draggedId)
-    const toIndex = queue.findIndex((m) => m.id === targetId)
-    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return
-
-    const next = [...queue]
-    const [moved] = next.splice(fromIndex, 1)
-    next.splice(toIndex, 0, moved)
-    queuedMessagesByThreadId.value = {
-      ...queuedMessagesByThreadId.value,
-      [threadId]: next,
+    if (!threadId) return null
+    try {
+      const result = await commitQueueOperation({ type: 'remove', threadId, messageId })
+      return result.removed ?? null
+    } catch {
+      void refreshQueueState().catch(() => {})
+      return null
     }
-    persistQueueState()
   }
 
-  function steerQueuedMessage(messageId: string): void {
+  async function reorderQueuedMessage(draggedId: string, targetId: string): Promise<void> {
+    const threadId = selectedThreadId.value
+    if (!threadId || draggedId === targetId) return
+    try {
+      await commitQueueOperation({ type: 'move', threadId, messageId: draggedId, targetId })
+    } catch {
+      void refreshQueueState().catch(() => {})
+    }
+  }
+
+  function restoreQueuedMessage(threadId: string, message: QueuedMessage, beforeId?: string): Promise<ThreadQueueResult> {
+    return commitQueueOperation({ type: 'add', threadId, message, beforeId })
+  }
+
+  async function steerQueuedMessage(messageId: string): Promise<void> {
     const threadId = selectedThreadId.value
     if (!threadId) return
-    const queue = queuedMessagesByThreadId.value[threadId]
-    if (!queue) return
-    const msg = queue.find((m) => m.id === messageId)
-    if (!msg) return
-    removeQueuedMessage(messageId)
-    setSelectedCollaborationMode(msg.collaborationMode)
-    void sendMessageToSelectedThread(msg.text, msg.imageUrls, msg.skills, 'steer', msg.fileAttachments)
+    const message = await removeQueuedMessage(messageId)
+    if (!message) return
+    try {
+      await startTurnForThread(threadId, message.text, message.imageUrls, message.skills, message.fileAttachments, message.collaborationMode)
+    } catch (cause) {
+      await commitQueueOperation({ type: 'add', threadId, message }).catch(() => {})
+      error.value = cause instanceof Error ? cause.message : '引导失败，消息已保留在队列中'
+    }
   }
 
   function primeSelectedThread(threadId: string, options: { persist?: boolean } = {}): void {
@@ -5712,6 +5700,7 @@ export function useDesktopState() {
     interruptSelectedThreadTurn,
     selectedThreadQueuedMessages,
     removeQueuedMessage,
+    restoreQueuedMessage,
     reorderQueuedMessage,
     steerQueuedMessage,
     setSelectedCollaborationMode,

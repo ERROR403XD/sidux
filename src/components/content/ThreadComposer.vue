@@ -466,6 +466,7 @@ export type SubmitPayload = {
   fileAttachments: FileAttachment[]
   skills: Array<{ name: string; path: string }>
   mode: 'steer' | 'queue'
+  complete?: (saved: boolean) => void
 }
 
 export type ThreadComposerExposed = {
@@ -712,7 +713,9 @@ const skillDropdownOptions = computed(() =>
   ],
 )
 
+const queueSubmissionPending = ref(false)
 const canSubmit = computed(() => {
+  if (queueSubmissionPending.value) return false
   if (props.disabled) return false
   if (props.isUpdatingSpeedMode) return false
   if (!props.activeThreadId) return false
@@ -1025,27 +1028,34 @@ function buildContextUsageView(
 }
 
 function onSubmit(mode: 'steer' | 'queue' = 'queue'): void {
-  commandPicker.dismiss(); commandContext = null
-  const text = draft.value.trim()
+  commandPicker.dismiss()
+  commandContext = null
   if (!canSubmit.value) return
+  const threadId = props.activeThreadId
+  const snapshot = JSON.stringify(getCurrentDraftPayload())
+  const deferred = props.isTurnInProgress && mode === 'queue'
+  queueSubmissionPending.value = Boolean(deferred)
+  const complete = (saved: boolean) => {
+    queueSubmissionPending.value = false
+    if (!saved || props.activeThreadId !== threadId || JSON.stringify(getCurrentDraftPayload()) !== snapshot) return
+    clearPersistedDraftForThread(threadId)
+    clearDraftState()
+    isComposerExpanded.value = false
+    folderUploadGroups.value = []
+    isAttachMenuOpen.value = false
+    closeFileMention()
+    if (isAndroid || isMobile.value) inputRef.value?.blur()
+    else void nextTick(() => inputRef.value?.focus())
+  }
   emit('submit', {
-    text,
+    text: draft.value.trim(),
     imageUrls: selectedImages.value.map((image) => image.url),
     fileAttachments: [...fileAttachments.value],
-    skills: selectedSkills.value.map((s) => ({ name: s.name, path: s.path })),
+    skills: selectedSkills.value.map((skill) => ({ name: skill.name, path: skill.path })),
     mode,
+    ...(deferred ? { complete } : {}),
   })
-  clearPersistedDraftForThread(props.activeThreadId)
-  clearDraftState()
-  isComposerExpanded.value = false
-  folderUploadGroups.value = []
-  isAttachMenuOpen.value = false
-  closeFileMention()
-  if (isAndroid || isMobile.value) {
-    inputRef.value?.blur()
-    return
-  }
-  nextTick(() => inputRef.value?.focus())
+  if (!deferred) complete(true)
 }
 
 
