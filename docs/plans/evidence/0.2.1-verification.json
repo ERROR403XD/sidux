@@ -1,0 +1,957 @@
+{
+  "version": "0.2.1",
+  "sourceCommit": "1244203b5396f2feaff1f288ce0e6f5ee6dc1639",
+  "unit": {
+    "files": 44,
+    "tests": 309,
+    "log": "/home/Code/codexapp/output/0201/unit-final.log"
+  },
+  "build": {
+    "log": "/home/Code/codexapp/output/0201/deploy-permissions.log",
+    "cjsCommand": "node -e \"process.argv=['node','codexapp','--help'];require('./dist-cli/index.js')\"",
+    "cjsExit": 0,
+    "ptyOutput": "PTY_0201_OK",
+    "ptyExit": 0
+  },
+  "artifacts": {
+    "matchingFiles": 30,
+    "image": "sha256:3b7e456d03f522d0218c4237e1a6dada09fb47f019d745f798f907c8817f8ffa",
+    "source": "1244203b5396f2feaff1f288ce0e6f5ee6dc1639",
+    "packageHash": "04d379ecd9131e04a8bb61201aee38ac8f8033032665181fea575ba928df686d",
+    "files": {
+      "dist/assets/ApiProxyPanel-CJjl5aNh.js": "3472715cb3f5bf4f3e884c8144909aaf6c69ff26c11e296e8673bb30b8b8b556",
+      "dist/assets/AutomationsPanel-BSuHviEP.js": "6c55dffd175ea6d42885c920ade36ec8fd045272d1f1c9201fdd3f7005cb788e",
+      "dist/assets/AutomationsPanel-Bpr0eQmL.css": "4e452b016c3ce8be29c74c9c5fe0ab5f22e0aaba043f1c93b1c6270e770b01a2",
+      "dist/assets/DirectoryHub-C0dRKwNa.css": "858781c27cdfd1543a385e6fc5b5fdb4393bdba595866014e5535b241fa00b81",
+      "dist/assets/DirectoryHub-Cn85HJu_.js": "11540f1b2e4d8bcdec44dedd42315f4e53efe74cf3b03a2dc08e1682353e83e0",
+      "dist/assets/ReviewPane-Bf0DO-uW.css": "86cc57d5566772694386ce6c97e7b9d9510b45cd625c915a42e8c8455581cc53",
+      "dist/assets/ReviewPane-Dh4fUNT_.js": "494418bedb10cd42a115a5b34f58bb33fc3188effe05fb226e739a443c5f9036",
+      "dist/assets/ThreadCommandDialog-CHdWKL87.js": "e785dc90c9491e1dd75a8bb5227274dc66e52683d7fc03ac5c0bddcbbe6508e3",
+      "dist/assets/ThreadConversation-Bg8yzKRu.js": "d4db45515affea187bc698444c57aa79705a26bcb8d42eaa3787631e05b3960b",
+      "dist/assets/ThreadConversation-CcLh--bX.css": "7ed4c71c12a032ffa567b5f15e9a38bcd4a5a014d45f5de2622127878cfb3b5d",
+      "dist/assets/ThreadTerminalPanel-D5c0idbm.js": "c2864f42c4abf5974591ea3e93be43dfae1f72c3cd939fe36b398e1a04daa0e9",
+      "dist/assets/ThreadTerminalPanel-Mu3fWVjX.css": "e813e1ab8f9be776b2cc180307e42232e96bfd18f616863e3a1240a49f0fbdc5",
+      "dist/assets/common-DEPjExR-.js": "9201c7b04cc783c8c7c1e6e71a40243ac7a9c5de26ec96a2f4f27c8fdeb80133",
+      "dist/assets/index-Bm-418Go.js": "bc50c293c5be7b6809ed24a3f0047594e7c13a848172d3b49e2145af3a72c9b5",
+      "dist/assets/index-KEnFdxUA.css": "08ba037a47f66dd18275456fff43bc9450b2645c94f1c2d1973146d0e57794f4",
+      "dist/assets/index.esm-2HJYXsJb.js": "dfc12df9a4ad4ceffba861a4459ba78938a090a418acefcd8a0518a9c13911af",
+      "dist/assets/index.esm-DPL2_UNC.js": "f161f16725130ba82666855934d0d204e97e40069040aed9fae26191650b645e",
+      "dist/assets/index.esm-pVe5Qgek.js": "46afc69201e85fc921817e4fb7aad10e97aa5e69832a63b44cc3f71abd0fdbff",
+      "dist/icons/apple-touch-icon.png": "64fbe48cc3852a74ceea4896eaba5fa08835078eadc32f87d995e1715e2dda5c",
+      "dist/icons/codexui-icon.svg": "913006d9ed761ab3e349deb7eaea75cc473657837dedb12934c1d346f71b3d63",
+      "dist/icons/maskable-512x512.png": "91c23b97b97101c699f6e7e8f3164638d5b551eccb03b8bc9c4596870ca855e7",
+      "dist/icons/pwa-192x192.png": "bcd7d9b1c33279efa6f4ac079c6ff6ec0436d6beffdf69aba23f3aa181ce5b7e",
+      "dist/icons/pwa-512x512.png": "ba28d1422c2f01fa76cf4f423c8c98f937375fba55d46abef956d3e32c4ec623",
+      "dist/icons/pwa-icon.svg": "f5876b447fc272caba34567415803a508703c76d8becf77d8d9574ea9e16138a",
+      "dist/icons/pwa-maskable.svg": "2b6264ea203116794043f981162a51eee86c6bb423b7a9aa8091e4ca90923190",
+      "dist/index.html": "f1eaed608964a9ce0570c8aa2963b2a9975fb23a441b7a464f83da1dab5d3289",
+      "dist/manifest.webmanifest": "abb062c2bfb76d3c3c07ab8286ba51817541b51b6beae1eb67de978e332afb01",
+      "dist/sw.js": "dc0793fed9010bd766f2059142effcb79fc3c423eee1cc573111c6177d21910c",
+      "dist-cli/index.js": "35131f37476c4b984c09983a661b034451465a5a1e7cb6b06a346664f25fe355",
+      "dist-cli/index.js.map": "3b8b14702f339e2383ff979ece5db11fcc890643a8b3042abc358966b2753747"
+    }
+  },
+  "questionsUi": [
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02010000-0000-7000-8000-000000000001",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "light",
+      "asyncLiveAndRefresh": true,
+      "explicitAnswerBinding": true,
+      "freeTextLegacy": true,
+      "approvalPriority": true,
+      "legacyBlocking": true,
+      "authRecoveryRefresh": true,
+      "hrefOk": true,
+      "titleOk": true,
+      "textOk": true,
+      "pageErrors": [],
+      "beforeShot": "output/playwright/0201-questions-1440x900-light.png",
+      "screenshot": "output/playwright/testchat-0201-questions-1440-light-cjs.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02010000-0000-7000-8000-000000000001",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "dark",
+      "asyncLiveAndRefresh": true,
+      "explicitAnswerBinding": true,
+      "freeTextLegacy": true,
+      "approvalPriority": true,
+      "legacyBlocking": true,
+      "authRecoveryRefresh": true,
+      "hrefOk": true,
+      "titleOk": true,
+      "textOk": true,
+      "pageErrors": [],
+      "beforeShot": "output/playwright/0201-questions-1440x900-dark.png",
+      "screenshot": "output/playwright/testchat-0201-questions-1440-dark-cjs.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02010000-0000-7000-8000-000000000001",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "theme": "light",
+      "asyncLiveAndRefresh": true,
+      "explicitAnswerBinding": true,
+      "freeTextLegacy": true,
+      "approvalPriority": true,
+      "legacyBlocking": true,
+      "authRecoveryRefresh": true,
+      "hrefOk": true,
+      "titleOk": true,
+      "textOk": true,
+      "pageErrors": [],
+      "beforeShot": "output/playwright/0201-questions-375x812-light.png",
+      "screenshot": "output/playwright/testchat-0201-questions-375-light-cjs.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02010000-0000-7000-8000-000000000001",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "theme": "dark",
+      "asyncLiveAndRefresh": true,
+      "explicitAnswerBinding": true,
+      "freeTextLegacy": true,
+      "approvalPriority": true,
+      "legacyBlocking": true,
+      "authRecoveryRefresh": true,
+      "hrefOk": true,
+      "titleOk": true,
+      "textOk": true,
+      "pageErrors": [],
+      "beforeShot": "output/playwright/0201-questions-375x812-dark.png",
+      "screenshot": "output/playwright/testchat-0201-questions-375-dark-cjs.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02010000-0000-7000-8000-000000000001",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "theme": "light",
+      "asyncLiveAndRefresh": true,
+      "explicitAnswerBinding": true,
+      "freeTextLegacy": true,
+      "approvalPriority": true,
+      "legacyBlocking": true,
+      "authRecoveryRefresh": true,
+      "hrefOk": true,
+      "titleOk": true,
+      "textOk": true,
+      "pageErrors": [],
+      "beforeShot": "output/playwright/0201-questions-768x1024-light.png",
+      "screenshot": "output/playwright/testchat-0201-questions-768-light-cjs.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02010000-0000-7000-8000-000000000001",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "theme": "dark",
+      "asyncLiveAndRefresh": true,
+      "explicitAnswerBinding": true,
+      "freeTextLegacy": true,
+      "approvalPriority": true,
+      "legacyBlocking": true,
+      "authRecoveryRefresh": true,
+      "hrefOk": true,
+      "titleOk": true,
+      "textOk": true,
+      "pageErrors": [],
+      "beforeShot": "output/playwright/0201-questions-768x1024-dark.png",
+      "screenshot": "output/playwright/testchat-0201-questions-768-dark-cjs.png"
+    }
+  ],
+  "apiUi": [
+    {
+      "url": "http://127.0.0.1:59001/#/api-proxy",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "background": "rgb(255, 255, 255)",
+      "settingsPersisted": true,
+      "createRotateRevoke": true,
+      "forceCancelDoesNotSave": true,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0201-api-1440x900-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/api-proxy",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "background": "rgb(24, 24, 27)",
+      "settingsPersisted": true,
+      "createRotateRevoke": true,
+      "forceCancelDoesNotSave": true,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0201-api-1440x900-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/api-proxy",
+      "width": 375,
+      "height": 812,
+      "theme": "light",
+      "background": "rgb(255, 255, 255)",
+      "settingsPersisted": true,
+      "createRotateRevoke": true,
+      "forceCancelDoesNotSave": true,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0201-api-375x812-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/api-proxy",
+      "width": 375,
+      "height": 812,
+      "theme": "dark",
+      "background": "rgb(24, 24, 27)",
+      "settingsPersisted": true,
+      "createRotateRevoke": true,
+      "forceCancelDoesNotSave": true,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0201-api-375x812-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/api-proxy",
+      "width": 768,
+      "height": 1024,
+      "theme": "light",
+      "background": "rgb(255, 255, 255)",
+      "settingsPersisted": true,
+      "createRotateRevoke": true,
+      "forceCancelDoesNotSave": true,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0201-api-768x1024-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/api-proxy",
+      "width": 768,
+      "height": 1024,
+      "theme": "dark",
+      "background": "rgb(24, 24, 27)",
+      "settingsPersisted": true,
+      "createRotateRevoke": true,
+      "forceCancelDoesNotSave": true,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0201-api-768x1024-dark.png"
+    }
+  ],
+  "actualQuestion": {
+    "id": "01a07731-5913-7282-8a90-9a21132de285",
+    "status": "completed",
+    "model": "gpt-6-astra",
+    "effort": "low",
+    "itemId": "call_eKD1j2XF6nt8qlx1YQtFWxaf",
+    "turnId": "01a07736-f4e0-7830-9664-e2d253703791",
+    "asyncQuestionFound": true,
+    "answerCount": 1,
+    "answerReceived": true,
+    "refreshRestored": true,
+    "noRouteStubs": true,
+    "pageErrors": [],
+    "screenshots": [
+      "output/playwright/0201-actual-question-dark.png",
+      "output/playwright/0201-actual-answer-dark.png"
+    ]
+  },
+  "actualApiUi": {
+    "url": "http://127.0.0.1:59001/#/api-proxy",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "theme": "light",
+    "noRouteStubs": true,
+    "unlimited": true,
+    "threeDays": true,
+    "reloadPersisted": true,
+    "settingsPreserved": true,
+    "cleanup": "temporary keys revoked"
+  },
+  "authMatrix": [
+    {
+      "kind": "noauth",
+      "port": 59011,
+      "name": "codexapp-0201-noauth",
+      "hasCodexAuth": false,
+      "enabled": true,
+      "provider": "opencode-zen",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "invalid",
+      "port": 59012,
+      "name": "codexapp-0201-invalid",
+      "hasCodexAuth": true,
+      "enabled": false,
+      "provider": "openrouter",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "malformed",
+      "port": 59013,
+      "name": "codexapp-0201-malformed",
+      "hasCodexAuth": false,
+      "enabled": true,
+      "provider": "opencode-zen",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "provider",
+      "port": 59014,
+      "name": "codexapp-0201-provider",
+      "hasCodexAuth": false,
+      "enabled": true,
+      "provider": "opencode-zen",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "provider-after",
+      "provider": "openrouter",
+      "enabled": true
+    }
+  ],
+  "authUi": [
+    {
+      "url": "http://127.0.0.1:59012/#/thread/01a07745-f167-74f1-a971-01ad2b876d26",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "invalidAuthPersistsAfterReload": true,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0201-invalid-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59012/#/thread/01a07745-f167-74f1-a971-01ad2b876d26",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "invalidAuthPersistsAfterReload": true,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0201-invalid-dark.png"
+    }
+  ],
+  "profiles": {
+    "home": {
+      "targetUrl": "http://127.0.0.1:59001/",
+      "totalApiKB": 85.3,
+      "duplicateCounts": {
+        "threadList": 1,
+        "threadListFirstPage": 1,
+        "threadListCursor": 0,
+        "threadResume": 0,
+        "threadRead": 0,
+        "threadReadWithTurns": 0,
+        "threadReadDuplicateKeys": 0,
+        "skillsList": 1,
+        "rateLimitsRead": 1,
+        "providerModels": 0
+      },
+      "warnings": [],
+      "topApiSummary": null,
+      "slowestApiRows": [
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "account/rateLimits/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": null,
+          "status": 200,
+          "ms": 2138.9,
+          "requestBytes": 50,
+          "responseBytes": 1744,
+          "responseKB": 1.7
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/workspace-roots-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 75.6,
+          "requestBytes": 0,
+          "responseBytes": 83,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 75.5,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/home-directory",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 75.5,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/preferences/first-launch-plugins-card",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 75.5,
+          "requestBytes": 0,
+          "responseBytes": 27,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 75.5,
+          "requestBytes": 0,
+          "responseBytes": 132,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/free-mode/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 75.5,
+          "requestBytes": 0,
+          "responseBytes": 835,
+          "responseKB": 0.8
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 75.5,
+          "requestBytes": 0,
+          "responseBytes": 32,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/config",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 75.5,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-pins",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 75.4,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.4,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-queue-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.4,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "thread/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 43.1,
+          "requestBytes": 120,
+          "responseBytes": 23068,
+          "responseKB": 22.5
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "skills/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 16.6,
+          "requestBytes": 36,
+          "responseBytes": 35967,
+          "responseKB": 35.1
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "config/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 13.6,
+          "requestBytes": 36,
+          "responseBytes": 5993,
+          "responseKB": 5.9
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/project-automations",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 13.1,
+          "requestBytes": 0,
+          "responseBytes": 871,
+          "responseKB": 0.9
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-automations",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 11.4,
+          "requestBytes": 0,
+          "responseBytes": 737,
+          "responseKB": 0.7
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/project-root-suggestion",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 11.4,
+          "requestBytes": 0,
+          "responseBytes": 66,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-titles",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 11.3,
+          "requestBytes": 0,
+          "responseBytes": 2594,
+          "responseKB": 2.5
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "config/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 10.8,
+          "requestBytes": 36,
+          "responseBytes": 5993,
+          "responseKB": 5.9
+        }
+      ],
+      "pageState": {
+        "threadLoadingText": "Loading threads...",
+        "threadLoadTimeoutMs": 15000,
+        "stillLoadingThreads": false
+      },
+      "reportPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-home-2026-09-06T15-03-33-209Z.json"
+    },
+    "thread": {
+      "targetUrl": "http://127.0.0.1:59001/#/thread/01a07731-5913-7282-8a90-9a21132de285",
+      "totalApiKB": 85.7,
+      "duplicateCounts": {
+        "threadList": 1,
+        "threadListFirstPage": 1,
+        "threadListCursor": 0,
+        "threadResume": 1,
+        "threadRead": 0,
+        "threadReadWithTurns": 0,
+        "threadReadDuplicateKeys": 0,
+        "skillsList": 1,
+        "rateLimitsRead": 1,
+        "providerModels": 0
+      },
+      "warnings": [],
+      "topApiSummary": null,
+      "slowestApiRows": [
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "account/rateLimits/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": null,
+          "status": 200,
+          "ms": 1611.5,
+          "requestBytes": 50,
+          "responseBytes": 1744,
+          "responseKB": 1.7
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/review/summary",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 96.5,
+          "requestBytes": 0,
+          "responseBytes": 64,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/accounts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.8,
+          "requestBytes": 0,
+          "responseBytes": 1060,
+          "responseKB": 1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/server-requests/pending",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.7,
+          "requestBytes": 0,
+          "responseBytes": 29,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/workspace-roots-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 67.3,
+          "requestBytes": 0,
+          "responseBytes": 83,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-queue-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 67.3,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-pins",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 67.1,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 67.1,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/home-directory",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 67.1,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/preferences/first-launch-plugins-card",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 67.1,
+          "requestBytes": 0,
+          "responseBytes": 27,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 67.1,
+          "requestBytes": 0,
+          "responseBytes": 132,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/free-mode/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 67.1,
+          "requestBytes": 0,
+          "responseBytes": 835,
+          "responseKB": 0.8
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/config",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 67.1,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 67.1,
+          "requestBytes": 0,
+          "responseBytes": 32,
+          "responseKB": 0
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "thread/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 44.3,
+          "requestBytes": 120,
+          "responseBytes": 23068,
+          "responseKB": 22.5
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "thread/resume",
+          "cursor": "",
+          "threadId": "01a07731-5913-7282-8a90-9a21132de285",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 29.7,
+          "requestBytes": 87,
+          "responseBytes": 6210,
+          "responseKB": 6.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/quick-commands",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 18,
+          "requestBytes": 0,
+          "responseBytes": 15,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/git/repository-status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 17.9,
+          "requestBytes": 0,
+          "responseBytes": 41,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/git/branches",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 17.4,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/project-root-suggestion",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 17.4,
+          "requestBytes": 0,
+          "responseBytes": 76,
+          "responseKB": 0.1
+        }
+      ],
+      "pageState": {
+        "threadLoadingText": "Loading threads...",
+        "threadLoadTimeoutMs": 15000,
+        "stillLoadingThreads": false
+      },
+      "reportPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-thread-01a07731-5913-7282-8a90-9a21132de285-2026-09-06T15-03-41-645Z.json"
+    }
+  },
+  "cli": {
+    "version": "0.153.4",
+    "upstream": "https://github.com/openai/codex/releases/tag/rust-v0.153.4",
+    "schemaGenerated": true
+  },
+  "production": {
+    "version": "0.2.0",
+    "pid": 3456650,
+    "modified": false
+  },
+  "idle": {
+    "activeTurns": 0,
+    "queued": 0,
+    "pendingApprovals": 0,
+    "apiConnections": 0,
+    "apiActiveRequests": 0
+  },
+  "limits": [
+    "Physical IME/keyboard verification belongs to 0.2.8; synthetic viewports do not replace devices.",
+    "Auth fixture is not real OAuth expiry or a second real account.",
+    "Initial failed native question test is retained; successful second turn uses ordinal binding.",
+    "Long histories, search and fork improvements remain 0.2.2; full series audit remains 0.2.9."
+  ],
+  "authMatrixImage": "sha256:3b7e456d03f522d0218c4237e1a6dada09fb47f019d745f798f907c8817f8ffa",
+  "boundaries": [
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02010000-0000-7000-8000-000000000001",
+      "screenshot": "output/playwright/0201-permissions-light.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "light",
+      "threadIsolationAndReturn": true,
+      "multipleAsyncRequests": true,
+      "imeDoesNotSubmit": true,
+      "mcpForm": true,
+      "permissionsDeniedWithoutGrant": true,
+      "pageErrors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02010000-0000-7000-8000-000000000001",
+      "screenshot": "output/playwright/0201-permissions-dark.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "dark",
+      "threadIsolationAndReturn": true,
+      "multipleAsyncRequests": true,
+      "imeDoesNotSubmit": true,
+      "mcpForm": true,
+      "permissionsDeniedWithoutGrant": true,
+      "pageErrors": []
+    }
+  ]
+}
