@@ -22,6 +22,10 @@
       #app-load-recovery button:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }
       #app-load-recovery[data-startup="true"] button { border-color: var(--recovery-border, #a1a1aa); }
       @media (prefers-color-scheme: dark) { body.app-load-pending { background: #09090b; } #app-load-recovery { --recovery-surface: #18181b; --recovery-text: #e4e4e7; --recovery-border: #52525b; } }
+      #app-load-recovery[data-theme="light"] { --recovery-surface: #fff; --recovery-text: #27272a; --recovery-border: #d4d4d8; }
+      #app-load-recovery[data-theme="dark"] { --recovery-surface: #18181b; --recovery-text: #e4e4e7; --recovery-border: #52525b; }
+      body.app-load-pending:has(#app-load-recovery[data-theme="light"]) { background: #fafafa; }
+      body.app-load-pending:has(#app-load-recovery[data-theme="dark"]) { background: #09090b; }
     </style>
     <script id="app-load-guard">
       (() => {
@@ -31,6 +35,10 @@
           failed = true
           const panel = document.getElementById('app-load-recovery')
           if (!panel) return
+          try {
+            const theme = localStorage.getItem('codex-web-local.dark-mode.v1')
+            if (theme === 'light' || theme === 'dark') panel.dataset.theme = theme
+          } catch {}
           panel.hidden = false
           panel.dataset.startup = String(!mounted)
           document.body.classList.toggle('app-load-pending', !mounted)
