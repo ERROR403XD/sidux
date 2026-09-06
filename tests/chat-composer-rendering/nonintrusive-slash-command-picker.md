@@ -17,3 +17,22 @@
 自动验证：`pnpm run test:unit` 包含 token 边界、键盘选择、中文搜索、粘贴与关闭抑制测试。实际 UI 截图和请求/性能记录位于 `output/playwright/0190-*`。
 
 清理/回退：清空虚构会话草稿和测试附件；关闭测试会话。需要回退时切换保留的 0.1.89 候选镜像，不修改生产认证或历史会话。
+
+## 0.1.90 封测修订：实用命令目录
+
+目录统一维护在 composerCommands.ts，共 22 项内置命令：/plan、/default、/model、/skills、/goal、/compact、/new、/rename、/fork、/review、/diff、/status、/copy、/resume、/apps、/plugins、/mcp、/automations、/export、/help、/mention、/init。可用技能与保存的提示词继续动态补入。
+
+前提：使用隔离内部会话；需要模拟 RPC/剪贴板/下载时使用 Playwright，禁止将虚构请求发到生产。
+
+1. /help 应列出所有命令及用途；输入 / 持续搜索、无默认选择、普通斜杠、Esc、粘贴和中文输入法契约保持不变。
+2. /goal 打开目标窗口，填写目标和可选 Token 预算。保存、暂停、继续、清除分别调用 thread/goal 接口；重新打开恢复目标及统计。新会话允许先创建线程再保存原生目标，不能将 `/goal` 伪装为普通提示词，也不能额外提交一个重复的 turn/start。原生目标激活会自动开始执行。
+3. /compact 在空闲线程调用 thread/compact/start；提示“已请求压缩”，进度在会话查看，不能因请求返回空对象就报告完成。忙碌时显示原因并暂不执行。
+4. /rename 修改名称；/fork 创建独立分支；/review 发起当前未提交变更的审查；/diff 打开现有差异面板。无会话或忙碌时应有对应限制和错误提示。
+5. /copy 只复制最近已完成的助手回复，跳过后来的进行中输出；/export 下载当前已加载内容的 Markdown。
+6. /new、/resume、/apps、/plugins、/mcp、/automations 分别复用新建、搜索和对应页面入口，不新建重复设置体系。
+7. /mention 插入 @ 并打开文件选择；/init 插入 AGENTS.md 初始化指令供用户确认发送，不擅自写文件。忙碌时实际发送这些草稿仍应排队。
+8. 取消需要填写内容的命令窗口保留原 token；操作成功才消费 token。浅深色、375×812、768×1024 下弹窗可读可滚动；Esc、Tab 焦点和关闭后焦点恢复正常。
+
+回归：`pnpm exec vitest run src/components/content/composerCommands.test.ts src/api/threadCommands.test.ts`；检查选择器搜索没有逐键 API 请求，命令窗口按需懒加载，完整历史/完整线程请求只能由相应明确操作触发。
+
+清理：测试目标暂停/清除，等待已开始的回合结束；移除虚构队列和临时导出。生产版本与认证不参与此验收。

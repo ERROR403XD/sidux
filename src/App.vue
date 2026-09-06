@@ -980,7 +980,7 @@
                   :is-interrupting-turn="false" :send-with-enter="sendWithEnter"
                   :dictation-click-to-toggle="dictationClickToToggle" :dictation-auto-send="dictationAutoSend"
                   :dictation-language="dictationLanguage"
-                  @submit="onSubmitThreadMessage"
+                  @command="onComposerCommand" @submit="onSubmitThreadMessage"
                   @update:selected-collaboration-mode="onSelectCollaborationMode"
                   @update:selected-model="onSelectModel"
                   @update:selected-reasoning-effort="onSelectReasoningEffort"
@@ -1067,7 +1067,7 @@
                     :dictation-click-to-toggle="dictationClickToToggle" :dictation-auto-send="dictationAutoSend"
                     :dictation-language="dictationLanguage"
                     @update:selected-collaboration-mode="onSelectCollaborationMode"
-                    @submit="onSubmitThreadMessage" @update:selected-model="onSelectModel"
+                    @command="onComposerCommand" @submit="onSubmitThreadMessage" @update:selected-model="onSelectModel"
                     @update:selected-reasoning-effort="onSelectReasoningEffort"
                     @update:selected-speed-mode="onSelectSpeedMode"
                     @interrupt="onInterruptTurn" />
@@ -1079,6 +1079,13 @@
       </section>
     </template>
   </DesktopLayout>
+  <ThreadCommandDialog
+    v-if="appCommandRequest" :request="appCommandRequest"
+    :thread-id="isHomeRoute ? '' : selectedThreadId || ''" :thread-name="isHomeRoute ? '' : selectedThread?.title || ''"
+    :cwd="composerCwd" :model="composerSelectedModelId" :effort="selectedReasoningEffort"
+    :busy="isSelectedThreadInProgress" :context-summary="commandContextSummary"
+    :run="runAppCommand" :ensure-thread="ensureCommandThread" @close="appCommandRequest = null"
+  />
   <div v-if="projectZipExportStatus.phase !== 'idle'" class="project-zip-modal-backdrop" role="presentation">
     <div class="project-zip-modal" role="dialog" aria-modal="true" :aria-label="t('Export Project')" @click.stop>
       <div class="project-zip-modal-header">
@@ -1220,6 +1227,8 @@ import { useMobile } from './composables/useMobile'
 import { useUiLanguage } from './composables/useUiLanguage'
 import { useFeedbackDiagnostics } from './composables/useFeedbackDiagnostics'
 import {
+  startThread,
+  startThreadReview,
   checkoutGitBranch,
   cancelCodexLogin,
   cloneGithubRepository,
@@ -1263,7 +1272,10 @@ import type { GitCommitFileChange, GitCommitOption, LocalDirectoryEntry, Telegra
 import { getFreeModeStatus, setFreeMode, setFreeModeCustomKey, setCustomProvider } from './api/codexGateway'
 import { getPathLeafName, getPathParent, isProjectlessChatPath, normalizePathForUi } from './pathUtils.js'
 import { copyTextToClipboard } from './utils/clipboard'
+import { getLatestCompletedReply } from './api/threadCommands'
+import type { AppCommandName, AppCommandRequest } from './components/content/composerCommands'
 
+const ThreadCommandDialog = defineAsyncComponent(() => import('./components/content/ThreadCommandDialog.vue'))
 const ThreadConversation = defineAsyncComponent(() => import('./components/content/ThreadConversation.vue'))
 const ThreadTerminalPanel = defineAsyncComponent(() => import('./components/content/ThreadTerminalPanel.vue'))
 const ReviewPane = defineAsyncComponent(() => import('./components/content/ReviewPane.vue'))
@@ -3500,6 +3512,53 @@ async function syncAfterMobileResume(): Promise<void> {
     await syncThreadSelectionWithRoute()
   } finally {
     mobileResumeSyncInProgress.value = false
+  }
+}
+
+const appCommandRequest = ref<AppCommandRequest | null>(null)
+const commandContextSummary = computed(() => {
+  if (isHomeRoute.value) return '新会话尚无上下文用量'
+  const usage = selectedThreadTokenUsage.value
+  if (!usage) return '暂无用量信息'
+  return `${usage.currentContextTokens.toLocaleString()} tokens${usage.modelContextWindow ? ` / ${usage.modelContextWindow.toLocaleString()}` : ''}`
+})
+function onComposerCommand(request: AppCommandRequest) {
+  if (isSwitchingAccounts.value) return
+  if (['new', 'resume', 'apps', 'plugins', 'mcp', 'automations', 'diff', 'copy', 'export'].includes(request.name)) {
+    const navigation = ['new', 'resume', 'apps', 'plugins', 'mcp', 'automations', 'diff'].includes(request.name)
+    if (navigation) request.complete()
+    void runAppCommand(request.name).then(() => { if (!navigation) request.complete() }).catch(cause => { desktopError.value = cause instanceof Error ? cause.message : '命令执行失败' })
+    return
+  }
+  appCommandRequest.value = request
+}
+async function ensureCommandThread(): Promise<string> {
+  if (!isHomeRoute.value && selectedThreadId.value) return selectedThreadId.value
+  const created = await startThread(composerCwd.value || undefined, composerSelectedModelId.value || undefined)
+  return created.threadId
+}
+async function runAppCommand(name: AppCommandName, value?: string): Promise<void> {
+  const threadId = isHomeRoute.value ? '' : selectedThreadId.value || ''
+  if (['rename', 'fork', 'review', 'diff', 'copy', 'export'].includes(name) && !threadId) throw new Error('请先进入一个会话')
+  if (['review', 'fork'].includes(name) && isSelectedThreadInProgress.value) throw new Error('请等待当前任务结束后再操作')
+  switch (name) {
+    case 'goal':
+      if (!value) throw new Error('缺少目标会话')
+      await router.push({ name: 'thread', params: { threadId: value } }); break
+    case 'new': onStartNewThreadFromToolbar(); break
+    case 'resume':
+      setSidebarCollapsed(false); isSidebarSearchVisible.value = true
+      await nextTick(); sidebarSearchInputRef.value?.focus(); break
+    case 'rename': await renameThreadById(threadId, value || '未命名会话'); break
+    case 'fork': await onForkThread(threadId); break
+    case 'review': await startThreadReview(threadId, 'workspace', 'unstaged'); break
+    case 'diff': isReviewPaneOpen.value = true; break
+    case 'copy': await copyTextToClipboard(await getLatestCompletedReply(threadId)); break
+    case 'export': downloadProjectZipFallback(new Blob([buildThreadMarkdown()], { type: 'text/markdown;charset=utf-8' }), `codex-${threadId}.md`); break
+    case 'apps': case 'plugins': case 'mcp':
+      await router.push({ name: 'skills', query: { tab: name === 'mcp' ? 'skills' : name } }); break
+    case 'automations': await router.push({ name: 'automations' }); break
+    default: throw new Error('该命令尚未接入可执行操作')
   }
 }
 

@@ -25,7 +25,7 @@ describe('slash command input contract', () => {
   it('supports Chinese descriptions, prompts and distinct skills with duplicate names', () => {
     const commands = buildComposerCommands([{ name: 'review', description: '审查代码', path: '/a' }, { name: 'review', path: '/b' }], [{ name: 'weekly', path: '/p' }])
     expect(filterComposerCommands(commands, '计划').map((row) => row.name)).toEqual(['/plan'])
-    expect(filterComposerCommands(commands, 'review')).toHaveLength(2)
+    expect(filterComposerCommands(commands, 'review')).toHaveLength(3)
     expect(filterComposerCommands(commands, 'prompts:weekly')[0]?.value).toBe('/p')
   })
   it('resets selection on edits, wraps arrows, and never reopens a dismissed token while typing', () => {
@@ -34,7 +34,7 @@ describe('slash command input contract', () => {
     picker.update('/', 1)
     expect(picker.selectedIndex.value).toBe(-1)
     expect(picker.keydown(event('Enter'))).toBe(false)
-    picker.keydown(event('ArrowUp')); expect(picker.selectedIndex.value).toBe(3)
+    picker.keydown(event('ArrowUp')); expect(picker.selectedIndex.value).toBe(picker.results.value.length - 1)
     picker.keydown(event('ArrowDown')); expect(picker.selectedIndex.value).toBe(0)
     picker.update('/plan', 5); expect(picker.selectedIndex.value).toBe(-1)
     picker.keydown(event('ArrowDown')); picker.keydown(event('Enter')); expect(applied).toEqual(['/plan'])

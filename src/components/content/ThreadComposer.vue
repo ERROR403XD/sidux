@@ -475,6 +475,7 @@ export type ThreadComposerExposed = {
 
 const emit = defineEmits<{
   submit: [payload: SubmitPayload]
+  command: [request: import('./composerCommands').AppCommandRequest]
   interrupt: []
   'update:selected-collaboration-mode': [mode: CollaborationModeKind]
   'update:selected-model': [modelId: string]
@@ -644,6 +645,19 @@ function applyComposerCommand(command: ComposerCommand, token: SlashToken) {
     commandContext = { token, draft: draft.value, menu: command.action }
     if (command.action === 'model') commandModelRef.value?.open()
     else commandSkillsRef.value?.open()
+    return
+  }
+  if (command.action === 'app') {
+    const original = draft.value
+    emit('command', { name: command.id as import('./composerCommands').AppCommandName, complete: () => { replaceCommandToken(token, '', original) } })
+    return
+  }
+  if (command.action === 'mention') {
+    if (replaceCommandToken(token, '@')) void nextTick(updateFileMentionState)
+    return
+  }
+  if (command.action === 'init') {
+    replaceCommandToken(token, '请阅读当前项目结构与已有说明，创建或完善项目 AGENTS.md，记录实际开发、测试及目录约定。保留已有有效规则，不猜测未核实的命令；先说明准备修改的内容。')
     return
   }
   if (command.action === 'prompt') {

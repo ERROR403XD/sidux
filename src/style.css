@@ -1986,3 +1986,20 @@
 :root.dark .app-dialog-header, :root.dark .app-dialog-footer { border-color: #3f3f46; }
 :root.dark .app-dialog button { background: #27272a; border-color: #52525b; }
 @media (max-width: 600px) { .app-dialog-backdrop { padding: 8px; } .app-dialog { max-height: 92dvh; } .app-dialog-header, .app-dialog-body, .app-dialog-footer { padding: 12px; } }
+.thread-command-dialog { font-size: 14px; line-height: 1.6; }
+.thread-command-dialog p { margin: 0 0 12px; }
+.thread-command-dialog label { display: block; margin: 14px 0; font-size: 13px; font-weight: 500; }
+.thread-command-dialog input, .thread-command-dialog textarea { display: block; width: 100%; margin-top: 6px; padding: 9px 11px; border: 1px solid #d4d4d8; border-radius: 8px; background: #fff; color: #27272a; font: inherit; resize: vertical; }
+.thread-command-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+.thread-command-hint { color: #71717a; font-size: 12px; }
+.thread-command-error { color: #be123c; overflow-wrap: anywhere; }
+.thread-command-feedback { color: #047857; }
+.thread-goal-status { padding: 8px 10px; background: #f4f4f5; border-radius: 8px; }
+.thread-command-help, .thread-command-status { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 10px 16px; }
+.thread-command-help dt, .thread-command-status dt { font-weight: 600; }
+.thread-command-help dd, .thread-command-status dd { margin: 0; overflow-wrap: anywhere; }
+:root.dark .thread-command-dialog input, :root.dark .thread-command-dialog textarea { background: #27272a; color: #e4e4e7; border-color: #52525b; }
+:root.dark .thread-command-hint { color: #a1a1aa; }
+:root.dark .thread-command-error { color: #fda4af; }
+:root.dark .thread-command-feedback { color: #6ee7b7; }
+:root.dark .thread-goal-status { background: #27272a; }
