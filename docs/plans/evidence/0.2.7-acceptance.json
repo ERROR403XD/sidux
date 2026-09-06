@@ -1,0 +1,4057 @@
+{
+  "version": "0.2.7",
+  "source": "d13d66c1bae152e57bc8c1f198a563799ecf2f18",
+  "image": "sha256:b924cd31a5db5569c26f6b5d14e6e1639c4585df9fc075ca48cc12f869e03ab2",
+  "packageHash": "70c1271efd4957973db191a3bad391c41487394a9b6549838e2c2d504c449988",
+  "matchingFiles": 30,
+  "checks": {
+    "unitFiles": 65,
+    "unitTests": 419,
+    "typecheck": true,
+    "build": true,
+    "packagedCjs": "Usage: codexui [options] [command] [projectPath]\n\nWeb interface for Codex app-server\n\nArguments:\n  projectPath                 project directory to open on launch\n\nOptions:\n  --open-project <path>       open project directory on launch (Codex desktop\n                              parity)\n  -p, --port <port>           port to listen on (default: \"5900\")\n  --password <pass>           set a specific password\n  --no-password               disable password protection\n  --strict-port               fail when the requested port cannot be bound\n                              (default: false)\n  --open                      open browser on startup (default: true)\n  --no-open                   do not open browser on startup\n  --memories                  enable Codex memories for spawned app-server\n                              processes (default: true)\n  --no-memories               disable Codex memories for spawned app-server\n                              processes\n  --sandbox-mode <mode>       Codex sandbox mode: read-only, workspace-write,\n                              danger-full-access\n  --approval-policy <policy>  Codex approval policy: untrusted, on-failure,\n                              on-request, never\n  -h, --help                  display help for command\n\nCommands:\n  help                        Show codexui command help\n",
+    "packagedPty": "PTY_0207_PACKED_OK 0\n"
+  },
+  "ui": [
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02070000-0000-7000-8000-000000000001",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "light",
+      "closedZeroRequests": true,
+      "nativeSeconds": true,
+      "repeatedHookIds": true,
+      "configNoMutation": true,
+      "eventNoConfigRead": true,
+      "hookReadRetry": true,
+      "lateReadClosed": true,
+      "deltaNoHttp": true,
+      "outputThreadIsolation": true,
+      "stopCancel": true,
+      "ambiguousStopNoRepeat": true,
+      "stopReadFailureDisabled": true,
+      "preciseStop": true,
+      "otherProcessRetained": true,
+      "reloadHistory": true,
+      "pageErrors": [],
+      "hookShot": "output/playwright/0207-hooks-1440-light.png",
+      "stopShot": "output/playwright/0207-stop-1440-light.png",
+      "outputShot": "output/playwright/0207-output-1440-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02070000-0000-7000-8000-000000000001",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "dark",
+      "closedZeroRequests": true,
+      "nativeSeconds": true,
+      "repeatedHookIds": true,
+      "configNoMutation": true,
+      "eventNoConfigRead": true,
+      "hookReadRetry": true,
+      "lateReadClosed": true,
+      "deltaNoHttp": true,
+      "outputThreadIsolation": true,
+      "stopCancel": true,
+      "ambiguousStopNoRepeat": true,
+      "stopReadFailureDisabled": true,
+      "preciseStop": true,
+      "otherProcessRetained": true,
+      "reloadHistory": true,
+      "pageErrors": [],
+      "hookShot": "output/playwright/0207-hooks-1440-dark.png",
+      "stopShot": "output/playwright/0207-stop-1440-dark.png",
+      "outputShot": "output/playwright/0207-output-1440-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02070000-0000-7000-8000-000000000001",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "theme": "light",
+      "closedZeroRequests": true,
+      "nativeSeconds": true,
+      "repeatedHookIds": true,
+      "configNoMutation": true,
+      "eventNoConfigRead": true,
+      "hookReadRetry": true,
+      "lateReadClosed": true,
+      "deltaNoHttp": true,
+      "outputThreadIsolation": true,
+      "stopCancel": true,
+      "ambiguousStopNoRepeat": true,
+      "stopReadFailureDisabled": true,
+      "preciseStop": true,
+      "otherProcessRetained": true,
+      "reloadHistory": true,
+      "pageErrors": [],
+      "hookShot": "output/playwright/0207-hooks-375-light.png",
+      "stopShot": "output/playwright/0207-stop-375-light.png",
+      "outputShot": "output/playwright/0207-output-375-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02070000-0000-7000-8000-000000000001",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "theme": "dark",
+      "closedZeroRequests": true,
+      "nativeSeconds": true,
+      "repeatedHookIds": true,
+      "configNoMutation": true,
+      "eventNoConfigRead": true,
+      "hookReadRetry": true,
+      "lateReadClosed": true,
+      "deltaNoHttp": true,
+      "outputThreadIsolation": true,
+      "stopCancel": true,
+      "ambiguousStopNoRepeat": true,
+      "stopReadFailureDisabled": true,
+      "preciseStop": true,
+      "otherProcessRetained": true,
+      "reloadHistory": true,
+      "pageErrors": [],
+      "hookShot": "output/playwright/0207-hooks-375-dark.png",
+      "stopShot": "output/playwright/0207-stop-375-dark.png",
+      "outputShot": "output/playwright/0207-output-375-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02070000-0000-7000-8000-000000000001",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "theme": "light",
+      "closedZeroRequests": true,
+      "nativeSeconds": true,
+      "repeatedHookIds": true,
+      "configNoMutation": true,
+      "eventNoConfigRead": true,
+      "hookReadRetry": true,
+      "lateReadClosed": true,
+      "deltaNoHttp": true,
+      "outputThreadIsolation": true,
+      "stopCancel": true,
+      "ambiguousStopNoRepeat": true,
+      "stopReadFailureDisabled": true,
+      "preciseStop": true,
+      "otherProcessRetained": true,
+      "reloadHistory": true,
+      "pageErrors": [],
+      "hookShot": "output/playwright/0207-hooks-768-light.png",
+      "stopShot": "output/playwright/0207-stop-768-light.png",
+      "outputShot": "output/playwright/0207-output-768-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02070000-0000-7000-8000-000000000001",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "theme": "dark",
+      "closedZeroRequests": true,
+      "nativeSeconds": true,
+      "repeatedHookIds": true,
+      "configNoMutation": true,
+      "eventNoConfigRead": true,
+      "hookReadRetry": true,
+      "lateReadClosed": true,
+      "deltaNoHttp": true,
+      "outputThreadIsolation": true,
+      "stopCancel": true,
+      "ambiguousStopNoRepeat": true,
+      "stopReadFailureDisabled": true,
+      "preciseStop": true,
+      "otherProcessRetained": true,
+      "reloadHistory": true,
+      "pageErrors": [],
+      "hookShot": "output/playwright/0207-hooks-768-dark.png",
+      "stopShot": "output/playwright/0207-stop-768-dark.png",
+      "outputShot": "output/playwright/0207-output-768-dark.png"
+    }
+  ],
+  "nativeTerminals": {
+    "marker": "BG_0207_1788729250080",
+    "startedAt": 1788729250080,
+    "threadId": "01a07892-51c3-7052-8908-a9a29c304eb2",
+    "turnId": "01a07892-5551-7c50-8021-ff9208b6f2a6",
+    "rows": [
+      {
+        "processId": "59413",
+        "itemId": "exec-9b0f5af2-61cb-432c-9984-375a61bfa0b4",
+        "command": "python3 -u -c \"import time; print('BG_0207_1788729250080_A', flush=True); time.sleep(240)\"",
+        "cwd": "/tmp",
+        "osPid": null,
+        "cpuPercent": null,
+        "rssKb": null
+      },
+      {
+        "processId": "68921",
+        "itemId": "exec-3245da55-fed8-4185-b8bf-6759b49768dd",
+        "command": "python3 -u -c \"import time; print('BG_0207_1788729250080_B', flush=True); time.sleep(240)\"",
+        "cwd": "/tmp",
+        "osPid": null,
+        "cpuPercent": null,
+        "rssKb": null
+      }
+    ],
+    "ownRows": [
+      {
+        "processId": "59413",
+        "itemId": "exec-9b0f5af2-61cb-432c-9984-375a61bfa0b4",
+        "command": "python3 -u -c \"import time; print('BG_0207_1788729250080_A', flush=True); time.sleep(240)\"",
+        "cwd": "/tmp",
+        "osPid": null,
+        "cpuPercent": null,
+        "rssKb": null
+      },
+      {
+        "processId": "68921",
+        "itemId": "exec-3245da55-fed8-4185-b8bf-6759b49768dd",
+        "command": "python3 -u -c \"import time; print('BG_0207_1788729250080_B', flush=True); time.sleep(240)\"",
+        "cwd": "/tmp",
+        "osPid": null,
+        "cpuPercent": null,
+        "rssKb": null
+      }
+    ],
+    "outputs": [
+      {
+        "itemId": "exec-9b0f5af2-61cb-432c-9984-375a61bfa0b4",
+        "text": "BG_0207_1788729250080_A\n",
+        "status": "inProgress",
+        "exitCode": null,
+        "truncated": true,
+        "source": "toolResult"
+      },
+      {
+        "itemId": "exec-3245da55-fed8-4185-b8bf-6759b49768dd",
+        "text": "BG_0207_1788729250080_B\n",
+        "status": "inProgress",
+        "exitCode": null,
+        "truncated": true,
+        "source": "toolResult"
+      }
+    ],
+    "readyAt": 1788729262247
+  },
+  "actualTerminalsUi": [
+    {
+      "theme": "light",
+      "url": "http://127.0.0.1:59001/#/thread/01a07892-51c3-7052-8908-a9a29c304eb2",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cancel": true,
+      "preciseStop": false,
+      "otherProcessRetained": true,
+      "outputObserved": true,
+      "screenshot": "output/playwright/0207-actual-terminals-light.png",
+      "pageErrors": []
+    },
+    {
+      "theme": "dark",
+      "url": "http://127.0.0.1:59001/#/thread/01a07892-51c3-7052-8908-a9a29c304eb2",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cancel": false,
+      "preciseStop": true,
+      "otherProcessRetained": true,
+      "outputObserved": true,
+      "screenshot": "output/playwright/0207-actual-terminals-dark.png",
+      "pageErrors": []
+    }
+  ],
+  "processCleanup": {
+    "cleanup": [
+      {
+        "data": {
+          "terminated": false,
+          "absent": true
+        }
+      },
+      {
+        "data": {
+          "terminated": true,
+          "absent": false
+        }
+      }
+    ],
+    "remaining": {
+      "data": []
+    }
+  },
+  "nativeHooks": {
+    "threadId": "01a07896-020a-7753-9a4b-e673b2e8a31d",
+    "deliveryStatus": "accepted",
+    "turnId": "01a07896-0541-7c71-8e91-ae3f3aa31e98",
+    "before": {
+      "runs": [
+        {
+          "id": "user-prompt-submit:2:/etc/codex/config.toml",
+          "threadId": "01a07896-020a-7753-9a4b-e673b2e8a31d",
+          "turnId": "01a07896-07f5-72c2-9daa-a6fe2eed8aaf",
+          "eventName": "userPromptSubmit",
+          "executionMode": "sync",
+          "handlerType": "command",
+          "source": "system",
+          "sourcePath": "/etc/codex/config.toml",
+          "scope": "turn",
+          "startedAt": 1788729493,
+          "completedAt": null,
+          "durationMs": null,
+          "status": "running",
+          "statusMessage": "HTTP pending hook",
+          "entries": [],
+          "truncated": false,
+          "currentRuntime": true
+        },
+        {
+          "id": "user-prompt-submit:1:/etc/codex/config.toml",
+          "threadId": "01a07896-020a-7753-9a4b-e673b2e8a31d",
+          "turnId": "01a07896-07f5-72c2-9daa-a6fe2eed8aaf",
+          "eventName": "userPromptSubmit",
+          "executionMode": "sync",
+          "handlerType": "command",
+          "source": "system",
+          "sourcePath": "/etc/codex/config.toml",
+          "scope": "turn",
+          "startedAt": 1788729493,
+          "completedAt": null,
+          "durationMs": null,
+          "status": "running",
+          "statusMessage": "HTTP blocking hook",
+          "entries": [],
+          "truncated": false,
+          "currentRuntime": true
+        },
+        {
+          "id": "user-prompt-submit:2:/etc/codex/config.toml",
+          "threadId": "01a07896-020a-7753-9a4b-e673b2e8a31d",
+          "turnId": "01a07896-0541-7c71-8e91-ae3f3aa31e98",
+          "eventName": "userPromptSubmit",
+          "executionMode": "sync",
+          "handlerType": "command",
+          "source": "system",
+          "sourcePath": "/etc/codex/config.toml",
+          "scope": "turn",
+          "startedAt": 1788729492,
+          "completedAt": 1788729492,
+          "durationMs": 17,
+          "status": "completed",
+          "statusMessage": "HTTP pending hook",
+          "entries": [],
+          "truncated": false,
+          "currentRuntime": true
+        },
+        {
+          "id": "user-prompt-submit:1:/etc/codex/config.toml",
+          "threadId": "01a07896-020a-7753-9a4b-e673b2e8a31d",
+          "turnId": "01a07896-0541-7c71-8e91-ae3f3aa31e98",
+          "eventName": "userPromptSubmit",
+          "executionMode": "sync",
+          "handlerType": "command",
+          "source": "system",
+          "sourcePath": "/etc/codex/config.toml",
+          "scope": "turn",
+          "startedAt": 1788729492,
+          "completedAt": 1788729492,
+          "durationMs": 18,
+          "status": "blocked",
+          "statusMessage": "HTTP blocking hook",
+          "entries": [
+            {
+              "kind": "feedback",
+              "text": "HOOK_HTTP_0207_BLOCK"
+            }
+          ],
+          "truncated": false,
+          "currentRuntime": true
+        },
+        {
+          "id": "session-start:0:/etc/codex/config.toml",
+          "threadId": "01a07896-020a-7753-9a4b-e673b2e8a31d",
+          "turnId": "01a07896-0541-7c71-8e91-ae3f3aa31e98",
+          "eventName": "sessionStart",
+          "executionMode": "sync",
+          "handlerType": "command",
+          "source": "system",
+          "sourcePath": "/etc/codex/config.toml",
+          "scope": "thread",
+          "startedAt": 1788729492,
+          "completedAt": 1788729492,
+          "durationMs": 19,
+          "status": "completed",
+          "statusMessage": "HTTP success hook",
+          "entries": [
+            {
+              "kind": "context",
+              "text": "HOOK_HTTP_0207_SUCCESS"
+            }
+          ],
+          "truncated": false,
+          "currentRuntime": true
+        }
+      ],
+      "observedSince": 1788729250213,
+      "limited": false,
+      "error": ""
+    },
+    "summaryBytes": 1589,
+    "config": {
+      "data": {
+        "hooks": [
+          {
+            "key": "/etc/codex/config.toml:session_start:0:0",
+            "eventName": "sessionStart",
+            "handlerType": "command",
+            "source": "system",
+            "sourcePath": "/etc/codex/config.toml",
+            "enabled": true,
+            "trustStatus": "managed",
+            "matcher": "",
+            "command": "node /tmp/success.cjs",
+            "statusMessage": "HTTP success hook"
+          },
+          {
+            "key": "/etc/codex/config.toml:user_prompt_submit:0:0",
+            "eventName": "userPromptSubmit",
+            "handlerType": "command",
+            "source": "system",
+            "sourcePath": "/etc/codex/config.toml",
+            "enabled": true,
+            "trustStatus": "managed",
+            "matcher": "",
+            "command": "node /tmp/block.cjs",
+            "statusMessage": "HTTP blocking hook"
+          },
+          {
+            "key": "/etc/codex/config.toml:user_prompt_submit:0:1",
+            "eventName": "userPromptSubmit",
+            "handlerType": "command",
+            "source": "system",
+            "sourcePath": "/etc/codex/config.toml",
+            "enabled": true,
+            "trustStatus": "managed",
+            "matcher": "",
+            "command": "node /tmp/slow.cjs",
+            "statusMessage": "HTTP pending hook"
+          }
+        ],
+        "warnings": [],
+        "limited": false
+      }
+    },
+    "detail": {
+      "data": {
+        "id": "session-start:0:/etc/codex/config.toml",
+        "threadId": "01a07896-020a-7753-9a4b-e673b2e8a31d",
+        "turnId": "01a07896-0541-7c71-8e91-ae3f3aa31e98",
+        "eventName": "sessionStart",
+        "executionMode": "sync",
+        "handlerType": "command",
+        "source": "system",
+        "sourcePath": "/etc/codex/config.toml",
+        "scope": "thread",
+        "startedAt": 1788729492,
+        "completedAt": 1788729492,
+        "durationMs": 19,
+        "status": "completed",
+        "statusMessage": "HTTP success hook",
+        "entries": [
+          {
+            "kind": "context",
+            "text": "HOOK_HTTP_0207_SUCCESS"
+          }
+        ],
+        "truncated": false,
+        "currentRuntime": true
+      }
+    },
+    "secondDelivery": {
+      "data": {
+        "id": "d-1788729493483-9f25db48-7037-48e8-9882-325aa1efde95",
+        "status": "accepted",
+        "turnId": "01a07896-07f5-72c2-9daa-a6fe2eed8aaf"
+      }
+    },
+    "after": {
+      "runs": [
+        {
+          "id": "user-prompt-submit:2:/etc/codex/config.toml",
+          "threadId": "01a07896-020a-7753-9a4b-e673b2e8a31d",
+          "turnId": "01a07896-07f5-72c2-9daa-a6fe2eed8aaf",
+          "eventName": "userPromptSubmit",
+          "executionMode": "sync",
+          "handlerType": "command",
+          "source": "system",
+          "sourcePath": "/etc/codex/config.toml",
+          "scope": "turn",
+          "startedAt": 1788729493,
+          "completedAt": null,
+          "durationMs": null,
+          "status": "running",
+          "statusMessage": "HTTP pending hook",
+          "entries": [],
+          "truncated": false,
+          "currentRuntime": false
+        },
+        {
+          "id": "user-prompt-submit:1:/etc/codex/config.toml",
+          "threadId": "01a07896-020a-7753-9a4b-e673b2e8a31d",
+          "turnId": "01a07896-07f5-72c2-9daa-a6fe2eed8aaf",
+          "eventName": "userPromptSubmit",
+          "executionMode": "sync",
+          "handlerType": "command",
+          "source": "system",
+          "sourcePath": "/etc/codex/config.toml",
+          "scope": "turn",
+          "startedAt": 1788729493,
+          "completedAt": null,
+          "durationMs": null,
+          "status": "running",
+          "statusMessage": "HTTP blocking hook",
+          "entries": [],
+          "truncated": false,
+          "currentRuntime": false
+        },
+        {
+          "id": "user-prompt-submit:2:/etc/codex/config.toml",
+          "threadId": "01a07896-020a-7753-9a4b-e673b2e8a31d",
+          "turnId": "01a07896-0541-7c71-8e91-ae3f3aa31e98",
+          "eventName": "userPromptSubmit",
+          "executionMode": "sync",
+          "handlerType": "command",
+          "source": "system",
+          "sourcePath": "/etc/codex/config.toml",
+          "scope": "turn",
+          "startedAt": 1788729492,
+          "completedAt": 1788729492,
+          "durationMs": 17,
+          "status": "completed",
+          "statusMessage": "HTTP pending hook",
+          "entries": [],
+          "truncated": false,
+          "currentRuntime": false
+        },
+        {
+          "id": "user-prompt-submit:1:/etc/codex/config.toml",
+          "threadId": "01a07896-020a-7753-9a4b-e673b2e8a31d",
+          "turnId": "01a07896-0541-7c71-8e91-ae3f3aa31e98",
+          "eventName": "userPromptSubmit",
+          "executionMode": "sync",
+          "handlerType": "command",
+          "source": "system",
+          "sourcePath": "/etc/codex/config.toml",
+          "scope": "turn",
+          "startedAt": 1788729492,
+          "completedAt": 1788729492,
+          "durationMs": 18,
+          "status": "blocked",
+          "statusMessage": "HTTP blocking hook",
+          "entries": [
+            {
+              "kind": "feedback",
+              "text": "HOOK_HTTP_0207_BLOCK"
+            }
+          ],
+          "truncated": false,
+          "currentRuntime": false
+        },
+        {
+          "id": "session-start:0:/etc/codex/config.toml",
+          "threadId": "01a07896-020a-7753-9a4b-e673b2e8a31d",
+          "turnId": "01a07896-0541-7c71-8e91-ae3f3aa31e98",
+          "eventName": "sessionStart",
+          "executionMode": "sync",
+          "handlerType": "command",
+          "source": "system",
+          "sourcePath": "/etc/codex/config.toml",
+          "scope": "thread",
+          "startedAt": 1788729492,
+          "completedAt": 1788729492,
+          "durationMs": 19,
+          "status": "completed",
+          "statusMessage": "HTTP success hook",
+          "entries": [
+            {
+              "kind": "context",
+              "text": "HOOK_HTTP_0207_SUCCESS"
+            }
+          ],
+          "truncated": false,
+          "currentRuntime": false
+        }
+      ],
+      "observedSince": 1788729250213,
+      "limited": false,
+      "error": ""
+    }
+  },
+  "actualHooksUi": [
+    {
+      "url": "http://127.0.0.1:59015/#/thread/01a07896-020a-7753-9a4b-e673b2e8a31d",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nativeSuccess": true,
+      "nativeBlocked": true,
+      "restartUnconfirmed": true,
+      "screenshot": "output/playwright/0207-actual-hooks-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59015/#/thread/01a07896-020a-7753-9a4b-e673b2e8a31d",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "nativeSuccess": true,
+      "nativeBlocked": true,
+      "restartUnconfirmed": true,
+      "screenshot": "output/playwright/0207-actual-hooks-dark.png"
+    }
+  ],
+  "authMatrix": [
+    {
+      "kind": "noauth",
+      "port": 59011,
+      "name": "codexapp-0207-noauth",
+      "hasCodexAuth": false,
+      "enabled": true,
+      "provider": "opencode-zen",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "invalid",
+      "port": 59012,
+      "name": "codexapp-0207-invalid",
+      "hasCodexAuth": true,
+      "enabled": false,
+      "provider": "openrouter",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "malformed",
+      "port": 59013,
+      "name": "codexapp-0207-malformed",
+      "hasCodexAuth": false,
+      "enabled": true,
+      "provider": "opencode-zen",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "provider",
+      "port": 59014,
+      "name": "codexapp-0207-provider",
+      "hasCodexAuth": false,
+      "enabled": true,
+      "provider": "opencode-zen",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "provider-after",
+      "provider": "openrouter",
+      "enabled": true
+    }
+  ],
+  "authUi": [
+    {
+      "url": "http://127.0.0.1:59012/#/thread/01a07895-7310-7d03-867d-c2abcc1b7f81",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "invalidAuthPersistsAfterReload": true,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0207-invalid-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59012/#/thread/01a07895-7310-7d03-867d-c2abcc1b7f81",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "invalidAuthPersistsAfterReload": true,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0207-invalid-dark.png"
+    },
+    {
+      "kind": "noauth",
+      "theme": "light",
+      "port": 59011,
+      "provider": "opencode-zen",
+      "enabled": true,
+      "hasCodexAuth": false,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0207-noauth-light.png"
+    },
+    {
+      "kind": "noauth",
+      "theme": "dark",
+      "port": 59011,
+      "provider": "opencode-zen",
+      "enabled": true,
+      "hasCodexAuth": false,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0207-noauth-dark.png"
+    },
+    {
+      "kind": "malformed",
+      "theme": "light",
+      "port": 59013,
+      "provider": "opencode-zen",
+      "enabled": true,
+      "hasCodexAuth": false,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0207-malformed-light.png"
+    },
+    {
+      "kind": "malformed",
+      "theme": "dark",
+      "port": 59013,
+      "provider": "opencode-zen",
+      "enabled": true,
+      "hasCodexAuth": false,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0207-malformed-dark.png"
+    },
+    {
+      "kind": "provider",
+      "theme": "light",
+      "port": 59014,
+      "provider": "openrouter",
+      "enabled": true,
+      "hasCodexAuth": false,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0207-provider-light.png"
+    },
+    {
+      "kind": "provider",
+      "theme": "dark",
+      "port": 59014,
+      "provider": "openrouter",
+      "enabled": true,
+      "hasCodexAuth": false,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0207-provider-dark.png"
+    }
+  ],
+  "profiles": [
+    {
+      "targetUrl": "http://127.0.0.1:4173/",
+      "finalUrl": "http://127.0.0.1:4173/#/",
+      "title": "127.0.0.1",
+      "totalMs": 8519.1,
+      "screenshotPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-home-2026-09-06T21-17-55-540Z.png",
+      "tracePath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-home-2026-09-06T21-17-55-540Z-trace.zip",
+      "duplicateCounts": {
+        "threadList": 1,
+        "threadListFirstPage": 1,
+        "threadListCursor": 0,
+        "threadResume": 0,
+        "threadRead": 0,
+        "threadReadWithTurns": 0,
+        "threadReadDuplicateKeys": 0,
+        "skillsList": 1,
+        "rateLimitsRead": 1,
+        "providerModels": 1
+      },
+      "warnings": [
+        "providerModels=1232.7ms"
+      ],
+      "totalApiKB": 22.2,
+      "pageState": {
+        "threadLoadingText": "Loading threads...",
+        "threadLoadTimeoutMs": 15000,
+        "stillLoadingThreads": false
+      },
+      "bodyTextHead": "Skills\nPLUGINS, APPS, MCPS\nAutomations\nSCHEDULED WORK\nAPI outlet\nCODEX CLIENT ACCESS\nProjects\nautomation-0190\nTestChat 0202 1000 turns\n5h\nFICT_0202_100_0 request\n5h\nFICT_0202_10_0 request\n5h\nChats\n\nNo chats\n\nSettings\ncodexapp · v0.2.7\nStart new thread\n\nLet's build\n\nChoose folder\nSelect folder\nCreate Project\nImport Project\n\nNEW IN CODEX\n\nPlugins are here\n\nHook Codex up to Gmail, Calendar, GitHub, Slack, Browser Use, and more so it can actually help with real work right away.\n\nGMAIL\nCALENDAR\nGITHUB\nSLACK\nBROWSER USE\nExplore Plugins & Apps\nDismiss\n+\nbig-pickle\nSkills\n跟随运行时默认强度",
+      "performance": {
+        "navigation": {
+          "responseEnd": 47.799999952316284,
+          "domContentLoaded": 1428.1999998092651,
+          "loadEventEnd": 1436.6999998092651
+        },
+        "paints": [
+          {
+            "name": "first-paint",
+            "startTime": 1460
+          },
+          {
+            "name": "first-contentful-paint",
+            "startTime": 1460
+          }
+        ],
+        "resources": [
+          {
+            "name": "http://127.0.0.1:4173/codex-api/thread-pins",
+            "initiatorType": "fetch",
+            "duration": 48,
+            "transferSize": 325,
+            "decodedBodySize": 25
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/prompts",
+            "initiatorType": "fetch",
+            "duration": 25,
+            "transferSize": 311,
+            "decodedBodySize": 11
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/home-directory",
+            "initiatorType": "fetch",
+            "duration": 22,
+            "transferSize": 325,
+            "decodedBodySize": 25
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/preferences/first-launch-plugins-card",
+            "initiatorType": "fetch",
+            "duration": 23.40000009536743,
+            "transferSize": 328,
+            "decodedBodySize": 28
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/workspace-roots-state",
+            "initiatorType": "fetch",
+            "duration": 23.299999952316284,
+            "transferSize": 383,
+            "decodedBodySize": 83
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/telegram/config",
+            "initiatorType": "fetch",
+            "duration": 23.09999990463257,
+            "transferSize": 344,
+            "decodedBodySize": 44
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/telegram/status",
+            "initiatorType": "fetch",
+            "duration": 22.09999990463257,
+            "transferSize": 432,
+            "decodedBodySize": 132
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/free-mode/status",
+            "initiatorType": "fetch",
+            "duration": 1287.5,
+            "transferSize": 697,
+            "decodedBodySize": 397
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/thread-terminal/status",
+            "initiatorType": "fetch",
+            "duration": 31.800000190734863,
+            "transferSize": 332,
+            "decodedBodySize": 32
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/prompts",
+            "initiatorType": "fetch",
+            "duration": 29.5,
+            "transferSize": 311,
+            "decodedBodySize": 11
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/thread-queue-state",
+            "initiatorType": "fetch",
+            "duration": 25.700000047683716,
+            "transferSize": 311,
+            "decodedBodySize": 11
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/thread-automations",
+            "initiatorType": "fetch",
+            "duration": 2.299999952316284,
+            "transferSize": 311,
+            "decodedBodySize": 11
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/project-root-suggestion?basePath=%2Froot",
+            "initiatorType": "fetch",
+            "duration": 2.1000001430511475,
+            "transferSize": 366,
+            "decodedBodySize": 66
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 136.80000019073486,
+            "transferSize": 2788,
+            "decodedBodySize": 2488
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/thread-titles",
+            "initiatorType": "fetch",
+            "duration": 56.40000009536743,
+            "transferSize": 436,
+            "decodedBodySize": 136
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/project-automations",
+            "initiatorType": "fetch",
+            "duration": 50.39999985694885,
+            "transferSize": 311,
+            "decodedBodySize": 11
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/project-root-suggestion?basePath=%2Ftest-workspace",
+            "initiatorType": "fetch",
+            "duration": 2.200000047683716,
+            "transferSize": 335,
+            "decodedBodySize": 35
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/accounts",
+            "initiatorType": "fetch",
+            "duration": 3.0999999046325684,
+            "transferSize": 387,
+            "decodedBodySize": 87
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 7.799999952316284,
+            "transferSize": 5168,
+            "decodedBodySize": 4868
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 5.6000001430511475,
+            "transferSize": 5168,
+            "decodedBodySize": 4868
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 4.099999904632568,
+            "transferSize": 315,
+            "decodedBodySize": 15
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 4.299999952316284,
+            "transferSize": 465,
+            "decodedBodySize": 165
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 10.600000143051147,
+            "transferSize": 9009,
+            "decodedBodySize": 8709
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/server-requests/pending",
+            "initiatorType": "fetch",
+            "duration": 3.3000001907348633,
+            "transferSize": 329,
+            "decodedBodySize": 29
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/provider-models?provider=opencode-zen",
+            "initiatorType": "fetch",
+            "duration": 1231,
+            "transferSize": 578,
+            "decodedBodySize": 278
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/server-requests/pending",
+            "initiatorType": "fetch",
+            "duration": 1.5999999046325684,
+            "transferSize": 329,
+            "decodedBodySize": 29
+          },
+          {
+            "name": "http://127.0.0.1:4173/codex-api/thread-goals",
+            "initiatorType": "fetch",
+            "duration": 6.700000047683716,
+            "transferSize": 442,
+            "decodedBodySize": 142
+          }
+        ],
+        "memory": {
+          "usedJSHeapSize": 17648400,
+          "totalJSHeapSize": 19323620,
+          "jsHeapSizeLimit": 4395630592
+        }
+      },
+      "apiSummary": [
+        {
+          "key": "/codex-api/free-mode/status",
+          "count": 1,
+          "minMs": 1280.8,
+          "avgMs": 1280.8,
+          "p95Ms": 1280.8,
+          "maxMs": 1280.8,
+          "totalKB": 0.4
+        },
+        {
+          "key": "/codex-api/provider-models",
+          "count": 1,
+          "minMs": 1232.7,
+          "avgMs": 1232.7,
+          "p95Ms": 1232.7,
+          "maxMs": 1232.7,
+          "totalKB": 0.3
+        },
+        {
+          "key": "thread/list:first-page",
+          "count": 1,
+          "minMs": 141.4,
+          "avgMs": 141.4,
+          "p95Ms": 141.4,
+          "maxMs": 141.4,
+          "totalKB": 2.4
+        },
+        {
+          "key": "/codex-api/prompts",
+          "count": 2,
+          "minMs": 64.8,
+          "avgMs": 64.9,
+          "p95Ms": 64.9,
+          "maxMs": 64.9,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/preferences/first-launch-plugins-card",
+          "count": 1,
+          "minMs": 64.9,
+          "avgMs": 64.9,
+          "p95Ms": 64.9,
+          "maxMs": 64.9,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/workspace-roots-state",
+          "count": 1,
+          "minMs": 64.9,
+          "avgMs": 64.9,
+          "p95Ms": 64.9,
+          "maxMs": 64.9,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/telegram/config",
+          "count": 1,
+          "minMs": 64.9,
+          "avgMs": 64.9,
+          "p95Ms": 64.9,
+          "maxMs": 64.9,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/home-directory",
+          "count": 1,
+          "minMs": 64.8,
+          "avgMs": 64.8,
+          "p95Ms": 64.8,
+          "maxMs": 64.8,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/telegram/status",
+          "count": 1,
+          "minMs": 64.8,
+          "avgMs": 64.8,
+          "p95Ms": 64.8,
+          "maxMs": 64.8,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/thread-terminal/status",
+          "count": 1,
+          "minMs": 64.8,
+          "avgMs": 64.8,
+          "p95Ms": 64.8,
+          "maxMs": 64.8,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/thread-queue-state",
+          "count": 1,
+          "minMs": 63.8,
+          "avgMs": 63.8,
+          "p95Ms": 63.8,
+          "maxMs": 63.8,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/thread-pins",
+          "count": 1,
+          "minMs": 62.2,
+          "avgMs": 62.2,
+          "p95Ms": 62.2,
+          "maxMs": 62.2,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/thread-titles",
+          "count": 1,
+          "minMs": 48,
+          "avgMs": 48,
+          "p95Ms": 48,
+          "maxMs": 48,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/project-automations",
+          "count": 1,
+          "minMs": 44.5,
+          "avgMs": 44.5,
+          "p95Ms": 44.5,
+          "maxMs": 44.5,
+          "totalKB": 0
+        },
+        {
+          "key": "config/read",
+          "count": 2,
+          "minMs": 11.8,
+          "avgMs": 13.5,
+          "p95Ms": 15.2,
+          "maxMs": 15.2,
+          "totalKB": 9.5
+        },
+        {
+          "key": "skills/list",
+          "count": 1,
+          "minMs": 13.1,
+          "avgMs": 13.1,
+          "p95Ms": 13.1,
+          "maxMs": 13.1,
+          "totalKB": 8.5
+        },
+        {
+          "key": "/codex-api/thread-goals",
+          "count": 1,
+          "minMs": 7.3,
+          "avgMs": 7.3,
+          "p95Ms": 7.3,
+          "maxMs": 7.3,
+          "totalKB": 0.1
+        },
+        {
+          "key": "collaborationMode/list",
+          "count": 1,
+          "minMs": 6.7,
+          "avgMs": 6.7,
+          "p95Ms": 6.7,
+          "maxMs": 6.7,
+          "totalKB": 0.2
+        },
+        {
+          "key": "/codex-api/accounts",
+          "count": 1,
+          "minMs": 5.2,
+          "avgMs": 5.2,
+          "p95Ms": 5.2,
+          "maxMs": 5.2,
+          "totalKB": 0.1
+        },
+        {
+          "key": "account/rateLimits/read",
+          "count": 1,
+          "minMs": 4.6,
+          "avgMs": 4.6,
+          "p95Ms": 4.6,
+          "maxMs": 4.6,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/project-root-suggestion",
+          "count": 2,
+          "minMs": 3.2,
+          "avgMs": 4.2,
+          "p95Ms": 5.2,
+          "maxMs": 5.2,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/server-requests/pending",
+          "count": 2,
+          "minMs": 2.2,
+          "avgMs": 4.2,
+          "p95Ms": 6.1,
+          "maxMs": 6.1,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/thread-automations",
+          "count": 1,
+          "minMs": 3.7,
+          "avgMs": 3.7,
+          "p95Ms": 3.7,
+          "maxMs": 3.7,
+          "totalKB": 0
+        }
+      ],
+      "slowestApiRows": [
+        {
+          "method": "GET",
+          "path": "/codex-api/free-mode/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 1280.8,
+          "requestBytes": 0,
+          "responseBytes": 397,
+          "responseKB": 0.4
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/provider-models",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 1232.7,
+          "requestBytes": 0,
+          "responseBytes": 278,
+          "responseKB": 0.3
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "thread/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 141.4,
+          "requestBytes": 120,
+          "responseBytes": 2488,
+          "responseKB": 2.4
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 64.9,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/preferences/first-launch-plugins-card",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 64.9,
+          "requestBytes": 0,
+          "responseBytes": 28,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/workspace-roots-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 64.9,
+          "requestBytes": 0,
+          "responseBytes": 83,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/config",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 64.9,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/home-directory",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 64.8,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 64.8,
+          "requestBytes": 0,
+          "responseBytes": 132,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 64.8,
+          "requestBytes": 0,
+          "responseBytes": 32,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 64.8,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-queue-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 63.8,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-pins",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 62.2,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-titles",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 48,
+          "requestBytes": 0,
+          "responseBytes": 136,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/project-automations",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 44.5,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "config/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 15.2,
+          "requestBytes": 36,
+          "responseBytes": 4868,
+          "responseKB": 4.8
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "skills/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 13.1,
+          "requestBytes": 36,
+          "responseBytes": 8709,
+          "responseKB": 8.5
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "config/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 11.8,
+          "requestBytes": 36,
+          "responseBytes": 4868,
+          "responseKB": 4.8
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/thread-goals",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 7.3,
+          "requestBytes": 132,
+          "responseBytes": 142,
+          "responseKB": 0.1
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "collaborationMode/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 6.7,
+          "requestBytes": 47,
+          "responseBytes": 165,
+          "responseKB": 0.2
+        }
+      ],
+      "apiRows": [
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-pins",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 62.2,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/home-directory",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 64.8,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 64.8,
+          "requestBytes": 0,
+          "responseBytes": 132,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 64.9,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/preferences/first-launch-plugins-card",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 64.9,
+          "requestBytes": 0,
+          "responseBytes": 28,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/workspace-roots-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 64.9,
+          "requestBytes": 0,
+          "responseBytes": 83,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/config",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 64.9,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 64.8,
+          "requestBytes": 0,
+          "responseBytes": 32,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-queue-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 63.8,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 64.8,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-automations",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 3.7,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/project-root-suggestion",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 3.2,
+          "requestBytes": 0,
+          "responseBytes": 66,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/project-automations",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 44.5,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-titles",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 48,
+          "requestBytes": 0,
+          "responseBytes": 136,
+          "responseKB": 0.1
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "thread/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 141.4,
+          "requestBytes": 120,
+          "responseBytes": 2488,
+          "responseKB": 2.4
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/project-root-suggestion",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 404,
+          "ms": 5.2,
+          "requestBytes": 0,
+          "responseBytes": 35,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/accounts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 5.2,
+          "requestBytes": 0,
+          "responseBytes": 87,
+          "responseKB": 0.1
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "account/rateLimits/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": null,
+          "status": 200,
+          "ms": 4.6,
+          "requestBytes": 50,
+          "responseBytes": 15,
+          "responseKB": 0
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "collaborationMode/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 6.7,
+          "requestBytes": 47,
+          "responseBytes": 165,
+          "responseKB": 0.2
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "config/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 15.2,
+          "requestBytes": 36,
+          "responseBytes": 4868,
+          "responseKB": 4.8
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "config/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 11.8,
+          "requestBytes": 36,
+          "responseBytes": 4868,
+          "responseKB": 4.8
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/server-requests/pending",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 6.1,
+          "requestBytes": 0,
+          "responseBytes": 29,
+          "responseKB": 0
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "skills/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 13.1,
+          "requestBytes": 36,
+          "responseBytes": 8709,
+          "responseKB": 8.5
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/server-requests/pending",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 2.2,
+          "requestBytes": 0,
+          "responseBytes": 29,
+          "responseKB": 0
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/thread-goals",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 7.3,
+          "requestBytes": 132,
+          "responseBytes": 142,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/free-mode/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 1280.8,
+          "requestBytes": 0,
+          "responseBytes": 397,
+          "responseKB": 0.4
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/provider-models",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 1232.7,
+          "requestBytes": 0,
+          "responseBytes": 278,
+          "responseKB": 0.3
+        }
+      ]
+    },
+    {
+      "targetUrl": "http://127.0.0.1:59001/",
+      "finalUrl": "http://127.0.0.1:59001/#/",
+      "title": "127.0.0.1",
+      "totalMs": 7311.3,
+      "screenshotPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-home-2026-09-06T21-18-05-262Z.png",
+      "tracePath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-home-2026-09-06T21-18-05-262Z-trace.zip",
+      "duplicateCounts": {
+        "threadList": 1,
+        "threadListFirstPage": 1,
+        "threadListCursor": 0,
+        "threadResume": 0,
+        "threadRead": 0,
+        "threadReadWithTurns": 0,
+        "threadReadDuplicateKeys": 0,
+        "skillsList": 1,
+        "rateLimitsRead": 1,
+        "providerModels": 0
+      },
+      "warnings": [],
+      "totalApiKB": 100.2,
+      "pageState": {
+        "threadLoadingText": "Loading threads...",
+        "threadLoadTimeoutMs": 15000,
+        "stillLoadingThreads": false
+      },
+      "bodyTextHead": "Skills\nPLUGINS, APPS, MCPS\nAutomations\nSCHEDULED WORK\nAPI outlet\nCODEX CLIENT ACCESS\nProjects\ntmp\nTestChat 0.2.7 native background processes\n3m\nTestChat 0.2.7 native background processes\n8m\nTestChat 0.2.5 explicit task excerpt\n1h\nTestChat 0.2.5 task reference protocol\n2h\nTestChat 0.2.4 native compact recall\n2h\nTestChat 0.2.4 native budget boundary\n2h\nTestChat 0.2.4 native Goal acceptance\n2h\nTestChat 0.2.3 durable delivery acceptance\n3h\nautomation-0190\nTestChat 0202 1000 turns\n4h\nTestChat 0202 100 turns\n5h\nTestChat 0202 10 turns\n5h\nTestChat 0201 async question acceptance\n6h\nTest 0200 model settings 1788690741772 · 2026-09-06 18:32:21 +08:00（Asia/Shanghai）\n10h\nTestChat 0.2.0 model capability acceptance\n10h\n0190 终验目标与压缩\n14h\n持续目标 · 回复 GOAL_ENTRY_0190_OK，然后调用 update_goal 将目标标记为 complete。只允许使用\n15h\n0190 封测收尾时间验收 · 2026-09-06 13:22:44 +08:00（Asia/Shanghai）\n15h\n0190 内部日记验收 · 2026-09-05T19:10:09.522Z\n16h\nShow more\nChats\nhi\n12h\nhi\n1d\nhi\n2d\nSettings\ncodexapp · v0.2.7\nStart new thread\n\nLet's build\n",
+      "performance": {
+        "navigation": {
+          "responseEnd": 3.5,
+          "domContentLoaded": 198.30000019073486,
+          "loadEventEnd": 240.10000014305115
+        },
+        "paints": [
+          {
+            "name": "first-paint",
+            "startTime": 232
+          },
+          {
+            "name": "first-contentful-paint",
+            "startTime": 232
+          }
+        ],
+        "resources": [
+          {
+            "name": "http://127.0.0.1:59001/assets/index-Db_4gIUD.js",
+            "initiatorType": "script",
+            "duration": 10,
+            "transferSize": 636285,
+            "decodedBodySize": 635985
+          },
+          {
+            "name": "http://127.0.0.1:59001/assets/index-C_3Md5uX.css",
+            "initiatorType": "link",
+            "duration": 7,
+            "transferSize": 422419,
+            "decodedBodySize": 422119
+          },
+          {
+            "name": "http://127.0.0.1:59001/assets/ThreadConversation-Dg_disJV.js",
+            "initiatorType": "script",
+            "duration": 3.5999999046325684,
+            "transferSize": 75107,
+            "decodedBodySize": 74807
+          },
+          {
+            "name": "http://127.0.0.1:59001/assets/ThreadConversation-DdgDsc34.css",
+            "initiatorType": "link",
+            "duration": 3,
+            "transferSize": 82379,
+            "decodedBodySize": 82079
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/thread-pins",
+            "initiatorType": "fetch",
+            "duration": 1.7999999523162842,
+            "transferSize": 325,
+            "decodedBodySize": 25
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/prompts",
+            "initiatorType": "fetch",
+            "duration": 2,
+            "transferSize": 311,
+            "decodedBodySize": 11
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/home-directory",
+            "initiatorType": "fetch",
+            "duration": 2,
+            "transferSize": 325,
+            "decodedBodySize": 25
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/preferences/first-launch-plugins-card",
+            "initiatorType": "fetch",
+            "duration": 3.200000047683716,
+            "transferSize": 327,
+            "decodedBodySize": 27
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/workspace-roots-state",
+            "initiatorType": "fetch",
+            "duration": 3,
+            "transferSize": 383,
+            "decodedBodySize": 83
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/telegram/config",
+            "initiatorType": "fetch",
+            "duration": 4.099999904632568,
+            "transferSize": 344,
+            "decodedBodySize": 44
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/telegram/status",
+            "initiatorType": "fetch",
+            "duration": 3.1999998092651367,
+            "transferSize": 432,
+            "decodedBodySize": 132
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/free-mode/status",
+            "initiatorType": "fetch",
+            "duration": 3.799999952316284,
+            "transferSize": 1135,
+            "decodedBodySize": 835
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/thread-terminal/status",
+            "initiatorType": "fetch",
+            "duration": 3.3999998569488525,
+            "transferSize": 332,
+            "decodedBodySize": 32
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/prompts",
+            "initiatorType": "fetch",
+            "duration": 1.8000001907348633,
+            "transferSize": 311,
+            "decodedBodySize": 11
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/thread-queue-state",
+            "initiatorType": "fetch",
+            "duration": 1.5,
+            "transferSize": 311,
+            "decodedBodySize": 11
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/thread-automations",
+            "initiatorType": "fetch",
+            "duration": 3.1000001430511475,
+            "transferSize": 1037,
+            "decodedBodySize": 737
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/project-root-suggestion?basePath=%2Froot",
+            "initiatorType": "fetch",
+            "duration": 1.7000000476837158,
+            "transferSize": 366,
+            "decodedBodySize": 66
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 47.09999990463257,
+            "transferSize": 34647,
+            "decodedBodySize": 34347
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/thread-titles",
+            "initiatorType": "fetch",
+            "duration": 1.7999999523162842,
+            "transferSize": 5124,
+            "decodedBodySize": 4824
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/project-automations",
+            "initiatorType": "fetch",
+            "duration": 2.5,
+            "transferSize": 1171,
+            "decodedBodySize": 871
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/accounts",
+            "initiatorType": "fetch",
+            "duration": 3.700000047683716,
+            "transferSize": 1360,
+            "decodedBodySize": 1060
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 5.5,
+            "transferSize": 6511,
+            "decodedBodySize": 6211
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 7.799999952316284,
+            "transferSize": 6511,
+            "decodedBodySize": 6211
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 1114.7999999523163,
+            "transferSize": 2044,
+            "decodedBodySize": 1744
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 2.799999952316284,
+            "transferSize": 465,
+            "decodedBodySize": 165
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 7.099999904632568,
+            "transferSize": 36267,
+            "decodedBodySize": 35967
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/server-requests/pending",
+            "initiatorType": "fetch",
+            "duration": 2.700000047683716,
+            "transferSize": 329,
+            "decodedBodySize": 29
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/server-requests/pending",
+            "initiatorType": "fetch",
+            "duration": 2.3999998569488525,
+            "transferSize": 329,
+            "decodedBodySize": 29
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 4.700000047683716,
+            "transferSize": 6869,
+            "decodedBodySize": 6569
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/thread-goals",
+            "initiatorType": "fetch",
+            "duration": 10.299999952316284,
+            "transferSize": 2807,
+            "decodedBodySize": 2507
+          }
+        ],
+        "memory": {
+          "usedJSHeapSize": 9108391,
+          "totalJSHeapSize": 10891303,
+          "jsHeapSizeLimit": 4395630592
+        }
+      },
+      "apiSummary": [
+        {
+          "key": "account/rateLimits/read",
+          "count": 1,
+          "minMs": 1113.6,
+          "avgMs": 1113.6,
+          "p95Ms": 1113.6,
+          "maxMs": 1113.6,
+          "totalKB": 1.7
+        },
+        {
+          "key": "/codex-api/thread-pins",
+          "count": 1,
+          "minMs": 76.5,
+          "avgMs": 76.5,
+          "p95Ms": 76.5,
+          "maxMs": 76.5,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/home-directory",
+          "count": 1,
+          "minMs": 76.5,
+          "avgMs": 76.5,
+          "p95Ms": 76.5,
+          "maxMs": 76.5,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/preferences/first-launch-plugins-card",
+          "count": 1,
+          "minMs": 76.5,
+          "avgMs": 76.5,
+          "p95Ms": 76.5,
+          "maxMs": 76.5,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/workspace-roots-state",
+          "count": 1,
+          "minMs": 76.5,
+          "avgMs": 76.5,
+          "p95Ms": 76.5,
+          "maxMs": 76.5,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/prompts",
+          "count": 2,
+          "minMs": 74.7,
+          "avgMs": 75.6,
+          "p95Ms": 76.5,
+          "maxMs": 76.5,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/telegram/status",
+          "count": 1,
+          "minMs": 74.8,
+          "avgMs": 74.8,
+          "p95Ms": 74.8,
+          "maxMs": 74.8,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/telegram/config",
+          "count": 1,
+          "minMs": 74.8,
+          "avgMs": 74.8,
+          "p95Ms": 74.8,
+          "maxMs": 74.8,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/free-mode/status",
+          "count": 1,
+          "minMs": 74.8,
+          "avgMs": 74.8,
+          "p95Ms": 74.8,
+          "maxMs": 74.8,
+          "totalKB": 0.8
+        },
+        {
+          "key": "/codex-api/thread-terminal/status",
+          "count": 1,
+          "minMs": 74.8,
+          "avgMs": 74.8,
+          "p95Ms": 74.8,
+          "maxMs": 74.8,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/thread-queue-state",
+          "count": 1,
+          "minMs": 74.7,
+          "avgMs": 74.7,
+          "p95Ms": 74.7,
+          "maxMs": 74.7,
+          "totalKB": 0
+        },
+        {
+          "key": "thread/list:first-page",
+          "count": 1,
+          "minMs": 54.4,
+          "avgMs": 54.4,
+          "p95Ms": 54.4,
+          "maxMs": 54.4,
+          "totalKB": 33.5
+        },
+        {
+          "key": "skills/list",
+          "count": 1,
+          "minMs": 16.5,
+          "avgMs": 16.5,
+          "p95Ms": 16.5,
+          "maxMs": 16.5,
+          "totalKB": 35.1
+        },
+        {
+          "key": "/codex-api/thread-goals",
+          "count": 1,
+          "minMs": 14,
+          "avgMs": 14,
+          "p95Ms": 14,
+          "maxMs": 14,
+          "totalKB": 2.4
+        },
+        {
+          "key": "config/read",
+          "count": 2,
+          "minMs": 10.6,
+          "avgMs": 13.1,
+          "p95Ms": 15.6,
+          "maxMs": 15.6,
+          "totalKB": 12.1
+        },
+        {
+          "key": "/codex-api/accounts",
+          "count": 1,
+          "minMs": 10.6,
+          "avgMs": 10.6,
+          "p95Ms": 10.6,
+          "maxMs": 10.6,
+          "totalKB": 1
+        },
+        {
+          "key": "/codex-api/server-requests/pending",
+          "count": 2,
+          "minMs": 6.1,
+          "avgMs": 10.1,
+          "p95Ms": 14.2,
+          "maxMs": 14.2,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/project-automations",
+          "count": 1,
+          "minMs": 10,
+          "avgMs": 10,
+          "p95Ms": 10,
+          "maxMs": 10,
+          "totalKB": 0.9
+        },
+        {
+          "key": "/codex-api/project-root-suggestion",
+          "count": 1,
+          "minMs": 9.8,
+          "avgMs": 9.8,
+          "p95Ms": 9.8,
+          "maxMs": 9.8,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/thread-titles",
+          "count": 1,
+          "minMs": 9.7,
+          "avgMs": 9.7,
+          "p95Ms": 9.7,
+          "maxMs": 9.7,
+          "totalKB": 4.7
+        },
+        {
+          "key": "/codex-api/thread-automations",
+          "count": 1,
+          "minMs": 9.6,
+          "avgMs": 9.6,
+          "p95Ms": 9.6,
+          "maxMs": 9.6,
+          "totalKB": 0.7
+        },
+        {
+          "key": "model/list",
+          "count": 1,
+          "minMs": 9.4,
+          "avgMs": 9.4,
+          "p95Ms": 9.4,
+          "maxMs": 9.4,
+          "totalKB": 6.4
+        },
+        {
+          "key": "collaborationMode/list",
+          "count": 1,
+          "minMs": 7.2,
+          "avgMs": 7.2,
+          "p95Ms": 7.2,
+          "maxMs": 7.2,
+          "totalKB": 0.2
+        }
+      ],
+      "slowestApiRows": [
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "account/rateLimits/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": null,
+          "status": 200,
+          "ms": 1113.6,
+          "requestBytes": 50,
+          "responseBytes": 1744,
+          "responseKB": 1.7
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-pins",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 76.5,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 76.5,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/home-directory",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 76.5,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/preferences/first-launch-plugins-card",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 76.5,
+          "requestBytes": 0,
+          "responseBytes": 27,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/workspace-roots-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 76.5,
+          "requestBytes": 0,
+          "responseBytes": 83,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.8,
+          "requestBytes": 0,
+          "responseBytes": 132,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/config",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.8,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/free-mode/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.8,
+          "requestBytes": 0,
+          "responseBytes": 835,
+          "responseKB": 0.8
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.8,
+          "requestBytes": 0,
+          "responseBytes": 32,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.7,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-queue-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.7,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "thread/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 54.4,
+          "requestBytes": 120,
+          "responseBytes": 34347,
+          "responseKB": 33.5
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "skills/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 16.5,
+          "requestBytes": 36,
+          "responseBytes": 35967,
+          "responseKB": 35.1
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "config/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 15.6,
+          "requestBytes": 36,
+          "responseBytes": 6211,
+          "responseKB": 6.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/server-requests/pending",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 14.2,
+          "requestBytes": 0,
+          "responseBytes": 29,
+          "responseKB": 0
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/thread-goals",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 14,
+          "requestBytes": 1224,
+          "responseBytes": 2507,
+          "responseKB": 2.4
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/accounts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 10.6,
+          "requestBytes": 0,
+          "responseBytes": 1060,
+          "responseKB": 1
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "config/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 10.6,
+          "requestBytes": 36,
+          "responseBytes": 6211,
+          "responseKB": 6.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/project-automations",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 10,
+          "requestBytes": 0,
+          "responseBytes": 871,
+          "responseKB": 0.9
+        }
+      ],
+      "apiRows": [
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-pins",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 76.5,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 76.5,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/home-directory",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 76.5,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/preferences/first-launch-plugins-card",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 76.5,
+          "requestBytes": 0,
+          "responseBytes": 27,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/workspace-roots-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 76.5,
+          "requestBytes": 0,
+          "responseBytes": 83,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.8,
+          "requestBytes": 0,
+          "responseBytes": 132,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/config",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.8,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/free-mode/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.8,
+          "requestBytes": 0,
+          "responseBytes": 835,
+          "responseKB": 0.8
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.8,
+          "requestBytes": 0,
+          "responseBytes": 32,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.7,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-queue-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 74.7,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-automations",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 9.6,
+          "requestBytes": 0,
+          "responseBytes": 737,
+          "responseKB": 0.7
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/project-root-suggestion",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 9.8,
+          "requestBytes": 0,
+          "responseBytes": 66,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-titles",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 9.7,
+          "requestBytes": 0,
+          "responseBytes": 4824,
+          "responseKB": 4.7
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/project-automations",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 10,
+          "requestBytes": 0,
+          "responseBytes": 871,
+          "responseKB": 0.9
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "thread/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 54.4,
+          "requestBytes": 120,
+          "responseBytes": 34347,
+          "responseKB": 33.5
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/accounts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 10.6,
+          "requestBytes": 0,
+          "responseBytes": 1060,
+          "responseKB": 1
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "config/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 10.6,
+          "requestBytes": 36,
+          "responseBytes": 6211,
+          "responseKB": 6.1
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "collaborationMode/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 7.2,
+          "requestBytes": 47,
+          "responseBytes": 165,
+          "responseKB": 0.2
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/server-requests/pending",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 6.1,
+          "requestBytes": 0,
+          "responseBytes": 29,
+          "responseKB": 0
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "config/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 15.6,
+          "requestBytes": 36,
+          "responseBytes": 6211,
+          "responseKB": 6.1
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "skills/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 16.5,
+          "requestBytes": 36,
+          "responseBytes": 35967,
+          "responseKB": 35.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/server-requests/pending",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 14.2,
+          "requestBytes": 0,
+          "responseBytes": 29,
+          "responseKB": 0
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "model/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 9.4,
+          "requestBytes": 46,
+          "responseBytes": 6569,
+          "responseKB": 6.4
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/thread-goals",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 14,
+          "requestBytes": 1224,
+          "responseBytes": 2507,
+          "responseKB": 2.4
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "account/rateLimits/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": null,
+          "status": 200,
+          "ms": 1113.6,
+          "requestBytes": 50,
+          "responseBytes": 1744,
+          "responseKB": 1.7
+        }
+      ]
+    },
+    {
+      "targetUrl": "http://127.0.0.1:59001/#/thread/01a07750-0202-7000-8000-000000001000",
+      "finalUrl": "http://127.0.0.1:59001/#/thread/01a07750-0202-7000-8000-000000001000",
+      "title": "TestChat 0202 1000 turns",
+      "totalMs": 7363.2,
+      "screenshotPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-thread-01a07750-0202-7000-8000-000000001000-2026-09-06T21-18-13-766Z.png",
+      "tracePath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-thread-01a07750-0202-7000-8000-000000001000-2026-09-06T21-18-13-766Z-trace.zip",
+      "duplicateCounts": {
+        "threadList": 1,
+        "threadListFirstPage": 1,
+        "threadListCursor": 0,
+        "threadResume": 1,
+        "threadRead": 0,
+        "threadReadWithTurns": 0,
+        "threadReadDuplicateKeys": 0,
+        "skillsList": 1,
+        "rateLimitsRead": 1,
+        "providerModels": 0
+      },
+      "warnings": [],
+      "totalApiKB": 154.1,
+      "pageState": {
+        "threadLoadingText": "Loading threads...",
+        "threadLoadTimeoutMs": 15000,
+        "stillLoadingThreads": false
+      },
+      "bodyTextHead": "Skills\nPLUGINS, APPS, MCPS\nAutomations\nSCHEDULED WORK\nAPI outlet\nCODEX CLIENT ACCESS\nProjects\ntmp\nTestChat 0.2.7 native background processes\n3m\nTestChat 0.2.7 native background processes\n8m\nTestChat 0.2.5 explicit task excerpt\n1h\nTestChat 0.2.5 task reference protocol\n2h\nTestChat 0.2.4 native compact recall\n2h\nTestChat 0.2.4 native budget boundary\n2h\nTestChat 0.2.4 native Goal acceptance\n2h\nTestChat 0.2.3 durable delivery acceptance\n3h\nautomation-0190\nTestChat 0202 1000 turns\n4h\nTestChat 0202 100 turns\n5h\nTestChat 0202 10 turns\n5h\nTestChat 0201 async question acceptance\n6h\nTest 0200 model settings 1788690741772 · 2026-09-06 18:32:21 +08:00（Asia/Shanghai）\n10h\nTestChat 0.2.0 model capability acceptance\n10h\n0190 终验目标与压缩\n14h\n持续目标 · 回复 GOAL_ENTRY_0190_OK，然后调用 update_goal 将目标标记为 complete。只允许使用\n15h\n0190 封测收尾时间验收 · 2026-09-06 13:22:44 +08:00（Asia/Shanghai）\n15h\n0190 内部日记验收 · 2026-09-05T19:10:09.522Z\n16h\nShow more\nChats\nhi\n12h\nhi\n1d\nhi\n2d\nSettings\ncodexapp · v0.2.7\nTestChat 0202 1000 turns\nDetac",
+      "performance": {
+        "navigation": {
+          "responseEnd": 3.8999998569488525,
+          "domContentLoaded": 229.20000004768372,
+          "loadEventEnd": 270.2000000476837
+        },
+        "paints": [
+          {
+            "name": "first-paint",
+            "startTime": 48
+          },
+          {
+            "name": "first-contentful-paint",
+            "startTime": 260
+          }
+        ],
+        "resources": [
+          {
+            "name": "http://127.0.0.1:59001/assets/index-Db_4gIUD.js",
+            "initiatorType": "script",
+            "duration": 12.900000095367432,
+            "transferSize": 636285,
+            "decodedBodySize": 635985
+          },
+          {
+            "name": "http://127.0.0.1:59001/assets/index-C_3Md5uX.css",
+            "initiatorType": "link",
+            "duration": 9.700000047683716,
+            "transferSize": 422419,
+            "decodedBodySize": 422119
+          },
+          {
+            "name": "http://127.0.0.1:59001/assets/ThreadConversation-Dg_disJV.js",
+            "initiatorType": "script",
+            "duration": 4.099999904632568,
+            "transferSize": 75107,
+            "decodedBodySize": 74807
+          },
+          {
+            "name": "http://127.0.0.1:59001/assets/ThreadConversation-DdgDsc34.css",
+            "initiatorType": "link",
+            "duration": 3.4000000953674316,
+            "transferSize": 82379,
+            "decodedBodySize": 82079
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/thread-pins",
+            "initiatorType": "fetch",
+            "duration": 2.0999999046325684,
+            "transferSize": 325,
+            "decodedBodySize": 25
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/prompts",
+            "initiatorType": "fetch",
+            "duration": 2,
+            "transferSize": 311,
+            "decodedBodySize": 11
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/home-directory",
+            "initiatorType": "fetch",
+            "duration": 2.5,
+            "transferSize": 325,
+            "decodedBodySize": 25
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/preferences/first-launch-plugins-card",
+            "initiatorType": "fetch",
+            "duration": 2.5,
+            "transferSize": 327,
+            "decodedBodySize": 27
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/workspace-roots-state",
+            "initiatorType": "fetch",
+            "duration": 6,
+            "transferSize": 383,
+            "decodedBodySize": 83
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/telegram/config",
+            "initiatorType": "fetch",
+            "duration": 4.799999952316284,
+            "transferSize": 344,
+            "decodedBodySize": 44
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/telegram/status",
+            "initiatorType": "fetch",
+            "duration": 3.299999952316284,
+            "transferSize": 432,
+            "decodedBodySize": 132
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/free-mode/status",
+            "initiatorType": "fetch",
+            "duration": 3.799999952316284,
+            "transferSize": 1135,
+            "decodedBodySize": 835
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/thread-terminal/status",
+            "initiatorType": "fetch",
+            "duration": 3.700000047683716,
+            "transferSize": 332,
+            "decodedBodySize": 32
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/thread-queue-state",
+            "initiatorType": "fetch",
+            "duration": 2.1000001430511475,
+            "transferSize": 311,
+            "decodedBodySize": 11
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/thread-automations",
+            "initiatorType": "fetch",
+            "duration": 3.299999952316284,
+            "transferSize": 1037,
+            "decodedBodySize": 737
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/project-root-suggestion?basePath=%2Froot",
+            "initiatorType": "fetch",
+            "duration": 2.799999952316284,
+            "transferSize": 366,
+            "decodedBodySize": 66
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 60.5,
+            "transferSize": 34647,
+            "decodedBodySize": 34347
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/thread-titles",
+            "initiatorType": "fetch",
+            "duration": 2.0999999046325684,
+            "transferSize": 5124,
+            "decodedBodySize": 4824
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/project-automations",
+            "initiatorType": "fetch",
+            "duration": 3.6000001430511475,
+            "transferSize": 1171,
+            "decodedBodySize": 871
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/thread-terminal/quick-commands?cwd=%2Ftest-workspace%2Fautomation-0190",
+            "initiatorType": "fetch",
+            "duration": 9.900000095367432,
+            "transferSize": 315,
+            "decodedBodySize": 15
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/git/repository-status?cwd=%2Ftest-workspace%2Fautomation-0190",
+            "initiatorType": "fetch",
+            "duration": 8.599999904632568,
+            "transferSize": 341,
+            "decodedBodySize": 41
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/git/branches?cwd=%2Ftest-workspace%2Fautomation-0190",
+            "initiatorType": "fetch",
+            "duration": 8.799999952316284,
+            "transferSize": 344,
+            "decodedBodySize": 44
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 228,
+            "transferSize": 61537,
+            "decodedBodySize": 61237
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/review/summary?cwd=%2Ftest-workspace%2Fautomation-0190&workspaceView=unstaged",
+            "initiatorType": "fetch",
+            "duration": 35.59999990463257,
+            "transferSize": 364,
+            "decodedBodySize": 64
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/thread-goals",
+            "initiatorType": "fetch",
+            "duration": 2.4000000953674316,
+            "transferSize": 2807,
+            "decodedBodySize": 2507
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/accounts",
+            "initiatorType": "fetch",
+            "duration": 3.6999998092651367,
+            "transferSize": 1360,
+            "decodedBodySize": 1060
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/server-requests/pending",
+            "initiatorType": "fetch",
+            "duration": 2.299999952316284,
+            "transferSize": 329,
+            "decodedBodySize": 29
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 12.600000143051147,
+            "transferSize": 6511,
+            "decodedBodySize": 6211
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 1059.7999999523163,
+            "transferSize": 2044,
+            "decodedBodySize": 1744
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 3.799999952316284,
+            "transferSize": 465,
+            "decodedBodySize": 165
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 11.800000190734863,
+            "transferSize": 36288,
+            "decodedBodySize": 35988
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/server-requests/pending",
+            "initiatorType": "fetch",
+            "duration": 2.299999952316284,
+            "transferSize": 329,
+            "decodedBodySize": 29
+          },
+          {
+            "name": "http://127.0.0.1:59001/codex-api/rpc",
+            "initiatorType": "fetch",
+            "duration": 5.900000095367432,
+            "transferSize": 6869,
+            "decodedBodySize": 6569
+          }
+        ],
+        "memory": {
+          "usedJSHeapSize": 9917712,
+          "totalJSHeapSize": 12508128,
+          "jsHeapSizeLimit": 4395630592
+        }
+      },
+      "apiSummary": [
+        {
+          "key": "account/rateLimits/read",
+          "count": 1,
+          "minMs": 1058.8,
+          "avgMs": 1058.8,
+          "p95Ms": 1058.8,
+          "maxMs": 1058.8,
+          "totalKB": 1.7
+        },
+        {
+          "key": "thread/resume",
+          "count": 1,
+          "minMs": 248,
+          "avgMs": 248,
+          "p95Ms": 248,
+          "maxMs": 248,
+          "totalKB": 59.8
+        },
+        {
+          "key": "/codex-api/thread-pins",
+          "count": 1,
+          "minMs": 83.5,
+          "avgMs": 83.5,
+          "p95Ms": 83.5,
+          "maxMs": 83.5,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/prompts",
+          "count": 1,
+          "minMs": 83.5,
+          "avgMs": 83.5,
+          "p95Ms": 83.5,
+          "maxMs": 83.5,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/home-directory",
+          "count": 1,
+          "minMs": 83.5,
+          "avgMs": 83.5,
+          "p95Ms": 83.5,
+          "maxMs": 83.5,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/workspace-roots-state",
+          "count": 1,
+          "minMs": 83.5,
+          "avgMs": 83.5,
+          "p95Ms": 83.5,
+          "maxMs": 83.5,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/preferences/first-launch-plugins-card",
+          "count": 1,
+          "minMs": 83.4,
+          "avgMs": 83.4,
+          "p95Ms": 83.4,
+          "maxMs": 83.4,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/telegram/config",
+          "count": 1,
+          "minMs": 83.4,
+          "avgMs": 83.4,
+          "p95Ms": 83.4,
+          "maxMs": 83.4,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/telegram/status",
+          "count": 1,
+          "minMs": 83.3,
+          "avgMs": 83.3,
+          "p95Ms": 83.3,
+          "maxMs": 83.3,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/free-mode/status",
+          "count": 1,
+          "minMs": 83.3,
+          "avgMs": 83.3,
+          "p95Ms": 83.3,
+          "maxMs": 83.3,
+          "totalKB": 0.8
+        },
+        {
+          "key": "/codex-api/thread-terminal/status",
+          "count": 1,
+          "minMs": 83.3,
+          "avgMs": 83.3,
+          "p95Ms": 83.3,
+          "maxMs": 83.3,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/thread-queue-state",
+          "count": 1,
+          "minMs": 83.3,
+          "avgMs": 83.3,
+          "p95Ms": 83.3,
+          "maxMs": 83.3,
+          "totalKB": 0
+        },
+        {
+          "key": "thread/list:first-page",
+          "count": 1,
+          "minMs": 65.5,
+          "avgMs": 65.5,
+          "p95Ms": 65.5,
+          "maxMs": 65.5,
+          "totalKB": 33.5
+        },
+        {
+          "key": "/codex-api/review/summary",
+          "count": 1,
+          "minMs": 36.3,
+          "avgMs": 36.3,
+          "p95Ms": 36.3,
+          "maxMs": 36.3,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/accounts",
+          "count": 1,
+          "minMs": 31.5,
+          "avgMs": 31.5,
+          "p95Ms": 31.5,
+          "maxMs": 31.5,
+          "totalKB": 1
+        },
+        {
+          "key": "/codex-api/thread-terminal/quick-commands",
+          "count": 1,
+          "minMs": 20.6,
+          "avgMs": 20.6,
+          "p95Ms": 20.6,
+          "maxMs": 20.6,
+          "totalKB": 0
+        },
+        {
+          "key": "skills/list",
+          "count": 1,
+          "minMs": 20.5,
+          "avgMs": 20.5,
+          "p95Ms": 20.5,
+          "maxMs": 20.5,
+          "totalKB": 35.1
+        },
+        {
+          "key": "/codex-api/git/repository-status",
+          "count": 1,
+          "minMs": 20,
+          "avgMs": 20,
+          "p95Ms": 20,
+          "maxMs": 20,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/git/branches",
+          "count": 1,
+          "minMs": 20,
+          "avgMs": 20,
+          "p95Ms": 20,
+          "maxMs": 20,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/server-requests/pending",
+          "count": 2,
+          "minMs": 6.5,
+          "avgMs": 19,
+          "p95Ms": 31.5,
+          "maxMs": 31.5,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/project-automations",
+          "count": 1,
+          "minMs": 18.6,
+          "avgMs": 18.6,
+          "p95Ms": 18.6,
+          "maxMs": 18.6,
+          "totalKB": 0.9
+        },
+        {
+          "key": "/codex-api/project-root-suggestion",
+          "count": 1,
+          "minMs": 18.2,
+          "avgMs": 18.2,
+          "p95Ms": 18.2,
+          "maxMs": 18.2,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/thread-titles",
+          "count": 1,
+          "minMs": 18,
+          "avgMs": 18,
+          "p95Ms": 18,
+          "maxMs": 18,
+          "totalKB": 4.7
+        },
+        {
+          "key": "config/read",
+          "count": 1,
+          "minMs": 18,
+          "avgMs": 18,
+          "p95Ms": 18,
+          "maxMs": 18,
+          "totalKB": 6.1
+        },
+        {
+          "key": "/codex-api/thread-automations",
+          "count": 1,
+          "minMs": 15.6,
+          "avgMs": 15.6,
+          "p95Ms": 15.6,
+          "maxMs": 15.6,
+          "totalKB": 0.7
+        },
+        {
+          "key": "model/list",
+          "count": 1,
+          "minMs": 11.2,
+          "avgMs": 11.2,
+          "p95Ms": 11.2,
+          "maxMs": 11.2,
+          "totalKB": 6.4
+        },
+        {
+          "key": "collaborationMode/list",
+          "count": 1,
+          "minMs": 8.2,
+          "avgMs": 8.2,
+          "p95Ms": 8.2,
+          "maxMs": 8.2,
+          "totalKB": 0.2
+        },
+        {
+          "key": "/codex-api/thread-goals",
+          "count": 1,
+          "minMs": 7.2,
+          "avgMs": 7.2,
+          "p95Ms": 7.2,
+          "maxMs": 7.2,
+          "totalKB": 2.4
+        }
+      ],
+      "slowestApiRows": [
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "account/rateLimits/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": null,
+          "status": 200,
+          "ms": 1058.8,
+          "requestBytes": 50,
+          "responseBytes": 1744,
+          "responseKB": 1.7
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "thread/resume",
+          "cursor": "",
+          "threadId": "01a07750-0202-7000-8000-000000001000",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 248,
+          "requestBytes": 87,
+          "responseBytes": 61237,
+          "responseKB": 59.8
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-pins",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.5,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.5,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/home-directory",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.5,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/workspace-roots-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.5,
+          "requestBytes": 0,
+          "responseBytes": 83,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/preferences/first-launch-plugins-card",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.4,
+          "requestBytes": 0,
+          "responseBytes": 27,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/config",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.4,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.3,
+          "requestBytes": 0,
+          "responseBytes": 132,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/free-mode/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.3,
+          "requestBytes": 0,
+          "responseBytes": 835,
+          "responseKB": 0.8
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.3,
+          "requestBytes": 0,
+          "responseBytes": 32,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-queue-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.3,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "thread/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 65.5,
+          "requestBytes": 120,
+          "responseBytes": 34347,
+          "responseKB": 33.5
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/review/summary",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 36.3,
+          "requestBytes": 0,
+          "responseBytes": 64,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/server-requests/pending",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 31.5,
+          "requestBytes": 0,
+          "responseBytes": 29,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/accounts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 31.5,
+          "requestBytes": 0,
+          "responseBytes": 1060,
+          "responseKB": 1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/quick-commands",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 20.6,
+          "requestBytes": 0,
+          "responseBytes": 15,
+          "responseKB": 0
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "skills/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 20.5,
+          "requestBytes": 78,
+          "responseBytes": 35988,
+          "responseKB": 35.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/git/repository-status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 20,
+          "requestBytes": 0,
+          "responseBytes": 41,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/git/branches",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 20,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        }
+      ],
+      "apiRows": [
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-pins",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.5,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.5,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/home-directory",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.5,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/preferences/first-launch-plugins-card",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.4,
+          "requestBytes": 0,
+          "responseBytes": 27,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.3,
+          "requestBytes": 0,
+          "responseBytes": 132,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/free-mode/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.3,
+          "requestBytes": 0,
+          "responseBytes": 835,
+          "responseKB": 0.8
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.3,
+          "requestBytes": 0,
+          "responseBytes": 32,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/config",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.4,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/workspace-roots-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.5,
+          "requestBytes": 0,
+          "responseBytes": 83,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-queue-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 83.3,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-automations",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 15.6,
+          "requestBytes": 0,
+          "responseBytes": 737,
+          "responseKB": 0.7
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/project-root-suggestion",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 18.2,
+          "requestBytes": 0,
+          "responseBytes": 66,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-titles",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 18,
+          "requestBytes": 0,
+          "responseBytes": 4824,
+          "responseKB": 4.7
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/project-automations",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 18.6,
+          "requestBytes": 0,
+          "responseBytes": 871,
+          "responseKB": 0.9
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "thread/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 65.5,
+          "requestBytes": 120,
+          "responseBytes": 34347,
+          "responseKB": 33.5
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/git/repository-status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 20,
+          "requestBytes": 0,
+          "responseBytes": 41,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/quick-commands",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 20.6,
+          "requestBytes": 0,
+          "responseBytes": 15,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/git/branches",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 20,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/review/summary",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 36.3,
+          "requestBytes": 0,
+          "responseBytes": 64,
+          "responseKB": 0.1
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/thread-goals",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 7.2,
+          "requestBytes": 1224,
+          "responseBytes": 2507,
+          "responseKB": 2.4
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "thread/resume",
+          "cursor": "",
+          "threadId": "01a07750-0202-7000-8000-000000001000",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 248,
+          "requestBytes": 87,
+          "responseBytes": 61237,
+          "responseKB": 59.8
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/server-requests/pending",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 31.5,
+          "requestBytes": 0,
+          "responseBytes": 29,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/accounts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 31.5,
+          "requestBytes": 0,
+          "responseBytes": 1060,
+          "responseKB": 1
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "collaborationMode/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 8.2,
+          "requestBytes": 47,
+          "responseBytes": 165,
+          "responseKB": 0.2
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/server-requests/pending",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 6.5,
+          "requestBytes": 0,
+          "responseBytes": 29,
+          "responseKB": 0
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "config/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 18,
+          "requestBytes": 36,
+          "responseBytes": 6211,
+          "responseKB": 6.1
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "skills/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 20.5,
+          "requestBytes": 78,
+          "responseBytes": 35988,
+          "responseKB": 35.1
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "model/list",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 11.2,
+          "requestBytes": 46,
+          "responseBytes": 6569,
+          "responseKB": 6.4
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "account/rateLimits/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": null,
+          "status": 200,
+          "ms": 1058.8,
+          "requestBytes": 50,
+          "responseBytes": 1744,
+          "responseKB": 1.7
+        }
+      ]
+    }
+  ],
+  "activityPerformance": {
+    "rows": [
+      {
+        "name": "terminals",
+        "ms": 27.5,
+        "bytes": 11,
+        "count": 0
+      },
+      {
+        "name": "output",
+        "ms": 39.6,
+        "bytes": 169,
+        "source": "toolResult",
+        "textLength": 24
+      },
+      {
+        "name": "hooks",
+        "ms": 1.9,
+        "bytes": 2531,
+        "count": 5
+      }
+    ],
+    "fileStats": {
+      "bytes": 5080,
+      "runs": 10,
+      "limited": false
+    }
+  },
+  "screenshots": [
+    "/home/Code/codexapp/output/playwright/0207-hooks-1440-light.png",
+    "/home/Code/codexapp/output/playwright/0207-stop-1440-light.png",
+    "/home/Code/codexapp/output/playwright/0207-output-1440-light.png",
+    "/home/Code/codexapp/output/playwright/0207-hooks-1440-dark.png",
+    "/home/Code/codexapp/output/playwright/0207-stop-1440-dark.png",
+    "/home/Code/codexapp/output/playwright/0207-output-1440-dark.png",
+    "/home/Code/codexapp/output/playwright/0207-hooks-375-light.png",
+    "/home/Code/codexapp/output/playwright/0207-stop-375-light.png",
+    "/home/Code/codexapp/output/playwright/0207-output-375-light.png",
+    "/home/Code/codexapp/output/playwright/0207-hooks-375-dark.png",
+    "/home/Code/codexapp/output/playwright/0207-stop-375-dark.png",
+    "/home/Code/codexapp/output/playwright/0207-output-375-dark.png",
+    "/home/Code/codexapp/output/playwright/0207-hooks-768-light.png",
+    "/home/Code/codexapp/output/playwright/0207-stop-768-light.png",
+    "/home/Code/codexapp/output/playwright/0207-output-768-light.png",
+    "/home/Code/codexapp/output/playwright/0207-hooks-768-dark.png",
+    "/home/Code/codexapp/output/playwright/0207-stop-768-dark.png",
+    "/home/Code/codexapp/output/playwright/0207-output-768-dark.png",
+    "/home/Code/codexapp/output/playwright/0207-actual-terminals-light.png",
+    "/home/Code/codexapp/output/playwright/0207-actual-terminals-dark.png",
+    "/home/Code/codexapp/output/playwright/0207-actual-hooks-light.png",
+    "/home/Code/codexapp/output/playwright/0207-actual-hooks-dark.png",
+    "/home/Code/codexapp/output/playwright/0207-invalid-light.png",
+    "/home/Code/codexapp/output/playwright/0207-invalid-dark.png",
+    "/home/Code/codexapp/output/playwright/0207-noauth-light.png",
+    "/home/Code/codexapp/output/playwright/0207-noauth-dark.png",
+    "/home/Code/codexapp/output/playwright/0207-malformed-light.png",
+    "/home/Code/codexapp/output/playwright/0207-malformed-dark.png",
+    "/home/Code/codexapp/output/playwright/0207-provider-light.png",
+    "/home/Code/codexapp/output/playwright/0207-provider-dark.png",
+    "/home/Code/codexapp/output/playwright/browser-runtime-profile-home-2026-09-06T21-17-55-540Z.png",
+    "/home/Code/codexapp/output/playwright/browser-runtime-profile-home-2026-09-06T21-18-05-262Z.png",
+    "/home/Code/codexapp/output/playwright/browser-runtime-profile-thread-01a07750-0202-7000-8000-000000001000-2026-09-06T21-18-13-766Z.png"
+  ],
+  "idle": "idle-check|activeTurns=0|queued=0|pendingApprovals=0|apiConnections=0|apiActiveRequests=0|pages=1\n",
+  "limitations": {
+    "productionChanged": false,
+    "productionVersion": "0.2.0",
+    "productionPid": 3456650,
+    "globalDisplayTimezone": "planned for 0.2.8",
+    "physicalMobileDevice": false,
+    "externalProviderSuccess": false,
+    "nativeAsyncHookSuccess": false,
+    "codeModeOutput": "only matched structured exec result fragments in the final 1 MB; not a full stdout stream",
+    "nativeInitialTrial": "initial stdout was not emitted as outputDelta; fixed with bounded, identity-matched tool-result fallback",
+    "hookTrials": "async SessionStart produced no run event; switched to a controlled synchronous pending hook for restart proof; fixed fixture detail selection and waited for thread hydration in browser"
+  }
+}
