@@ -2240,3 +2240,14 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 @media (max-width: 600px) {
   .delivery-outbox-row { align-items: stretch; flex-direction: column; }
 }
+/* Goal progress and stale-state feedback share the route theme tokens. */
+.thread-goal-card .thread-goal-budget { display: block; margin-top: 3px; }
+.thread-goal-card .thread-goal-hint { margin: 7px 0 0; font-size: 12px; color: var(--ui-text); }
+.thread-goal-read-error { margin: 8px 16px; color: var(--ui-danger); font-size: 12px; }
+.thread-compaction-event { padding: 8px 0; color: var(--ui-text); font-size: 12px; }
+.thread-compaction-event small { margin-left: 10px; opacity: .7; }
+.thread-compaction-event p { margin: 6px 0 0; color: var(--ui-danger); overflow-wrap: anywhere; white-space: pre-wrap; }
+.thread-compaction-event[data-status="running"] > span { animation: pulse 2s ease-in-out infinite; }
+.thread-compaction-pending { margin: 8px 16px; color: var(--ui-text); font-size: 12px; }
+.content-thread:has(> .thread-compaction-pending), .content-thread:has(> .thread-goal-read-error) { display: flex; flex-direction: column; }
+.content-thread:has(> .thread-compaction-pending) > .conversation-root, .content-thread:has(> .thread-goal-read-error) > .conversation-root { flex: 1; min-height: 0; }

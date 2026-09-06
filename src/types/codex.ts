@@ -220,6 +220,7 @@ export type UiMessage = {
   messageType?: string
   rawPayload?: string
   isUnhandled?: boolean
+  compaction?: import('../compaction').CompactionProgress
   commandExecution?: CommandExecutionData
   plan?: UiPlanData
   turnId?: string

@@ -1,9 +1,6 @@
 import { rpcCall } from './codexRpcClient'
-export type ThreadGoal = {
-  threadId: string; objective: string; status: 'active' | 'paused' | 'blocked' | 'usageLimited' | 'budgetLimited' | 'complete'
-  tokenBudget?: number | null; tokensUsed: number; timeUsedSeconds: number; createdAt: number; updatedAt: number
-}
-export const goalStatusLabels = { active: '运行中', paused: '已暂停', blocked: '需要处理', usageLimited: '用量受限', budgetLimited: '预算已到', complete: '已完成' }
+import { readThreadGoal, type ThreadGoal } from '../threadGoal'
+export { goalStatusLabels, type ThreadGoal } from '../threadGoal'
 export function parseGoalTokenBudget(value: string): number | null {
   const input = value.trim()
   if (!input) return null
@@ -31,10 +28,16 @@ export function validateGoalInput(objective: string, budget: string): { objectiv
   if (!text || [...text].length > 4000) throw new Error('目标需为 1–4000 个字符')
   return { objective: text, tokenBudget: parseGoalTokenBudget(budget) }
 }
-export async function getThreadGoal(threadId: string) { return (await rpcCall<{ goal: ThreadGoal | null }>('thread/goal/get', { threadId })).goal }
-export async function setThreadGoal(threadId: string, patch: { objective?: string; tokenBudget?: number | null; status?: 'active' | 'paused' }) { return (await rpcCall<{ goal: ThreadGoal }>('thread/goal/set', { threadId, ...patch })).goal }
+export async function getThreadGoal(threadId: string) {
+  return readThreadGoal((await rpcCall<{ goal: ThreadGoal | null }>('thread/goal/get', { threadId })).goal, threadId)
+}
+export async function setThreadGoal(threadId: string, patch: { objective?: string; tokenBudget?: number | null; status?: 'active' | 'paused' }) {
+  const goal = readThreadGoal((await rpcCall<{ goal: ThreadGoal }>('thread/goal/set', { threadId, ...patch })).goal, threadId)
+  if (!goal) throw new Error('持续目标保存结果缺失，请重新读取')
+  return goal
+}
 export async function clearThreadGoal(threadId: string) { await rpcCall('thread/goal/clear', { threadId }) }
-export async function compactThread(threadId: string) { await rpcCall('thread/compact/start', { threadId }) }
+export { compactThread } from './threadCompaction'
 export async function getLatestCompletedReply(threadId: string): Promise<string> {
   const result = await rpcCall<{ thread: { turns?: { status?: string; items?: { type?: string; text?: string }[] }[] } }>('thread/read', { threadId, includeTurns: true })
   const turn = [...(result.thread.turns ?? [])].reverse().find(turn => turn.status === 'completed' && turn.items?.some(item => item.type === 'agentMessage' && item.text?.trim()))

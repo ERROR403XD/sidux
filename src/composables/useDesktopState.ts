@@ -4,6 +4,8 @@ import { bindMessageTurnOrder, mergeTurnOrder, orderedTurnIds } from '../history
 import { authRecoveryFromNotification, type AuthRecoveryState } from '../authRecovery'
 import { buildQuestionReply, isAsyncUserInputRequest, readAsyncQuestions, readQuestionReply, questionRefKey, type AsyncQuestionReply } from '../userQuestions'
 import { normalizeToolSummary } from '../api/normalizers/toolSummary'
+import { updateCompactionMessages } from '../compaction'
+import { observeCompactionNotification, restoreCompactionRequests } from '../api/threadCompaction'
 import { capabilityValue, modelSettingsProblem, type ModelCapability } from '../modelCapabilities'
 import type { StoredQueuedMessage, ThreadQueueOperation, ThreadQueueResult } from '../threadQueue'
 import { computed, ref } from 'vue'
@@ -664,6 +666,7 @@ function areMessageFieldsEqual(first: UiMessage, second: UiMessage): boolean {
     first.messageType === second.messageType &&
     first.rawPayload === second.rawPayload &&
     first.isUnhandled === second.isUnhandled &&
+    JSON.stringify(first.compaction) === JSON.stringify(second.compaction) &&
     areCommandExecutionsEqual(first.commandExecution, second.commandExecution) &&
     arePlanDataEqual(first.plan, second.plan) &&
     first.turnId === second.turnId &&
@@ -1580,6 +1583,12 @@ export function useDesktopState() {
   let pendingThreadsRefresh = false
   let pendingThreadsRefreshForce = false
   const pendingThreadMessageRefresh = new Set<string>()
+  const messageHistoryRevisionByThreadId = new Map<string, number>()
+  const loadedHistoryRevisionByThreadId = new Map<string, number>()
+  function markThreadHistoryDirty(threadId: string) {
+    messageHistoryRevisionByThreadId.set(threadId, (messageHistoryRevisionByThreadId.get(threadId) ?? 0) + 1)
+    pendingThreadMessageRefresh.add(threadId)
+  }
   const lastMessageLoadAtByThreadId = new Map<string, number>()
   const lastMessageLoadFailureAtByThreadId = new Map<string, number>()
   let threadListNextCursor: string | null = null
@@ -2094,7 +2103,7 @@ export function useDesktopState() {
     clearDelayedTurnSync(threadId)
     const timerId = window.setTimeout(() => {
       delayedTurnSyncTimerByThreadId.delete(threadId)
-      pendingThreadMessageRefresh.add(threadId)
+      markThreadHistoryDirty(threadId)
       void syncFromNotifications()
     }, TURN_START_FOLLOW_UP_SYNC_DELAY_MS)
     delayedTurnSyncTimerByThreadId.set(threadId, timerId)
@@ -2233,6 +2242,9 @@ export function useDesktopState() {
       saveReadStateMap(nextReadState)
     }
     loadedMessagesByThreadId.value = pruneThreadStateMap(loadedMessagesByThreadId.value, activeThreadIds)
+    for (const map of [messageHistoryRevisionByThreadId, loadedHistoryRevisionByThreadId]) {
+      for (const id of map.keys()) if (!activeThreadIds.has(id)) map.delete(id)
+    }
     loadedVersionByThreadId.value = pruneThreadStateMap(loadedVersionByThreadId.value, activeThreadIds)
     resumedThreadById.value = pruneThreadStateMap(resumedThreadById.value, activeThreadIds)
     historyPositionByThreadId.value = pruneThreadStateMap(historyPositionByThreadId.value, activeThreadIds)
@@ -2501,6 +2513,9 @@ export function useDesktopState() {
   }
 
   function setPersistedMessagesForThread(threadId: string, nextMessages: UiMessage[]): void {
+    const failedCompactionTurns = new Set(nextMessages.filter(message => message.compaction?.status === 'failed' && message.id === `${message.turnId}-compaction`).map(message => message.turnId))
+    if (failedCompactionTurns.size) nextMessages = nextMessages.filter(message => !failedCompactionTurns.has(message.turnId)
+      || (message.messageType !== 'turnError' && (message.compaction?.status !== 'failed' || message.id === `${message.turnId}-compaction`)))
     nextMessages = bindMessageTurnOrder(nextMessages, turnIndexByTurnIdByThreadId.value[threadId] ?? {})
     const previous = persistedMessagesByThreadId.value[threadId] ?? []
     if (areMessageArraysEqual(previous, nextMessages)) return
@@ -3703,6 +3718,12 @@ export function useDesktopState() {
   }
 
   function applyRealtimeUpdates(notification: RpcNotification): void {
+    observeCompactionNotification(notification)
+    const compactionThreadId = extractThreadIdFromNotification(notification)
+    if (compactionThreadId) {
+      const updated = updateCompactionMessages(persistedMessagesByThreadId.value[compactionThreadId] ?? [], notification.method, notification.params)
+      if (updated) setPersistedMessagesForThread(compactionThreadId, updated)
+    }
     if (changesThreadSearch(notification.method)) threadSearchVersion.value += 1
     if (notification.method === 'item/started' || notification.method === 'item/completed') {
       const params = asRecord(notification.params)
@@ -3984,7 +4005,7 @@ export function useDesktopState() {
   }
 
   function queueEventDrivenSync(notification: RpcNotification): void {
-    if (notification.method === 'thread/tokenUsage/updated') return
+    if (notification.method === 'thread/tokenUsage/updated' || notification.method.startsWith('thread/goal/')) return
 
     const method = notification.method
     const shouldRefreshMessages =
@@ -3999,7 +4020,7 @@ export function useDesktopState() {
 
     const threadId = extractThreadIdFromNotification(notification)
     if (threadId && shouldRefreshMessages) {
-      pendingThreadMessageRefresh.add(threadId)
+      markThreadHistoryDirty(threadId)
     }
 
     if (shouldRefreshThreads) {
@@ -4379,6 +4400,8 @@ export function useDesktopState() {
       isLoadingMessages.value = true
     }
 
+    const requestedRevision = messageHistoryRevisionByThreadId.get(threadId) ?? 0
+    let loadedSnapshot = false
     const loadPromise = (async () => {
       try {
       const version = currentThreadVersion(threadId)
@@ -4387,6 +4410,7 @@ export function useDesktopState() {
         Date.now() - (lastMessageLoadAtByThreadId.get(threadId) ?? 0) < RECENT_THREAD_MESSAGE_LOAD_REUSE_MS
       const canReuseLoadedMessages =
         alreadyLoaded &&
+        requestedRevision === (loadedHistoryRevisionByThreadId.get(threadId) ?? 0) &&
         (
           loadedRecently ||
           (
@@ -4448,6 +4472,8 @@ export function useDesktopState() {
         ...loadedMessagesByThreadId.value,
         [threadId]: true,
       }
+      loadedSnapshot = true
+      loadedHistoryRevisionByThreadId.set(threadId, requestedRevision)
       lastMessageLoadAtByThreadId.set(threadId, Date.now())
       lastMessageLoadFailureAtByThreadId.delete(threadId)
 
@@ -4457,17 +4483,18 @@ export function useDesktopState() {
           [threadId]: version,
         }
       }
-      setThreadInProgress(threadId, inProgress)
+      const snapshotIsCurrent = requestedRevision === (messageHistoryRevisionByThreadId.get(threadId) ?? 0)
+      if (snapshotIsCurrent) setThreadInProgress(threadId, inProgress)
       clearTransientTurnErrorForThread(threadId)
-      if (activeTurnId) {
+      if (snapshotIsCurrent && activeTurnId) {
         activeTurnIdByThreadId.value = {
           ...activeTurnIdByThreadId.value,
           [threadId]: activeTurnId,
         }
-      } else if (activeTurnIdByThreadId.value[threadId]) {
+      } else if (snapshotIsCurrent && activeTurnIdByThreadId.value[threadId]) {
         activeTurnIdByThreadId.value = omitKey(activeTurnIdByThreadId.value, threadId)
       }
-      if (!inProgress) {
+      if (snapshotIsCurrent && !inProgress) {
         clearCompletedTurnLiveState(threadId)
       }
       markThreadAsRead(threadId)
@@ -4485,6 +4512,14 @@ export function useDesktopState() {
       }
     })().finally(() => {
       loadMessagePromiseByThreadId.delete(threadId)
+      if (loadedSnapshot && requestedRevision !== (messageHistoryRevisionByThreadId.get(threadId) ?? 0)
+        && selectedThreadId.value === threadId && typeof window !== 'undefined') {
+        pendingThreadMessageRefresh.add(threadId)
+        if (eventSyncTimer === null) eventSyncTimer = window.setTimeout(() => {
+          eventSyncTimer = null
+          void syncFromNotifications()
+        }, EVENT_SYNC_DEBOUNCE_MS)
+      }
     })
 
     loadMessagePromiseByThreadId.set(threadId, loadPromise)
@@ -5034,7 +5069,7 @@ export function useDesktopState() {
         maybeUnblockInterruptForActiveTurn(threadId, startedTurnId)
       }
 
-      pendingThreadMessageRefresh.add(threadId)
+      markThreadHistoryDirty(threadId)
       // Delivery is already durably acknowledged; a later read failure cannot undo it.
       await syncFromNotifications().catch(() => {})
       scheduleDelayedTurnSync(threadId)
@@ -5096,7 +5131,7 @@ export function useDesktopState() {
       if (activeTurnIdByThreadId.value[threadId]) {
         activeTurnIdByThreadId.value = omitKey(activeTurnIdByThreadId.value, threadId)
       }
-      pendingThreadMessageRefresh.add(threadId)
+      markThreadHistoryDirty(threadId)
       pendingThreadsRefresh = true
       await syncFromNotifications()
     } catch (unknownError) {
@@ -5415,13 +5450,14 @@ export function useDesktopState() {
       selectedThreadId.value &&
       loadedMessagesByThreadId.value[selectedThreadId.value] !== true
     ) {
-      pendingThreadMessageRefresh.add(selectedThreadId.value)
+      markThreadHistoryDirty(selectedThreadId.value)
     }
     await syncFromNotifications()
   }
 
   function startPolling(): void {
     if (typeof window === 'undefined') return
+    restoreCompactionRequests()
 
     if (stopNotificationStream) return
     void loadPendingServerRequestsFromBridge()

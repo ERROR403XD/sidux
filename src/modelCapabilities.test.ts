@@ -39,7 +39,7 @@ describe('model capabilities across saved settings and requests', () => {
     expect(normalizeStoredQueuedMessage({ id: 'legacy', text: 'legacy' })).not.toHaveProperty('serviceTier')
   })
   it('uses the same bounded summary for live and historical unhandled items', () => {
-    for (const type of ['mcpToolCall', 'dynamicToolCall', 'collabAgentToolCall', 'subAgentActivity', 'webSearch', 'contextCompaction', 'futureEvent']) {
+    for (const type of ['mcpToolCall', 'dynamicToolCall', 'collabAgentToolCall', 'subAgentActivity', 'webSearch', 'futureEvent']) {
       const item = { id: 'tool', type, status: 'completed', arguments: { secret: 'never-copy' }, result: 'x'.repeat(10000) }
       const live = normalizeToolSummary(item)!
       const history = normalizeThreadMessagesV2({ thread: { turns: [{ id: 'turn', items: [item] }] } } as never)

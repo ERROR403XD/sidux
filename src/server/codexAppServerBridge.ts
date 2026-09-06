@@ -11,6 +11,7 @@ import { version as appVersion } from '../../package.json'
 import { capabilityValue } from '../modelCapabilities.js'
 import { normalizeStoredQueuedMessage, normalizeThreadQueueState, type StoredQueuedMessage, type ThreadQueueState } from '../threadQueue.js'
 import { ThreadGoalReader } from './threadGoalReader.js'
+import { ThreadCompactionGate } from './threadCompactionGate.js'
 import { normalizeAutomationModelSettings } from '../automationOptions.js'
 import { AutomationEngine } from './automationEngine.js'
 import { createAutomationRuntime } from './automationRuntime.js'
@@ -6546,6 +6547,9 @@ class AppServerProcess {
       || request.method === 'turn/interrupt'
       || request.method === 'turn/steer'
       || request.method === 'thread/resume'
+      || request.method === 'thread/compact/start'
+      || request.method === 'thread/goal/set'
+      || request.method === 'thread/settings/update'
     )).length
     const pendingServerRequestCount = this.pendingServerRequests.size
     const automationRunIds = this.automationActivity()
@@ -6690,6 +6694,10 @@ export class BackendQueueProcessor {
     if (this.providerChanging || getAccountAuthCoordinator().isAccountOperationInProgress()) throw new Error('账号或供应方正在切换，请稍后重试')
     this.providerChanging = true
     return () => { this.providerChanging = false }
+  }
+
+  isIdentityChanging(): boolean {
+    return this.providerChanging || getAccountAuthCoordinator().isAccountOperationInProgress()
   }
 
   async readState(): Promise<ThreadQueueState> {
@@ -6973,10 +6981,11 @@ type SharedBridgeState = {
   backendQueueProcessor: BackendQueueProcessor
   automationEngine: AutomationEngine
   threadGoalReader: ThreadGoalReader
+  threadCompactionGate: ThreadCompactionGate
 }
 
 const SHARED_BRIDGE_KEY = '__codexRemoteSharedBridge__'
-const SHARED_BRIDGE_VERSION = 'delivery-0203-v1'
+const SHARED_BRIDGE_VERSION = 'goals-compaction-0204-v1'
 
 function getSharedBridgeState(): SharedBridgeState {
   const globalScope = globalThis as typeof globalThis & {
@@ -6999,6 +7008,8 @@ function getSharedBridgeState(): SharedBridgeState {
   const methodCatalog = new MethodCatalog()
   const backendQueueProcessor = new BackendQueueProcessor(appServer, { features: async () => (await methodCatalog.snapshot()).features })
   const threadGoalReader = new ThreadGoalReader((method, params) => appServer.rpc(method, params))
+  const threadCompactionGate = new ThreadCompactionGate((method, params) => appServer.rpc(method, params),
+    async threadId => backendQueueProcessor.isIdentityChanging() || Boolean((await backendQueueProcessor.readState())[threadId]?.length))
   const automationEngine = new AutomationEngine(getCodexHomeDir(), createAutomationRuntime({
     rpc: (method, params) => appServer.rpc(method, params),
     accountBusy: () => getAccountAuthCoordinator().isAccountOperationInProgress(),
@@ -7010,11 +7021,16 @@ function getSharedBridgeState(): SharedBridgeState {
     } }),
   }))
   appServer.automationActivity = () => automationEngine.activity()
-  appServer.onNotification((notification) => { automationEngine.notification(notification); threadGoalReader.observe(notification) })
+  appServer.onNotification((notification) => {
+    automationEngine.notification(notification)
+    threadGoalReader.observe(notification)
+    threadCompactionGate.observe(notification)
+  })
   const created: SharedBridgeState = {
     disposed: false,
     automationEngine,
     threadGoalReader,
+    threadCompactionGate,
     version: SHARED_BRIDGE_VERSION,
     appServer,
     terminalManager,
@@ -7032,7 +7048,7 @@ function getSharedBridgeState(): SharedBridgeState {
 
 export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
   const sharedState = getSharedBridgeState()
-  const { appServer, terminalManager, methodCatalog, telegramBridge, backendQueueProcessor, automationEngine, threadGoalReader } = sharedState
+  const { appServer, terminalManager, methodCatalog, telegramBridge, backendQueueProcessor, automationEngine, threadGoalReader, threadCompactionGate } = sharedState
   const history = new ThreadHistory(
     (method, params) => callRpcWithArchiveRecovery(appServer, method, params),
     async () => (await methodCatalog.snapshot()).features,
@@ -7564,7 +7580,9 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           const params = asRecord(body.params) ?? {}
           if (body.method === 'turn/start' || body.method === 'turn/steer') throw new Error('发送接口已更新，请刷新页面后重试')
           if (body.method === 'thread/rollback') await history.assertRollbackAllowed(readNonEmptyString(params.threadId))
-          if (body.method === 'thread/resume' || (body.method === 'thread/read' && params.includeTurns === true)) {
+          if (body.method === 'thread/compact/start') {
+            rpcResult = await threadCompactionGate.start(readNonEmptyString(params.threadId), params.repeatUnknown === true)
+          } else if (body.method === 'thread/resume' || (body.method === 'thread/read' && params.includeTurns === true)) {
             rpcResult = await history.initial(body.method, params)
           } else {
             rpcResult = await callRpcWithArchiveRecovery(appServer, body.method, body.params ?? null)
@@ -9044,7 +9062,8 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         if (!Array.isArray(payload?.threadIds) || payload.threadIds.length > 100 || payload.threadIds.some(id => typeof id !== 'string' || !id || id.length > 100)) {
           setJson(res, 400, { error: '每次最多读取 100 个会话目标' }); return
         }
-        setJson(res, 200, { data: await threadGoalReader.snapshot(payload.threadIds as string[]) }); return
+        const refreshId = typeof payload.refreshId === 'string' && payload.threadIds.includes(payload.refreshId) ? payload.refreshId : ''
+        setJson(res, 200, { data: await threadGoalReader.snapshot(payload.threadIds as string[], refreshId) }); return
       }
       if (req.method === 'GET' && url.pathname === '/codex-api/thread-automations') {
         const automationsByThreadId = await listThreadHeartbeatAutomations()

@@ -1,5 +1,6 @@
 import { prepareWebDelivery, submitRememberedDelivery } from './deliveryOutbox'
 import { createDeliveryId } from '../delivery'
+import { observeCompactionHistory, restoreTrackedCompactionMessage } from './threadCompaction'
 import { loadModelCatalog, type ModelCatalogOptions } from './modelCatalog'
 export { invalidateModelCatalog } from './modelCatalog'
 import { capabilityValue } from '../modelCapabilities.js'
@@ -30,7 +31,7 @@ import { extractErrorMessage, normalizeCodexApiError } from './codexErrors'
 import {
   readActiveTurnIdFromResponse,
   normalizeThreadGroupsV2,
-  normalizeThreadMessagesV2,
+  normalizeThreadMessagesV2 as normalizeNativeThreadMessagesV2,
   normalizeThreadSummaryV2,
   readThreadInProgressFromResponse,
 } from './normalizers/v2'
@@ -571,10 +572,16 @@ export function pickCodexRateLimitSnapshot(payload: unknown): UiRateLimitSnapsho
 
 async function callRpc<T>(method: string, params?: unknown): Promise<T> {
   try {
-    return await rpcCall<T>(method, params)
+    const result = await rpcCall<T>(method, params)
+    if (method === 'thread/read' || method === 'thread/resume') observeCompactionHistory(result)
+    return result
   } catch (error) {
     throw normalizeCodexApiError(error, `RPC ${method} failed`, method)
   }
+}
+
+function normalizeThreadMessagesV2(payload: ThreadReadResponse, startTurnIndex = 0): UiMessage[] {
+  return restoreTrackedCompactionMessage(normalizeNativeThreadMessagesV2(payload, startTurnIndex), payload)
 }
 
 function normalizeFallbackFileChange(value: unknown): UiFileChange | null {

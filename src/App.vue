@@ -1031,6 +1031,8 @@
 
               <template v-else>
                 <div class="content-thread">
+                  <p v-if="threadGoalsError" class="thread-goal-read-error" role="alert">{{ threadGoalsError }} <AppButton @click="refreshThreadGoals">重新读取</AppButton></p>
+                  <p v-if="pendingCompactionRequest" class="thread-compaction-pending" role="status">压缩请求等待确认。<AppButton @click="onComposerCommand({ name: 'compact', complete: () => {} })">检查压缩</AppButton></p>
                   <ThreadGoalCard v-if="selectedGoal" :goal="selectedGoal" @manage="onComposerCommand({ name: 'goal', complete: () => {} })" />
                   <ThreadConversation ref="threadConversationRef" :messages="filteredMessages" :is-loading="isLoadingMessages"
                     :active-thread-id="composerThreadContextId" :cwd="composerCwd"
@@ -1277,6 +1279,7 @@ import SidebarThreadTree from './components/sidebar/SidebarThreadTree.vue'
 import ContentHeader from './components/content/ContentHeader.vue'
 import ThreadComposer from './components/content/ThreadComposer.vue'
 import ThreadGoalCard from './components/content/ThreadGoalCard.vue'
+import { compactionRequests } from './api/threadCompaction'
 import { useThreadGoals } from './composables/useThreadGoals'
 import ThreadPendingRequestPanel from './components/content/ThreadPendingRequestPanel.vue'
 import QueuedMessages from './components/content/QueuedMessages.vue'
@@ -3682,7 +3685,8 @@ async function syncAfterMobileResume(): Promise<void> {
 
 const goalThreadIds = computed(() => projectGroups.value.flatMap(group => group.threads.map(thread => thread.id)))
 const goalSelectedThreadId = computed(() => isHomeRoute.value ? '' : selectedThreadId.value || '')
-const { goals: threadGoals, selectedGoal, update: updateThreadGoal } = useThreadGoals(goalThreadIds, goalSelectedThreadId)
+const pendingCompactionRequest = computed(() => ['requested', 'unknown'].includes(compactionRequests.value[goalSelectedThreadId.value]?.status ?? ''))
+const { goals: threadGoals, selectedGoal, error: threadGoalsError, update: updateThreadGoal, refresh: refreshThreadGoals } = useThreadGoals(goalThreadIds, goalSelectedThreadId)
 const appCommandRequest = ref<AppCommandRequest | null>(null)
 const commandContextSummary = computed(() => {
   if (isHomeRoute.value) return '新会话尚无上下文用量'

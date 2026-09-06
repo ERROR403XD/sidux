@@ -6,7 +6,9 @@
       <p v-if="loading">读取中…</p>
       <template v-if="request.name === 'goal'">
         <p>目标会保存在会话中，由 Codex 持续推进；可随时暂停或清除。保存为运行中后会自动开始。</p>
-        <p v-if="goal" class="thread-goal-status">{{ goalLabels[goal.status] }} · 已用 {{ goal.tokensUsed.toLocaleString() }} tokens · {{ Math.round(goal.timeUsedSeconds / 60) }} 分钟</p>
+        <p v-if="goal" class="thread-goal-status">{{ goalLabels[goal.status] }} · Codex 计量 {{ goal.tokensUsed.toLocaleString() }} tokens · {{ Math.round(goal.timeUsedSeconds / 60) }} 分钟</p>
+        <p v-if="goal && goalStatusHint(goal)" class="thread-command-hint" role="status">{{ goalStatusHint(goal) }}</p>
+        <p v-if="goalConflict" class="thread-command-error" role="alert">目标已在其他位置修改。请重新读取后再编辑。<AppButton :disabled="working" @click="reloadGoalForm">重新读取</AppButton></p>
         <label>目标<textarea v-model="objective" data-autofocus rows="5" maxlength="8000" :disabled="working || loading" placeholder="说明希望完成什么，以及如何验收" /></label>
         <div class="goal-model-fields">
           <div><span class="goal-model-label">模型</span><AppSelect v-model="selectedModel" class="goal-model-picker" :options="modelOptions" enable-search search-placeholder="搜索模型" :disabled="working || loading || !supported" /></div>
@@ -18,10 +20,13 @@
         <p class="thread-command-hint">M = 100 万 tokens；B = 10 亿 tokens。不写单位时按 M 计算。</p>
         <p v-if="goal && objective.trim() !== goal.objective" class="thread-command-hint">修改目标内容会重置该目标的用量统计。</p>
         <div class="thread-command-actions">
-          <AppButton type="button" :disabled="working || loading || !supported || !!settingsProblem || !objective.trim()" @click="saveGoal">{{ goal ? '保存目标' : '保存并开始' }}</AppButton>
-          <AppButton v-if="goal" type="button" :disabled="working || loading || !supported" @click="changeGoalStatus(goal.status === 'active' ? 'paused' : 'active')">{{ goal.status === 'active' ? '暂停目标' : '继续目标' }}</AppButton>
-          <AppButton v-if="goal" type="button" :disabled="working || loading || !supported" @click="clearGoal">清除目标</AppButton>
+          <AppButton type="button" :disabled="working || loading || !supported || goalConflict || !!settingsProblem || !objective.trim()" @click="saveGoal">{{ goal ? '保存目标' : '保存并开始' }}</AppButton>
+          <AppButton v-if="goal" type="button" :disabled="working || loading || !supported || (goal.status !== 'active' && (!!goalResumeProblem(goal) || !!settingsProblem || goalConflict || goalFormDirty))" @click="changeGoalStatus(goal.status === 'active' ? 'paused' : 'active')">{{ goal.status === 'active' ? '暂停目标' : '继续目标' }}</AppButton>
+          <AppButton v-if="goal" type="button" :disabled="working || loading || !supported || goalConflict" @click="clearGoal">清除目标</AppButton>
         </div>
+        <p v-if="goal && goal.status !== 'active' && goalFormDirty" class="thread-command-hint">请先保存目标或预算的修改，再继续。</p>
+        <p v-if="goal && goal.status !== 'active' && goalResumeProblem(goal) && goal.status !== 'budgetLimited'" class="thread-command-hint">{{ goalResumeProblem(goal) }}</p>
+        <p class="thread-command-hint">预算按 Codex 目标计数控制后续推进，当前回合可能超出预算；该计数不等于会话历史总 tokens。</p>
         <p class="thread-command-hint">暂停或清除停止目标的后续推进；当前已开始的回合仍可继续，需立即停止时使用会话停止按钮。</p>
       </template>
       <template v-else-if="request.name === 'help'">
@@ -35,10 +40,15 @@
       <template v-else>
         <p>{{ descriptor?.description }}</p>
         <label v-if="request.name === 'rename'">会话名称<input v-model="value" data-autofocus maxlength="200" /></label>
-        <p v-if="request.name === 'compact'" class="thread-command-hint">开始压缩后请在会话中查看进度。任务运行中时需先等待结束。</p>
+        <template v-if="request.name === 'compact'">
+          <p class="thread-command-hint">任务结束后可压缩上下文，进度会显示在会话中。</p>
+          <p v-if="compactionRequest" class="thread-command-feedback" role="status">{{ compactionRequest.status === 'requested' ? '已请求压缩，等待运行时状态。' : compactionLabels[compactionRequest.status] }}</p>
+          <p v-if="compactionRequest?.error" class="thread-command-error">{{ compactionRequest.error }}</p>
+          <AppButton v-if="isCompactionPending(compactionRequest)" :disabled="working || loading" @click="checkCompaction">检查结果</AppButton>
+        </template>
         <p v-if="request.name === 'review'" class="thread-command-hint">会在当前会话发起一次代码审查，使用当前运行时模型。</p>
         <p v-if="unavailable" class="thread-command-hint">{{ unavailable }}</p>
-        <AppButton type="button" :disabled="working || loading || !!unavailable || !supported || (request.name === 'rename' && !value.trim())" @click="execute">{{ actionLabel }}</AppButton>
+        <AppButton type="button" :disabled="working || loading || !!unavailable || !supported || compactWaiting || (request.name === 'rename' && !value.trim())" @click="execute">{{ request.name === 'compact' && compactionRequest?.status === 'unknown' ? '再次压缩' : actionLabel }}</AppButton>
       </template>
     </div>
   </AppDialog>
@@ -50,6 +60,9 @@ import AppButton from '../common/AppButton.vue'
 import AppSelect from '../common/AppSelect.vue'
 import { effortOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
 import { getGoalModelSettings, applyGoalModelSettings } from '../../api/threadCommands'
+import { goalResumeProblem, goalSavePatch, goalStatusHint, readThreadGoal } from '../../threadGoal'
+import { compactionLabels } from '../../compaction'
+import { checkThreadCompaction, compactionRequests, isCompactionPending } from '../../api/threadCompaction'
 import { APP_COMMANDS, buildComposerCommands, type AppCommandName, type AppCommandRequest } from './composerCommands'
 import { getMethodCatalog, subscribeCodexNotifications } from '../../api/codexGateway'
 import { compactThread, getThreadGoal, setThreadGoal, clearThreadGoal, validateGoalInput, formatGoalTokenBudget, goalStatusLabels, type ThreadGoal } from '../../api/threadCommands'
@@ -66,6 +79,27 @@ const value = ref(props.threadName), objective = ref(''), budget = ref(''), goal
 const working = ref(false), loading = ref(false), supported = ref(true), error = ref(''), feedback = ref('')
 let disposed = false, consumed = false, threadId = props.threadId, unsubscribe: (() => void) | undefined
 let pendingGoalNotification: ThreadGoal | null | undefined
+let goalRevision = 0
+const goalBase = ref<ThreadGoal | null>(null)
+const goalConflict = computed(() => goalBase.value?.objective !== goal.value?.objective || goalBase.value?.tokenBudget !== goal.value?.tokenBudget)
+const goalFormDirty = computed(() => objective.value.trim() !== goal.value?.objective || budget.value.trim() !== formatGoalTokenBudget(goal.value?.tokenBudget))
+function fillGoalForm(current: ThreadGoal | null) {
+  goal.value = current
+  goalBase.value = current
+  objective.value = current?.objective ?? ''
+  budget.value = formatGoalTokenBudget(current?.tokenBudget)
+}
+async function reloadGoalForm() {
+  await action(async () => {
+    const current = await getThreadGoal(threadId)
+    fillGoalForm(pendingGoalNotification !== undefined ? pendingGoalNotification : current)
+  })
+}
+async function checkCurrentGoal() {
+  const current = await getThreadGoal(threadId)
+  goal.value = pendingGoalNotification !== undefined ? pendingGoalNotification : current
+  if (goalConflict.value) throw new Error('目标已在其他位置修改，请重新读取后再编辑。')
+}
 const consume = () => { if (!consumed) { props.request.complete(); consumed = true } }
 const selectedModel = ref(props.model)
 const selectedEffort = ref(props.effort)
@@ -79,6 +113,11 @@ async function saveModelSettings(): Promise<void> {
   await applyGoalModelSettings(threadId, { model: selectedModel.value, effort })
 }
 const goalLabels = goalStatusLabels
+const compactionRequest = computed(() => compactionRequests.value[threadId])
+const compactWaiting = computed(() => props.request.name === 'compact' && isCompactionPending(compactionRequest.value) && compactionRequest.value?.status !== 'unknown')
+async function checkCompaction() {
+  await action(() => checkThreadCompaction(threadId))
+}
 const helpCommands = buildComposerCommands([], [])
 const unavailable = computed(() => descriptor.value?.requiresThread && !props.threadId ? '请先进入一个会话。' : descriptor.value?.idleOnly && props.busy ? '当前任务运行中，请等待结束后再操作。' : '')
 const actionLabel = computed(() => ({ compact: '开始压缩', review: '开始审查', rename: '保存名称', fork: '创建分支', copy: '复制回复', export: '导出 Markdown' }[props.request.name as 'compact' | 'review' | 'rename' | 'fork' | 'copy' | 'export'] ?? '打开'))
@@ -98,11 +137,14 @@ async function saveGoal() {
   await action(async () => {
     const patch = validateGoalInput(objective.value, budget.value)
     if (!supported.value) return
+    if (threadId) await checkCurrentGoal()
+    const nativePatch = goalSavePatch(goal.value, patch)
     if (!threadId) { consume(); threadId = await props.ensureThread(patch.objective) }
     await saveModelSettings()
-    const next = await setThreadGoal(threadId, { ...patch, status: goal.value?.status === 'paused' ? 'paused' : 'active' })
+    const next = await setThreadGoal(threadId, nativePatch)
     if (disposed) return
-    goal.value = next; consume();
+    fillGoalForm(next)
+    consume()
     if (props.threadId !== threadId) await props.run('goal', threadId)
     emit('model-change', selectedModel.value, selectedEffort.value || selectedCapability.value?.defaultEffort || '')
     feedback.value = '目标已保存。运行状态和进度会随会话更新。'
@@ -110,20 +152,35 @@ async function saveGoal() {
 }
 async function changeGoalStatus(status: 'active' | 'paused') {
   await action(async () => {
-    if (status === 'active') await saveModelSettings()
+    if (status === 'active') {
+      await checkCurrentGoal()
+      if (!goal.value) throw new Error('持续目标已被清除，请重新读取。')
+      const problem = goalResumeProblem(goal.value)
+      if (problem) throw new Error(problem)
+      if (goalFormDirty.value) throw new Error('请先保存目标或预算的修改，再继续。')
+      await saveModelSettings()
+    }
     goal.value = await setThreadGoal(threadId, { status })
     if (status === 'active') emit('model-change', selectedModel.value, selectedEffort.value || selectedCapability.value?.defaultEffort || '')
     consume()
   })
 }
 async function clearGoal() {
-  await action(async () => { await clearThreadGoal(threadId); goal.value = null; objective.value = ''; budget.value = ''; consume(); feedback.value = '目标已清除，原会话仍保留。' })
+  await action(async () => {
+    await checkCurrentGoal()
+    await clearThreadGoal(threadId)
+    fillGoalForm(null)
+    consume()
+    feedback.value = '目标已清除，原会话仍保留。'
+  })
 }
 async function execute() {
   if (unavailable.value || !supported.value) return
   await action(async () => {
     if (props.request.name === 'compact') {
-      await compactThread(threadId); consume(); feedback.value = '已请求压缩，请在会话中查看执行进度。'; return
+      await compactThread(threadId, compactionRequest.value?.status === 'unknown')
+      consume()
+      return
     }
     // Consume before navigation while the originating composer is still mounted.
     const navigation = ['new', 'resume', 'apps', 'plugins', 'mcp', 'automations', 'fork', 'diff'].includes(props.request.name)
@@ -133,6 +190,16 @@ async function execute() {
   })
 }
 onMounted(async () => {
+    if (props.request.name === 'goal') unsubscribe = subscribeCodexNotifications(notification => {
+      if (!threadId || !['thread/goal/updated', 'thread/goal/cleared'].includes(notification.method)) return
+      const params = notification.params as { threadId?: string; goal?: ThreadGoal }
+      if (params.threadId !== threadId || disposed) return
+      goalRevision += 1
+      let current: ThreadGoal | null
+      try { current = notification.method.endsWith('/cleared') ? null : readThreadGoal(params.goal, threadId) } catch { error.value = '持续目标通知不完整，请重新打开。'; return }
+      if (working.value) pendingGoalNotification = current
+      else goal.value = current
+    })
   if (['help', 'status'].includes(props.request.name)) { consume(); return }
   if (['goal', 'compact'].includes(props.request.name)) {
     loading.value = true
@@ -142,22 +209,16 @@ onMounted(async () => {
       supported.value = required.every(method => methods.includes(method))
       if (!supported.value) throw new Error('当前 Codex 运行时不支持此命令，请检查 CLI 版本。')
       if (props.request.name === 'goal' && threadId) {
+        const startedRevision = goalRevision
         const [current, settings] = await Promise.all([getThreadGoal(threadId), getGoalModelSettings(threadId)])
         if (disposed) return
         selectedModel.value = settings.model || props.model
         selectedEffort.value = settings.effort
-        goal.value = current; objective.value = current?.objective ?? ''; budget.value = formatGoalTokenBudget(current?.tokenBudget)
+        fillGoalForm(startedRevision === goalRevision ? current : goal.value)
       }
     } catch (cause) { if (!disposed) { supported.value = false; error.value = cause instanceof Error ? cause.message : '读取失败' } }
     finally { loading.value = false }
-    if (props.request.name === 'goal') unsubscribe = subscribeCodexNotifications(notification => {
-      if (!threadId || !['thread/goal/updated', 'thread/goal/cleared'].includes(notification.method)) return
-      const params = notification.params as { threadId?: string; goal?: ThreadGoal }
-      if (params.threadId !== threadId || disposed) return
-      const current = notification.method.endsWith('/cleared') ? null : params.goal ?? goal.value
-      if (working.value) pendingGoalNotification = current
-      else goal.value = current
-    })
+
   }
 })
 onBeforeUnmount(() => { disposed = true; unsubscribe?.() })

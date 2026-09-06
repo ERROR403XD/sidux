@@ -20,4 +20,19 @@ describe('bounded native goal summaries', () => {
     reader.observe({ method: 'thread/goal/updated', params: { threadId: 'fixture', goal: goal('fixture') } })
     finish({ goal: null }); expect((await pending).fixture).toEqual(goal('fixture'))
   })
+  it('refreshes only the selected stale goal after reconnection and rejects malformed native data', async () => {
+    let reads = 0
+    let current = goal('selected')
+    const reader = new ThreadGoalReader(async (_method, params) => {
+      reads += 1
+      return { goal: (params as { threadId: string }).threadId === 'selected' ? current : null }
+    })
+    await reader.snapshot(['selected', 'sidebar'])
+    current = { ...current, status: 'blocked', tokensUsed: 200 }
+    expect((await reader.snapshot(['selected', 'sidebar'])).selected?.status).toBe('paused')
+    expect((await reader.snapshot(['selected', 'sidebar'], 'selected')).selected?.tokensUsed).toBe(200)
+    expect(reads).toBe(3)
+    const malformed = new ThreadGoalReader(async () => ({ goal: {} }))
+    await expect(malformed.snapshot(['selected'])).rejects.toThrow('不完整')
+  })
 })

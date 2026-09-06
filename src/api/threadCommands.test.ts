@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 vi.mock('./codexRpcClient', () => ({ rpcCall: vi.fn() }))
 import { rpcCall } from './codexRpcClient'
-import { validateGoalInput, parseGoalTokenBudget, formatGoalTokenBudget, getLatestCompletedReply, setThreadGoal, compactThread, getGoalModelSettings, applyGoalModelSettings } from './threadCommands'
+import { validateGoalInput, parseGoalTokenBudget, formatGoalTokenBudget, getLatestCompletedReply, setThreadGoal, getGoalModelSettings, applyGoalModelSettings } from './threadCommands'
 describe('native thread commands', () => {
   it('validates goals and budgets without silently inventing a limit', () => {
     expect(validateGoalInput(' 完成内部样本 ', '')).toEqual({ objective: '完成内部样本', tokenBudget: null })
@@ -19,12 +19,10 @@ describe('native thread commands', () => {
     expect(formatGoalTokenBudget(3000)).toBe('0.003M')
     expect(formatGoalTokenBudget(1500000000)).toBe('1.5B')
   })
-  it('uses native goal and compact RPC; pause does not rewrite the objective or usage', async () => {
-    vi.mocked(rpcCall).mockResolvedValue({ goal: { status: 'paused' } })
+  it('uses native goal RPC; pause does not rewrite the objective or usage', async () => {
+    vi.mocked(rpcCall).mockResolvedValue({ goal: { threadId: 'fixture', objective: 'sample', status: 'paused', tokensUsed: 12, timeUsedSeconds: 1, createdAt: 1, updatedAt: 1 } })
     await setThreadGoal('fixture', { status: 'paused' })
     expect(rpcCall).toHaveBeenLastCalledWith('thread/goal/set', { threadId: 'fixture', status: 'paused' })
-    await compactThread('fixture')
-    expect(rpcCall).toHaveBeenLastCalledWith('thread/compact/start', { threadId: 'fixture' })
   })
   it('reads persisted thread settings without history and updates only model and effort', async () => {
     vi.mocked(rpcCall).mockResolvedValueOnce({ thread: { model: 'gpt-6-astra', reasoningEffort: 'ultra' } })

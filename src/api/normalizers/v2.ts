@@ -1,5 +1,6 @@
 import { readAsyncQuestions, readQuestionReply } from '../../userQuestions'
 import { normalizeToolSummary } from './toolSummary'
+import { compactionFromTurn } from '../../compaction'
 import { parseAutomationMessage, type AutomationMessageMetadata } from '../../automationMessage'
 import type {
   Thread,
@@ -647,14 +648,22 @@ export function normalizeThreadMessagesV2(payload: ThreadReadResponse, baseTurnI
     const rawTurnId = typeof turn?.id === 'string' ? turn.id.trim() : ''
     const turnId = rawTurnId.length > 0 ? rawTurnId : undefined
     const items = Array.isArray(turn.items) ? turn.items : []
+    const compactions = compactionFromTurn(turn)
     let questionOrdinal = 0
     for (const item of items) {
+      if (item.type === 'contextCompaction') {
+        const message = compactions.find(message => message.id === item.id)
+        if (message) messages.push({ ...message, turnId, turnIndex })
+        continue
+      }
       for (const msg of toUiMessages(item)) {
         messages.push({ ...msg, turnId, turnIndex, ...(msg.questions?.length ? { questionOrdinal: questionOrdinal++ } : {}) })
       }
     }
     const errorText = readTurnErrorText(turn)
-    if (turn.status === 'failed' && errorText) {
+    const failedCompaction = compactions.find(message => message.compaction?.status === 'failed')
+    if (failedCompaction) messages.push({ ...failedCompaction, turnId, turnIndex })
+    if (turn.status === 'failed' && errorText && !failedCompaction) {
       const errorIdBase = turnId ?? `turn-${turnIndex}`
       messages.push({
         id: `${errorIdBase}-error`,

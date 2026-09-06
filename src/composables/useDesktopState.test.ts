@@ -1392,3 +1392,45 @@ describe('native history integration', () => {
     expect(gatewayMocks.startThreadTurn.mock.calls[0][1]).toContain('codexapp:question-reply')
   })
 })
+
+it('refreshes a fast completed turn even when the thread timestamp and recent snapshot are unchanged', async () => {
+  installTestWindow()
+  let notify: (notification: { method: string; params: unknown }) => void = () => {}
+  gatewayMocks.subscribeCodexNotifications.mockImplementation(handler => { notify = handler; return vi.fn() })
+  gatewayMocks.getPendingServerRequests.mockResolvedValue([])
+  gatewayMocks.resumeThread.mockResolvedValue(null)
+  const detail = { messages: [{ id: 'old', role: 'assistant', text: 'old' }], inProgress: false, activeTurnId: '', turnIndexByTurnId: {}, hasMoreOlder: false }
+  gatewayMocks.getThreadDetail.mockResolvedValue(detail)
+  const state = useDesktopState()
+  state.primeSelectedThread('fast')
+  await state.loadMessages('fast')
+  state.startPolling()
+  gatewayMocks.getThreadDetail.mockResolvedValue({ ...detail, messages: [...detail.messages, { id: 'new', role: 'assistant', text: 'fast result' }] })
+  notify({ method: 'turn/completed', params: { threadId: 'fast', turn: { id: 'new-turn', status: 'completed' } } })
+  await state.loadMessages('fast')
+  expect(state.messages.value.some(message => message.text === 'fast result')).toBe(true)
+  expect(gatewayMocks.getThreadDetail).toHaveBeenCalledTimes(2)
+})
+
+it('does not let an in-flight older history snapshot swallow a newer completion', async () => {
+  installTestWindow()
+  let notify: (notification: { method: string; params: unknown }) => void = () => {}
+  gatewayMocks.subscribeCodexNotifications.mockImplementation(handler => { notify = handler; return vi.fn() })
+  gatewayMocks.getPendingServerRequests.mockResolvedValue([])
+  gatewayMocks.resumeThread.mockResolvedValue(null)
+  let finish!: (value: unknown) => void
+  gatewayMocks.getThreadDetail.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+  const state = useDesktopState()
+  state.primeSelectedThread('race')
+  state.startPolling()
+  const pending = state.loadMessages('race')
+  await Promise.resolve()
+  await Promise.resolve()
+  notify({ method: 'turn/completed', params: { threadId: 'race', turn: { id: 'new-turn', status: 'completed' } } })
+  finish({ messages: [], inProgress: true, activeTurnId: 'old-turn', turnIndexByTurnId: {}, hasMoreOlder: false })
+  await pending
+  gatewayMocks.getThreadDetail.mockResolvedValue({ messages: [{ id: 'new', role: 'assistant', text: 'after old read' }], inProgress: false, activeTurnId: '', turnIndexByTurnId: {}, hasMoreOlder: false })
+  await state.loadMessages('race')
+  expect(state.messages.value.some(message => message.text === 'after old read')).toBe(true)
+  expect(gatewayMocks.getThreadDetail).toHaveBeenCalledTimes(2)
+})
