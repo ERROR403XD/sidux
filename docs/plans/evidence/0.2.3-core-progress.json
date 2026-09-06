@@ -1,0 +1,28 @@
+{
+  "status": "core-only; not integrated or deployed",
+  "tests": 22,
+  "performance": {
+    "environment": "Local temporary filesystem; core module only, not candidate runtime",
+    "cjsExport": "DeliveryStore",
+    "reports": [
+      {
+        "count": 10,
+        "addP95Ms": 9.208973,
+        "snapshotMs": 0.11903300000000172,
+        "pendingBytes": 7487
+      },
+      {
+        "count": 100,
+        "addP95Ms": 1.0638930000000073,
+        "snapshotMs": 0.22453099999999893,
+        "pendingBytes": 74537
+      },
+      {
+        "count": 500,
+        "addP95Ms": 2.7148879999999735,
+        "snapshotMs": 1.0859159999999974,
+        "pendingBytes": 372937
+      }
+    ]
+  }
+}
