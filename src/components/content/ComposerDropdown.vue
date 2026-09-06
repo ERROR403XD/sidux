@@ -13,7 +13,7 @@
       <IconTablerChevronDown class="composer-dropdown-chevron" />
     </button>
 
-    <div
+    <Teleport to="body"><div
       v-if="isOpen"
       ref="menuWrapRef"
       class="composer-dropdown-menu-wrap"
@@ -52,7 +52,7 @@
         </ul>
 
       </div>
-    </div>
+    </div></Teleport>
   </div>
 </template>
 
@@ -195,6 +195,7 @@ function onDocumentPointerDown(event: PointerEvent): void {
   const target = event.target
   if (!(target instanceof Node)) return
   if (root.contains(target)) return
+  if (menuWrapRef.value?.contains(target)) return
   isOpen.value = false
   searchQuery.value = ''
 }
@@ -253,7 +254,8 @@ defineExpose({ open: () => { if (!props.disabled) isOpen.value = true }, close: 
 }
 
 .composer-dropdown-menu-wrap {
-  @apply absolute left-0 z-50;
+  @apply absolute left-0;
+  z-index: 1200;
 }
 
 .composer-dropdown-menu-wrap-down {
