@@ -12,9 +12,79 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/pwa-192x192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
     <title>Codex Web</title>
+    <style>
+      body.app-load-pending { background: #fafafa; }
+      #app-load-recovery { position: fixed; z-index: 10000; left: 12px; right: 12px; bottom: 16px; margin: auto; max-width: 420px; box-sizing: border-box; padding: 20px; border: 1px solid var(--ui-border, #d4d4d8); border-radius: 12px; background: var(--ui-surface, var(--recovery-surface, #fff)); color: var(--ui-text, var(--recovery-text, #27272a)); font: 14px/1.5 system-ui, sans-serif; box-shadow: 0 8px 32px #0002; }
+      #app-load-recovery[hidden] { display: none; }
+      #app-load-recovery[data-startup="true"] { top: 50%; bottom: auto; transform: translateY(-50%); }
+      #app-load-recovery p { margin: 10px 0 16px; }
+      #app-load-recovery button { border: 1px solid var(--ui-border, #a1a1aa); border-radius: 8px; background: transparent; color: inherit; font: inherit; padding: 6px 10px; margin-right: 8px; cursor: pointer; }
+      #app-load-recovery button:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }
+      @media (prefers-color-scheme: dark) { body.app-load-pending { background: #09090b; } #app-load-recovery { --recovery-surface: #18181b; --recovery-text: #e4e4e7; } }
+    </style>
+    <script id="app-load-guard">
+      (() => {
+        let mounted = false
+        let failed = false
+        const show = () => {
+          failed = true
+          const panel = document.getElementById('app-load-recovery')
+          if (!panel) return
+          panel.hidden = false
+          panel.dataset.startup = String(!mounted)
+          document.body.classList.toggle('app-load-pending', !mounted)
+          document.getElementById('app-load-dismiss').hidden = !mounted
+        }
+        const timer = setTimeout(() => { if (!mounted) show() }, 15000)
+        window.addEventListener('error', event => {
+          const tag = event.target && event.target.tagName
+          if (tag === 'SCRIPT' || (tag === 'LINK' && event.target.rel === 'stylesheet') || (!mounted && event instanceof ErrorEvent)) show()
+        }, true)
+        window.addEventListener('vite:preloadError', show)
+        window.addEventListener('unhandledrejection', event => {
+          const message = String(event.reason && (event.reason.message || event.reason))
+          if (!mounted || /dynamically imported module|Importing a module script failed|Loading (?:chunk|CSS chunk)/i.test(message)) show()
+        })
+        document.addEventListener('DOMContentLoaded', () => {
+          let language = navigator.language
+          try { language = localStorage.getItem('codex-web-local.ui-language.v1') || language } catch {}
+          if (!language.toLowerCase().startsWith('zh')) {
+            document.getElementById('app-load-title').textContent = 'Unable to load the interface'
+            document.getElementById('app-load-description').textContent = 'Check your connection and reload. Copy any unsent text before reloading.'
+            document.getElementById('app-load-reload').textContent = 'Reload'
+            document.getElementById('app-load-dismiss').textContent = 'Later'
+          }
+          document.getElementById('app-load-reload').onclick = () => {
+            const url = new URL(location.href)
+            url.searchParams.set('_ui_reload', String(Date.now()))
+            location.replace(url.href)
+          }
+          document.getElementById('app-load-dismiss').onclick = () => {
+            if (mounted) document.getElementById('app-load-recovery').hidden = true
+          }
+          if (failed) show()
+        })
+        document.addEventListener('codexapp:mounted', () => {
+          mounted = true
+          clearTimeout(timer)
+          if (failed) show()
+          const url = new URL(location.href)
+          if (url.searchParams.has('_ui_reload')) {
+            url.searchParams.delete('_ui_reload')
+            history.replaceState(history.state, '', url.href)
+          }
+        }, { once: true })
+      })()
+    </script>
   </head>
   <body class="bg-slate-950">
     <div id="app"></div>
+    <section id="app-load-recovery" hidden data-startup="true" role="alert" aria-labelledby="app-load-title">
+      <strong id="app-load-title">界面未能加载</strong>
+      <p id="app-load-description">请检查网络后重新加载。重新加载前，请先复制尚未发送的内容。</p>
+      <button id="app-load-reload" type="button">重新加载</button>
+      <button id="app-load-dismiss" type="button" hidden>稍后</button>
+    </section>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

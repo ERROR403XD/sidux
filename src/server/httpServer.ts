@@ -8,6 +8,7 @@ import { createCodexBridgeMiddleware } from './codexAppServerBridge.js'
 import { createAuthSession } from './authMiddleware.js'
 import { createDirectoryListingHtml, createTextEditorHtml, decodeBrowsePath, getLocalDirectoryListing, isTextEditableFile, normalizeLocalPath } from './localBrowseUi.js'
 import { WebSocketServer, type WebSocket } from 'ws'
+import { createFrontendAssetsMiddleware, sendFrontendEntry } from './frontendAssets.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const distDir = join(__dirname, '..', 'dist')
@@ -43,11 +44,7 @@ function renderFrontendMissingHtml(message: string, details?: string[]): string 
     '<body>',
     `<h1>${message}</h1>`,
     lines,
-    '<p>Redirecting to chat in 3 seconds...</p>',
     '<p><a href="/">Back to chat</a></p>',
-    '<script>',
-    'setTimeout(() => { window.location.assign("/") }, 3000)',
-    '</script>',
     '</body>',
     '</html>',
   ].join('')
@@ -221,9 +218,7 @@ export function createServer(options: ServerOptions = {}): ServerInstance {
   const hasFrontendAssets = existsSync(spaEntryFile)
 
   // 8. Static files from Vue build
-  if (hasFrontendAssets) {
-    app.use(express.static(distDir))
-  }
+  app.use(createFrontendAssetsMiddleware(distDir))
 
   // 9. SPA fallback
   app.use((_req, res) => {
@@ -241,8 +236,7 @@ export function createServer(options: ServerOptions = {}): ServerInstance {
       return
     }
 
-    res.sendFile(spaEntryFile, (error) => {
-      if (!error) return
+    void sendFrontendEntry(res, spaEntryFile).catch(() => {
       if (!res.headersSent) {
         res.status(404).type('text/html; charset=utf-8').send(renderFrontendMissingHtml('Frontend entry file not found.'))
       }

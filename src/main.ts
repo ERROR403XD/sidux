@@ -10,6 +10,7 @@ console.log('Welcome to codexui. github: https://github.com/friuns2/codexUI')
 installFeedbackDiagnostics()
 
 createApp(App).use(router).mount('#app')
+document.dispatchEvent(new Event('codexapp:mounted'))
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {

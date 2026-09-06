@@ -47,27 +47,27 @@ self.addEventListener('fetch', (event) => {
 })
 
 async function networkFirstNavigation(request) {
-  const cache = await caches.open(CACHE_NAME)
+  const cache = await caches.open(CACHE_NAME).catch(() => null)
   try {
     const response = await fetch(request)
     if (response.ok) {
       // Cache storage failures must not replace a successful network response.
-      await cache.put('/', response.clone()).catch(() => {})
+      await cache?.put('/', response.clone()).catch(() => {})
       return response
     }
-    return (await cache.match('/')) || response
+    return (await cache?.match('/').catch(() => undefined)) || response
   } catch {
-    return (await cache.match('/')) || Response.error()
+    return (await cache?.match('/').catch(() => undefined)) || Response.error()
   }
 }
 
 async function staleWhileRevalidate(request) {
-  const cache = await caches.open(CACHE_NAME)
-  const cached = await cache.match(request)
+  const cache = await caches.open(CACHE_NAME).catch(() => null)
+  const cached = await cache?.match(request).catch(() => undefined)
   const networkPromise = fetch(request)
     .then((response) => {
       if (response.ok) {
-        cache.put(request, response.clone())
+        cache?.put(request, response.clone()).catch(() => {})
       }
       return response
     })
@@ -81,16 +81,25 @@ async function staleWhileRevalidate(request) {
   return response || Response.error()
 }
 
+function isUsableStatic(response, request) {
+  if (!response?.ok) return false
+  const type = response.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase()
+  return request.destination === 'style'
+    ? type === 'text/css'
+    : ['text/javascript', 'application/javascript', 'text/ecmascript', 'application/ecmascript'].includes(type)
+}
+
 async function networkFirstStatic(request) {
-  const cache = await caches.open(CACHE_NAME)
+  const cache = await caches.open(CACHE_NAME).catch(() => null)
+  const cached = await cache?.match(request).catch(() => undefined)
   try {
     const response = await fetch(request)
-    if (response.ok) {
-      cache.put(request, response.clone())
+    if (isUsableStatic(response, request)) {
+      await cache?.put(request, response.clone()).catch(() => {})
       return response
     }
-    return (await cache.match(request)) || response
+    return isUsableStatic(cached, request) ? cached : Response.error()
   } catch {
-    return (await cache.match(request)) || Response.error()
+    return isUsableStatic(cached, request) ? cached : Response.error()
   }
 }
