@@ -24,8 +24,13 @@ AUTH_SNAPSHOT_READY=0
 DROPIN_SNAPSHOT_READY=0
 TEST_CONTAINER_WAS_RUNNING=0
 SCHEDULER_DRAINED=0
+API_PROXY_DRAINED=0
 
 resume_scheduler_on_exit() {
+  if [[ "$API_PROXY_DRAINED" == "1" ]]; then
+    curl --silent --show-error --max-time 10 -X POST -H 'Content-Type: application/json' \
+      --data '{"draining":false}' "$PRODUCTION_URL/codex-api/api-proxy/drain" >/dev/null || true
+  fi
   if [[ "$SCHEDULER_DRAINED" == "1" ]]; then
     curl --silent --show-error --max-time 10 -X POST -H 'Content-Type: application/json' \
       --data '{"draining":false}' "$PRODUCTION_URL/codex-api/automation-runtime/drain" >/dev/null || true
@@ -49,6 +54,26 @@ try {
 } catch {}
 process.exit(legacy ? 0 : 1)
 NODE
+}
+
+running_release_has_no_api_proxy() {
+  CODEXAPP_INSPECT_SERVICE="$SERVICE_NAME" "$NODE_BIN" --input-type=commonjs <<'NODE'
+const { execFileSync } = require('node:child_process')
+const { readFileSync } = require('node:fs')
+try {
+  const value = execFileSync('systemctl', ['show', process.env.CODEXAPP_INSPECT_SERVICE, '-p', 'ExecStart', '--value'], { encoding: 'utf8' })
+  const entry = value.match(/(\/[^\s;{}]+\/dist-cli\/index\.js)/)?.[1]
+  if (!entry) process.exit(1)
+  process.exit(readFileSync(entry, 'utf8').includes('/codex-api/api-proxy') ? 1 : 0)
+} catch { process.exit(1) }
+NODE
+}
+
+drain_api_proxy_for_cutover() {
+  if running_release_has_no_api_proxy; then return 0; fi
+  API_PROXY_DRAINED=1
+  curl --fail --silent --show-error --max-time 310 -X POST -H 'Content-Type: application/json' \
+    --data '{"draining":true}' "$PRODUCTION_URL/codex-api/api-proxy/drain" >/dev/null
 }
 
 drain_scheduler_for_cutover() {
@@ -168,9 +193,10 @@ require_cutover_commands() {
 }
 
 check_idle_runtime() {
-  local base_url="$PRODUCTION_URL" legacy_scheduler=0
+  local base_url="$PRODUCTION_URL" legacy_scheduler=0 legacy_api_proxy=0
   if running_release_has_no_scheduler; then legacy_scheduler=1; fi
-  CODEXAPP_LEGACY_SCHEDULER="$legacy_scheduler" CODEXAPP_IDLE_CHECK_URL="$base_url" "$NODE_BIN" "$REPO_DIR/scripts/check-codexapp-idle.cjs"
+  if running_release_has_no_api_proxy; then legacy_api_proxy=1; fi
+  CODEXAPP_LEGACY_API_PROXY="$legacy_api_proxy" CODEXAPP_LEGACY_SCHEDULER="$legacy_scheduler" CODEXAPP_IDLE_CHECK_URL="$base_url" "$NODE_BIN" "$REPO_DIR/scripts/check-codexapp-idle.cjs"
 }
 
 snapshot_auth_state() {
@@ -376,6 +402,7 @@ activate_release() {
   check_runtime_boundary
   systemctl is-active --quiet "$SERVICE_NAME" || die "$SERVICE_NAME must be active before cutover."
   drain_scheduler_for_cutover
+  drain_api_proxy_for_cutover
   check_idle_runtime
 
   timestamp="$(date '+%Y%m%d-%H%M%S')"
@@ -434,6 +461,7 @@ rollback_release() {
   check_runtime_boundary
   systemctl is-active --quiet "$SERVICE_NAME" || die "$SERVICE_NAME must be active before rollback."
   drain_scheduler_for_cutover
+  drain_api_proxy_for_cutover
   check_idle_runtime
 
   timestamp="$(date '+%Y%m%d-%H%M%S')"

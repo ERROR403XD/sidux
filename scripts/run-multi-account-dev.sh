@@ -13,6 +13,7 @@ BASE_URL="http://127.0.0.1:${HOST_PORT}"
 BACKUP_NAME="${CONTAINER_NAME}-previous-$$"
 existing=0
 drained=0
+api_drained=0
 stopped=0
 renamed=0
 finished=0
@@ -34,6 +35,9 @@ cleanup() {
       if curl --fail --silent --max-time 3 -X POST -H 'Content-Type: application/json' --data '{"draining":false}' "$BASE_URL/codex-api/automation-runtime/drain" >/dev/null; then break; fi
       sleep 1
     done
+  fi
+  if [[ "$finished" != 1 && "$api_drained" == 1 ]]; then
+    curl --fail --silent --max-time 10 -X POST -H 'Content-Type: application/json' --data '{"draining":false}' "$BASE_URL/codex-api/api-proxy/drain" >/dev/null || true
   fi
   if [[ -n "$pack_dir" ]]; then rm -rf "$pack_dir"; fi
   exit "$result"
@@ -57,6 +61,7 @@ pnpm --dir "$ROOT_DIR" run build
 pnpm --dir "$ROOT_DIR" pack --pack-destination "$pack_dir"
 mkdir -p "$(dirname "$PACK_TARGET")"
 cp "$pack_dir/codexapp-${PACKAGE_VERSION}.tgz" "$PACK_TARGET"
+node "$ROOT_DIR/scripts/install-api-proxy.cjs" "$ROOT_DIR/output/api-proxy-component"
 docker build -t "$IMAGE_NAME" -f "${CODEXAPP_MULTI_ACCOUNT_DOCKERFILE:-$ROOT_DIR/scripts/docker-multi-account-dev.Dockerfile}" "$ROOT_DIR"
 docker volume create "$CODEX_HOME_VOLUME" >/dev/null
 
@@ -64,6 +69,12 @@ if [[ "$existing" == 1 ]]; then
   drained=1
   runtime="$(curl --fail --silent --show-error --max-time 40 -X POST -H 'Content-Type: application/json' --data '{"draining":true}' "$BASE_URL/codex-api/automation-runtime/drain")"
   printf '%s' "$runtime" | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{const d=JSON.parse(s).data;if(d?.ready!==true||d.draining!==true||d.activeCount!==0||d.queuedCount!==0)process.exit(1)})'
+  if [[ "${CODEXAPP_LEGACY_API_PROXY:-0}" == 1 ]]; then
+    docker exec "$CONTAINER_NAME" node -e 'const fs=require("fs");const source=fs.readFileSync("/usr/local/lib/node_modules/codexapp/dist-cli/index.js","utf8");process.exit(source.includes("/codex-api/api-proxy")?1:0)' || { echo "Cannot verify legacy API-proxy exemption." >&2; exit 1; }
+  else
+    api_drained=1
+    curl --fail --silent --show-error --max-time 310 -X POST -H 'Content-Type: application/json' --data '{"draining":true}' "$BASE_URL/codex-api/api-proxy/drain" >/dev/null
+  fi
   CODEXAPP_IDLE_CHECK_URL="$BASE_URL" node "$ROOT_DIR/scripts/check-codexapp-idle.cjs"
   docker stop --timeout 10 "$CONTAINER_NAME" >/dev/null
   stopped=1

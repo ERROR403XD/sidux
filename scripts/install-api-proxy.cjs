@@ -9,6 +9,15 @@ const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 async function install(destination) {
   if (`${process.platform}-${process.arch}` !== manifest.platform) throw new Error('This candidate supports linux-x64 only.');
   if (!destination) throw new Error('Usage: node scripts/install-api-proxy.cjs <destination-directory>');
+  try {
+    const installed = await fs.readFile(path.join(destination, 'cli-proxy-api'));
+    const installedManifest = JSON.parse(await fs.readFile(path.join(destination, 'manifest.json'), 'utf8'));
+    await fs.access(path.join(destination, 'LICENSE'));
+    if (sha256(installed) === manifest.binarySha256 && installedManifest.archiveSha256 === manifest.archiveSha256) {
+      console.log(`Reusing verified ${manifest.name} ${manifest.version}: ${path.resolve(destination)}`);
+      return;
+    }
+  } catch { /* Missing or outdated artifacts are replaced from the pinned release. */ }
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'codexapp-cpa-install-'));
   try {
     const response = await fetch(manifest.url, { signal: AbortSignal.timeout(120000) });

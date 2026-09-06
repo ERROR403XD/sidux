@@ -1,3 +1,4 @@
+import { ApiProxyGateway } from './apiProxy/gateway.js'
 import { fileURLToPath } from 'node:url'
 import { dirname, extname, isAbsolute, join } from 'node:path'
 import type { Server as HttpServer, IncomingMessage } from 'node:http'
@@ -72,12 +73,30 @@ function readWildcardPathParam(value: unknown): string {
 export function createServer(options: ServerOptions = {}): ServerInstance {
   const app = express()
   const bridge = createCodexBridgeMiddleware()
+  const apiProxy = new ApiProxyGateway()
+  app.use((req, res, next) => {
+    const pathname = new URL(req.url || '/', 'http://localhost').pathname
+    if (pathname === '/v1' || pathname.startsWith('/v1/')) {
+      void apiProxy.handleApi(req, res)
+      return
+    }
+    next()
+  })
   const authSession = options.password ? createAuthSession(options.password) : null
 
   // 1. Auth middleware (if password is set)
   if (authSession) {
     app.use(authSession.middleware)
   }
+
+  app.use((req, res, next) => {
+    const pathname = new URL(req.url || '/', 'http://localhost').pathname
+    if (pathname === '/codex-api/api-proxy' || pathname.startsWith('/codex-api/api-proxy/')) {
+      void apiProxy.handleManagement(req, res)
+      return
+    }
+    next()
+  })
 
   // 2. Bridge middleware for /codex-api/*
   app.use(bridge)
@@ -245,8 +264,9 @@ export function createServer(options: ServerOptions = {}): ServerInstance {
 
   return {
     app,
-    dispose: () => bridge.dispose(),
+    dispose: async () => { await apiProxy.close(); await bridge.dispose() },
     attachWebSocket: (server: HttpServer) => {
+      apiProxy.attach(server)
       const wss = new WebSocketServer({ noServer: true })
 
       server.on('upgrade', (req: IncomingMessage, socket, head) => {

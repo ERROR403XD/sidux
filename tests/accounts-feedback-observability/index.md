@@ -23,3 +23,4 @@ Return to the [manual test index](../../tests.md).
 | [Startup profiler request dedupe](startup-profiler-request-dedupe.md) |
 | [Qodo free-mode state write fixes](qodo-free-mode-state-write-fixes.md) |
 | [Multi-account isolated login and transactional switching](multi-account-isolated-login-and-transactional-switching.md) |
+| [Codex API 出口](api-proxy.md) |

@@ -155,6 +155,44 @@ export class AccountAuthCoordinator {
   private loginSession: LoginSession | null = null
   private readonly refreshFlights = new Map<string, Promise<StoredAccountEntry>>()
   private backgroundRefresh: Promise<void> | null = null
+  private readonly tokenRefreshFlights = new Map<string, Promise<ChatgptAuthTokensRefreshResponse>>()
+  private apiLifecycle: { beforeMutation(kind: 'switch' | 'remove', storageId: string | null): Promise<() => void>; isIdle(): boolean } | null = null
+
+  setApiLifecycle(lifecycle: { beforeMutation(kind: 'switch' | 'remove', storageId: string | null): Promise<() => void>; isIdle(): boolean } | null): () => void {
+    this.apiLifecycle = lifecycle
+    return () => { if (this.apiLifecycle === lifecycle) this.apiLifecycle = null }
+  }
+
+  async getApiCredential(selectedStorageId: string | null): Promise<{
+    storageId: string; revision: number; accessToken: string; accountId: string; expiresAt: string
+  }> {
+    if (this.operation) throw new AccountCoordinatorError('account_operation_in_progress', '账号正在处理其他操作，请稍后重试。', 503)
+    let state = await this.store.readState()
+    const storageId = selectedStorageId ?? state.activeStorageId
+    let entry = state.accounts.find(item => item.storageId === storageId)
+    if (!storageId || !entry) throw new AccountCoordinatorError('account_not_found', '请选择已登录的 Codex 账号。', 503)
+    if (['reauth_required', 'payment_required', 'materialization_dirty'].includes(entry.authStatus)) {
+      throw new AccountCoordinatorError('account_unavailable', '所选账号需要处理认证或额度问题。', 503)
+    }
+    let credential = await this.store.readCredential(storageId)
+    const expiry = (token: string): number => {
+      try {
+        const payload = JSON.parse(Buffer.from(token.split('.')[1] ?? '', 'base64url').toString('utf8'))
+        return typeof payload.exp === 'number' ? payload.exp * 1000 : 0
+      } catch { return 0 }
+    }
+    if (expiry(credential.auth.tokens?.access_token ?? '') < Date.now() + 300_000) {
+      await this.refreshTokensForStorage(storageId, { reason: 'api_proxy_expiry', previousAccountId: entry.accountId })
+      state = await this.store.readState()
+      entry = state.accounts.find(item => item.storageId === storageId)
+      if (!entry) throw new AccountCoordinatorError('account_not_found', '账号已移除。', 503)
+      credential = await this.store.readCredential(storageId)
+    }
+    const accessToken = credential.auth.tokens?.access_token ?? ''
+    const expires = expiry(accessToken)
+    if (expires <= Date.now()) throw new AccountCoordinatorError('invalid_access_token', '未获得有效的访问令牌。', 503)
+    return { storageId, revision: entry.credentialRevision, accessToken, accountId: entry.accountId, expiresAt: new Date(expires).toISOString() }
+  }
 
   constructor(
     readonly store: AccountAuthStore,
@@ -333,7 +371,7 @@ export class AccountAuthCoordinator {
         profileDir: `${this.store.accountsRoot}/${storageId}`,
         expectedAccountId: entry.accountId,
         persistRefreshedCredential: async (raw) => {
-          const saved = await this.store.upsertCredential(raw, { expectedStorageId: storageId, expectedRevision: revision })
+          const saved = await this.store.upsertCredential(raw, { expectedStorageId: storageId, expectedRevision: revision, activate: state.activeStorageId === storageId })
           revision = saved.account.credentialRevision
         },
       })
@@ -360,9 +398,16 @@ export class AccountAuthCoordinator {
   }
 
   async refreshActiveTokens(params: ChatgptAuthTokensRefreshParams): Promise<ChatgptAuthTokensRefreshResponse> {
-    return await this.withOperation('refresh', null, async () => {
+    const state = await this.store.readState()
+    if (!state.activeStorageId) throw new AccountCoordinatorError('account_not_found', 'No active account credential is available.', 404)
+    return await this.refreshTokensForStorage(state.activeStorageId, params)
+  }
+
+  private async refreshTokensForStorage(storageId: string, params: ChatgptAuthTokensRefreshParams): Promise<ChatgptAuthTokensRefreshResponse> {
+    const existing = this.tokenRefreshFlights.get(storageId)
+    if (existing) return await existing
+    const flight = this.withOperation('refresh', storageId, async () => {
       const state = await this.store.readState()
-      const storageId = state.activeStorageId
       const entry = storageId ? state.accounts.find((item) => item.storageId === storageId) ?? null : null
       if (!storageId || !entry) throw new AccountCoordinatorError('account_not_found', 'No active account credential is available.', 404)
       const credential = await this.store.readCredential(storageId, { requireRefreshToken: true })
@@ -374,7 +419,7 @@ export class AccountAuthCoordinator {
         const saved = await this.store.upsertCredential(refreshed.raw, {
           expectedStorageId: storageId,
           expectedRevision: entry.credentialRevision,
-          activate: true,
+          activate: state.activeStorageId === storageId,
         })
         await this.patchAccount(storageId, {
           authStatus: 'ready',
@@ -391,6 +436,12 @@ export class AccountAuthCoordinator {
         throw error
       }
     })
+    this.tokenRefreshFlights.set(storageId, flight)
+    try {
+      return await flight
+    } finally {
+      this.tokenRefreshFlights.delete(storageId)
+    }
   }
 
   async switchAccount(input: {
@@ -577,7 +628,7 @@ export class AccountAuthCoordinator {
       profileDir: `${this.store.accountsRoot}/${storageId}`,
       expectedAccountId: entry.accountId,
       persistRefreshedCredential: async (raw) => {
-        const saved = await this.store.upsertCredential(raw, { expectedStorageId: storageId, expectedRevision: revision })
+        const saved = await this.store.upsertCredential(raw, { expectedStorageId: storageId, expectedRevision: revision, activate: state.activeStorageId === storageId })
         revision = saved.account.credentialRevision
       },
     })
@@ -622,7 +673,7 @@ export class AccountAuthCoordinator {
           pendingServerRequestCount: runtime.listPendingServerRequests().length,
           pendingTurnMutationCount: 0,
         }
-    if (!snapshot.idle) {
+    if (!snapshot.idle || (this.apiLifecycle && !this.apiLifecycle.isIdle())) {
       throw new AccountCoordinatorError('account_switch_blocked', 'Finish active turns, queued messages, and pending requests before switching accounts.', 409, { quiescence: snapshot })
     }
   }
@@ -632,7 +683,9 @@ export class AccountAuthCoordinator {
     this.operation = { kind, storageId, startedAt: Date.now() }
     const shortId = storageId?.slice(0, 8) ?? 'active'
     const startedAt = Date.now()
+    let releaseApi: (() => void) | undefined
     try {
+      if (kind === 'switch' || kind === 'remove') releaseApi = await this.apiLifecycle?.beforeMutation(kind, storageId)
       const result = await run()
       console.info(`[accounts] operation=${kind} storage=${shortId} result=ok durationMs=${String(Date.now() - startedAt)}`)
       return result
@@ -642,6 +695,7 @@ export class AccountAuthCoordinator {
       throw error
     } finally {
       this.operation = null
+      releaseApi?.()
     }
   }
 

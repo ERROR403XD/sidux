@@ -44,6 +44,7 @@ describe('codexapp release switch script', () => {
     await writeFile(join(release, '.codexapp-release-ready'), 'version=test\n', { mode: 0o600 })
     await writeFile(join(release, 'dist-cli/index.js'), '#!/usr/bin/env node\n', { mode: 0o700 })
     await writeFile(join(release, 'package.json'), JSON.stringify({ version: '0.1.90' }))
+    await writeFile(join(legacyRelease, 'dist-cli/index.js'), '#!/usr/bin/env node\n', { mode: 0o700 })
     await writeFile(join(legacyRelease, 'package.json'), JSON.stringify({ version: '0.1.89' }))
     await writeFile(serviceState, 'active\n', 'utf8')
 

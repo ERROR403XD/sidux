@@ -80,6 +80,20 @@
             </span>
           </button>
 
+          <button
+            v-if="!isSidebarCollapsed"
+            class="sidebar-skills-link"
+            :class="{ 'is-active': isApiProxyRoute }"
+            type="button"
+            @click="router.push({ name: 'api-proxy' }); isMobile && setSidebarCollapsed(true)"
+          >
+            <span class="sidebar-skills-link-icon" aria-hidden="true"><IconTablerPlug /></span>
+            <span class="sidebar-skills-link-copy">
+              <span class="sidebar-skills-link-title">{{ t('API outlet') }}</span>
+              <span class="sidebar-skills-link-subtitle">{{ t('Codex client access') }}</span>
+            </span>
+          </button>
+
           <SidebarThreadTree ref="sidebarThreadTreeRef" :groups="projectGroups" :models="availableModelIds" :model-capabilities="availableModels" :goals="threadGoals" :project-display-name-by-id="projectDisplayNameById"
             :project-git-repo-by-name="projectGitRepoByName"
             :project-cwd-by-name="projectCwdByName"
@@ -554,7 +568,7 @@
         :style="contentStyle"
       >
         <span v-if="isVirtualKeyboardOpen" class="content-keyboard-spacer" aria-hidden="true" />
-        <ContentHeader :title="contentTitle" :accent="isSkillsRoute || isAutomationsRoute">
+        <ContentHeader :title="contentTitle" :accent="isSkillsRoute || isAutomationsRoute || isApiProxyRoute">
           <template #leading>
             <SidebarThreadControls
               v-if="isSidebarCollapsed || isMobile"
@@ -639,6 +653,7 @@
               @create-automation="onCreateAutomationFromPanel"
             />
           </template>
+          <template v-else-if="isApiProxyRoute"><ApiProxyPanel /></template>
           <template v-else-if="isHomeRoute">
             <div class="content-grid content-grid-home">
               <div class="new-thread-empty">
@@ -1234,6 +1249,7 @@ import ComposerDropdown from './components/content/ComposerDropdown.vue'
 import HeaderGitBranchDropdown from './components/content/HeaderGitBranchDropdown.vue'
 import ComposerRuntimeDropdown from './components/content/ComposerRuntimeDropdown.vue'
 import SidebarThreadControls from './components/sidebar/SidebarThreadControls.vue'
+import IconTablerPlug from './components/icons/IconTablerPlug.vue'
 import IconTablerBolt from './components/icons/IconTablerBolt.vue'
 import IconTablerSearch from './components/icons/IconTablerSearch.vue'
 import IconTablerSettings from './components/icons/IconTablerSettings.vue'
@@ -1297,6 +1313,7 @@ const ThreadConversation = defineAsyncComponent(() => import('./components/conte
 const ThreadTerminalPanel = defineAsyncComponent(() => import('./components/content/ThreadTerminalPanel.vue'))
 const ReviewPane = defineAsyncComponent(() => import('./components/content/ReviewPane.vue'))
 const DirectoryHub = defineAsyncComponent(() => import('./components/content/DirectoryHub.vue'))
+const ApiProxyPanel = defineAsyncComponent(() => import('./components/api-proxy/ApiProxyPanel.vue'))
 const AutomationsPanel = defineAsyncComponent(() => import('./components/content/AutomationsPanel.vue'))
 const { t, uiLanguage, uiLanguageOptions, setUiLanguage } = useUiLanguage()
 
@@ -1823,12 +1840,14 @@ const routeThreadId = computed(() => {
 
 const isHomeRoute = computed(() => route.name === 'home')
 const isSkillsRoute = computed(() => route.name === 'skills')
+const isApiProxyRoute = computed(() => route.name === 'api-proxy')
 const isAutomationsRoute = computed(() => route.name === 'automations')
 const routeAutomationId = computed(() => {
   const raw = route.query.automationId
   return typeof raw === 'string' ? raw : ''
 })
 const contentTitle = computed(() => {
+  if (isApiProxyRoute.value) return t('API outlet')
   if (isAutomationsRoute.value) return t('Automations')
   if (isSkillsRoute.value) return t('Skills')
   if (isHomeRoute.value) return t('Start new thread')
@@ -1894,7 +1913,7 @@ const isTerminalKeyboardLayoutActive = computed(() => (
 ))
 const directoryCwd = computed(() => selectedThread.value?.cwd?.trim() ?? newThreadCwd.value.trim())
 const isSelectedThreadInProgress = computed(() => !isHomeRoute.value && selectedThread.value?.inProgress === true)
-const showThreadContextBadge = computed(() => !isHomeRoute.value && !isSkillsRoute.value && !isAutomationsRoute.value && selectedThreadId.value.trim().length > 0)
+const showThreadContextBadge = computed(() => !isHomeRoute.value && !isSkillsRoute.value && !isAutomationsRoute.value && !isApiProxyRoute.value && selectedThreadId.value.trim().length > 0)
 const isAccountSwitchBlocked = computed(() =>
   isSendingMessage.value ||
   isInterruptingTurn.value ||
@@ -4390,7 +4409,7 @@ function onImplementPlan(payload: { turnId: string }): void {
 
 
 async function copySelectedThreadChat(): Promise<void> {
-  if (isHomeRoute.value || isSkillsRoute.value || isAutomationsRoute.value) return
+  if (isHomeRoute.value || isSkillsRoute.value || isAutomationsRoute.value || isApiProxyRoute.value) return
   if (!selectedThread.value || filteredMessages.value.length === 0) return
   const markdown = buildThreadMarkdown()
   try {
@@ -4906,7 +4925,7 @@ watch(
   async (threadId) => {
     if (!hasInitialized.value) return
     if (isRouteSyncInProgress.value) return
-    if (isHomeRoute.value || isSkillsRoute.value || isAutomationsRoute.value) return
+    if (isHomeRoute.value || isSkillsRoute.value || isAutomationsRoute.value || isApiProxyRoute.value) return
 
     if (!threadId) {
       if (route.name !== 'home') {

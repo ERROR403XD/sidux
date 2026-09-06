@@ -23,6 +23,8 @@ RUN npm_config_nodedir=/usr/local npm install -g /tmp/codexapp.tgz \
   && npm cache clean --force \
   && rm /tmp/codexapp.tgz
 
+COPY output/api-proxy-component/ /opt/codexapp-api-proxy/
+
 ENV CODEX_HOME=/codex-home
 ENV TZ=Asia/Shanghai
 RUN mkdir -p /codex-home /home/Code \

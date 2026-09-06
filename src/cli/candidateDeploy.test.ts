@@ -18,6 +18,8 @@ describe('candidate replacement', () => {
       response.setHeader('Content-Type', 'application/json')
       if (request.url?.startsWith('/codex-api/automation-runtime')) {
         response.end(JSON.stringify({ data: { ready: true, draining: true, activeCount: 0, queuedCount: 0 } }))
+      } else if (request.url?.startsWith('/codex-api/api-proxy/')) {
+        response.end(JSON.stringify({ data: { settings: { enabled: false }, activity: { connections: 0, activeRequests: 0 } } }))
       } else if (request.url === '/codex-api/thread-queue-state') {
         response.end(JSON.stringify({ data: scenario === 'invalid' ? null : {} }))
       } else if (request.url === '/codex-api/server-requests/pending') {
@@ -31,6 +33,7 @@ describe('candidate replacement', () => {
       await mkdir(scripts)
       await writeFile(join(root, 'package.json'), JSON.stringify({ version: 'fixture' }))
       await writeFile(log, '')
+      await writeFile(join(scripts, 'install-api-proxy.cjs'), '// fixture component installation\n')
       for (const name of ['run-multi-account-dev.sh', 'check-codexapp-idle.cjs']) await copyFile(resolve('scripts', name), join(scripts, name))
       const stubs = {
         docker: '#!/bin/bash\nprintf "docker %s\\n" "$*" >> "$DEPLOY_TEST_LOG"\nif [[ "$1" == run && "$DEPLOY_TEST_SCENARIO" == start ]]; then exit 42; fi\nexit 0\n',

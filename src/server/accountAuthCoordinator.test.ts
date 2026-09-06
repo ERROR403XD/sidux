@@ -271,3 +271,51 @@ describe('AccountAuthCoordinator', () => {
     expect((await authStore.readCredential(b.account.storageId)).auth.tokens?.refresh_token).toBe('refresh-account-b')
   })
 })
+
+describe('API outlet credential ownership', () => {
+  function accessToken(accountId: string, userId: string, expires: number): string {
+    const parts = jwt(accountId, userId).split('.')
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'))
+    return `header.${Buffer.from(JSON.stringify({ ...payload, exp: expires })).toString('base64url')}.signature`
+  }
+  function expiredCredential(accountId: string, userId: string): string {
+    const value = JSON.parse(credential(accountId, userId))
+    value.tokens.access_token = accessToken(accountId, userId, Math.floor(Date.now() / 1000) - 10)
+    return JSON.stringify(value)
+  }
+  it('coalesces API and active-runtime refresh and materializes the new active credential', async () => {
+    const accounts = await store()
+    const saved = await accounts.upsertCredential(expiredCredential('a', 'user-a'), { activate: true })
+    const token = accessToken('a', 'user-a', Math.floor(Date.now() / 1000) + 3600)
+    const fetchImpl = vi.fn(async () => {
+      await new Promise(resolve => setTimeout(resolve, 10))
+      return new Response(JSON.stringify({ access_token: token, refresh_token: 'rotated-once' }), { status: 200 })
+    })
+    const coordinator = new AccountAuthCoordinator(accounts, { fetchImpl: fetchImpl as typeof fetch })
+    const results = await Promise.all([
+      coordinator.getApiCredential(null),
+      coordinator.getApiCredential(null),
+      coordinator.refreshActiveTokens({ previousAccountId: 'a' }),
+    ])
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(results[0].accessToken).toBe(token)
+    expect(results[1].accessToken).toBe(token)
+    expect(JSON.stringify(results)).not.toContain('rotated-once')
+    const active = await accounts.readActiveCredential()
+    expect(active?.auth.tokens?.refresh_token).toBe('rotated-once')
+    expect((await accounts.readState()).activeStorageId).toBe(saved.account.storageId)
+  })
+  it('refreshes a fixed API account without changing WebUI active credentials', async () => {
+    const accounts = await store()
+    const active = await accounts.upsertCredential(credential('a', 'user-a'), { activate: true })
+    const fixed = await accounts.upsertCredential(expiredCredential('b', 'user-b'))
+    const token = accessToken('b', 'user-b', Math.floor(Date.now() / 1000) + 3600)
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ access_token: token, refresh_token: 'fixed-rotated' }), { status: 200 }))
+    const coordinator = new AccountAuthCoordinator(accounts, { fetchImpl: fetchImpl as typeof fetch })
+    const projection = await coordinator.getApiCredential(fixed.account.storageId)
+    expect(projection.accountId).toBe('b')
+    expect((await accounts.readState()).activeStorageId).toBe(active.account.storageId)
+    expect((await accounts.readActiveCredential())?.identity.accountId).toBe('a')
+    expect((await accounts.readCredential(fixed.account.storageId)).auth.tokens?.refresh_token).toBe('fixed-rotated')
+  })
+})

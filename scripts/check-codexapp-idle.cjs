@@ -1,5 +1,5 @@
 // Shared read-only preflight for candidate replacement and production cutover.
-async function checkIdle(baseUrl, { legacyScheduler = false } = {}) {
+async function checkIdle(baseUrl, { legacyScheduler = false, legacyApiProxy = false } = {}) {
   async function readJson(path, init) {
     const response = await fetch(`${baseUrl}${path}`, { ...init, signal: AbortSignal.timeout(10000) });
     if (!response.ok) throw new Error(`${path} returned HTTP ${response.status}`);
@@ -18,6 +18,18 @@ async function checkIdle(baseUrl, { legacyScheduler = false } = {}) {
   const queuedCount = Object.values(queue).reduce((count, rows) => count + rows.length, 0);
   const pending = (await readJson('/codex-api/server-requests/pending')).data;
   if (!Array.isArray(pending)) throw new Error('Invalid pending request state; idle status is unknown');
+  let apiConnections = 0;
+  let apiActiveRequests = 0;
+  if (!legacyApiProxy) {
+    const { data } = await readJson('/codex-api/api-proxy/status');
+    if (!data?.settings || typeof data.settings.enabled !== 'boolean' || !data.activity
+      || !Number.isInteger(data.activity.connections) || data.activity.connections < 0
+      || !Number.isInteger(data.activity.activeRequests) || data.activity.activeRequests < 0) {
+      throw new Error('Invalid API proxy activity; idle status is unknown');
+    }
+    apiConnections = data.activity.connections;
+    apiActiveRequests = data.activity.activeRequests;
+  }
   let cursor = null;
   let pages = 0;
   let activeTurns = 0;
@@ -37,14 +49,14 @@ async function checkIdle(baseUrl, { legacyScheduler = false } = {}) {
     cursor = payload.result.nextCursor || null;
   } while (cursor && pages < 20);
   if (cursor) throw new Error('Thread inventory exceeded the bounded 2000-thread idle check');
-  return { activeTurns, queuedCount, pendingCount: pending.length, pages, idle: !activeTurns && !queuedCount && !pending.length };
+  return { activeTurns, queuedCount, pendingCount: pending.length, pages, apiConnections, apiActiveRequests, idle: !activeTurns && !queuedCount && !pending.length && !apiConnections && !apiActiveRequests };
 }
 
 module.exports = { checkIdle };
 if (require.main === module) {
-  checkIdle(process.env.CODEXAPP_IDLE_CHECK_URL, { legacyScheduler: process.env.CODEXAPP_LEGACY_SCHEDULER === '1' })
+  checkIdle(process.env.CODEXAPP_IDLE_CHECK_URL, { legacyScheduler: process.env.CODEXAPP_LEGACY_SCHEDULER === '1', legacyApiProxy: process.env.CODEXAPP_LEGACY_API_PROXY === '1' })
     .then(result => {
-      console.log(`idle-check|activeTurns=${result.activeTurns}|queued=${result.queuedCount}|pendingApprovals=${result.pendingCount}|pages=${result.pages}`);
+      console.log(`idle-check|activeTurns=${result.activeTurns}|queued=${result.queuedCount}|pendingApprovals=${result.pendingCount}|apiConnections=${result.apiConnections}|apiActiveRequests=${result.apiActiveRequests}|pages=${result.pages}`);
       if (!result.idle) process.exitCode = 3;
     })
     .catch(error => { console.error(error.message); process.exitCode = 1; });

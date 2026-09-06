@@ -28,6 +28,11 @@ const router = createRouter({
       component: EmptyRouteView,
     },
     {
+      path: '/api-proxy',
+      name: 'api-proxy',
+      component: EmptyRouteView,
+    },
+    {
       path: '/new-thread',
       redirect: { name: 'home' },
     },

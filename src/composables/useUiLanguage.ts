@@ -185,6 +185,8 @@ const zhCN: Record<string, string> = {
   'No automations yet': '暂无自动化',
   'Use a thread or project menu to add an automation.': '通过线程或项目菜单添加自动化。',
   'Automations': '自动化',
+  'API outlet': 'API 出口',
+  'Codex client access': 'Codex 客户端接入',
   'Automation details': '自动化详情',
   'Refreshing...': '正在刷新…',
   'Heartbeat': '心跳任务',

@@ -1,3 +1,4 @@
+import { ApiProxyGateway } from './src/server/apiProxy/gateway';
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { createCodexBridgeMiddleware } from "./src/server/codexAppServerBridge";
@@ -129,6 +130,21 @@ export default defineConfig({
       configureServer(server) {
         process.env.CODEXUI_SERVER_PORT = String(server.config.server.port ?? 5173);
         const bridge = createCodexBridgeMiddleware();
+        const apiProxy = new ApiProxyGateway();
+        server.middlewares.use((req, res, next) => {
+          const pathname = new URL(req.url || '/', 'http://localhost').pathname;
+          if (pathname === '/v1' || pathname.startsWith('/v1/')) {
+            void apiProxy.handleApi(req, res);
+            return;
+          }
+          if (pathname === '/codex-api/api-proxy' || pathname.startsWith('/codex-api/api-proxy/')) {
+            void apiProxy.handleManagement(req, res);
+            return;
+          }
+          next();
+        });
+        if (server.httpServer) apiProxy.attach(server.httpServer as import('node:http').Server);
+        server.httpServer?.once('close', () => { void apiProxy.close(); });
         const httpServer = server.httpServer;
         if (httpServer) {
           httpServer.once("listening", () => {

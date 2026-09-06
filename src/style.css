@@ -2140,3 +2140,36 @@
 .model-tool-summary { padding: 8px 12px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); background: var(--ui-surface); }
 .model-tool-summary p { white-space: pre-wrap; }
 :root.dark .runtime-capabilities, :root.dark .model-tool-summary { color: var(--ui-text); background: var(--ui-surface); }
+
+/* API outlet uses the same shared surfaces in light and dark themes. */
+.api-proxy-panel { width: 100%; max-width: 1100px; margin: 0 auto; padding: 24px; color: var(--ui-text); }
+.api-proxy-intro { margin: 0 0 20px; }
+.api-proxy-card { margin-bottom: 20px; padding: 20px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-dialog); background: var(--ui-surface); }
+.api-proxy-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.api-proxy-heading h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.api-proxy-state { font-size: 13px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); padding: 4px 10px; }
+.api-proxy-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 16px 0; }
+.api-proxy-panel label, .api-proxy-label { display: grid; gap: 8px; font-size: 13px; margin-bottom: 12px; }
+.api-proxy-panel .api-proxy-check { display: flex; align-items: center; gap: 8px; }
+.api-proxy-panel .app-input, .api-proxy-panel .composer-dropdown-trigger, :root.dark .api-proxy-panel .app-input, :root.dark .api-proxy-panel .composer-dropdown-trigger { background: var(--ui-field); color: var(--ui-text); border-color: var(--ui-border); width: 100%; min-width: 0; }
+.api-proxy-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.api-proxy-muted { font-size: 12px; line-height: 1.7; opacity: .75; margin: 12px 0; }
+.api-proxy-error { color: var(--ui-danger); white-space: pre-wrap; overflow-wrap: anywhere; }
+.api-proxy-key-row { padding: 14px 0; border-top: 1px solid var(--ui-border); display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.api-proxy-key-copy { min-width: 0; display: grid; gap: 4px; overflow-wrap: anywhere; }
+.api-proxy-key-copy span, .api-proxy-key-copy small { font-size: 12px; opacity: .75; }
+.api-proxy-config { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.6; padding: 16px; border: 1px solid var(--ui-border); background: var(--ui-field); color: var(--ui-text); border-radius: var(--ui-radius-control); }
+.api-proxy-secret { width: 100%; overflow-wrap: anywhere; margin: 12px 0; }
+.api-proxy-table-wrap { overflow-x: auto; }
+.api-proxy-panel table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
+.api-proxy-panel th, .api-proxy-panel td { padding: 10px 8px; border-bottom: 1px solid var(--ui-border); white-space: nowrap; }
+.api-proxy-panel summary { cursor: pointer; margin-top: 16px; }
+@media (max-width: 767px) {
+  .api-proxy-panel { padding: 12px; }
+  .api-proxy-card { padding: 14px; }
+  .api-proxy-fields { grid-template-columns: minmax(0, 1fr); }
+  .api-proxy-key-row { align-items: stretch; flex-direction: column; }
+  .api-proxy-panel input { font-size: 16px; }
+}
+.api-proxy-panel .composer-dropdown-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; padding: 8px 10px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); }
+.api-proxy-panel .composer-dropdown-chevron { width: 16px; height: 16px; flex: 0 0 16px; }

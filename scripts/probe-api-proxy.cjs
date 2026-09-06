@@ -121,6 +121,30 @@ function projection(token, expired = new Date(Date.now() + 3600_000).toISOString
   assert.equal(records.at(-1).authorization, 'Bearer fixture-access-v1'); pass('Responses JSON with projected access token');
   const sse = await call('/v1/responses', { ...request, stream: true });
   assert.equal(sse.status, 200, sse.text); assert(sse.text.includes('response.completed')); pass('Responses SSE terminal');
+  const fakeEncrypted = Buffer.alloc(73, 42); fakeEncrypted[0] = 0x80; fakeEncrypted.fill(0, 1, 9);
+  for (const [model, effort] of [['gpt-5.6-luna', 'max'], ['gpt-6-astra', 'max']]) {
+    const advanced = { ...request, model, reasoning: { effort }, service_tier: 'priority',
+      parallel_tool_calls: true, include: ['reasoning.encrypted_content'],
+      text: { format: { type: 'json_schema', name: 'fixture', strict: true, schema: { type: 'object', properties: { ok: { type: 'boolean' } }, required: ['ok'], additionalProperties: false } } },
+      tools: [{ type: 'function', name: 'fixture_function', parameters: { type: 'object', properties: {} } },
+        { type: 'custom', name: 'fixture_custom', format: { type: 'text' } }],
+      input: [{ role: 'user', content: [{ type: 'input_text', text: 'fixture-only' }, { type: 'input_image', image_url: 'data:image/png;base64,ZmFrZQ==' }] },
+        { type: 'reasoning', id: 'rs_fixture_reasoning', encrypted_content: fakeEncrypted.toString('base64url') },
+        { type: 'message', role: 'assistant', phase: 'commentary', content: [{ type: 'output_text', text: 'fixture tool step' }] },
+        { type: 'function_call', call_id: 'fixture_call', name: 'fixture_function', arguments: '{}' },
+        { type: 'function_call_output', call_id: 'fixture_call', output: '{}' },
+        { type: 'custom_tool_call', call_id: 'fixture_custom_call', name: 'fixture_custom', input: 'fixture' },
+        { type: 'custom_tool_call_output', call_id: 'fixture_custom_call', output: 'fixture' }] };
+    const result = await call('/v1/responses', advanced);
+    assert.equal(result.status, 200, result.text);
+    const forwarded = records.at(-1).body;
+    for (const field of ['model', 'reasoning', 'service_tier', 'parallel_tool_calls', 'include', 'text', 'tools', 'input']) {
+      assert.deepEqual(forwarded[field], advanced[field], `${model} ${field} must survive translation`);
+    }
+    pass(`${model} ${effort}: priority, image, schema, function/custom calls, phase and encrypted reasoning preserved`);
+  }
+  const ultra = await call('/v1/responses', { ...request, model: 'gpt-6-astra', reasoning: { effort: 'ultra' } });
+  assert.equal(ultra.status, 400); pass('pinned component rejects ultra explicitly; gateway catalog must omit it');
   const compact = await call('/v1/responses/compact', request);
   assert.equal(compact.status, 200, compact.text); assert(compact.text.includes('fixture-opaque')); pass('compact opaque content');
   projection('fixture-access-v2');
@@ -149,11 +173,15 @@ function projection(token, expired = new Date(Date.now() + 3600_000).toISOString
   projection('fixture-access-v4');
   for (let i = 0; i < 30; i++) { await call('/v1/responses', request); if (records.at(-1).authorization === 'Bearer fixture-access-v4') break; await sleep(250); }
   assert.equal(records.at(-1).authorization, 'Bearer fixture-access-v4'); pass('valid projection restores routing after expiry');
+  if (process.env.CPA_GATEWAY_PROBE) {
+    upstreamStatus = 200;
+    await require(path.resolve(process.env.CPA_GATEWAY_PROBE)).run({ base, request, key: 'fixture-client-key' });
+  }
   const before = records.length; upstreamStatus = 500;
   const failure = await call('/v1/responses', request); assert.equal(failure.status, 500, failure.text);
   assert.equal(records.length - before, 1); pass('no additional retry on upstream 500');
   assert(!fs.existsSync(path.join(home, 'logs')) || fs.readdirSync(path.join(home, 'logs')).length === 0); pass('raw error logs disabled');
-  const report = { component: 'CLIProxyAPI v7.2.152 linux_amd64_no-plugin', assertions, requests: records.map(r => ({ transport: r.transport, path: r.path, inputCount: r.body?.input?.length, previousResponseId: r.body?.previous_response_id || null })), pending: ['real-account generation and refresh', 'actual Codex CLI tool/compact/resume', 'cross-key cache ownership', 'in-flight cancellation and hot reload under long-lived WS'] };
+  const report = { component: 'CLIProxyAPI v7.2.152 linux_amd64_no-plugin', assertions, requests: records.slice(0, 20).map(r => ({ transport: r.transport, path: r.path, inputCount: r.body?.input?.length, previousResponseId: r.body?.previous_response_id || null })), pending: ['real-account generation and refresh', 'actual Codex CLI tool/compact/resume', 'cross-key cache ownership', 'in-flight cancellation and hot reload under long-lived WS'] };
   fs.mkdirSync('output/api-proxy-g0', { recursive: true });
   fs.writeFileSync('output/api-proxy-g0/component-probe.json', JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify(report, null, 2));
