@@ -1987,7 +1987,8 @@ export function useDesktopState() {
       return
     }
 
-    const previousMode = selectedSpeedMode.value
+    const settingsKey = modelSettingsKey.value
+    const previousSettings = { ...currentModelSettings.value }
     selectedSpeedMode.value = nextMode
     isUpdatingSpeedMode.value = true
     error.value = ''
@@ -1995,7 +1996,12 @@ export function useDesktopState() {
     try {
       await setCodexSpeedMode(nextMode)
     } catch (unknownError) {
-      selectedSpeedMode.value = previousMode
+      savedModelSettings.value = { ...savedModelSettings.value, [settingsKey]: previousSettings }
+      try {
+        window.localStorage.setItem(modelSettingsStorageKey, JSON.stringify(savedModelSettings.value))
+      } catch {
+        // Keep the restored in-memory settings when browser storage is unavailable.
+      }
       error.value = unknownError instanceof Error ? unknownError.message : 'Failed to update Fast mode'
     } finally {
       isUpdatingSpeedMode.value = false
