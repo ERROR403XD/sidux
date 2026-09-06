@@ -1,4 +1,8 @@
+import { capabilityValue } from './modelCapabilities.js'
 export type StoredQueuedMessage = {
+  model?: string
+  effort?: string
+  serviceTier?: string | null
   id: string
   text: string
   imageUrls: string[]
@@ -25,6 +29,9 @@ export function normalizeStoredQueuedMessage(value: unknown): StoredQueuedMessag
   if (!id) return null
   return {
     id,
+    ...(capabilityValue(row.model) ? { model: capabilityValue(row.model) } : {}),
+    ...(typeof row.effort === 'string' ? { effort: capabilityValue(row.effort) } : {}),
+    ...(row.serviceTier === null ? { serviceTier: null } : capabilityValue(row.serviceTier) ? { serviceTier: capabilityValue(row.serviceTier) } : {}),
     text: typeof row.text === 'string' ? row.text : '',
     imageUrls: Array.isArray(row.imageUrls) ? row.imageUrls.filter((item): item is string => typeof item === 'string' && !!item.trim()) : [],
     skills: (Array.isArray(row.skills) ? row.skills : []).flatMap((value) => {

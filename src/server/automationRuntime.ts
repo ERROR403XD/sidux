@@ -35,9 +35,11 @@ export function createAutomationRuntime(options: {
       const params = await options.buildParams(threadId, text, runId)
       if (settings.model) params.model = settings.model
       if (settings.reasoningEffort) params.effort = settings.reasoningEffort
+      else if (settings.model) delete params.effort
+      if (settings.serviceTier || settings.model) params.serviceTier = settings.serviceTier || null
       if (params.collaborationMode) {
         const mode = record(params.collaborationMode)
-        params.collaborationMode = { ...mode, settings: { ...record(mode.settings), ...(settings.model ? { model: settings.model } : {}), ...(settings.reasoningEffort ? { reasoning_effort: settings.reasoningEffort } : {}) } }
+        params.collaborationMode = { ...mode, settings: { ...record(mode.settings), ...(settings.model ? { model: settings.model } : {}), ...(settings.reasoningEffort || settings.model ? { reasoning_effort: settings.reasoningEffort || null } : {}) } }
       }
       return { ...params, clientUserMessageId: runId }
     },

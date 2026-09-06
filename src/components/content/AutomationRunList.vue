@@ -8,7 +8,7 @@
         <div class="automation-history-links">
           <a v-if="run.threadId" :href="`#/thread/${encodeURIComponent(run.threadId)}`">打开会话</a>
           <button v-if="['failed', 'interrupted', 'missed'].includes(run.status)" type="button" :disabled="disabled" @click="emit('retry', run)">检查结果后重试</button>
-          <small v-if="run.model">{{ run.model }}<template v-if="run.reasoningEffort"> · {{ run.reasoningEffort }}</template></small>
+          <small v-if="run.model">{{ run.model }}<template v-if="run.reasoningEffort"> · {{ run.reasoningEffort }}</template><template v-if="run.serviceTier"> · {{ run.serviceTier }}</template></small>
         </div>
       </li>
     </ol>

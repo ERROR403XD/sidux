@@ -1,3 +1,5 @@
+import { invalidateModelCatalog } from './modelCatalog'
+afterEach(() => invalidateModelCatalog())
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   completeCodexLogin,
@@ -68,6 +70,17 @@ describe('startThreadTurn collaboration mode payloads', () => {
         developer_instructions: null,
       },
     })
+  })
+})
+
+describe('dynamic execution settings', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  it('sends advertised new values and clears a previous service tier explicitly', async () => {
+    const { requests } = mockRpcFetch()
+    await startThreadTurn('fixture', 'first', [], 'future', 'ultra', undefined, [], 'default', 'priority')
+    await startThreadTurn('fixture', 'second', [], 'future', 'max', undefined, [], 'plan', null)
+    expect(requests[0].params).toMatchObject({ model: 'future', effort: 'ultra', serviceTier: 'priority', collaborationMode: { settings: { reasoning_effort: 'ultra' } } })
+    expect(requests[1].params).toMatchObject({ effort: 'max', serviceTier: null, collaborationMode: { settings: { reasoning_effort: 'max' } } })
   })
 })
 

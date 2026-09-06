@@ -101,6 +101,7 @@
           </div>
           <div><dt>模型</dt><dd>{{ selectedRow.automation.model || '跟随运行时默认' }}</dd></div>
           <div><dt>思考强度</dt><dd>{{ selectedRow.automation.reasoningEffort || '跟随运行时默认' }}</dd></div>
+          <div><dt>服务档位</dt><dd>{{ selectedRow.automation.serviceTier || '跟随模型默认' }}</dd></div>
           <div><dt>调度时区</dt><dd>{{ selectedRow.automation.timezone || 'Asia/Shanghai' }}</dd></div>
         </dl>
 

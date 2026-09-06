@@ -2,8 +2,8 @@ export type RpcEnvelope<T> = {
   result: T
 }
 
-export type ReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'
-export type SpeedMode = 'standard' | 'fast'
+export type ReasoningEffort = string
+export type SpeedMode = string
 export type CollaborationModeKind = 'default' | 'plan'
 
 export type RpcMethodCatalog = {
@@ -80,6 +80,7 @@ export type UiThreadAutomationStatus = 'ACTIVE' | 'PAUSED'
 
 export type UiThreadAutomation = {
   model?: string
+  serviceTier?: string
   reasoningEffort?: ReasoningEffort
   id: string
   kind: 'heartbeat' | 'cron'

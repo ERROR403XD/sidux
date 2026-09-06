@@ -268,7 +268,8 @@
                   <code v-if="message.automationDisplayName">{{ message.automationDisplayName }}</code>
                   <time v-if="message.automationRun" :datetime="new Date(message.automationRun.startedAt).toISOString()" :title="formatLocalDateTime(message.automationRun.startedAt, { second: '2-digit', timeZoneName: 'short' })">{{ formatLocalDateTime(message.automationRun.startedAt) }}</time>
                 </div>
-                <div v-if="message.messageType === 'worked'" class="worked-separator-wrap" aria-live="polite">
+                <details v-if="message.isUnhandled" class="model-tool-summary"><summary>{{ message.text }}</summary><p>{{ message.rawPayload }}</p></details>
+                <div v-else-if="message.messageType === 'worked'" class="worked-separator-wrap" aria-live="polite">
                   <button type="button" class="worked-separator" @click="toggleWorkedExpand(message)">
                     <span class="worked-separator-line" aria-hidden="true" />
                     <span class="worked-chevron" :class="{ 'worked-chevron-open': isWorkedExpanded(message) }">▶</span>

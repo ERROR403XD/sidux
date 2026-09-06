@@ -1,3 +1,4 @@
+import { normalizeModelCapability } from '../modelCapabilities'
 import { applyThreadQueueOperation, type ThreadQueueState } from '../threadQueue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -44,6 +45,8 @@ const gatewayMocks = vi.hoisted(() => ({
 
 vi.mock('../api/codexGateway', () => ({
   ...gatewayMocks,
+  invalidateModelCatalog: vi.fn(),
+  getAvailableModels: async (options: unknown) => (await gatewayMocks.getAvailableModelIds(options) || []).map((id: string) => normalizeModelCapability(id)! ),
   getBackgroundThreadListLimit: vi.fn(() => 100),
   pickCodexRateLimitSnapshot: vi.fn(() => null),
 }))
@@ -529,7 +532,7 @@ describe('startup request deduplication', () => {
       model: 'gpt-5.5',
       providerId: '',
       reasoningEffort: 'medium',
-      speedMode: 'standard',
+      speedMode: '',
     })
     gatewayMocks.getAvailableModelIds.mockResolvedValue(['gpt-5.5'])
 
@@ -560,7 +563,7 @@ describe('startup request deduplication', () => {
       model: 'gpt-5.5',
       providerId: '',
       reasoningEffort: 'medium',
-      speedMode: 'standard',
+      speedMode: '',
     })
     gatewayMocks.getAvailableModelIds.mockResolvedValue(['gpt-5.5'])
 
@@ -757,7 +760,7 @@ describe('provider model selection', () => {
       model: 'big-pickle',
       providerId: 'opencode-zen',
       reasoningEffort: 'medium',
-      speedMode: 'standard',
+      speedMode: '',
     })
     gatewayMocks.getAvailableModelIds.mockResolvedValue([
       'big-pickle',
@@ -800,7 +803,7 @@ describe('provider model selection', () => {
       model: 'big-pickle',
       providerId: 'opencode-zen',
       reasoningEffort: 'medium',
-      speedMode: 'standard',
+      speedMode: '',
     })
     gatewayMocks.getAvailableModelIds.mockResolvedValue([
       'big-pickle',
@@ -837,7 +840,7 @@ describe('provider model selection', () => {
       model: 'gpt-5.5',
       providerId: '',
       reasoningEffort: 'medium',
-      speedMode: 'standard',
+      speedMode: '',
     })
     gatewayMocks.getAvailableModelIds.mockResolvedValue([
       'gpt-5.5',
@@ -869,7 +872,7 @@ describe('provider model selection', () => {
       model: 'gpt-5.5',
       providerId: '',
       reasoningEffort: 'medium',
-      speedMode: 'standard',
+      speedMode: '',
     })
     gatewayMocks.getAvailableModelIds.mockResolvedValue([
       'gpt-5.5',
@@ -904,7 +907,7 @@ describe('provider model selection', () => {
       model: 'gpt-5.4-mini',
       providerId: '',
       reasoningEffort: 'medium',
-      speedMode: 'standard',
+      speedMode: '',
     })
     gatewayMocks.getAvailableModelIds.mockImplementation(async (options?: { providerId?: string }) => {
       if (options?.providerId === 'opencode-zen') {
@@ -960,7 +963,7 @@ describe('provider model selection', () => {
       model: 'gpt-5.4-mini',
       providerId: '',
       reasoningEffort: 'medium',
-      speedMode: 'standard',
+      speedMode: '',
     })
     gatewayMocks.getAvailableModelIds.mockImplementation(async (options?: { providerId?: string }) => {
       if (options?.providerId === 'opencode-zen') {
@@ -1003,7 +1006,7 @@ describe('provider model selection', () => {
       model: 'gpt-5.5',
       providerId: '',
       reasoningEffort: 'medium',
-      speedMode: 'standard',
+      speedMode: '',
     })
     gatewayMocks.getAvailableModelIds.mockResolvedValue(['gpt-5.5', 'gpt-5.4-mini'])
     gatewayMocks.startThread.mockResolvedValue({
@@ -1043,6 +1046,7 @@ describe('provider model selection', () => {
       undefined,
       [],
       'default',
+      null,
     )
     expect(state.readModelIdForThread('codex-thread')).toBe('gpt-5.5')
     expect(state.messages.value.some((message) => (
@@ -1083,7 +1087,7 @@ describe('provider model selection', () => {
       model: 'gpt-5.4-mini',
       providerId: '',
       reasoningEffort: 'medium',
-      speedMode: 'standard',
+      speedMode: '',
     })
     gatewayMocks.getAvailableModelIds.mockResolvedValue(['gpt-5.5', 'gpt-5.4-mini'])
     gatewayMocks.startThread.mockResolvedValue({
@@ -1150,7 +1154,7 @@ describe('provider model selection', () => {
       model: 'gpt-5.5',
       providerId: '',
       reasoningEffort: 'medium',
-      speedMode: 'standard',
+      speedMode: '',
     })
     gatewayMocks.getAvailableModelIds.mockResolvedValue(['gpt-5.5', 'gpt-5.4-mini'])
     gatewayMocks.resumeThread.mockRejectedValue(new Error('thread not found'))

@@ -200,29 +200,12 @@
             <div class="thread-composer-attach-separator" />
             <button class="thread-composer-attach-item" type="button" :disabled="isInteractionDisabled" @click="isAttachMenuOpen = false; emit('command', { name: 'goal', complete: () => {} })">持续目标</button>
             <div class="thread-composer-attach-separator" />
-            <button
-              v-if="isFastModeSupported"
-              class="thread-composer-attach-setting"
-              type="button"
-              role="switch"
-              :aria-checked="selectedSpeedMode === 'fast'"
-              :aria-label="`${t('Fast mode')} ${selectedSpeedMode === 'fast' ? t('enabled') : t('disabled')}`"
-              :disabled="isSpeedToggleDisabled"
-              @click="onToggleSpeedMode"
-            >
-              <span class="thread-composer-attach-setting-copy">
-                <span class="thread-composer-attach-setting-label">{{ t('Fast mode') }}</span>
-                <span class="thread-composer-attach-setting-description">{{ speedModeDescription }}</span>
-              </span>
-              <span
-                class="thread-composer-attach-switch"
-                :class="{
-                  'is-on': selectedSpeedMode === 'fast',
-                  'is-busy': isUpdatingSpeedMode,
-                  'is-disabled': isSpeedToggleDisabled,
-                }"
-              />
-            </button>
+            <div class="thread-composer-attach-setting-copy model-capability-summary">
+              <span>{{ modelCapabilityDescription }}</span>
+              <span v-if="reportedModel">运行时最近返回：{{ reportedModel }}</span>
+              <span>{{ speedModeDescription }}</span>
+            </div>
+            <AppSelect class="model-service-tier-picker" :model-value="selectedSpeedMode" :options="serviceTierOptions" :disabled="isSpeedToggleDisabled" @update:model-value="emit('update:selected-speed-mode', $event)" />
             <button
               class="thread-composer-attach-setting"
               type="button"
@@ -244,6 +227,7 @@
           </div>
         </div>
 
+        <span v-if="modelSettingsWarning || modelCatalogError" class="model-capability-warning" role="status">{{ modelSettingsWarning || modelCatalogError }}</span>
         <template v-if="!isDictationRecording">
           <ComposerDropdown
             ref="commandModelRef"
@@ -278,10 +262,11 @@
             @remove="onRemovePrompt"
           />
 
-          <ComposerDropdown
-            class="thread-composer-control"
+          <AppSelect
+            class="thread-composer-control model-effort-picker"
             :model-value="selectedReasoningEffort"
             :options="reasoningOptions"
+            :title="modelSettingsWarning || modelCapabilityDescription"
             :placeholder="t('Thinking')"
             open-direction="up"
             :disabled="isComposerConfigDisabled"
@@ -382,6 +367,8 @@
 </template>
 
 <script setup lang="ts">
+import AppSelect from '../common/AppSelect.vue'
+import { effortOptions, tierOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
 import { isOverlayEventInside } from '../../composables/overlayEvents'
 import { formatLocalDateTime } from '../../dateTime'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -435,6 +422,9 @@ const props = defineProps<{
   collaborationModes?: CollaborationModeOption[]
   selectedCollaborationMode: CollaborationModeKind
   models: string[]
+  modelCapabilities?: ModelCapability[]
+  modelCatalogError?: string
+  reportedModel?: string
   selectedModel: string
   selectedReasoningEffort: ReasoningEffort | ''
   selectedSpeedMode: SpeedMode
@@ -581,20 +571,21 @@ const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.
 const DRAFT_STORAGE_PREFIX = 'codex-web-local.thread-draft.v1.'
 let lastActiveThreadId = ''
 
-const reasoningOptions = computed<Array<{ value: ReasoningEffort; label: string }>>(() => [
-  { value: 'none', label: t('None') },
-  { value: 'minimal', label: t('Minimal') },
-  { value: 'low', label: t('Low') },
-  { value: 'medium', label: t('Medium') },
-  { value: 'high', label: t('High') },
-  { value: 'xhigh', label: t('Extra high') },
-])
+const modelCapability = computed(() => props.modelCapabilities?.find(model => model.id === props.selectedModel))
+const reasoningOptions = computed(() => effortOptions(modelCapability.value, props.selectedReasoningEffort))
+const serviceTierOptions = computed(() => tierOptions(modelCapability.value, props.selectedSpeedMode))
+const modelSettingsWarning = computed(() => modelSettingsProblem(modelCapability.value, props.selectedReasoningEffort, props.selectedSpeedMode, selectedImages.value.length > 0))
+const modelCapabilityDescription = computed(() => {
+  const model = modelCapability.value
+  if (!model) return '模型能力尚未确认'
+  return `${model.displayName} · ${model.inputModalities ? model.inputModalities.map(value => value === 'image' ? '图片' : value === 'text' ? '文字' : value).join('、') : '输入能力未公布'}`
+})
 function formatModelLabel(modelId: string): string {
   return modelId.trim().replace(/^gpt/i, 'GPT')
 }
 
 const modelOptions = computed(() =>
-  props.models.map((modelId) => ({ value: modelId, label: formatModelLabel(modelId) })),
+  props.models.map((modelId) => ({ value: modelId, label: props.modelCapabilities?.find(model => model.id === modelId)?.displayName || formatModelLabel(modelId) })),
 )
 const isPlanModeSelected = computed(() => props.selectedCollaborationMode === 'plan')
 
@@ -740,10 +731,10 @@ const standaloneFileAttachments = computed(() => {
   return fileAttachments.value.filter((att) => !grouped.has(att.fsPath))
 })
 const isInteractionDisabled = computed(() => props.disabled || !props.activeThreadId)
-const isComposerConfigDisabled = computed(() => props.disabled || !props.activeThreadId)
-const isFastModeSupported = computed(() => /^gpt-5\.(?:4|5)(?:$|-)/.test(props.selectedModel.trim()))
+const isComposerConfigDisabled = computed(() => props.disabled || !props.activeThreadId || props.isUpdatingSpeedMode)
+const isFastModeSupported = computed(() => modelCapability.value?.serviceTiers?.some(tier => tier.value === props.selectedSpeedMode) === true)
 const showFastModeModelIcon = computed(() =>
-  props.selectedSpeedMode === 'fast' && isFastModeSupported.value,
+  !!props.selectedSpeedMode && isFastModeSupported.value,
 )
 const isSpeedToggleDisabled = computed(() =>
   isInteractionDisabled.value || props.isUpdatingSpeedMode === true,
@@ -752,9 +743,7 @@ const speedModeDescription = computed(() => {
   if (props.isUpdatingSpeedMode) {
     return t('Saving speed setting...')
   }
-  return props.selectedSpeedMode === 'fast'
-    ? t('About 1.5x faster, with credits used at 2x')
-    : t('Default speed with normal credit usage')
+  return modelCapability.value?.serviceTiers?.find(tier => tier.value === props.selectedSpeedMode)?.description || (modelCapability.value?.serviceTiers === null ? '服务商未公布速度能力' : '按模型默认速度执行')
 })
 const activeInProgressMode = 'queue' as const
 const isDictationRecording = computed(() => dictationState.value === 'recording')
@@ -1028,7 +1017,7 @@ function buildContextUsageView(
 function onSubmit(mode: 'steer' | 'queue' = 'queue'): void {
   commandPicker.dismiss()
   commandContext = null
-  if (!canSubmit.value) return
+  if (!canSubmit.value || modelSettingsWarning.value) return
   const threadId = props.activeThreadId
   const snapshot = JSON.stringify(getCurrentDraftPayload())
   const deferred = props.isTurnInProgress && mode === 'queue'
@@ -1202,10 +1191,6 @@ function onReasoningEffortSelect(value: string): void {
   emit('update:selected-reasoning-effort', value as ReasoningEffort)
 }
 
-function onToggleSpeedMode(): void {
-  if (isSpeedToggleDisabled.value) return
-  emit('update:selected-speed-mode', props.selectedSpeedMode === 'fast' ? 'standard' : 'fast')
-}
 
 function onDictationToggle(): void {
   if (!props.dictationClickToToggle) return
@@ -1889,7 +1874,7 @@ function onDocumentClick(event: MouseEvent): void {
 }
 
 onMounted(() => {
-  document.addEventListener('click', onDocumentClick)
+  document.addEventListener('click', onDocumentClick, true)
   window.addEventListener('drop', onWindowDragCleanup)
   window.addEventListener('dragend', onWindowDragCleanup)
   window.addEventListener('blur', onWindowDragCleanup)
@@ -1904,7 +1889,7 @@ defineExpose<ThreadComposerExposed>({
 })
 
 onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocumentClick)
+  document.removeEventListener('click', onDocumentClick, true)
   window.removeEventListener('drop', onWindowDragCleanup)
   window.removeEventListener('dragend', onWindowDragCleanup)
   window.removeEventListener('blur', onWindowDragCleanup)

@@ -1,3 +1,5 @@
+import { normalizeToolSummary } from '../api/normalizers/toolSummary'
+import { capabilityValue, modelSettingsProblem, type ModelCapability } from '../modelCapabilities'
 import type { ThreadQueueOperation, ThreadQueueResult } from '../threadQueue'
 import { computed, ref } from 'vue'
 import {
@@ -7,7 +9,8 @@ import {
   getAvailableCollaborationModes,
   getAccountRateLimits,
   renameThread,
-  getAvailableModelIds,
+  getAvailableModels,
+  invalidateModelCatalog,
   getCurrentModelConfig,
   getPendingServerRequests,
   getSkillsList,
@@ -92,7 +95,6 @@ const TURN_START_FOLLOW_UP_SYNC_DELAY_MS = 3000
 const RECENT_THREAD_MESSAGE_LOAD_REUSE_MS = 2000
 const RECENT_THREAD_LIST_LOAD_REUSE_MS = 2000
 const RECENT_SKILLS_LOAD_REUSE_MS = 2000
-const REASONING_EFFORT_OPTIONS: ReasoningEffort[] = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh']
 const GLOBAL_SERVER_REQUEST_SCOPE = '__global__'
 const MODEL_FALLBACK_ID = 'gpt-5.4-mini'
 const OPENCODE_ZEN_DEFAULT_MODEL = 'big-pickle'
@@ -1417,6 +1419,7 @@ export function useDesktopState() {
     fileAttachments: FileAttachment[]
     effort: ReasoningEffort | ''
     collaborationMode: CollaborationModeKind
+    serviceTier?: string | null
     fallbackRetried: boolean
   }
   const queuedMessagesByThreadId = ref<Record<string, QueuedMessage[]>>({})
@@ -1425,6 +1428,12 @@ export function useDesktopState() {
   let hasLoadedPersistedQueueState = false
   const eventUnreadByThreadId = ref<Record<string, boolean>>({})
   const availableModelIds = ref<string[]>([])
+  const availableModels = ref<ModelCapability[]>([])
+  const modelCatalogError = ref('')
+  const reportedModelByThreadId = ref<Record<string, string>>({})
+  const reportedModel = computed(() => reportedModelByThreadId.value[selectedThreadId.value] || '')
+  let modelRefreshGeneration = 0
+  let recentRateLimitsAt = 0
   const availableCollaborationModes = ref<CollaborationModeOption[]>([
     { value: 'default', label: 'Default' },
     { value: 'plan', label: 'Plan' },
@@ -1437,8 +1446,42 @@ export function useDesktopState() {
     readSelectedCollaborationMode(selectedCollaborationModeByContext.value, selectedThreadId.value),
   )
   const selectedModelId = ref(readSelectedModel(selectedModelIdByContext.value, selectedThreadId.value))
-  const selectedReasoningEffort = ref<ReasoningEffort | ''>('medium')
-  const selectedSpeedMode = ref<SpeedMode>('standard')
+  const modelSettingsStorageKey = 'codexapp.model-settings.v1'
+  const savedModelSettings = ref<Record<string, { effort: string; tier: string }>>((() => {
+    try {
+      const value = JSON.parse(window.localStorage.getItem(modelSettingsStorageKey) || '{}')
+      return Object.fromEntries(Object.entries(value).flatMap(([key, row]) => row && typeof row === 'object'
+        ? [[key, { effort: capabilityValue((row as Record<string, unknown>).effort), tier: capabilityValue((row as Record<string, unknown>).tier) }]] : []))
+    } catch { return {} }
+  })())
+  const configuredModelSettings = ref({ model: '', provider: '', effort: '', tier: '' })
+  const modelSettingsKey = computed(() => JSON.stringify([readProviderIdForThread(selectedThreadId.value), selectedModelId.value]))
+  const selectedModelCapability = computed(() => availableModels.value.find(model => model.id === selectedModelId.value))
+  const currentModelSettings = computed(() => {
+    const stored = savedModelSettings.value[modelSettingsKey.value]
+    const defaults = configuredModelSettings.value
+    const matches = defaults.model === selectedModelId.value && defaults.provider === readProviderIdForThread(selectedThreadId.value)
+    const settings = stored || (matches ? defaults : { effort: '', tier: '' })
+    const tier = settings.tier === 'fast' && selectedModelCapability.value?.serviceTiers?.some(item => item.value === 'priority') ? 'priority' : settings.tier
+    return { effort: settings.effort, tier }
+  })
+  function saveCurrentModelSettings(patch: Partial<{ effort: string; tier: string }>): void {
+    savedModelSettings.value = { ...savedModelSettings.value, [modelSettingsKey.value]: { ...currentModelSettings.value, ...patch } }
+    // Bound preferences without pruning the selected entry.
+    const entries = Object.entries(savedModelSettings.value)
+    if (entries.length > 200) savedModelSettings.value = Object.fromEntries(entries.slice(-200))
+    try { window.localStorage.setItem(modelSettingsStorageKey, JSON.stringify(savedModelSettings.value)) } catch { /* In-memory choices remain usable. */ }
+  }
+  const selectedReasoningEffort = computed({ get: () => currentModelSettings.value.effort, set: (effort: string) => saveCurrentModelSettings({ effort }) })
+  const selectedSpeedMode = computed({ get: () => currentModelSettings.value.tier, set: (tier: string) => saveCurrentModelSettings({ tier }) })
+  function checkedModelSettings(modelId: string, hasImages = false) {
+    const model = availableModels.value.find(item => item.id === modelId)
+    const effort = selectedReasoningEffort.value
+    const tier = selectedSpeedMode.value
+    const problem = modelSettingsProblem(model, effort, tier, hasImages)
+    if (problem) throw new Error(problem)
+    return { model: model?.model || modelId, effort: effort || model?.defaultEffort || '', serviceTier: tier || model?.defaultServiceTier || null }
+  }
   const activeProviderId = ref('')
   const codexCliMissingError = ref('')
   const readStateByThreadId = ref<Record<string, string>>(loadReadStateMap())
@@ -1693,6 +1736,7 @@ export function useDesktopState() {
 
   function setSelectedModelIdForThread(threadId: string, modelId: string): void {
     const normalizedModelId = modelId.trim()
+    if (configuredModelSettings.value.model && selectedModelId.value && selectedModelId.value !== normalizedModelId && !savedModelSettings.value[modelSettingsKey.value]) saveCurrentModelSettings({})
     const contextId = toThreadContextId(threadId)
     const normalizedProviderId = normalizeProviderContextId(activeProviderId.value)
     const providerContextId =
@@ -1732,6 +1776,8 @@ export function useDesktopState() {
     if (!normalizedThreadId) return
 
     const normalizedModelId = modelId.trim()
+    if (normalizedModelId) reportedModelByThreadId.value = { ...reportedModelByThreadId.value, [normalizedThreadId]: normalizedModelId }
+    if (selectedModelIdByContext.value[normalizedThreadId]) return
     if (normalizedModelId) {
       const nextModelMap = cloneStringKeyedRecord(selectedModelIdByContext.value)
       nextModelMap[normalizedThreadId] = normalizedModelId
@@ -1832,7 +1878,7 @@ export function useDesktopState() {
 
   async function applyFallbackModelSelection(threadId: string = selectedThreadId.value): Promise<void> {
     if (threadId.trim()) {
-      setThreadModelId(threadId, MODEL_FALLBACK_ID)
+      setSelectedModelIdForThread(threadId, MODEL_FALLBACK_ID)
     } else {
       setSelectedModelId(MODEL_FALLBACK_ID)
     }
@@ -1911,6 +1957,7 @@ export function useDesktopState() {
         pending.skills.length > 0 ? pending.skills : undefined,
         pending.fileAttachments,
         pending.collaborationMode,
+        pending.serviceTier,
       )
 
       scheduleRateLimitRefresh()
@@ -1928,14 +1975,14 @@ export function useDesktopState() {
   }
 
   function setSelectedReasoningEffort(effort: ReasoningEffort | ''): void {
-    if (effort && !REASONING_EFFORT_OPTIONS.includes(effort)) {
+    if (effort && !capabilityValue(effort)) {
       return
     }
     selectedReasoningEffort.value = effort
   }
 
   async function updateSelectedSpeedMode(mode: SpeedMode): Promise<void> {
-    const nextMode: SpeedMode = mode === 'fast' ? 'fast' : 'standard'
+    const nextMode = capabilityValue(mode)
     if (isUpdatingSpeedMode.value || selectedSpeedMode.value === nextMode) {
       return
     }
@@ -1975,25 +2022,34 @@ export function useDesktopState() {
     const modelLabel = modelId.trim() || 'default'
     const effortLabel = effort || 'default'
     const modeLabel = collaborationMode === 'plan' ? 'Plan' : 'Default'
-    const speedLabel = selectedSpeedMode.value === 'fast' ? 'Fast' : 'Standard'
+    const speedLabel = selectedSpeedMode.value || 'Standard'
     return [`Mode: ${modeLabel}`, `Model: ${modelLabel}`, `Thinking: ${effortLabel}`, `Speed: ${speedLabel}`]
   }
 
   async function refreshModelPreferences(options?: { providerChanged?: boolean; includeProviderModels?: boolean }): Promise<void> {
+    const generation = ++modelRefreshGeneration
+    const threadContext = selectedThreadId.value
+    if (options?.providerChanged) invalidateModelCatalog()
     codexCliMissingError.value = ''
     try {
       const currentConfig = await getCurrentModelConfig()
+      if (generation !== modelRefreshGeneration || threadContext !== selectedThreadId.value) return
       const normalizedConfiguredModelId = currentConfig.model.trim()
       const normalizedProviderId = normalizeProviderContextId(currentConfig.providerId)
       activeProviderId.value = normalizedProviderId
       const targetProviderId = readProviderIdForThread(selectedThreadId.value)
+      availableModels.value = availableModels.value.filter(model => model.providerId === targetProviderId)
       const isProviderBacked = targetProviderId !== 'codex'
       const normalizedSelectedModelId = readModelIdForThread(selectedThreadId.value)
-      const modelIds = await getAvailableModelIds({
-        includeProviderModels: isProviderBacked || options?.includeProviderModels !== false,
+      const models = await getAvailableModels({
+        includeProviderModels: isProviderBacked,
         requireProviderModels: isProviderBacked,
         providerId: isProviderBacked ? targetProviderId : undefined,
       })
+      if (generation !== modelRefreshGeneration || threadContext !== selectedThreadId.value) return
+      availableModels.value = models
+      modelCatalogError.value = ''
+      const modelIds = models.map(model => model.id)
       const providerModelContextId = toProviderModelContextId(targetProviderId)
       const providerScopedModelId = providerModelContextId
         ? normalizeStoredModelId(selectedModelIdByContext.value[providerModelContextId])
@@ -2045,24 +2101,21 @@ export function useDesktopState() {
         saveSelectedModelMap(selectedModelIdByContext.value)
       }
 
-      if (
-        currentConfig.reasoningEffort &&
-        REASONING_EFFORT_OPTIONS.includes(currentConfig.reasoningEffort)
-      ) {
-        selectedReasoningEffort.value = currentConfig.reasoningEffort
-      }
-      selectedSpeedMode.value = currentConfig.speedMode
+      configuredModelSettings.value = { model: normalizedConfiguredModelId, provider: normalizedProviderId, effort: currentConfig.reasoningEffort, tier: currentConfig.speedMode }
+
     } catch (unknownError) {
       if (isCodexCliMissingError(unknownError)) {
         codexCliMissingError.value = CODEX_CLI_MISSING_MESSAGE
       } else {
         codexCliMissingError.value = ''
       }
+      if (generation === modelRefreshGeneration) modelCatalogError.value = '模型目录暂时不可用，保留当前选择；能力尚未确认。'
       // Keep chat UI usable even if model metadata is temporarily unavailable.
     }
   }
 
   async function refreshRateLimits(): Promise<void> {
+    if (Date.now() - recentRateLimitsAt < 2000) return
     if (rateLimitRefreshPromise) {
       await rateLimitRefreshPromise
       return
@@ -2071,6 +2124,7 @@ export function useDesktopState() {
     rateLimitRefreshPromise = (async () => {
       try {
         const snapshot = await getAccountRateLimits()
+        recentRateLimitsAt = Date.now()
         setCodexRateLimit(snapshot)
         accountRateLimitSnapshots.value = snapshot ? [snapshot] : []
       } catch {
@@ -2084,6 +2138,7 @@ export function useDesktopState() {
   }
 
   function scheduleRateLimitRefresh(): void {
+    recentRateLimitsAt = 0
     if (typeof window === 'undefined') {
       void refreshRateLimits()
       return
@@ -2269,6 +2324,7 @@ export function useDesktopState() {
     )
     threadListedByServerById.value = pruneThreadStateMap(threadListedByServerById.value, activeThreadIds)
     persistedUserMessageByThreadId.value = pruneThreadStateMap(persistedUserMessageByThreadId.value, activeThreadIds)
+    reportedModelByThreadId.value = pruneThreadStateMap(reportedModelByThreadId.value, activeThreadIds)
     threadModelProviderByThreadId.value = pruneThreadStateMap(threadModelProviderByThreadId.value, activeThreadIds)
     threadTokenUsageByThreadId.value = pruneThreadStateMap(threadTokenUsageByThreadId.value, activeThreadIds)
     eventUnreadByThreadId.value = pruneThreadStateMap(eventUnreadByThreadId.value, activeThreadIds)
@@ -3730,6 +3786,31 @@ export function useDesktopState() {
   }
 
   function applyRealtimeUpdates(notification: RpcNotification): void {
+    if (notification.method === 'item/started' || notification.method === 'item/completed') {
+      const params = asRecord(notification.params)
+      const threadId = readString(params?.threadId)
+      const summary = normalizeToolSummary(params?.item)
+      if (threadId && summary) {
+        const messages = persistedMessagesByThreadId.value[threadId] || []
+        const next = { ...summary, turnId: readString(params?.turnId) || undefined }
+        const index = messages.findIndex(message => message.id === summary.id)
+        setPersistedMessagesForThread(threadId, index < 0 ? [...messages, next] : messages.map((message, offset) => offset === index ? next : message))
+      }
+    }
+    if (['account/updated', 'model/list/updated', 'models/updated', 'config/updated'].includes(notification.method)) {
+      invalidateModelCatalog()
+      void refreshModelPreferences()
+    }
+    if (notification.method === 'model/rerouted') {
+      const params = asRecord(notification.params)
+      const threadId = readString(params?.threadId)
+      const model = readString(params?.toModel)
+      if (threadId && model) {
+        reportedModelByThreadId.value = { ...reportedModelByThreadId.value, [threadId]: model }
+        setTurnActivityForThread(threadId, { label: '实际执行模型已变更', details: [model] })
+        setPersistedMessagesForThread(threadId, [...(persistedMessagesByThreadId.value[threadId] || []).filter(message => message.id !== `model-rerouted-${params?.turnId}`), { id: `model-rerouted-${params?.turnId}`, role: 'system', text: `实际执行模型：${model}`, messageType: 'modelRerouted', turnId: readString(params?.turnId) || undefined }])
+      }
+    }
     if (handleServerRequestNotification(notification)) {
       return
     }
@@ -4605,6 +4686,7 @@ export function useDesktopState() {
   ) {
     error.value = ''
     codexCliMissingError.value = ''
+    if (options.providerChanged) { invalidateModelCatalog(); recentRateLimitsAt = 0 }
     const includeSelectedThreadMessages = options.includeSelectedThreadMessages !== false
     const awaitAncillaryRefreshes = options.awaitAncillaryRefreshes === true
 
@@ -4868,6 +4950,7 @@ export function useDesktopState() {
           skills,
           fileAttachments,
           collaborationMode: collaborationModeOverride ?? selectedCollaborationMode.value,
+          ...checkedModelSettings(readModelIdForThread(threadId), imageUrls.length > 0),
         },
       })
       return
@@ -4948,6 +5031,7 @@ export function useDesktopState() {
     const targetCwd = cwd.trim()
     const selectedModel = readModelIdForThread(NEW_THREAD_COLLABORATION_MODE_CONTEXT).trim()
     const selectedMode = selectedCollaborationMode.value
+    const newThreadSettings = checkedModelSettings(selectedModel, imageUrls.length > 0)
     if (!nextText && imageUrls.length === 0 && fileAttachments.length === 0) return ''
 
     isSendingMessage.value = true
@@ -4983,6 +5067,7 @@ export function useDesktopState() {
         [threadId]: true,
       }
       setSelectedThreadId(threadId)
+      saveCurrentModelSettings({ effort: newThreadSettings.effort, tier: newThreadSettings.serviceTier || '' })
       shouldAutoScrollOnNextAgentEvent = true
       setTurnSummaryForThread(threadId, null)
       setTurnActivityForThread(
@@ -5039,7 +5124,8 @@ export function useDesktopState() {
     fileAttachments: FileAttachment[] = [],
     collaborationModeOverride?: CollaborationModeKind,
   ): Promise<void> {
-    const reasoningEffort = selectedReasoningEffort.value
+    const executionSettings = checkedModelSettings(readModelIdForThread(threadId), imageUrls.length > 0)
+    const reasoningEffort = executionSettings.effort
     const collaborationMode = collaborationModeOverride === 'plan' ? 'plan' : collaborationModeOverride === 'default'
       ? 'default'
       : selectedCollaborationMode.value
@@ -5064,6 +5150,7 @@ export function useDesktopState() {
       fileAttachments: normalizedFileAttachments,
       effort: reasoningEffort,
       collaborationMode,
+      serviceTier: executionSettings.serviceTier,
       fallbackRetried: false,
     })
 
@@ -5094,6 +5181,7 @@ export function useDesktopState() {
           skills.length > 0 ? skills : undefined,
           fileAttachments,
           collaborationMode,
+          executionSettings.serviceTier,
         )
       } catch (unknownError) {
         if (modelId && modelId !== MODEL_FALLBACK_ID && isUnsupportedChatGptModelError(unknownError)) {
@@ -5105,6 +5193,7 @@ export function useDesktopState() {
             fileAttachments: normalizedFileAttachments,
             effort: reasoningEffort,
             collaborationMode,
+            serviceTier: executionSettings.serviceTier,
             fallbackRetried: true,
           })
           startedTurnId = await startThreadTurn(
@@ -5116,6 +5205,7 @@ export function useDesktopState() {
             skills.length > 0 ? skills : undefined,
             fileAttachments,
             collaborationMode,
+            executionSettings.serviceTier,
           )
         } else {
           throw unknownError
@@ -5554,6 +5644,10 @@ export function useDesktopState() {
   }
 
   function stopPolling(): void {
+    modelRefreshGeneration++
+    invalidateModelCatalog()
+    availableModels.value = []
+    recentRateLimitsAt = 0
     if (stopNotificationStream) {
       stopNotificationStream()
       stopNotificationStream = null
@@ -5668,6 +5762,9 @@ export function useDesktopState() {
     selectedThreadId,
     availableCollaborationModes,
     availableModelIds,
+    availableModels,
+    modelCatalogError,
+    reportedModel,
     selectedCollaborationMode,
     selectedModelId,
     selectedReasoningEffort,

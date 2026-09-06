@@ -142,7 +142,7 @@ export class AutomationEngine {
         if (record.kind === 'heartbeat' ? !record.targetThreadId : !record.cwds.length || record.cwds.some((cwd) => !isAbsolute(cwd))) throw new Error('缺少有效的执行目标')
         const previous = this.state.definitions[id]
         const timezone = record.timezone ?? previous?.timezone ?? this.timezone
-        const revision = createHash('sha256').update(JSON.stringify([record.rrule, record.prompt, record.status, record.targetThreadId, record.cwds, timezone, record.model, record.reasoningEffort])).digest('hex').slice(0, 16)
+        const revision = createHash('sha256').update(JSON.stringify([record.rrule, record.prompt, record.status, record.targetThreadId, record.cwds, timezone, record.model, record.reasoningEffort, record.serviceTier])).digest('hex').slice(0, 16)
         const anchor = previous?.revision === revision ? previous.anchor : this.now()
         const schedule = createAutomationSchedule(record.rrule, timezone, anchor)
         if (previous?.revision !== revision) {
@@ -282,9 +282,10 @@ export class AutomationEngine {
         scheduledAt: run.scheduledAt, startedAt: run.startedAt ?? run.scheduledAt, timezone: run.timezone,
       }, automationTimeContext(run), record.prompt)
       const params = await bounded(this.runtime.prepare(run.threadId, text, run.runId, record))
-      const execution = params as { model?: string; effort?: string; collaborationMode?: { settings?: { model?: string; reasoning_effort?: string } } }
+      const execution = params as { model?: string; effort?: string; serviceTier?: string | null; collaborationMode?: { settings?: { model?: string; reasoning_effort?: string } } }
       const model = execution.collaborationMode?.settings?.model ?? execution.model
       if (model) run.model = model
+      run.serviceTier = execution.serviceTier ?? null
       run.reasoningEffort = execution.collaborationMode?.settings?.reasoning_effort ?? execution.effort ?? null
       if (this.stopped) { this.finish(run, 'interrupted', '服务已停止，尚未提交', 'SERVICE_STOPPED'); await this.persist(); return }
       // Write intent before RPC. Any error after this point requires reconciliation, never an automatic replay.

@@ -21,7 +21,7 @@ export type ThreadAutomationRecord = AutomationModelSettings & {
   timezone?: string
 }
 
-const knownKeys = new Set(['version', 'id', 'kind', 'name', 'prompt', 'rrule', 'status', 'target_thread_id', 'cwds', 'created_at', 'updated_at', 'model', 'model_reasoning_effort', 'timezone'])
+const knownKeys = new Set(['version', 'id', 'kind', 'name', 'prompt', 'rrule', 'status', 'target_thread_id', 'cwds', 'created_at', 'updated_at', 'model', 'model_reasoning_effort', 'service_tier', 'timezone'])
 
 export function parseAutomationToml(raw: string): ThreadAutomationRecord | null {
   try {
@@ -33,7 +33,7 @@ export function parseAutomationToml(raw: string): ThreadAutomationRecord | null 
     if (status !== 'ACTIVE' && status !== 'PAUSED') return null
     if (value.cwds !== undefined && (!Array.isArray(value.cwds) || !value.cwds.every((cwd) => typeof cwd === 'string'))) return null
     return {
-      ...normalizeAutomationModelSettings({ model: value.model, reasoningEffort: value.model_reasoning_effort }),
+      ...normalizeAutomationModelSettings({ model: value.model, reasoningEffort: value.model_reasoning_effort, serviceTier: value.service_tier }),
       timezone: typeof value.timezone === 'string' ? value.timezone : undefined,
       id: String(value.id), kind, name: String(value.name), prompt: String(value.prompt), rrule: String(value.rrule), status,
       targetThreadId: typeof value.target_thread_id === 'string' ? value.target_thread_id : null,
@@ -52,6 +52,7 @@ export function serializeAutomationToml(record: ThreadAutomationRecord): string 
     ...extra, version: 1, id: record.id, kind: record.kind, name: record.name, prompt: record.prompt,
     status: record.status, rrule: record.rrule,
     ...(record.model ? { model: record.model } : {}),
+    ...(record.serviceTier ? { service_tier: record.serviceTier } : {}),
     ...(record.reasoningEffort ? { model_reasoning_effort: record.reasoningEffort } : {}),
     ...(record.timezone ? { timezone: record.timezone } : {}),
     ...(record.targetThreadId ? { target_thread_id: record.targetThreadId } : {}),

@@ -2125,3 +2125,18 @@
 :root .app-dialog[role="dialog"][aria-modal="true"] .automation-thread-textarea { min-height: 140px; }
 :root .app-dialog .rename-thread-subtitle { flex: none; }
 :root .app-dialog .automation-thread-list { max-height: 100px; flex-shrink: 0; }
+
+/* Capability controls share the common surface and keep long metadata bounded. */
+.model-capability-summary, .model-capability-warning, .runtime-capabilities, .model-tool-summary {
+  color: var(--ui-text);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.model-capability-summary { display: grid; gap: 6px; padding: 8px; }
+.model-service-tier-picker { margin: 4px 8px 8px; }
+.model-capability-warning { flex-basis: 100%; color: var(--ui-danger); }
+.runtime-capabilities p { margin: 6px 0; white-space: normal; }
+.runtime-capabilities summary, .model-tool-summary summary { cursor: pointer; }
+.model-tool-summary { padding: 8px 12px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); background: var(--ui-surface); }
+.model-tool-summary p { white-space: pre-wrap; }
+:root.dark .runtime-capabilities, :root.dark .model-tool-summary { color: var(--ui-text); background: var(--ui-surface); }

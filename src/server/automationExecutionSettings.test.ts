@@ -12,7 +12,7 @@ describe('automation execution settings and local reference time', () => {
     expect(parseAutomationToml(serializeAutomationToml(parsed))).toEqual(parsed)
     expect(normalizeAutomationModelSettings({}, parsed)).toEqual({ model: 'chosen-model', reasoningEffort: 'high' })
     expect(normalizeAutomationModelSettings({ model: null, reasoningEffort: '' }, parsed)).toEqual({ model: undefined, reasoningEffort: undefined })
-    expect(() => normalizeAutomationModelSettings({ reasoningEffort: 'invalid' })).toThrow('思考强度')
+    expect(() => normalizeAutomationModelSettings({ reasoningEffort: '\ninvalid' })).toThrow('思考强度')
   })
   it('expresses date rollover and DST offsets without labelling UTC as local time', () => {
     const at = Date.parse('2026-09-06T17:00:00Z')
@@ -30,5 +30,15 @@ describe('automation execution settings and local reference time', () => {
     const params = await runtime.prepare('existing-thread', 'fixture', 'run', { model: 'chosen-model', reasoningEffort: 'high' })
     expect(params).toMatchObject({ model: 'chosen-model', effort: 'high', collaborationMode: { settings: { model: 'chosen-model', reasoning_effort: 'high' } } })
     expect(await runtime.prepare('existing-thread', 'fixture', 'run')).toMatchObject({ collaborationMode: { settings: { model: 'default-model', reasoning_effort: 'medium' } } })
+  })
+})
+
+
+describe('automation model defaults', () => {
+  it('clears inherited effort and speed when selecting another model without overrides', async () => {
+    const runtime = createAutomationRuntime({ rpc: async () => ({}), accountBusy: () => false, hasQueuedMessages: async () => false, pendingRequests: () => [], buildParams: async () => ({ effort: 'ultra', serviceTier: 'priority', collaborationMode: { mode: 'default', settings: { model: 'old', reasoning_effort: 'ultra' } } }) })
+    const params = await runtime.prepare('fixture', 'fixture', 'run', { model: 'other' })
+    expect(params).not.toHaveProperty('effort')
+    expect(params).toMatchObject({ model: 'other', serviceTier: null, collaborationMode: { settings: { model: 'other', reasoning_effort: null } } })
   })
 })

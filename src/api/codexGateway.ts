@@ -1,3 +1,6 @@
+import { loadModelCatalog, type ModelCatalogOptions } from './modelCatalog'
+export { invalidateModelCatalog } from './modelCatalog'
+import { capabilityValue } from '../modelCapabilities.js'
 import { normalizeThreadQueueState, type ThreadQueueState, type ThreadQueueOperation, type ThreadQueueResult } from '../threadQueue'
 export type { StoredQueuedMessage, ThreadQueueState } from '../threadQueue'
 import {
@@ -13,7 +16,6 @@ import type {
   CollaborationModeListResponse,
   ConfigReadResponse,
   GetAccountRateLimitsResponse,
-  ModelListResponse,
   ReasoningEffort,
   ThreadForkResponse,
   ThreadListResponse,
@@ -248,13 +250,6 @@ type DirectoryComposioConnectorPage = {
   nextCursor: string | null
   total: number
 }
-
-type ProviderModelsResponse = {
-  data?: unknown
-  exclusive?: unknown
-}
-
-const PROVIDER_MODELS_FETCH_TIMEOUT_MS = 5_000
 
 type ResolvedCollaborationModeSettings = {
   model: string
@@ -719,16 +714,11 @@ async function enrichThreadMessagesWithFallback(threadId: string, messages: UiMe
 }
 
 function normalizeReasoningEffort(value: unknown): ReasoningEffort | '' {
-  const allowed: ReasoningEffort[] = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh']
-  return typeof value === 'string' && allowed.includes(value as ReasoningEffort)
-    ? (value as ReasoningEffort)
-    : ''
+  return capabilityValue(value)
 }
 
 function normalizeSpeedMode(value: unknown): SpeedMode {
-  return typeof value === 'string' && value.trim().toLowerCase() === 'fast'
-    ? 'fast'
-    : 'standard'
+  return capabilityValue(value)
 }
 
 const INITIAL_THREAD_LIST_LIMIT = 50
@@ -1161,6 +1151,7 @@ function asAutomation(record: unknown): UiThreadAutomation | null {
     timezone: readString(row.timezone) ?? undefined,
     model: readString(row.model) ?? undefined,
     reasoningEffort: readString(row.reasoningEffort) as UiThreadAutomation['reasoningEffort'],
+    serviceTier: readString(row.serviceTier) || undefined,
   }
 }
 
@@ -1227,6 +1218,7 @@ export async function upsertThreadAutomation(input: {
   status: UiThreadAutomationStatus
   timezone?: string
   model?: string | null
+  serviceTier?: string | null
   reasoningEffort?: string | null
 }): Promise<UiThreadAutomation> {
   const response = await fetch('/codex-api/thread-automation', {
@@ -1252,6 +1244,7 @@ export async function upsertProjectAutomation(input: {
   status: UiThreadAutomationStatus
   timezone?: string
   model?: string | null
+  serviceTier?: string | null
   reasoningEffort?: string | null
 }): Promise<UiThreadAutomation> {
   const response = await fetch('/codex-api/project-automation', {
@@ -1907,6 +1900,7 @@ export async function startThreadTurn(
   skills?: Array<{ name: string; path: string }>,
   fileAttachments: FileAttachmentParam[] = [],
   collaborationMode?: CollaborationModeKind,
+  serviceTier?: string | null,
 ): Promise<string> {
   try {
     const normalizedModel = model?.trim() ?? ''
@@ -1952,6 +1946,7 @@ export async function startThreadTurn(
       threadId,
       input,
     }
+    if (serviceTier !== undefined) params.serviceTier = serviceTier
     if (attachments.length > 0) params.attachments = attachments
     if (normalizedModel) {
       params.model = normalizedModel
@@ -1997,7 +1992,7 @@ export async function setDefaultModel(model: string): Promise<void> {
 }
 
 export async function setCodexSpeedMode(mode: SpeedMode): Promise<void> {
-  const normalizedMode: SpeedMode = mode === 'fast' ? 'fast' : 'standard'
+  const normalizedMode = capabilityValue(mode)
   await callRpc('config/batchWrite', {
     edits: [
       {
@@ -2007,8 +2002,8 @@ export async function setCodexSpeedMode(mode: SpeedMode): Promise<void> {
       },
       {
         keyPath: 'service_tier',
-        value: normalizedMode === 'fast' ? 'fast' : null,
-        mergeStrategy: normalizedMode === 'fast' ? 'upsert' : 'replace',
+        value: normalizedMode || null,
+        mergeStrategy: normalizedMode ? 'upsert' : 'replace',
       },
     ],
     filePath: null,
@@ -2070,59 +2065,12 @@ export async function setCustomProvider(
   return await response.json() as { ok: boolean }
 }
 
-async function fetchProviderModelIds(providerId?: string): Promise<{ ids: string[], exclusive: boolean } | null> {
-  try {
-    const normalizedProviderId = providerId?.trim() ?? ''
-    const url = normalizedProviderId
-      ? `/codex-api/provider-models?provider=${encodeURIComponent(normalizedProviderId)}`
-      : '/codex-api/provider-models'
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(PROVIDER_MODELS_FETCH_TIMEOUT_MS),
-    })
-    let providerPayload: ProviderModelsResponse | null = null
-    try {
-      providerPayload = await response.json() as ProviderModelsResponse
-    } catch {
-      providerPayload = null
-    }
-
-    if (response.ok && Array.isArray(providerPayload?.data)) {
-      return {
-        ids: providerPayload.data
-          .map((candidate) => typeof candidate === 'string' ? candidate.trim() : '')
-          .filter((candidate, index, candidates): candidate is string =>
-            candidate.length > 0 && candidates.indexOf(candidate) === index),
-        exclusive: providerPayload.exclusive === true,
-      }
-    }
-  } catch {
-    // Keep Codex usable when the provider-models endpoint is unavailable.
-  }
-  return null
+export function getAvailableModels(options: ModelCatalogOptions = {}) {
+  return loadModelCatalog(callRpc, options)
 }
 
-export async function getAvailableModelIds(options: { includeProviderModels?: boolean; requireProviderModels?: boolean; providerId?: string } = {}): Promise<string[]> {
-  const shouldIncludeProviderModels = options.includeProviderModels !== false
-  const providerModels = shouldIncludeProviderModels ? await fetchProviderModelIds(options.providerId) : null
-
-  if (providerModels?.exclusive || options.requireProviderModels) {
-    return providerModels?.ids ?? []
-  }
-
-  const payload = await callRpc<ModelListResponse>('model/list', {})
-  const ids: string[] = []
-  for (const row of payload.data) {
-    const candidate = row.id || row.model
-    if (!candidate || ids.includes(candidate)) continue
-    ids.push(candidate)
-  }
-
-  if (!shouldIncludeProviderModels || !providerModels) return ids
-
-  for (const candidate of providerModels.ids) {
-    if (!ids.includes(candidate)) ids.push(candidate)
-  }
-  return ids
+export async function getAvailableModelIds(options: ModelCatalogOptions = {}): Promise<string[]> {
+  return (await getAvailableModels(options)).map(model => model.id)
 }
 
 export async function getCurrentModelConfig(): Promise<CurrentModelConfig> {

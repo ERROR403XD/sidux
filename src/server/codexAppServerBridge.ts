@@ -1,3 +1,6 @@
+import { MethodCatalog } from './runtimeCapabilities.js'
+import { version as appVersion } from '../../package.json'
+import { capabilityValue } from '../modelCapabilities.js'
 import { applyThreadQueueOperation, normalizeThreadQueueState, type StoredQueuedMessage, type ThreadQueueState } from '../threadQueue.js'
 import { ThreadGoalReader } from './threadGoalReader.js'
 import { normalizeAutomationModelSettings } from '../automationOptions.js'
@@ -4860,6 +4863,7 @@ async function writeThreadHeartbeatAutomation(input: {
   rrule: string
   status: ThreadAutomationStatus
   model?: unknown
+  serviceTier?: unknown
   reasoningEffort?: unknown
   timezone?: string
 }): Promise<ThreadAutomationRecord> {
@@ -4973,6 +4977,7 @@ async function writeProjectCronAutomation(input: {
   rrule: string
   status: ThreadAutomationStatus
   model?: unknown
+  serviceTier?: unknown
   reasoningEffort?: unknown
   timezone?: string
 }): Promise<ThreadAutomationRecord> {
@@ -5277,10 +5282,7 @@ async function withThreadQueueStateUpdate<T>(
 }
 
 function normalizeReasoningEffort(value: unknown): ReasoningEffort | '' {
-  const allowed: ReasoningEffort[] = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh']
-  return typeof value === 'string' && allowed.includes(value as ReasoningEffort)
-    ? (value as ReasoningEffort)
-    : ''
+  return capabilityValue(value)
 }
 
 function normalizeCollaborationModeReasoningEffort(value: ReasoningEffort | '' | null | undefined): ReasoningEffort | null {
@@ -6824,7 +6826,11 @@ export class BackendQueueProcessor {
     }
 
     try {
-      const settings = await this.resolveCollaborationModeSettings(turn.message.collaborationMode)
+      const defaults = turn.message.model ? null : await this.resolveCollaborationModeSettings(turn.message.collaborationMode)
+      const settings = { model: turn.message.model || defaults!.model, reasoningEffort: turn.message.effort !== undefined ? turn.message.effort || null : defaults?.reasoningEffort || null }
+      if (turn.message.model) params.model = turn.message.model
+      if (turn.message.effort) params.effort = turn.message.effort
+      if (turn.message.serviceTier !== undefined) params.serviceTier = turn.message.serviceTier
       params.collaborationMode = {
         mode: turn.message.collaborationMode,
         settings: {
@@ -6843,119 +6849,6 @@ export class BackendQueueProcessor {
   private async startQueuedTurn(turn: BackendQueuedTurn): Promise<void> {
     await this.appServer.rpc('thread/resume', { threadId: turn.threadId })
     await this.appServer.rpc('turn/start', await this.buildQueuedTurnParams(turn))
-  }
-}
-
-class MethodCatalog {
-  private methodCache: string[] | null = null
-  private notificationCache: string[] | null = null
-
-  private async runGenerateSchemaCommand(outDir: string): Promise<void> {
-    await new Promise<void>((resolve, reject) => {
-      const codexCommand = resolveCodexCommand()
-      if (!codexCommand) {
-        reject(new Error('Codex CLI is not available. Install @openai/codex or set CODEXUI_CODEX_COMMAND.'))
-        return
-      }
-
-      const invocation = getSpawnInvocation(codexCommand, ['app-server', 'generate-json-schema', '--out', outDir])
-      const process = spawn(invocation.command, invocation.args, {
-        stdio: ['ignore', 'ignore', 'pipe'],
-      })
-
-      let stderr = ''
-
-      process.stderr.setEncoding('utf8')
-      process.stderr.on('data', (chunk: string) => {
-        stderr += chunk
-      })
-
-      process.on('error', reject)
-      process.on('exit', (code) => {
-        if (code === 0) {
-          resolve()
-          return
-        }
-
-        reject(new Error(stderr.trim() || `generate-json-schema exited with code ${String(code)}`))
-      })
-    })
-  }
-
-  private extractMethodsFromClientRequest(payload: unknown): string[] {
-    const root = asRecord(payload)
-    const oneOf = Array.isArray(root?.oneOf) ? root.oneOf : []
-    const methods = new Set<string>()
-
-    for (const entry of oneOf) {
-      const row = asRecord(entry)
-      const properties = asRecord(row?.properties)
-      const methodDef = asRecord(properties?.method)
-      const methodEnum = Array.isArray(methodDef?.enum) ? methodDef.enum : []
-
-      for (const item of methodEnum) {
-        if (typeof item === 'string' && item.length > 0) {
-          methods.add(item)
-        }
-      }
-    }
-
-    return Array.from(methods).sort((a, b) => a.localeCompare(b))
-  }
-
-  private extractMethodsFromServerNotification(payload: unknown): string[] {
-    const root = asRecord(payload)
-    const oneOf = Array.isArray(root?.oneOf) ? root.oneOf : []
-    const methods = new Set<string>()
-
-    for (const entry of oneOf) {
-      const row = asRecord(entry)
-      const properties = asRecord(row?.properties)
-      const methodDef = asRecord(properties?.method)
-      const methodEnum = Array.isArray(methodDef?.enum) ? methodDef.enum : []
-
-      for (const item of methodEnum) {
-        if (typeof item === 'string' && item.length > 0) {
-          methods.add(item)
-        }
-      }
-    }
-
-    return Array.from(methods).sort((a, b) => a.localeCompare(b))
-  }
-
-  async listMethods(): Promise<string[]> {
-    if (this.methodCache) {
-      return this.methodCache
-    }
-
-    const outDir = await mkdtemp(join(tmpdir(), 'codex-web-local-schema-'))
-    await this.runGenerateSchemaCommand(outDir)
-
-    const clientRequestPath = join(outDir, 'ClientRequest.json')
-    const raw = await readFile(clientRequestPath, 'utf8')
-    const parsed = JSON.parse(raw) as unknown
-    const methods = this.extractMethodsFromClientRequest(parsed)
-
-    this.methodCache = methods
-    return methods
-  }
-
-  async listNotificationMethods(): Promise<string[]> {
-    if (this.notificationCache) {
-      return this.notificationCache
-    }
-
-    const outDir = await mkdtemp(join(tmpdir(), 'codex-web-local-schema-'))
-    await this.runGenerateSchemaCommand(outDir)
-
-    const serverNotificationPath = join(outDir, 'ServerNotification.json')
-    const raw = await readFile(serverNotificationPath, 'utf8')
-    const parsed = JSON.parse(raw) as unknown
-    const methods = this.extractMethodsFromServerNotification(parsed)
-
-    this.notificationCache = methods
-    return methods
   }
 }
 
@@ -8058,6 +7951,11 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
 
       if (req.method === 'GET' && url.pathname === '/codex-api/server-requests/pending') {
         setJson(res, 200, { data: appServer.listPendingServerRequests() })
+        return
+      }
+
+      if (req.method === 'GET' && url.pathname === '/codex-api/meta/capabilities') {
+        setJson(res, 200, { data: { appVersion, ...(await methodCatalog.snapshot()) } })
         return
       }
 
@@ -9180,7 +9078,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         if (!automationEngine.snapshot().ready) throw new Error(automationEngine.snapshot().error ?? '调度器尚未就绪')
         const timezone = validateAutomationTimezone(typeof payload?.timezone === 'string' ? payload.timezone : automationEngine.snapshot().definitions.find((row) => row.id === id)?.timezone ?? automationEngine.timezone)
         createAutomationSchedule(rrule, timezone, Date.now())
-        const automation = await writeThreadHeartbeatAutomation({ threadId, id, name, prompt, rrule, status, model: payload?.model, reasoningEffort: payload?.reasoningEffort, timezone })
+        const automation = await writeThreadHeartbeatAutomation({ threadId, id, name, prompt, rrule, status, model: payload?.model, reasoningEffort: payload?.reasoningEffort, serviceTier: payload?.serviceTier, timezone })
         await automationEngine.refresh(automation.id, timezone)
         setJson(res, 200, { data: toAutomationApiRecord(automationEngine.decorate(automation)) })
         return
@@ -9206,7 +9104,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         if (!automationEngine.snapshot().ready) throw new Error(automationEngine.snapshot().error ?? '调度器尚未就绪')
         const timezone = validateAutomationTimezone(typeof payload?.timezone === 'string' ? payload.timezone : automationEngine.snapshot().definitions.find((row) => row.id === id)?.timezone ?? automationEngine.timezone)
         createAutomationSchedule(rrule, timezone, Date.now())
-        const automation = await writeProjectCronAutomation({ projectName, id, name, prompt, rrule, status, model: payload?.model, reasoningEffort: payload?.reasoningEffort, timezone })
+        const automation = await writeProjectCronAutomation({ projectName, id, name, prompt, rrule, status, model: payload?.model, reasoningEffort: payload?.reasoningEffort, serviceTier: payload?.serviceTier, timezone })
         await automationEngine.refresh(automation.id, timezone)
         setJson(res, 200, { data: toAutomationApiRecord(automationEngine.decorate(automation)) })
         return

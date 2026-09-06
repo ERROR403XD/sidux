@@ -80,7 +80,7 @@
             </span>
           </button>
 
-          <SidebarThreadTree ref="sidebarThreadTreeRef" :groups="projectGroups" :models="availableModelIds" :goals="threadGoals" :project-display-name-by-id="projectDisplayNameById"
+          <SidebarThreadTree ref="sidebarThreadTreeRef" :groups="projectGroups" :models="availableModelIds" :model-capabilities="availableModels" :goals="threadGoals" :project-display-name-by-id="projectDisplayNameById"
             :project-git-repo-by-name="projectGitRepoByName"
             :project-cwd-by-name="projectCwdByName"
             v-if="!isSidebarCollapsed"
@@ -514,6 +514,17 @@
               </div>
               <div class="sidebar-settings-build-label" :aria-label="t('Worktree name and version')">
                 WT {{ worktreeName }} · v{{ appVersion }}
+                <details class="runtime-capabilities"><summary>运行版本与能力</summary>
+                  <template v-if="runtimeCapabilities">
+                    <p>{{ runtimeCapabilities.cliVersion }}</p>
+                    <p>模型能力：按目录动态选择；工具事件：轻量摘要</p>
+                    <p>异步问题、原生历史分页：尚未接入</p>
+                    <p>协议 {{ runtimeCapabilities.experimental ? 'experimental' : '默认' }} · {{ runtimeCapabilities.schemaHash.slice(0, 12) }}</p>
+                    <p>CLI 声明 {{ runtimeCapabilities.methods.length }} 个方法，声明数量不代表客户端支持率。</p>
+                  </template>
+                  <p v-else>{{ runtimeCapabilitiesLoading ? '正在检测…' : runtimeCapabilitiesError }}</p>
+                  <button type="button" :disabled="runtimeCapabilitiesLoading" @click="loadRuntimeCapabilities">重新检测</button>
+                </details>
               </div>
             </div>
           </Transition>
@@ -968,8 +979,8 @@
                   :cwd="composerCwd"
                   :collaboration-modes="availableCollaborationModes"
                   :selected-collaboration-mode="selectedCollaborationMode"
-                  :models="availableModelIds" :selected-model="composerSelectedModelId"
-                  :selected-reasoning-effort="selectedReasoningEffort"
+                  :models="availableModelIds" :model-capabilities="availableModels" :selected-model="composerSelectedModelId"
+                  :selected-reasoning-effort="selectedReasoningEffort" :model-catalog-error="modelCatalogError" :reported-model="reportedModel"
                   :selected-speed-mode="selectedSpeedMode"
                   :is-updating-speed-mode="isUpdatingSpeedMode"
                   :skills="installedSkills"
@@ -1053,9 +1064,9 @@
                     :cwd="composerCwd"
                     :collaboration-modes="availableCollaborationModes"
                     :selected-collaboration-mode="selectedCollaborationMode"
-                    :models="availableModelIds"
+                    :models="availableModelIds" :model-capabilities="availableModels"
                     :selected-model="composerSelectedModelId"
-                    :selected-reasoning-effort="selectedReasoningEffort"
+                    :selected-reasoning-effort="selectedReasoningEffort" :model-catalog-error="modelCatalogError" :reported-model="reportedModel"
                     :selected-speed-mode="selectedSpeedMode"
                     :is-updating-speed-mode="isUpdatingSpeedMode"
                     :skills="installedSkills"
@@ -1467,6 +1478,9 @@ const {
   selectedThreadId,
   availableCollaborationModes,
   availableModelIds,
+  availableModels,
+  modelCatalogError,
+  reportedModel,
   selectedCollaborationMode,
   selectedModelId,
   selectedReasoningEffort,
@@ -1618,6 +1632,22 @@ let threadWorktreeSummaryRequestId = 0
 const defaultNewProjectName = ref('New Project (1)')
 const homeDirectory = ref('')
 const isSettingsOpen = ref(false)
+const runtimeCapabilities = ref<{ cliVersion: string; schemaHash: string; experimental: boolean; methods: string[]; appVersion: string } | null>(null)
+const runtimeCapabilitiesError = ref('')
+const runtimeCapabilitiesLoading = ref(false)
+async function loadRuntimeCapabilities(): Promise<void> {
+  if (runtimeCapabilitiesLoading.value) return
+  runtimeCapabilitiesLoading.value = true
+  runtimeCapabilitiesError.value = ''
+  try {
+    const response = await fetch('/codex-api/meta/capabilities')
+    if (!response.ok) throw new Error('能力检测暂时不可用')
+    runtimeCapabilities.value = (await response.json()).data
+  } catch (error) {
+    runtimeCapabilitiesError.value = error instanceof Error ? error.message : '能力检测失败'
+  } finally { runtimeCapabilitiesLoading.value = false }
+}
+watch(isSettingsOpen, open => { if (open) void loadRuntimeCapabilities() })
 const isAccountsSectionCollapsed = ref(loadAccountsSectionCollapsed())
 const isReviewPaneOpen = ref(false)
 const reviewInitialFilePath = ref('')

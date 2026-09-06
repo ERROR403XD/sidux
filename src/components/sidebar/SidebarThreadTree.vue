@@ -756,6 +756,7 @@
           <div class="automation-model-fields">
             <div class="automation-thread-field"><span class="automation-thread-label">模型</span><AppSelect v-model="automationDraft.model" class="automation-model-picker automation-thread-dropdown" :options="automationModelOptions" enable-search search-placeholder="搜索模型" :disabled="isSavingAutomation || isRunningAutomation" /></div>
             <div class="automation-thread-field"><span class="automation-thread-label">思考强度</span><AppSelect v-model="automationDraft.reasoningEffort" class="automation-effort-picker automation-thread-dropdown" :options="automationEffortOptions" :disabled="isSavingAutomation || isRunningAutomation" /></div>
+            <div class="automation-thread-field"><span class="automation-thread-label">服务档位</span><AppSelect v-model="automationDraft.serviceTier" class="automation-tier-picker automation-thread-dropdown" :options="automationTierOptions" :disabled="isSavingAutomation || isRunningAutomation" /></div>
           </div>
           <p class="automation-schedule-preview">留空跟随运行时默认配置；指定后，每次手动或定时执行均使用该设置。</p>
 
@@ -913,13 +914,14 @@ import { useUiLanguage } from '../../composables/useUiLanguage'
 import { useFeedbackDiagnostics } from '../../composables/useFeedbackDiagnostics'
 import { getPathLeafName, getPathParent, isAbsoluteLikePath, isProjectlessChatPath } from '../../pathUtils.js'
 import AppSelect from '../common/AppSelect.vue'
-import { AUTOMATION_EFFORTS } from '../../automationOptions'
+import { tierOptions, effortOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
 import SidebarMenuRow from './SidebarMenuRow.vue'
 import { reconcilePinnedThreadIds } from './pinnedThreadUtils'
 
 const props = defineProps<{
   groups: UiProjectGroup[]
   models?: string[]
+  modelCapabilities?: ModelCapability[]
   goals?: Record<string, ThreadGoal | null>
   projectDisplayNameById: Record<string, string>
   projectGitRepoByName: Record<string, boolean>
@@ -1054,15 +1056,18 @@ const automationDraft = ref<{
   rrule: string
   status: UiThreadAutomationStatus
   model: string
+  serviceTier: string
   reasoningEffort: string
 }>({
   name: '',
   prompt: '',
   rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0',
-  status: 'ACTIVE', model: '', reasoningEffort: '',
+  status: 'ACTIVE', model: '', reasoningEffort: '', serviceTier: '',
 })
 const automationModelOptions = computed(() => [{ value: '', label: '跟随运行时默认模型' }, ...Array.from(new Set([...(props.models ?? []), automationDraft.value.model].filter(Boolean))).map(value => ({ value, label: value }))])
-const automationEffortOptions = [{ value: '', label: '跟随运行时默认强度' }, ...AUTOMATION_EFFORTS.map(value => ({ value, label: ({ none: '无', minimal: '极低', low: '低', medium: '中', high: '高', xhigh: '极高' })[value] }))]
+const automationModelCapability = computed(() => props.modelCapabilities?.find(model => model.id === automationDraft.value.model))
+const automationTierOptions = computed(() => tierOptions(automationModelCapability.value, automationDraft.value.serviceTier))
+const automationEffortOptions = computed(() => effortOptions(automationModelCapability.value, automationDraft.value.reasoningEffort))
 const automationScheduleDraft = ref<AutomationScheduleDraft>({
   mode: 'daily',
   dailyTime: '09:00',
@@ -1997,7 +2002,7 @@ function startNewAutomationDraft(): void {
     name: automationDialogScope.value === 'project' ? 'Project automation' : 'Thread automation',
     prompt: '',
     rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0',
-    status: 'ACTIVE', model: '', reasoningEffort: '',
+    status: 'ACTIVE', model: '', reasoningEffort: '', serviceTier: '',
   }
   automationScheduleDraft.value = createScheduleDraftFromRrule(automationDraft.value.rrule)
 }
@@ -2015,7 +2020,7 @@ function selectAutomationForEditing(automationId: string): void {
     prompt: existing.prompt,
     rrule: existing.rrule,
     status: existing.status,
-    model: existing.model ?? '', reasoningEffort: existing.reasoningEffort ?? '',
+    model: existing.model ?? '', reasoningEffort: existing.reasoningEffort ?? '', serviceTier: existing.serviceTier ?? '',
   }
   automationScheduleDraft.value = createScheduleDraftFromRrule(existing.rrule)
 }
@@ -2115,6 +2120,8 @@ async function submitAutomationDialog(): Promise<void> {
     if (automationDialogScope.value === 'project' && !projectName) {
       throw new Error('Select a project target for this automation')
     }
+    const modelProblem = modelSettingsProblem(automationModelCapability.value, automationDraft.value.reasoningEffort, automationDraft.value.serviceTier)
+    if (modelProblem) throw new Error(modelProblem)
     const input = {
       id: automationDialogAutomationId.value || undefined,
       name: automationDraft.value.name,
@@ -2122,7 +2129,7 @@ async function submitAutomationDialog(): Promise<void> {
       rrule: automationDraft.value.rrule,
       timezone: automationTimezone.value || undefined,
       status: automationDraft.value.status,
-      model: automationDraft.value.model || null, reasoningEffort: automationDraft.value.reasoningEffort || null,
+      model: automationDraft.value.model || null, reasoningEffort: automationDraft.value.reasoningEffort || null, serviceTier: automationDraft.value.serviceTier || null,
     }
     const saved = automationDialogScope.value === 'project'
       ? await upsertProjectAutomation({ ...input, projectName })

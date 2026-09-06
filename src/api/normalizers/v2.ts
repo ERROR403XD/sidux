@@ -1,3 +1,4 @@
+import { normalizeToolSummary } from './toolSummary'
 import { parseAutomationMessage, type AutomationMessageMetadata } from '../../automationMessage'
 import type {
   Thread,
@@ -528,7 +529,8 @@ function toUiMessages(item: ThreadItem): UiMessage[] {
     ]
   }
 
-  return []
+  const summary = normalizeToolSummary(item)
+  return summary ? [summary] : []
 }
 
 function normalizeCommandStatus(value: unknown): CommandExecutionData['status'] {
