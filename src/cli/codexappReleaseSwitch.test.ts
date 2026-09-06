@@ -20,6 +20,21 @@ afterEach(async () => {
 })
 
 describe('codexapp release switch script', () => {
+  it('rejects a damaged API component before inspecting or switching production', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'codexapp-component-release-'))
+    temporaryRoots.push(root)
+    const release = join(root, 'release')
+    await mkdir(join(release, 'dist-cli'), { recursive: true })
+    await mkdir(join(release, 'api-proxy-component'))
+    await writeFile(join(release, '.codexapp-release-ready'), 'fixture')
+    await writeFile(join(release, 'dist-cli/index.js'), '// /codex-api/api-proxy')
+    await writeExecutable(join(release, 'api-proxy-component/cli-proxy-api'), 'damaged fixture')
+    await writeFile(join(release, 'api-proxy-component/LICENSE'), 'fixture')
+    await writeFile(join(release, 'api-proxy-component/manifest.json'), JSON.stringify({ binarySha256: '0'.repeat(64) }))
+    await expect(execFileAsync(switchScript, ['check', release], {
+      env: { ...process.env, CODEXAPP_RELEASE_ROOT: root, CODEXAPP_SWITCH_STATE_ROOT: join(root, 'state') },
+    })).rejects.toMatchObject({ code: 1, stderr: expect.stringContaining('component checksum mismatch') })
+  })
   it('activates and rolls back code without changing production auth state', async () => {
     const root = await mkdtemp(join(tmpdir(), 'codexapp-release-switch-'))
     temporaryRoots.push(root)
@@ -138,6 +153,7 @@ describe('codexapp release switch script', () => {
       const activated = await execFileAsync(switchScript, ['activate', release, '--confirm-idle'], { env })
       expect(activated.stdout).toContain('Cutover succeeded')
       expect(await readFile(dropinFile, 'utf8')).toContain(`${release}/dist-cli/index.js`)
+      expect(await readFile(dropinFile, 'utf8')).toContain(`Environment=CODEXAPP_API_PROXY_BINARY=${release}/api-proxy-component/cli-proxy-api`)
       expect(await readFile(join(productionHome, 'auth.json'), 'utf8')).toBe(originalAuth)
       expect((await stat(join(stateRoot, 'current-transaction'))).isFile()).toBe(true)
 

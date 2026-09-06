@@ -99,3 +99,11 @@ Validate `scripts/codexapp-release-switch.sh`: prepare an immutable release whil
 清理：删除桩测试临时目录；真实验证只取消测试任务，不删除认证和状态卷。发布 prepare 与 activate 仍为独立步骤。
 
 候选健康检查同时验证首页和 scheduler ready；清理旧容器失败不会回滚已健康的新容器。若镜像仓库临时不可达，可通过 `CODEXAPP_MULTI_ACCOUNT_DOCKERFILE` 指向本地构建配方；复用已有依赖层前必须逐项核对当前包的 dependencies、optionalDependencies、engines，一致才允许复用。最终仍需新包安装、CLI 和 CJS 验证。
+
+## 0.2.0 反代组件随发布目录固定
+
+前置：已验证 59001 的 0.2.0，源码干净并提交。执行 prepare 后检查发布目录 `api-proxy-component/` 内二进制、manifest 与 LICENSE；二进制哈希必须等于固定 manifest。prepare 不修改生产 drop-in 或认证。
+
+在隔离服务 fixture 中 activate，确认生成的 drop-in 将 `CODEXAPP_API_PROXY_BINARY` 指向该发布目录，而非候选容器内 `/opt`。损坏组件时 check 必须在访问/切换生产前失败；旧版不含 API 入口的 release 保持可回滚。回滚使用原 drop-in 快照，不能遗留新版本组件路径。
+
+清理：移除 fixture 发布目录和假服务状态；真实 prepare 保留发布目录与 latest-prepared，生产切换另行执行。

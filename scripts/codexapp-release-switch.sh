@@ -163,7 +163,24 @@ validate_release() {
   [[ "$resolved" != *[[:space:]]* ]] || die "Release path cannot contain whitespace."
   [[ -f "$resolved/.codexapp-release-ready" ]] || die "Release is missing its readiness marker: $resolved"
   [[ -f "$resolved/dist-cli/index.js" ]] || die "Release CLI entry is missing: $resolved/dist-cli/index.js"
+  validate_api_proxy_component "$resolved" || return 1
   printf '%s\n' "$resolved"
+}
+
+validate_api_proxy_component() {
+  "$NODE_BIN" --input-type=commonjs - "$1" <<'NODE'
+const fs = require('node:fs')
+const path = require('node:path')
+const crypto = require('node:crypto')
+const release = process.argv[2]
+if (!fs.readFileSync(path.join(release, 'dist-cli/index.js'), 'utf8').includes('/codex-api/api-proxy')) process.exit(0)
+const directory = path.join(release, 'api-proxy-component')
+const manifest = JSON.parse(fs.readFileSync(path.join(directory, 'manifest.json'), 'utf8'))
+const binary = fs.readFileSync(path.join(directory, 'cli-proxy-api'))
+fs.accessSync(path.join(directory, 'cli-proxy-api'), fs.constants.X_OK)
+fs.accessSync(path.join(directory, 'LICENSE'))
+if (crypto.createHash('sha256').update(binary).digest('hex') !== manifest.binarySha256) throw new Error('Prepared API proxy component checksum mismatch')
+NODE
 }
 
 service_environment_is_expected() {
@@ -281,6 +298,7 @@ install_release_dropin() {
   printf '%s\n' \
     '[Service]' \
     'ExecStart=' \
+    "Environment=CODEXAPP_API_PROXY_BINARY=$release/api-proxy-component/cli-proxy-api" \
     "ExecStart=$NODE_BIN $release/dist-cli/index.js --port $PRODUCTION_PORT --strict-port --no-password --no-open" \
     > "$temporary"
   chmod 600 "$temporary"
@@ -351,6 +369,12 @@ prepare_release() {
   mkdir -p "$release"
   tar -xzf "$pack_path" -C "$release" --strip-components=1
   npm --prefix "$release" install --omit=dev --no-package-lock
+
+  if [[ -f "$REPO_DIR/resources/api-proxy/manifest.json" ]]; then
+    "$NODE_BIN" "$REPO_DIR/scripts/install-api-proxy.cjs" "$REPO_DIR/output/api-proxy-component"
+    cp -a "$REPO_DIR/output/api-proxy-component" "$release/api-proxy-component"
+    validate_api_proxy_component "$release"
+  fi
 
   help_path="$release/codexapp-help.txt"
   "$NODE_BIN" "$release/dist-cli/index.js" --help > "$help_path"
