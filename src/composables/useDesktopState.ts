@@ -1,3 +1,4 @@
+import { bindMessageTurnOrder, mergeTurnOrder, orderedTurnIds } from '../historyOrder'
 import { authRecoveryFromNotification, type AuthRecoveryState } from '../authRecovery'
 import { buildQuestionReply, isAsyncUserInputRequest, readAsyncQuestions, readQuestionReply, questionRefKey, type AsyncQuestionReply } from '../userQuestions'
 import { normalizeToolSummary } from '../api/normalizers/toolSummary'
@@ -8,6 +9,9 @@ import {
 
   archiveThread,
   forkThread,
+  forkThreadAtTurn,
+  getThreadTurnMessages,
+  type ThreadHistoryPosition,
   getAvailableCollaborationModes,
   getAccountRateLimits,
   renameThread,
@@ -1504,6 +1508,7 @@ export function useDesktopState() {
   const projectDisplayNameById = ref<Record<string, string>>(loadProjectDisplayNames())
   const loadedVersionByThreadId = ref<Record<string, string>>({})
   const loadedMessagesByThreadId = ref<Record<string, boolean>>({})
+  const historyPositionByThreadId = ref<Record<string, ThreadHistoryPosition>>({})
   const hasMoreOlderMessagesByThreadId = ref<Record<string, boolean>>({})
   const loadingOlderMessagesByThreadId = ref<Record<string, boolean>>({})
   const resumedThreadById = ref<Record<string, boolean>>({})
@@ -2334,6 +2339,7 @@ export function useDesktopState() {
     loadedMessagesByThreadId.value = pruneThreadStateMap(loadedMessagesByThreadId.value, activeThreadIds)
     loadedVersionByThreadId.value = pruneThreadStateMap(loadedVersionByThreadId.value, activeThreadIds)
     resumedThreadById.value = pruneThreadStateMap(resumedThreadById.value, activeThreadIds)
+    historyPositionByThreadId.value = pruneThreadStateMap(historyPositionByThreadId.value, activeThreadIds)
     turnIndexByTurnIdByThreadId.value = pruneThreadStateMap(turnIndexByTurnIdByThreadId.value, activeThreadIds)
     persistedMessagesByThreadId.value = pruneThreadStateMap(persistedMessagesByThreadId.value, activeThreadIds)
     liveAgentMessagesByThreadId.value = pruneThreadStateMap(liveAgentMessagesByThreadId.value, activeThreadIds)
@@ -2599,6 +2605,7 @@ export function useDesktopState() {
   }
 
   function setPersistedMessagesForThread(threadId: string, nextMessages: UiMessage[]): void {
+    nextMessages = bindMessageTurnOrder(nextMessages, turnIndexByTurnIdByThreadId.value[threadId] ?? {})
     const previous = persistedMessagesByThreadId.value[threadId] ?? []
     if (areMessageArraysEqual(previous, nextMessages)) return
     persistedMessagesByThreadId.value = {
@@ -3410,7 +3417,7 @@ export function useDesktopState() {
 
   function inferNextTurnIndex(threadId: string): number {
     const persisted = persistedMessagesByThreadId.value[threadId] ?? []
-    let maxTurnIndex = -1
+    let maxTurnIndex = Math.max(-1, ...Object.values(turnIndexByTurnIdByThreadId.value[threadId] ?? {}))
     for (const message of persisted) {
       if (typeof message.turnIndex === 'number' && Number.isFinite(message.turnIndex)) {
         maxTurnIndex = Math.max(maxTurnIndex, message.turnIndex)
@@ -3456,11 +3463,11 @@ export function useDesktopState() {
     const turnIndexByTurnId = turnIndexByTurnIdByThreadId.value[threadId] ?? {}
     let changed = false
     const next = current.map((message) => {
-      if (typeof message.turnIndex === 'number' || !message.turnId) {
+      if (!message.turnId) {
         return message
       }
       const turnIndex = turnIndexByTurnId[message.turnId]
-      if (typeof turnIndex !== 'number') return message
+      if (typeof turnIndex !== 'number' || turnIndex === message.turnIndex) return message
       changed = true
       return { ...message, turnIndex }
     })
@@ -4530,16 +4537,19 @@ export function useDesktopState() {
       }
 
       const { messages: nextMessages, inProgress, activeTurnId, turnIndexByTurnId } = detail
-      hasMoreOlderMessagesByThreadId.value = {
-        ...hasMoreOlderMessagesByThreadId.value,
-        [threadId]: detail.hasMoreOlder === true,
+      const previousLookup = turnIndexByTurnIdByThreadId.value[threadId] ?? {}
+      const firstLoaded = orderedTurnIds(previousLookup)[0]
+      const keepOlder = alreadyLoaded && !!firstLoaded && !(firstLoaded in turnIndexByTurnId)
+      if (!keepOlder) {
+        hasMoreOlderMessagesByThreadId.value = { ...hasMoreOlderMessagesByThreadId.value, [threadId]: detail.hasMoreOlder === true }
+        if (detail.historyPosition) historyPositionByThreadId.value = { ...historyPositionByThreadId.value, [threadId]: detail.historyPosition }
       }
       markThreadMessagesPersisted(threadId, nextMessages)
-      replaceTurnIndexLookupForThread(threadId, turnIndexByTurnId)
+      replaceTurnIndexLookupForThread(threadId, mergeTurnOrder(previousLookup, turnIndexByTurnId))
       rebindLiveFileChangeTurnIndices(threadId)
       const previousPersisted = persistedMessagesByThreadId.value[threadId] ?? []
       const mergedMessages = mergeMessages(previousPersisted, nextMessages, {
-        preserveMissing: options.silent === true || hasOptimisticUserMessages(previousPersisted),
+        preserveMissing: alreadyLoaded || options.silent === true || hasOptimisticUserMessages(previousPersisted),
       })
       setPersistedMessagesForThread(threadId, mergedMessages)
 
@@ -4605,7 +4615,7 @@ export function useDesktopState() {
     if (loadingOlderMessagesByThreadId.value[threadId] === true) return
     if (hasMoreOlderMessagesByThreadId.value[threadId] !== true) return
 
-    const beforeTurnId = getFirstPersistedTurnId(threadId)
+    const beforeTurnId = orderedTurnIds(turnIndexByTurnIdByThreadId.value[threadId] ?? {})[0] || getFirstPersistedTurnId(threadId)
     if (!beforeTurnId) {
       hasMoreOlderMessagesByThreadId.value = {
         ...hasMoreOlderMessagesByThreadId.value,
@@ -4620,14 +4630,12 @@ export function useDesktopState() {
     }
 
     try {
-      const page = await getOlderThreadMessages(threadId, beforeTurnId)
+      const page = await getOlderThreadMessages(threadId, beforeTurnId, undefined, historyPositionByThreadId.value[threadId])
       const previousPersisted = persistedMessagesByThreadId.value[threadId] ?? []
       const mergedMessages = mergeMessages(page.messages, previousPersisted, { preserveMissing: true })
+      replaceTurnIndexLookupForThread(threadId, mergeTurnOrder(turnIndexByTurnIdByThreadId.value[threadId] ?? {}, page.turnIndexByTurnId, true))
       setPersistedMessagesForThread(threadId, mergedMessages)
-      replaceTurnIndexLookupForThread(threadId, {
-        ...(turnIndexByTurnIdByThreadId.value[threadId] ?? {}),
-        ...page.turnIndexByTurnId,
-      })
+      if (page.historyPosition) historyPositionByThreadId.value = { ...historyPositionByThreadId.value, [threadId]: page.historyPosition }
       rebindLiveFileChangeTurnIndices(threadId)
       hasMoreOlderMessagesByThreadId.value = {
         ...hasMoreOlderMessagesByThreadId.value,
@@ -4842,78 +4850,29 @@ export function useDesktopState() {
     }
   }
 
-  async function forkThreadFromTurn(threadId: string, turnIndex: number): Promise<string> {
-    const normalizedThreadId = threadId.trim()
-    if (!normalizedThreadId || !Number.isInteger(turnIndex) || turnIndex < 0) return ''
-
-    if (inProgressById.value[normalizedThreadId] === true) {
-      error.value = 'Finish the current turn before forking from a response.'
+  async function forkThreadFromTurn(threadId: string, turnId: string): Promise<string> {
+    if (!threadId.trim() || !turnId.trim()) return ''
+    if (inProgressById.value[threadId] === true) {
+      error.value = '请等待当前回合结束后再创建分支。'
       return ''
     }
-
-    if (loadedMessagesByThreadId.value[normalizedThreadId] !== true) {
-      try {
-        await loadMessages(normalizedThreadId)
-      } catch (unknownError) {
-        error.value = unknownError instanceof Error ? unknownError.message : 'Unknown application error'
-        return ''
-      }
-    }
-
-    const sourceMessages = persistedMessagesByThreadId.value[normalizedThreadId] ?? []
-    let lastTurnIndex = -1
-    for (const message of sourceMessages) {
-      if (typeof message.turnIndex === 'number' && Number.isFinite(message.turnIndex)) {
-        lastTurnIndex = Math.max(lastTurnIndex, message.turnIndex)
-      }
-    }
-
-    if (lastTurnIndex >= 0 && turnIndex > lastTurnIndex) return ''
-
-    const sourceThread = flattenThreads(sourceGroups.value).find((row) => row.id === normalizedThreadId) ?? null
-
+    const sourceMessages = persistedMessagesByThreadId.value[threadId] ?? []
+    if (!sourceMessages.some(message => message.turnId === turnId)) return ''
+    const sourceThread = flattenThreads(sourceGroups.value).find(row => row.id === threadId)
     try {
       error.value = ''
-      const forked = await forkThread(normalizedThreadId)
-      const forkedThreadId = forked.threadId.trim()
-      if (!forkedThreadId) return ''
-
-      const forkedCwd = forked.cwd.trim() || sourceThread?.cwd?.trim() || ''
-      const forkedThreadTitle = toForkedThreadTitle(sourceThread?.title || sourceThread?.preview || 'Untitled thread')
-      insertOptimisticThread(forkedThreadId, forkedCwd, forkedThreadTitle)
-      setThreadModelId(forkedThreadId, forked.model)
-      setPersistedMessagesForThread(forkedThreadId, forked.messages)
-      loadedMessagesByThreadId.value = {
-        ...loadedMessagesByThreadId.value,
-        [forkedThreadId]: true,
-      }
-      resumedThreadById.value = {
-        ...resumedThreadById.value,
-        [forkedThreadId]: true,
-      }
-      clearLivePlansForThread(forkedThreadId)
-      setLiveAgentMessagesForThread(forkedThreadId, [])
-      clearLiveReasoningForThread(forkedThreadId)
-      if (liveCommandsByThreadId.value[forkedThreadId]) {
-        liveCommandsByThreadId.value = omitKey(liveCommandsByThreadId.value, forkedThreadId)
-      }
-      setTurnSummaryForThread(forkedThreadId, null)
-      setTurnActivityForThread(forkedThreadId, null)
-      setTurnErrorForThread(forkedThreadId, null)
-      setThreadInProgress(forkedThreadId, false)
-
-      const turnsToRollback = lastTurnIndex - turnIndex
-      if (turnsToRollback > 0) {
-        const rolledBackMessages = await rollbackThread(forkedThreadId, turnsToRollback)
-        setPersistedMessagesForThread(forkedThreadId, rolledBackMessages)
-      }
-
-      await renameThreadById(forkedThreadId, forkedThreadTitle)
-      setSelectedThreadId(forkedThreadId)
+      const forked = await forkThreadAtTurn(threadId, turnId)
+      const nextId = forked.threadId.trim()
+      const title = toForkedThreadTitle(sourceThread?.title || sourceThread?.preview || 'Untitled thread')
+      insertOptimisticThread(nextId, sourceThread?.cwd ?? '', title)
+      setThreadModelId(nextId, forked.model)
+      await renameThreadById(nextId, title)
+      setSelectedThreadId(nextId)
+      await loadMessages(nextId)
       void loadThreads().catch(() => {})
-      return forkedThreadId
+      return nextId
     } catch (unknownError) {
-      error.value = unknownError instanceof Error ? unknownError.message : 'Unknown application error'
+      error.value = unknownError instanceof Error ? unknownError.message : '无法创建历史分支。'
       return ''
     }
   }
@@ -4928,7 +4887,10 @@ export function useDesktopState() {
     // the original call ID on completion. Resolve an ordinal in the native turn
     // once on explicit submission; never infer an answer from ordinary text.
     const detail = await getThreadDetail(reply.threadId)
-    const candidates = detail.messages.filter(message => message.turnId === reply.turnId && message.questions?.length)
+    const turnMessages = detail.messages.some(message => message.turnId === reply.turnId && message.questions?.length)
+      ? detail.messages.filter(message => message.turnId === reply.turnId)
+      : await getThreadTurnMessages(reply.threadId, reply.turnId)
+    const candidates = turnMessages.filter(message => message.questions?.length)
     const question = candidates.find(message => reply.questionOrdinal !== undefined
       ? message.questionOrdinal === reply.questionOrdinal
       : message.id === reply.itemId)
@@ -4937,7 +4899,7 @@ export function useDesktopState() {
         : undefined)
     if (!question) throw new Error('问题状态已变化，请刷新会话后重试。')
     const key = questionRefKey({ itemId: question.id, turnId: reply.turnId, questionOrdinal: question.questionOrdinal })
-    if (detail.messages.some(message => message.questionReply && questionRefKey(message.questionReply) === key)) return
+    if ([...(persistedMessagesByThreadId.value[reply.threadId] ?? []), ...detail.messages, ...turnMessages].some(message => message.questionReply && questionRefKey(message.questionReply) === key)) return
     setPersistedMessagesForThread(reply.threadId, mergeMessages(persistedMessagesByThreadId.value[reply.threadId] ?? [], detail.messages, { preserveMissing: true }))
     await startTurnForThread(reply.threadId, buildQuestionReply(question, reply.answers))
   }
@@ -5324,7 +5286,7 @@ export function useDesktopState() {
     const matchedMessage = persisted.find((message) => message.turnId === turnId)
     const turnIndex = typeof matchedMessage?.turnIndex === 'number' ? matchedMessage.turnIndex : -1
     if (turnIndex < 0) return
-    const maxTurnIndex = persisted.reduce((max, m) => (typeof m.turnIndex === 'number' && m.turnIndex > max ? m.turnIndex : max), -1)
+    const maxTurnIndex = Math.max(-1, ...Object.values(turnIndexByTurnIdByThreadId.value[threadId] ?? {}))
     if (maxTurnIndex < 0 || turnIndex > maxTurnIndex) return
     const numTurns = maxTurnIndex - turnIndex + 1
     if (numTurns < 1) return
@@ -5337,6 +5299,11 @@ export function useDesktopState() {
         await revertThreadFileChanges(threadId, turnId, threadCwd)
       }
       const nextMessages = await rollbackThread(threadId, numTurns)
+      replaceTurnIndexLookupForThread(threadId, {})
+      historyPositionByThreadId.value = omitKey(historyPositionByThreadId.value, threadId)
+      hasMoreOlderMessagesByThreadId.value = { ...hasMoreOlderMessagesByThreadId.value, [threadId]: false }
+      lastMessageLoadAtByThreadId.delete(threadId)
+      loadedMessagesByThreadId.value = omitKey(loadedMessagesByThreadId.value, threadId)
       setPersistedMessagesForThread(threadId, nextMessages)
       setLiveAgentMessagesForThread(threadId, [])
       clearLiveReasoningForThread(threadId)
@@ -5740,6 +5707,7 @@ export function useDesktopState() {
     liveCommandsByThreadId.value = {}
     liveFileChangeMessagesByThreadId.value = {}
     turnIndexByTurnIdByThreadId.value = {}
+    historyPositionByThreadId.value = {}
     turnActivityByThreadId.value = {}
     turnSummaryByThreadId.value = {}
     turnErrorByThreadId.value = {}

@@ -13,7 +13,8 @@ export type CapabilitySnapshot = {
   experimental: boolean
   methods: string[]
   notifications: string[]
-  client: { dynamicModels: true; asyncQuestions: false; nativeHistoryPaging: false; toolSummaries: true }
+  features: { historyPaging: boolean; resumeInitialPage: boolean; exactFork: boolean }
+  client: { dynamicModels: true; asyncQuestions: true; nativeHistoryPaging: true; toolSummaries: true }
 }
 
 export function extractProtocolMethods(payload: unknown): string[] {
@@ -71,11 +72,25 @@ export class MethodCatalog {
         await command(['app-server', 'generate-json-schema', '--out', dir])
       }
       const [requests, notifications] = await Promise.all([readFile(join(dir, 'ClientRequest.json'), 'utf8'), readFile(join(dir, 'ServerNotification.json'), 'utf8')])
+      const fields = async (name: string): Promise<string[]> => {
+        try {
+          return Object.keys(JSON.parse(await readFile(join(dir, 'v2', `${name}.json`), 'utf8')).properties ?? {})
+        } catch {
+          return []
+        }
+      }
+      const [resumeFields, forkFields] = await Promise.all([fields('ThreadResumeParams'), fields('ThreadForkParams')])
+      const methods = extractProtocolMethods(JSON.parse(requests))
       return {
         cliVersion, experimental, generatedAt: new Date().toISOString(),
         schemaHash: createHash('sha256').update(requests).update(notifications).digest('hex'),
-        methods: extractProtocolMethods(JSON.parse(requests)), notifications: extractProtocolMethods(JSON.parse(notifications)),
-        client: { dynamicModels: true, asyncQuestions: false, nativeHistoryPaging: false, toolSummaries: true },
+        methods, notifications: extractProtocolMethods(JSON.parse(notifications)),
+        features: {
+          historyPaging: methods.includes('thread/turns/list') && methods.includes('thread/items/list'),
+          resumeInitialPage: resumeFields.includes('initialTurnsPage'),
+          exactFork: forkFields.includes('lastTurnId') && forkFields.includes('deferGoalContinuation'),
+        },
+        client: { dynamicModels: true, asyncQuestions: true, nativeHistoryPaging: true, toolSummaries: true },
       }
     } finally {
       await rm(dir, { recursive: true, force: true })

@@ -16,6 +16,9 @@ import type { WorkspaceRootsState } from '../api/codexGateway'
 const gatewayMocks = vi.hoisted(() => ({
   archiveThread: vi.fn(),
   forkThread: vi.fn(),
+  forkThreadAtTurn: vi.fn(),
+  getThreadTurnMessages: vi.fn(),
+  getOlderThreadMessages: vi.fn(),
   getAccountRateLimits: vi.fn(),
   getAvailableCollaborationModes: vi.fn(),
   getAvailableModelIds: vi.fn(),
@@ -1335,4 +1338,41 @@ it('does not lose a live question when an earlier pending snapshot arrives after
   await Promise.resolve()
   expect(state.selectedThreadServerRequests.value.map(request => request.id)).toEqual([901])
   state.stopPolling()
+})
+
+
+describe('native history integration', () => {
+  it('retains older pages and empty turns, and passes the cursor unchanged', async () => {
+    installTestWindow()
+    const msg = (id: string) => ({ id, turnId: id, turnIndex: 0, text: id, role: 'assistant' as const })
+    gatewayMocks.resumeThread.mockResolvedValue({ messages: [msg('latest')], inProgress: false, activeTurnId: '', turnIndexByTurnId: { latest: 0 }, hasMoreOlder: true, historyPosition: { source: 'native', nextCursor: 'opaque/+' } })
+    gatewayMocks.getOlderThreadMessages.mockResolvedValue({ messages: [msg('older')], inProgress: false, activeTurnId: '', turnIndexByTurnId: { older: 0, empty: 1 }, hasMoreOlder: true, historyPosition: { source: 'native', nextCursor: 'opaque-next' } })
+    const state = useDesktopState()
+    state.primeSelectedThread('paged')
+    await state.loadMessages('paged')
+    await state.loadOlderMessages('paged')
+    expect(gatewayMocks.getOlderThreadMessages).toHaveBeenLastCalledWith('paged', 'latest', undefined, { source: 'native', nextCursor: 'opaque/+' })
+    expect(state.messages.value.filter(message => message.turnId).map(message => [message.turnId, message.turnIndex])).toEqual([['older', 0], ['latest', 2]])
+    gatewayMocks.getOlderThreadMessages.mockResolvedValue({ messages: [], turnIndexByTurnId: { firstEmpty: 0 }, hasMoreOlder: false, historyPosition: { source: 'native', nextCursor: null } })
+    await state.loadOlderMessages('paged')
+    expect(gatewayMocks.getOlderThreadMessages).toHaveBeenLastCalledWith('paged', 'older', undefined, { source: 'native', nextCursor: 'opaque-next' })
+    expect(state.messages.value.filter(message => message.turnId).map(message => [message.turnId, message.turnIndex])).toEqual([['older', 1], ['latest', 3]])
+    expect(state.hasMoreOlderMessages.value).toBe(false)
+  })
+
+  it('reads a historical question by turn ID when it is outside the latest page', async () => {
+    installTestWindow()
+    const question = { id: 'q-old', turnId: 'old', turnIndex: 0, role: 'assistant', text: 'choose', questions: [{ title: 'Fruit?', options: ['Pear'] }], questionOrdinal: 0 }
+    gatewayMocks.resumeThread.mockResolvedValue({ messages: [question], inProgress: false, activeTurnId: '', turnIndexByTurnId: { old: 0 }, hasMoreOlder: false })
+    gatewayMocks.getThreadDetail.mockResolvedValue({ messages: [], inProgress: false, activeTurnId: '', turnIndexByTurnId: {} })
+    gatewayMocks.getThreadTurnMessages.mockResolvedValue([question])
+    gatewayMocks.startThreadTurn.mockResolvedValue('new')
+    const state = useDesktopState()
+    state.primeSelectedThread('old-question')
+    await state.loadMessages('old-question')
+    await state.answerAsyncQuestions({ threadId: 'old-question', turnId: 'old', itemId: 'q-old', questionOrdinal: 0, answers: ['Pear'] })
+    expect(gatewayMocks.getThreadTurnMessages).toHaveBeenCalledExactlyOnceWith('old-question', 'old')
+    expect(gatewayMocks.startThreadTurn).toHaveBeenCalledTimes(1)
+    expect(gatewayMocks.startThreadTurn.mock.calls[0][1]).toContain('codexapp:question-reply')
+  })
 })

@@ -2204,3 +2204,8 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .thread-auth-recovery { margin: 8px 0; padding: 10px 14px; background: var(--ui-field); color: var(--ui-text); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); font-size: 13px; overflow-wrap: anywhere; }
 
 .async-question-error { color: var(--ui-danger); font-size: 13px; overflow-wrap: anywhere; }
+.history-load-error {
+  color: var(--ui-danger);
+  font-size: 12px;
+  margin: 8px 0 0;
+}

@@ -3,7 +3,7 @@
     <p v-if="isLoading" class="conversation-loading">Loading messages...</p>
 
     <p
-      v-else-if="messages.length === 0 && pendingRequests.length === 0 && !liveOverlay"
+      v-else-if="messages.length === 0 && pendingRequests.length === 0 && !liveOverlay && !hasMoreAbove"
       class="conversation-empty"
     >
       No messages in this thread yet.
@@ -19,6 +19,7 @@
         >
           {{ isLoadingMore || isLoadingPersistedAbove ? 'Loading…' : 'Load earlier messages' }}
         </button>
+        <p v-if="historyLoadError" class="history-load-error" role="alert">{{ historyLoadError }}</p>
       </li>
       <template v-for="message in visibleMessages" :key="message.id">
       <li
@@ -1333,7 +1334,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  forkThread: [payload: { threadId: string; turnIndex: number }]
+  forkThread: [payload: { threadId: string; turnId: string }]
   rollback: [payload: { turnId: string }]
   implementPlan: [payload: { turnId: string }]
 }>()
@@ -1443,6 +1444,8 @@ const LOAD_MORE_SCROLL_THRESHOLD_PX = 200
 
 const renderWindowStart = ref(0)
 const isLoadingMore = ref(false)
+const historyLoadError = ref('')
+let historyLoadSequence = 0
 
 const visibleMessages = computed(() => props.messages.slice(renderWindowStart.value))
 const hasMoreAbove = computed(() => renderWindowStart.value > 0 || props.hasMorePersistedAbove === true)
@@ -1829,31 +1832,12 @@ const copyableResponseContentByAnchorId = computed<Record<string, string>>(() =>
   return next
 })
 
-const forkableTurnIndexByAnchorId = computed<Record<string, number>>(() => {
-  const groupedTurns = new Map<string, { anchorMessageId: string; turnIndex: number }>()
-
+const forkableTurnIdByAnchorId = computed<Record<string, string>>(() => {
+  const anchors = new Map<string, string>()
   for (const message of props.messages) {
-    if (!isCopyableAssistantMessage(message) || typeof message.turnIndex !== 'number') continue
-
-    const responseKey = `turn:${message.turnIndex}`
-    const existing = groupedTurns.get(responseKey)
-    if (existing) {
-      existing.anchorMessageId = message.id
-      existing.turnIndex = message.turnIndex
-      continue
-    }
-
-    groupedTurns.set(responseKey, {
-      anchorMessageId: message.id,
-      turnIndex: message.turnIndex,
-    })
+    if (isCopyableAssistantMessage(message) && message.turnId) anchors.set(message.turnId, message.id)
   }
-
-  const next: Record<string, number> = {}
-  for (const groupedTurn of groupedTurns.values()) {
-    next[groupedTurn.anchorMessageId] = groupedTurn.turnIndex
-  }
-  return next
+  return Object.fromEntries([...anchors].map(([turnId, anchorId]) => [anchorId, turnId]))
 })
 
 function showCopyResponseButton(message: UiMessage): boolean {
@@ -1861,7 +1845,7 @@ function showCopyResponseButton(message: UiMessage): boolean {
 }
 
 function showForkResponseButton(message: UiMessage): boolean {
-  return typeof forkableTurnIndexByAnchorId.value[message.id] === 'number'
+  return typeof forkableTurnIdByAnchorId.value[message.id] === 'string'
 }
 
 function mergeFileChangeDiff(first: string, second: string): string {
@@ -2361,12 +2345,12 @@ async function copyResponse(anchorMessageId: string): Promise<void> {
 }
 
 function forkResponse(anchorMessageId: string): void {
-  const turnIndex = forkableTurnIndexByAnchorId.value[anchorMessageId]
-  if (typeof turnIndex !== 'number') return
+  const turnId = forkableTurnIdByAnchorId.value[anchorMessageId]
+  if (!turnId) return
   if (!props.activeThreadId) return
   emit('forkThread', {
     threadId: props.activeThreadId,
-    turnIndex,
+    turnId,
   })
 }
 
@@ -3833,6 +3817,8 @@ async function loadMoreAbove(): Promise<void> {
   if (!container || !hasMoreAbove.value || isLoadingMore.value || props.isLoadingPersistedAbove === true) return
 
   isLoadingMore.value = true
+  historyLoadError.value = ''
+  const sequence = ++historyLoadSequence
   const threadIdAtStart = props.activeThreadId
 
   const prevScrollHeight = container.scrollHeight
@@ -3851,8 +3837,12 @@ async function loadMoreAbove(): Promise<void> {
     if (props.activeThreadId === threadIdAtStart) {
       container.scrollTop = prevScrollTop + (container.scrollHeight - prevScrollHeight)
     }
+  } catch (cause) {
+    if (props.activeThreadId === threadIdAtStart) {
+      historyLoadError.value = cause instanceof Error ? cause.message : '加载历史失败，请重试。'
+    }
   } finally {
-    isLoadingMore.value = false
+    if (sequence === historyLoadSequence) isLoadingMore.value = false
   }
 }
 
@@ -3996,6 +3986,8 @@ watch(
     autoFollowOutput.value = true
     modalImageUrl.value = ''
     isLoadingMore.value = false
+    historyLoadError.value = ''
+    historyLoadSequence += 1
     fileChangeActionState.value = {}
     fileChangeActionError.value = {}
     fileChangeRedoPatchIds.value = {}
@@ -4010,7 +4002,7 @@ function onConversationScroll(): void {
   const container = conversationListRef.value
   if (!container || props.isLoading) return
   autoFollowOutput.value = isAtBottom(container)
-  if (hasMoreAbove.value && !isLoadingMore.value && container.scrollTop < LOAD_MORE_SCROLL_THRESHOLD_PX) {
+  if (hasMoreAbove.value && !historyLoadError.value && !isLoadingMore.value && container.scrollTop < LOAD_MORE_SCROLL_THRESHOLD_PX) {
     void loadMoreAbove()
   }
 }

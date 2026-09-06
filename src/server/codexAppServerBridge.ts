@@ -1,3 +1,4 @@
+import { ThreadHistory } from './threadHistory.js'
 import { AuthRecoveryRegistry } from '../authRecovery'
 import { MethodCatalog } from './runtimeCapabilities.js'
 import { version as appVersion } from '../../package.json'
@@ -231,7 +232,6 @@ const COMPOSIO_CONNECTORS_PAGE_LIMIT_MAX = 1000
 const PROVIDER_MODELS_FETCH_TIMEOUT_MS = 5_000
 
 const THREAD_RESPONSE_TURN_LIMIT = 10
-const THREAD_TURN_PAGE_READ_CACHE_TTL_MS = 30_000
 const THREAD_METHODS_WITH_TURNS = new Set(['thread/read', 'thread/resume', 'thread/fork', 'thread/rollback'])
 const THREAD_METHODS_WITH_THREAD_SNAPSHOT = new Set([...THREAD_METHODS_WITH_TURNS, 'thread/start'])
 const THREAD_SEARCH_FULL_TEXT_THREAD_LIMIT = 100
@@ -268,7 +268,11 @@ type SessionRecoveredSkillInput = {
 
 type SessionSkillInputCacheEntry = {
   size: number
-  mtimeMs: number
+  mtimeNs: bigint
+  ctimeNs: bigint
+  inode: bigint
+  offset: number
+  currentTurnId: string
   skillsByTurnId: Map<string, SessionRecoveredSkillInput[]>
 }
 
@@ -284,12 +288,11 @@ function parseSessionSkillText(value: string): SessionRecoveredSkillInput | null
   return { name, path }
 }
 
-function buildSessionSkillInputsByTurn(sessionLogRaw: string): Map<string, SessionRecoveredSkillInput[]> {
-  let currentTurnId = ''
-  const skillsByTurnId = new Map<string, SessionRecoveredSkillInput[]>()
+function buildSessionSkillInputsByTurn(sessionLogRaw: string, state = { currentTurnId: '', skillsByTurnId: new Map<string, SessionRecoveredSkillInput[]>() }): Map<string, SessionRecoveredSkillInput[]> {
+  const skillsByTurnId = state.skillsByTurnId
 
   for (const line of sessionLogRaw.split('\n')) {
-    if (!line.trim()) continue
+    if (!line.includes('<skill>') && !line.includes('turn_context') && !line.includes('task_started')) continue
     let row: Record<string, unknown> | null = null
     try {
       row = JSON.parse(line) as Record<string, unknown>
@@ -299,18 +302,18 @@ function buildSessionSkillInputsByTurn(sessionLogRaw: string): Map<string, Sessi
 
     if (row.type === 'turn_context') {
       const payloadRecord = asRecord(row.payload)
-      currentTurnId = readNonEmptyString(payloadRecord?.turn_id) || currentTurnId
+      state.currentTurnId = readNonEmptyString(payloadRecord?.turn_id) || state.currentTurnId
       continue
     }
     if (row.type === 'event_msg') {
       const payloadRecord = asRecord(row.payload)
       if (payloadRecord?.type === 'task_started') {
-        currentTurnId = readNonEmptyString(payloadRecord.turn_id) || currentTurnId
+        state.currentTurnId = readNonEmptyString(payloadRecord.turn_id) || state.currentTurnId
       }
       continue
     }
 
-    if (row.type !== 'response_item' || !currentTurnId) continue
+    if (row.type !== 'response_item' || !state.currentTurnId) continue
     const payloadRecord = asRecord(row.payload)
     if (payloadRecord?.type !== 'message' || payloadRecord.role !== 'user') continue
     const content = Array.isArray(payloadRecord.content) ? payloadRecord.content : []
@@ -320,10 +323,10 @@ function buildSessionSkillInputsByTurn(sessionLogRaw: string): Map<string, Sessi
       if (contentRecord?.type !== 'input_text' || typeof contentRecord.text !== 'string') continue
       const skill = parseSessionSkillText(contentRecord.text)
       if (!skill) continue
-      const existing = skillsByTurnId.get(currentTurnId) ?? []
+      const existing = skillsByTurnId.get(state.currentTurnId) ?? []
       if (!existing.some((item) => item.path === skill.path)) {
         existing.push(skill)
-        skillsByTurnId.set(currentTurnId, existing)
+        skillsByTurnId.set(state.currentTurnId, existing)
       }
     }
   }
@@ -331,25 +334,48 @@ function buildSessionSkillInputsByTurn(sessionLogRaw: string): Map<string, Sessi
   return skillsByTurnId
 }
 
-async function readCachedSessionSkillInputsByTurn(sessionPath: string): Promise<Map<string, SessionRecoveredSkillInput[]>> {
-  const sessionStat = await stat(sessionPath)
+export async function readCachedSessionSkillInputsByTurn(sessionPath: string): Promise<Map<string, SessionRecoveredSkillInput[]>> {
+  const rawInfo = await stat(sessionPath, { bigint: true })
+  const info = { ...rawInfo, size: Number(rawInfo.size) }
   const cached = sessionSkillInputCache.get(sessionPath)
-  if (cached && cached.size === sessionStat.size && cached.mtimeMs === sessionStat.mtimeMs) {
-    return cached.skillsByTurnId
+  if (cached && cached.inode === info.ino && cached.size === info.size && cached.mtimeNs === info.mtimeNs && cached.ctimeNs === info.ctimeNs) return cached.skillsByTurnId
+  const canAppend = cached && cached.inode === info.ino && info.size > cached.size
+  const state: SessionSkillInputCacheEntry = {
+    size: info.size,
+    mtimeNs: info.mtimeNs,
+    ctimeNs: info.ctimeNs,
+    inode: info.ino,
+    offset: canAppend ? cached.offset : 0,
+    currentTurnId: canAppend ? cached.currentTurnId : '',
+    skillsByTurnId: canAppend ? new Map([...cached.skillsByTurnId].map(([id, skills]) => [id, [...skills]])) : new Map(),
   }
-
-  const sessionLogRaw = await readFile(sessionPath, 'utf8')
-  const skillsByTurnId = buildSessionSkillInputsByTurn(sessionLogRaw)
-  sessionSkillInputCache.set(sessionPath, {
-    size: sessionStat.size,
-    mtimeMs: sessionStat.mtimeMs,
-    skillsByTurnId,
-  })
-  if (sessionSkillInputCache.size > SESSION_SKILL_INPUT_CACHE_LIMIT) {
+  let pending = Buffer.alloc(0)
+  let skippedBytes = 0
+  if (state.offset < info.size) {
+    for await (const chunk of createReadStream(sessionPath, { start: state.offset, end: info.size - 1 })) {
+      pending = Buffer.concat([pending, chunk as Buffer])
+      let newline: number
+      while ((newline = pending.indexOf(10)) >= 0) {
+        if (!skippedBytes) buildSessionSkillInputsByTurn(pending.subarray(0, newline).toString('utf8'), state)
+        state.offset += skippedBytes + newline + 1
+        skippedBytes = 0
+        pending = pending.subarray(newline + 1)
+      }
+      // Embedded media/tool lines cannot be skill declarations. Bound the partial-line buffer.
+      if (pending.length > 1024 * 1024) {
+        skippedBytes += pending.length
+        pending = Buffer.alloc(0)
+      }
+    }
+  }
+  // Do not advance beyond an incomplete last line; the next append rereads it.
+  sessionSkillInputCache.set(sessionPath, state)
+  while (sessionSkillInputCache.size > SESSION_SKILL_INPUT_CACHE_LIMIT) {
     const oldestKey = sessionSkillInputCache.keys().next().value
-    if (oldestKey) sessionSkillInputCache.delete(oldestKey)
+    if (!oldestKey) break
+    sessionSkillInputCache.delete(oldestKey)
   }
-  return skillsByTurnId
+  return state.skillsByTurnId
 }
 
 function mergeSessionSkillInputsIntoTurnsFromMap(
@@ -5966,8 +5992,6 @@ class AppServerProcess {
   private readonly pendingServerRequests = new Map<number, PendingServerRequest>()
   private readonly streamEventsByThreadId = new Map<string, StreamEventFrame[]>()
   private readonly lastThreadReadSnapshotByThreadId = new Map<string, unknown>()
-  private readonly threadTurnPageReadCacheByThreadId = new Map<string, { result: unknown; expiresAt: number }>()
-  private readonly threadTurnPageReadPromiseByThreadId = new Map<string, Promise<unknown>>()
   private readonly capturedItemsByThreadId = new Map<string, Map<string, CapturedItem>>()
   private readonly liveStateCache = new Map<string, { data: unknown; turnCount: number; sessionSize: number }>()
   private chatgptAuthRefreshPromise: Promise<ChatgptAuthTokensRefreshResponse> | null = null
@@ -6137,7 +6161,6 @@ class AppServerProcess {
     const nThreadId = this.extractThreadIdFromParams(notification.params)
     if (nThreadId) {
       this.invalidateLiveStateCache(nThreadId)
-      this.threadTurnPageReadCacheByThreadId.delete(nThreadId)
     }
     for (const listener of this.notificationListeners) {
       listener(notification)
@@ -6192,37 +6215,10 @@ class AppServerProcess {
 
   storeThreadReadSnapshot(threadId: string, snapshot: unknown): void {
     this.lastThreadReadSnapshotByThreadId.set(threadId, snapshot)
-    this.threadTurnPageReadCacheByThreadId.delete(threadId)
   }
 
   getLastThreadReadSnapshot(threadId: string): unknown | null {
     return this.lastThreadReadSnapshotByThreadId.get(threadId) ?? null
-  }
-
-  async readThreadForTurnPage(threadId: string): Promise<unknown> {
-    const now = Date.now()
-    const cached = this.threadTurnPageReadCacheByThreadId.get(threadId)
-    if (cached && cached.expiresAt > now) return cached.result
-    if (cached) this.threadTurnPageReadCacheByThreadId.delete(threadId)
-
-    const pending = this.threadTurnPageReadPromiseByThreadId.get(threadId)
-    if (pending) return pending
-
-    const promise = this.rpc('thread/read', {
-      threadId,
-      includeTurns: true,
-    }).then((result) => {
-      this.threadTurnPageReadCacheByThreadId.set(threadId, {
-        result,
-        expiresAt: Date.now() + THREAD_TURN_PAGE_READ_CACHE_TTL_MS,
-      })
-      return result
-    }).finally(() => {
-      this.threadTurnPageReadPromiseByThreadId.delete(threadId)
-    })
-
-    this.threadTurnPageReadPromiseByThreadId.set(threadId, promise)
-    return promise
   }
 
   cacheLiveState(threadId: string, data: unknown, turnCount: number, sessionSize: number): void {
@@ -7005,6 +7001,15 @@ async function buildThreadSearchIndex(appServer: AppServerProcess): Promise<Thre
 export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
   const sharedState = getSharedBridgeState()
   const { appServer, terminalManager, methodCatalog, telegramBridge, backendQueueProcessor, automationEngine, threadGoalReader } = sharedState
+  const history = new ThreadHistory(
+    (method, params) => callRpcWithArchiveRecovery(appServer, method, params),
+    async () => (await methodCatalog.snapshot()).features,
+  )
+  const unsubscribeHistory = appServer.onNotification(({ params }) => {
+    const value = asRecord(params)
+    const threadId = readNonEmptyString(value?.threadId) || readNonEmptyString(value?.thread_id) || readNonEmptyString(asRecord(value?.thread)?.id)
+    if (threadId) history.invalidate(threadId)
+  })
   let threadSearchIndex: ThreadSearchIndex | null = null
   let threadSearchIndexPromise: Promise<ThreadSearchIndex> | null = null
 
@@ -7509,7 +7514,16 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
 
         let rpcResult: unknown
         try {
-          rpcResult = await callRpcWithArchiveRecovery(appServer, body.method, body.params ?? null)
+          const params = asRecord(body.params) ?? {}
+          if (body.method === 'thread/resume' || (body.method === 'thread/read' && params.includeTurns === true)) {
+            rpcResult = await history.initial(body.method, params)
+          } else {
+            rpcResult = await callRpcWithArchiveRecovery(appServer, body.method, body.params ?? null)
+          }
+          if (['turn/start', 'turn/steer', 'thread/rollback', 'thread/archive', 'thread/unarchive', 'thread/name/set'].includes(body.method)) {
+            const threadId = readNonEmptyString(params.threadId)
+            if (threadId) history.invalidate(threadId)
+          }
         } catch (error) {
 	          if (body.method === 'account/rateLimits/read' && isUnauthenticatedRateLimitError(error)) {
 	            setJson(res, 200, { result: null })
@@ -7578,54 +7592,44 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
             return
           }
 
-          const threadReadResult = mergeStreamTurnErrorsIntoThreadResult(appServer, await appServer.readThreadForTurnPage(threadId))
-          const record = asRecord(threadReadResult)
-          const thread = asRecord(record?.thread)
-          if (!record || !thread) {
-            setJson(res, 502, { error: 'thread/read returned an invalid thread response' })
-            return
-          }
-
-          const turns = Array.isArray(thread.turns) ? thread.turns : []
-          const beforeIndex = beforeTurnId
-            ? turns.findIndex((turn) => asRecord(turn)?.id === beforeTurnId)
-            : turns.length
-          if (beforeTurnId && beforeIndex < 0) {
-            setJson(res, 200, {
-              result: {
-                ...record,
-                thread: {
-                  ...thread,
-                  turns: [],
-                },
-              },
-              startTurnIndex: 0,
-              hasMoreOlder: false,
-            })
-            return
-          }
-
-          const endIndex = beforeIndex
-          const startIndex = Math.max(0, endIndex - limit)
-          const pageTurns = turns.slice(startIndex, endIndex)
-          const pagedResult = {
-            ...record,
-            thread: {
-              ...thread,
-              turns: pageTurns,
-            },
-          }
-          const sanitized = await sanitizeThreadTurnsInlinePayloads('thread/read', pagedResult)
-          const result = await mergeSessionSkillInputsIntoThreadResult(sanitized)
-
-          setJson(res, 200, {
-            result,
-            startTurnIndex: startIndex,
-            hasMoreOlder: startIndex > 0,
+          const page = await history.page(threadId, {
+            beforeTurnId,
+            cursor: url.searchParams.get('cursor') || undefined,
+            source: url.searchParams.get('source') || undefined,
+            limit,
           })
+          const withErrors = mergeStreamTurnErrorsIntoThreadResult(appServer, page.result)
+          const sanitized = await sanitizeThreadTurnsInlinePayloads('thread/read', withErrors)
+          const result = await mergeSessionSkillInputsIntoThreadResult(sanitized)
+          setJson(res, 200, { ...page, result, startTurnIndex: 0 })
         } catch (error) {
           setJson(res, 500, { error: getErrorMessage(error, 'Failed to load earlier thread messages') })
         }
+        return
+      }
+
+      if (req.method === 'GET' && url.pathname === '/codex-api/thread-turn-items') {
+        const threadId = url.searchParams.get('threadId')?.trim() ?? ''
+        const turnId = url.searchParams.get('turnId')?.trim() ?? ''
+        if (!threadId || !turnId) {
+          setJson(res, 400, { error: 'Missing threadId or turnId' })
+          return
+        }
+        const result = await history.turn(threadId, turnId)
+        const sanitized = await sanitizeThreadTurnsInlinePayloads('thread/read', result)
+        setJson(res, 200, { result: await mergeSessionSkillInputsIntoThreadResult(sanitized) })
+        return
+      }
+
+      if (req.method === 'POST' && url.pathname === '/codex-api/thread-fork-at-turn') {
+        const params = asRecord(await readJsonBody(req))
+        const threadId = readNonEmptyString(params?.threadId)
+        const lastTurnId = readNonEmptyString(params?.lastTurnId)
+        if (!threadId || !lastTurnId) {
+          setJson(res, 400, { error: 'Missing threadId or lastTurnId' })
+          return
+        }
+        setJson(res, 200, { result: await history.fork(threadId, lastTurnId) })
         return
       }
 
@@ -9227,6 +9231,8 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
     sharedState.disposed = true
     const automationDisposal = automationEngine.dispose()
     threadSearchIndex = null
+    unsubscribeHistory()
+    history.clear()
     telegramBridge.stop()
     terminalManager.dispose()
     backendQueueProcessor.dispose()

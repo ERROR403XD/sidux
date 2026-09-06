@@ -1,8 +1,12 @@
+import { mkdtemp, appendFile, writeFile, rm } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { existsSync } from 'node:fs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   BackendQueueProcessor,
   mergeSessionSkillInputsIntoTurns,
+  readCachedSessionSkillInputsByTurn,
   parseAutomationToml,
   sanitizeThreadTurnsInlinePayloads,
   toAutomationApiRecord,
@@ -415,5 +419,29 @@ describe('automation TOML handling', () => {
 
     expect(automation).toBeTruthy()
     expect(toAutomationApiRecord(automation as NonNullable<typeof automation>)).not.toHaveProperty('extraTomlLines')
+  })
+})
+
+
+describe('incremental historical skill recovery', () => {
+  it('retains turn context across appends, completes partial lines, and resets on rewrite', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'skill-history-test-'))
+    const path = join(dir, 'session.jsonl')
+    const start = JSON.stringify({ type: 'event_msg', payload: { type: 'task_started', turn_id: 'old' } }) + '\n'
+    const skill = JSON.stringify({ type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: '<skill><name>fixture</name><path>/fixture/SKILL.md</path></skill>' }] } })
+    try {
+      await writeFile(path, start)
+      expect((await readCachedSessionSkillInputsByTurn(path)).size).toBe(0)
+      await appendFile(path, skill.slice(0, 30))
+      expect((await readCachedSessionSkillInputsByTurn(path)).size).toBe(0)
+      await appendFile(path, skill.slice(30) + '\n')
+      expect((await readCachedSessionSkillInputsByTurn(path)).get('old')).toEqual([{ name: 'fixture', path: '/fixture/SKILL.md' }])
+      await writeFile(path, start.replace('old', 'new') + skill + '\n')
+      const rewritten = await readCachedSessionSkillInputsByTurn(path)
+      expect(rewritten.has('old')).toBe(false)
+      expect(rewritten.has('new')).toBe(true)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
   })
 })

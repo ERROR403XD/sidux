@@ -729,11 +729,23 @@ export type ThreadGroupsPage = {
   nextCursor: string | null
 }
 
+export type ThreadHistoryPosition = { nextCursor: string | null; source: 'native' | 'legacy' }
+
+function readHistoryPosition(payload: unknown): ThreadHistoryPosition {
+  const history = asRecord(asRecord(payload)?.threadHistory)
+  return { nextCursor: typeof history?.nextCursor === 'string' ? history.nextCursor : null, source: history?.source === 'native' ? 'native' : 'legacy' }
+}
+
+function readHasMoreHistory(payload: ThreadReadResponse): boolean {
+  return asRecord(asRecord(payload)?.threadHistory)?.hasMoreOlder === true || readThreadTurnStartIndex(payload) > 0
+}
+
 export type ThreadTurnPage = {
   messages: UiMessage[]
   inProgress: boolean
   activeTurnId: string
   hasMoreOlder: boolean
+  historyPosition?: ThreadHistoryPosition
   startTurnIndex: number
   turnIndexByTurnId: ThreadTurnIndexById
 }
@@ -777,6 +789,7 @@ async function getThreadDetailV2(threadId: string): Promise<{
   inProgress: boolean
   activeTurnId: string
   hasMoreOlder: boolean
+  historyPosition?: ThreadHistoryPosition
   turnIndexByTurnId: ThreadTurnIndexById
 }> {
   const payload = await callRpc<ThreadReadResponse>('thread/read', {
@@ -791,24 +804,30 @@ async function getThreadDetailV2(threadId: string): Promise<{
     messages: normalized,
     inProgress: readThreadInProgressFromResponse(payload),
     activeTurnId: readActiveTurnIdFromResponse(payload),
-    hasMoreOlder: startTurnIndex > 0,
+    hasMoreOlder: readHasMoreHistory(payload),
+    historyPosition: readHistoryPosition(payload),
     turnIndexByTurnId: buildTurnIndexByTurnId(payload, startTurnIndex),
   }
 }
 
-async function getOlderThreadMessagesV2(threadId: string, beforeTurnId: string, limit = 10): Promise<ThreadTurnPage> {
+async function getOlderThreadMessagesV2(threadId: string, beforeTurnId: string, limit = 10, position?: ThreadHistoryPosition): Promise<ThreadTurnPage> {
   const params = new URLSearchParams({
     threadId,
     beforeTurnId,
     limit: String(limit),
   })
+  if (position?.nextCursor) params.set('cursor', position.nextCursor)
+  if (position?.source) params.set('source', position.source)
   const response = await fetch(`/codex-api/thread-turn-page?${params.toString()}`)
   if (!response.ok) {
-    throw new Error(`Older thread page request failed with ${response.status}`)
+    const data = await response.json().catch(() => ({})) as { error?: string }
+    throw new Error(data.error || `Older thread page request failed with ${response.status}`)
   }
   const payload = await response.json() as {
     result?: ThreadReadResponse
     hasMoreOlder?: unknown
+    nextCursor?: unknown
+    source?: unknown
     startTurnIndex?: unknown
   }
   if (!payload.result) {
@@ -821,6 +840,7 @@ async function getOlderThreadMessagesV2(threadId: string, beforeTurnId: string, 
     inProgress: readThreadInProgressFromResponse(payload.result),
     activeTurnId: readActiveTurnIdFromResponse(payload.result),
     hasMoreOlder: payload.hasMoreOlder === true,
+    historyPosition: { nextCursor: typeof payload.nextCursor === 'string' ? payload.nextCursor : null, source: payload.source === 'native' ? 'native' : 'legacy' },
     startTurnIndex,
     turnIndexByTurnId: buildTurnIndexByTurnId(payload.result, startTurnIndex),
   }
@@ -872,6 +892,7 @@ export async function getThreadDetail(threadId: string): Promise<{
   inProgress: boolean
   activeTurnId: string
   hasMoreOlder: boolean
+  historyPosition?: ThreadHistoryPosition
   turnIndexByTurnId: ThreadTurnIndexById
 }> {
   try {
@@ -881,9 +902,9 @@ export async function getThreadDetail(threadId: string): Promise<{
   }
 }
 
-export async function getOlderThreadMessages(threadId: string, beforeTurnId: string, limit?: number): Promise<ThreadTurnPage> {
+export async function getOlderThreadMessages(threadId: string, beforeTurnId: string, limit?: number, position?: ThreadHistoryPosition): Promise<ThreadTurnPage> {
   try {
-    return await getOlderThreadMessagesV2(threadId, beforeTurnId, limit)
+    return await getOlderThreadMessagesV2(threadId, beforeTurnId, limit, position)
   } catch (error) {
     throw normalizeCodexApiError(error, `Failed to load earlier messages for thread ${threadId}`, 'thread/read')
   }
@@ -1562,6 +1583,7 @@ export type ResumedThread = {
   inProgress: boolean
   activeTurnId: string
   hasMoreOlder: boolean
+  historyPosition?: ThreadHistoryPosition
   turnIndexByTurnId: ThreadTurnIndexById
 }
 
@@ -1582,7 +1604,8 @@ export async function resumeThread(threadId: string): Promise<ResumedThread> {
       messages,
       inProgress: readThreadInProgressFromResponse(payload),
       activeTurnId: readActiveTurnIdFromResponse(payload),
-      hasMoreOlder: startTurnIndex > 0,
+      hasMoreOlder: readHasMoreHistory(payload),
+      historyPosition: readHistoryPosition(payload),
       turnIndexByTurnId: buildTurnIndexByTurnId(payload, startTurnIndex),
     }
   })()
@@ -1748,6 +1771,26 @@ export async function startThread(cwd?: string, model?: string): Promise<Started
   } catch (error) {
     throw normalizeCodexApiError(error, 'Failed to start a new thread', 'thread/start')
   }
+}
+
+export async function getThreadTurnMessages(threadId: string, turnId: string): Promise<UiMessage[]> {
+  const response = await fetch(`/codex-api/thread-turn-items?${new URLSearchParams({ threadId, turnId })}`)
+  const payload = await response.json() as { result?: ThreadReadResponse; error?: string }
+  if (!response.ok || !payload.result) throw new Error(payload.error || '无法读取历史回合。')
+  return normalizeThreadMessagesV2(payload.result)
+}
+
+export async function forkThreadAtTurn(threadId: string, lastTurnId: string): Promise<StartedThread> {
+  const response = await fetch('/codex-api/thread-fork-at-turn', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ threadId, lastTurnId }),
+  })
+  const payload = await response.json() as { result?: ThreadForkResponse; error?: string }
+  if (!response.ok || !payload.result) throw new Error(payload.error || '无法从该回合创建分支。')
+  const forkedId = normalizeThreadIdFromPayload(payload.result)
+  if (!forkedId) throw new Error('分支没有返回会话 ID。')
+  return { threadId: forkedId, model: normalizeThreadModelFromPayload(payload.result), modelProvider: normalizeThreadModelProviderFromPayload(payload.result) }
 }
 
 export async function forkThread(threadId: string): Promise<ForkedThread>
