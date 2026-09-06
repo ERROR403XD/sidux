@@ -82,12 +82,12 @@
 
           <button
             v-if="!isSidebarCollapsed"
-            class="sidebar-skills-link"
+            class="sidebar-skills-link sidebar-api-proxy-link"
             :class="{ 'is-active': isApiProxyRoute }"
             type="button"
             @click="router.push({ name: 'api-proxy' }); isMobile && setSidebarCollapsed(true)"
           >
-            <span class="sidebar-skills-link-icon" aria-hidden="true"><IconTablerPlug /></span>
+            <span class="sidebar-skills-link-icon sidebar-api-proxy-link-icon" aria-hidden="true"><IconTablerPlug /></span>
             <span class="sidebar-skills-link-copy">
               <span class="sidebar-skills-link-title">{{ t('API outlet') }}</span>
               <span class="sidebar-skills-link-subtitle">{{ t('Codex client access') }}</span>

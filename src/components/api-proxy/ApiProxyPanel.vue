@@ -60,9 +60,17 @@
       </section>
       <p class="api-proxy-muted">CLIProxyAPI {{ status.componentVersion }} · 模型目录随组件版本固定 · 请求记录不保存提示词、回复或工具参数。</p>
     </template>
-    <AppDialog :open="createDialog" :title="rotateTarget ? '轮换 API key' : '创建 API key'" :busy="busy" size="compact" @close="closeCreate">
+    <AppDialog :open="createDialog" :title="rotateTarget ? '轮换 API key' : '创建 API key'" :busy="busy" panel-class="api-proxy-key-dialog" @close="closeCreate">
       <p v-if="error" role="alert" class="api-proxy-error">{{ error }}</p>
-      <template v-if="!secret"><label>名称<input v-model="keyNameDraft" class="app-input" data-autofocus maxlength="80" /></label><label>到期时间（可留空）<input v-model="keyExpiry" class="app-input" type="datetime-local" /></label><p v-if="rotateTarget">创建成功后，旧 key 将于 24 小时后到期；也可手动提前撤销。</p></template>
+      <div v-if="!secret" class="api-proxy-key-form">
+        <label>名称
+          <input v-model="keyNameDraft" class="app-input" data-autofocus maxlength="80" :disabled="busy" />
+        </label>
+        <label>持续时间（天）
+          <input v-model="keyDurationDays" class="app-input" type="number" min="1" step="1" placeholder="无限" :disabled="busy" />
+        </label>
+        <p v-if="rotateTarget" class="api-proxy-muted">旧 key 将于 24 小时后到期，也可提前撤销。</p>
+      </div>
       <template v-else><p>请现在保存完整 key，关闭后不会再次显示。</p><textarea class="app-input api-proxy-secret" :value="secret" readonly rows="3" aria-label="新 API key" /><AppButton @click="copySecret">复制 key</AppButton></template>
       <template #footer><AppButton :disabled="busy" @click="closeCreate">{{ secret ? '已保存，关闭' : '取消' }}</AppButton><AppButton v-if="!secret" :busy="busy" @click="createKey">创建</AppButton></template>
     </AppDialog>
@@ -90,7 +98,7 @@ const createDialog = ref(false)
 const forceDialog = ref(false)
 const secret = ref('')
 const keyNameDraft = ref('Codex CLI')
-const keyExpiry = ref('')
+const keyDurationDays = ref('')
 const rotateTarget = ref<ApiProxyKey | null>(null)
 const revokeTarget = ref<ApiProxyKey | null>(null)
 const renameTarget = ref<ApiProxyKey | null>(null)
@@ -141,14 +149,27 @@ async function save(force: boolean): Promise<void> {
 function openCreate(key?: ApiProxyKey): void {
   rotateTarget.value = key || null
   keyNameDraft.value = key ? `${key.name}（新）` : 'Codex CLI'
-  keyExpiry.value = ''
+  keyDurationDays.value = ''
   secret.value = ''
   createDialog.value = true
 }
-function closeCreate(): void { createDialog.value = false; secret.value = ''; rotateTarget.value = null }
+function closeCreate(): void {
+  createDialog.value = false
+  secret.value = ''
+  rotateTarget.value = null
+}
 async function createKey(): Promise<void> {
   await run(async () => {
-    const created = await apiProxyRequest<{ secret: string }>('/keys', { name: keyNameDraft.value, expiresAt: keyExpiry.value ? new Date(keyExpiry.value).toISOString() : null })
+    const duration = String(keyDurationDays.value).trim()
+    const days = Number(duration)
+    const expiresAt = duration ? new Date(Date.now() + days * 86_400_000) : null
+    if (duration && (!/^\d+$/.test(duration) || !Number.isSafeInteger(days) || days < 1 || !Number.isFinite(expiresAt?.getTime()))) {
+      throw new Error('持续时间请填写正整数天数，留空为无限。')
+    }
+    const created = await apiProxyRequest<{ secret: string }>('/keys', {
+      name: keyNameDraft.value,
+      expiresAt: expiresAt?.toISOString() ?? null,
+    })
     secret.value = created.secret
     if (rotateTarget.value) await apiProxyRequest(`/keys/${rotateTarget.value.id}`, { expiresAt: new Date(Date.now() + 86400_000).toISOString() })
   })
