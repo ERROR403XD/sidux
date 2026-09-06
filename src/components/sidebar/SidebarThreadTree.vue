@@ -3428,18 +3428,6 @@ onBeforeUnmount(() => {
   @apply mt-3 flex items-center justify-end gap-2 shrink-0;
 }
 
-.rename-thread-button {
-  @apply rounded-md px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100;
-}
-
-.rename-thread-button-primary {
-  @apply bg-zinc-900 text-white hover:bg-black;
-}
-
-.rename-thread-button-danger {
-  @apply bg-rose-600 text-white hover:bg-rose-700;
-}
-
 .automation-thread-panel {
   @apply max-w-lg overflow-y-auto;
   max-height: min(90vh, calc(100dvh - 2rem));

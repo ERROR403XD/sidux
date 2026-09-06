@@ -226,16 +226,6 @@ defineExpose({ open: () => { if (!isOpen.value) onToggle() }, close: () => { isO
   @apply mt-px h-3.5 w-3.5 shrink-0 text-zinc-500;
 }
 
-.search-dropdown-menu-wrap {
-  @apply z-[120];
-}
-
-@media (max-width: 639px) {
-  .search-dropdown-menu-wrap {
-    max-width: none;
-  }
-}
-
 .search-dropdown-search-wrap {
   @apply p-2 border-b border-zinc-100;
 }
@@ -332,21 +322,11 @@ defineExpose({ open: () => { if (!isOpen.value) onToggle() }, close: () => { isO
   @apply p-3 text-center text-sm text-zinc-400;
 }
 
-.search-dropdown-menu-wrap-up,
-.search-dropdown-menu-wrap-down {
-  @apply rounded-xl border border-zinc-200 bg-white shadow-lg;
-}
-
 :global(:root.dark) .search-dropdown-trigger,
 :global(:root.dark) .search-dropdown-trigger:disabled,
 :global(:root.dark) .search-dropdown-value,
 :global(:root.dark) .search-dropdown-chevron {
   @apply text-zinc-400;
-}
-
-:global(:root.dark) .search-dropdown-menu-wrap-up,
-:global(:root.dark) .search-dropdown-menu-wrap-down {
-  @apply border-zinc-700 bg-zinc-900 shadow-[0_18px_48px_rgba(0,0,0,0.45)];
 }
 
 :global(:root.dark) .search-dropdown-search-wrap {
