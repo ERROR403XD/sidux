@@ -1,0 +1,890 @@
+{
+  "version": "0.2.3",
+  "candidate": "http://192.168.50.46:59001/",
+  "productionUnchanged": {
+    "version": "0.2.0",
+    "pid": 3456650
+  },
+  "unit": {
+    "files": 52,
+    "tests": 374
+  },
+  "artifacts": {
+    "matchingFiles": 30,
+    "image": "sha256:927aaf1aac7d156fa33ab70be6f759f7dc59d5cb64d386a0387b9f8376357ec0",
+    "source": "0093d859c0c8d9024d773fafc5f8ce23434ef335",
+    "packageHash": "a7f3b745886b4e131c405fc7814ec005eb7d4a4e8476e8af8a25d2cd0e201a87",
+    "files": {
+      "dist/assets/ApiProxyPanel-C7k1Eb_q.js": "951a660e0e52c5b6800400a251595c8278bff4db27a32acffc678686d2ebe3f4",
+      "dist/assets/AutomationsPanel-Bpr0eQmL.css": "4e452b016c3ce8be29c74c9c5fe0ab5f22e0aaba043f1c93b1c6270e770b01a2",
+      "dist/assets/AutomationsPanel-DgOvmBrA.js": "4eb6e64abdb98a65850d8a6c23434a266656cf58ad503de827efda61240462af",
+      "dist/assets/DirectoryHub-C0dRKwNa.css": "858781c27cdfd1543a385e6fc5b5fdb4393bdba595866014e5535b241fa00b81",
+      "dist/assets/DirectoryHub-HfSMTbqR.js": "9a6aa858da50f3107760a473edfa2969d0b4e024c4070b20aa492794c79a7f0c",
+      "dist/assets/ReviewPane-Bf0DO-uW.css": "86cc57d5566772694386ce6c97e7b9d9510b45cd625c915a42e8c8455581cc53",
+      "dist/assets/ReviewPane-Bfrwkd_M.js": "ec5da31107b4c2c4a28b173a334886d61809fc0b94cb217eb0840196541d0484",
+      "dist/assets/ThreadCommandDialog-Ci-hAkI0.js": "33a73e77eb9361e7362b83beb3883761ea96ecffdaa55545a8ad285f04fbd243",
+      "dist/assets/ThreadConversation-BgeTYwTH.js": "a224ce550251c989b16a1b60c23e02fe6f04b0d198d9b25be7fde1d93134361a",
+      "dist/assets/ThreadConversation-Cy6aN66D.css": "48befcdc34b8dd30a13ea232856bd77ac926fdb9f511c5c4a47359452e0b9970",
+      "dist/assets/ThreadTerminalPanel-CVMaBWTM.js": "ae2453d4bcb97b3cfe950fb2257648c1bdd67c30ff707a5f9db3a8c7c27fc131",
+      "dist/assets/ThreadTerminalPanel-Mu3fWVjX.css": "e813e1ab8f9be776b2cc180307e42232e96bfd18f616863e3a1240a49f0fbdc5",
+      "dist/assets/common-DEPjExR-.js": "9201c7b04cc783c8c7c1e6e71a40243ac7a9c5de26ec96a2f4f27c8fdeb80133",
+      "dist/assets/index-CjS0dVtS.css": "f91b293bebcc8aac7a32aa9c134393d285c6630cde879e844027b1a7b01de33d",
+      "dist/assets/index-DubR09hO.js": "e6b55bab7f66ece4bbd8e38662aaf7b057e55041e9fd65047b25603209522feb",
+      "dist/assets/index.esm-2HJYXsJb.js": "dfc12df9a4ad4ceffba861a4459ba78938a090a418acefcd8a0518a9c13911af",
+      "dist/assets/index.esm-DPL2_UNC.js": "f161f16725130ba82666855934d0d204e97e40069040aed9fae26191650b645e",
+      "dist/assets/index.esm-pVe5Qgek.js": "46afc69201e85fc921817e4fb7aad10e97aa5e69832a63b44cc3f71abd0fdbff",
+      "dist/icons/apple-touch-icon.png": "64fbe48cc3852a74ceea4896eaba5fa08835078eadc32f87d995e1715e2dda5c",
+      "dist/icons/codexui-icon.svg": "913006d9ed761ab3e349deb7eaea75cc473657837dedb12934c1d346f71b3d63",
+      "dist/icons/maskable-512x512.png": "91c23b97b97101c699f6e7e8f3164638d5b551eccb03b8bc9c4596870ca855e7",
+      "dist/icons/pwa-192x192.png": "bcd7d9b1c33279efa6f4ac079c6ff6ec0436d6beffdf69aba23f3aa181ce5b7e",
+      "dist/icons/pwa-512x512.png": "ba28d1422c2f01fa76cf4f423c8c98f937375fba55d46abef956d3e32c4ec623",
+      "dist/icons/pwa-icon.svg": "f5876b447fc272caba34567415803a508703c76d8becf77d8d9574ea9e16138a",
+      "dist/icons/pwa-maskable.svg": "2b6264ea203116794043f981162a51eee86c6bb423b7a9aa8091e4ca90923190",
+      "dist/index.html": "9e27780ff972bab62069fa64c38c954bf7b43379bda3058c58f03e8fd0d7420e",
+      "dist/manifest.webmanifest": "abb062c2bfb76d3c3c07ab8286ba51817541b51b6beae1eb67de978e332afb01",
+      "dist/sw.js": "dc0793fed9010bd766f2059142effcb79fc3c423eee1cc573111c6177d21910c",
+      "dist-cli/index.js": "f0635258aa5ee1622f8caf8a3de6735a256896c6b73af0f464a76bb4ad9917c1",
+      "dist-cli/index.js.map": "e8ad052eb8af483950d28cefc937ab53e92ce23828e97769973b52d4c092c769"
+    }
+  },
+  "candidateUiFixtures": [
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02030000-0000-7000-8000-000000000001",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "light",
+      "beforeArrivalSameId": true,
+      "acceptedLostResponseNoDuplicate": true,
+      "editSurvivesReload": true,
+      "editKeepsIdPositionSettings": true,
+      "staleEditorRejected": true,
+      "unknownHasNoReplayAction": true,
+      "newDraftPreservedAfterAck": true,
+      "versionedDragAndServerSteer": true,
+      "explicitAbandon": true,
+      "hrefOk": true,
+      "titleOk": true,
+      "textOk": true,
+      "screenshot": "/home/Code/codexapp/output/playwright/testchat-0203-delivery-1440-light-cjs.png",
+      "pageErrors": [],
+      "archivedScreenshot": "assets/0.2.3/testchat-0203-delivery-1440-light-cjs.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02030000-0000-7000-8000-000000000001",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "dark",
+      "beforeArrivalSameId": true,
+      "acceptedLostResponseNoDuplicate": true,
+      "editSurvivesReload": true,
+      "editKeepsIdPositionSettings": true,
+      "staleEditorRejected": true,
+      "unknownHasNoReplayAction": true,
+      "newDraftPreservedAfterAck": false,
+      "versionedDragAndServerSteer": false,
+      "explicitAbandon": false,
+      "hrefOk": true,
+      "titleOk": true,
+      "textOk": true,
+      "screenshot": "/home/Code/codexapp/output/playwright/testchat-0203-delivery-1440-dark-cjs.png",
+      "pageErrors": [],
+      "archivedScreenshot": "assets/0.2.3/testchat-0203-delivery-1440-dark-cjs.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02030000-0000-7000-8000-000000000001",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "theme": "light",
+      "beforeArrivalSameId": true,
+      "acceptedLostResponseNoDuplicate": true,
+      "editSurvivesReload": true,
+      "editKeepsIdPositionSettings": true,
+      "staleEditorRejected": false,
+      "unknownHasNoReplayAction": true,
+      "newDraftPreservedAfterAck": false,
+      "versionedDragAndServerSteer": false,
+      "explicitAbandon": false,
+      "hrefOk": true,
+      "titleOk": true,
+      "textOk": true,
+      "screenshot": "/home/Code/codexapp/output/playwright/testchat-0203-delivery-375-light-cjs.png",
+      "pageErrors": [],
+      "archivedScreenshot": "assets/0.2.3/testchat-0203-delivery-375-light-cjs.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02030000-0000-7000-8000-000000000001",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "theme": "dark",
+      "beforeArrivalSameId": true,
+      "acceptedLostResponseNoDuplicate": true,
+      "editSurvivesReload": true,
+      "editKeepsIdPositionSettings": true,
+      "staleEditorRejected": false,
+      "unknownHasNoReplayAction": true,
+      "newDraftPreservedAfterAck": false,
+      "versionedDragAndServerSteer": false,
+      "explicitAbandon": false,
+      "hrefOk": true,
+      "titleOk": true,
+      "textOk": true,
+      "screenshot": "/home/Code/codexapp/output/playwright/testchat-0203-delivery-375-dark-cjs.png",
+      "pageErrors": [],
+      "archivedScreenshot": "assets/0.2.3/testchat-0203-delivery-375-dark-cjs.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02030000-0000-7000-8000-000000000001",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "theme": "light",
+      "beforeArrivalSameId": true,
+      "acceptedLostResponseNoDuplicate": true,
+      "editSurvivesReload": true,
+      "editKeepsIdPositionSettings": true,
+      "staleEditorRejected": false,
+      "unknownHasNoReplayAction": true,
+      "newDraftPreservedAfterAck": false,
+      "versionedDragAndServerSteer": false,
+      "explicitAbandon": false,
+      "hrefOk": true,
+      "titleOk": true,
+      "textOk": true,
+      "screenshot": "/home/Code/codexapp/output/playwright/testchat-0203-delivery-768-light-cjs.png",
+      "pageErrors": [],
+      "archivedScreenshot": "assets/0.2.3/testchat-0203-delivery-768-light-cjs.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/02030000-0000-7000-8000-000000000001",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "theme": "dark",
+      "beforeArrivalSameId": true,
+      "acceptedLostResponseNoDuplicate": true,
+      "editSurvivesReload": true,
+      "editKeepsIdPositionSettings": true,
+      "staleEditorRejected": false,
+      "unknownHasNoReplayAction": true,
+      "newDraftPreservedAfterAck": false,
+      "versionedDragAndServerSteer": false,
+      "explicitAbandon": false,
+      "hrefOk": true,
+      "titleOk": true,
+      "textOk": true,
+      "screenshot": "/home/Code/codexapp/output/playwright/testchat-0203-delivery-768-dark-cjs.png",
+      "pageErrors": [],
+      "archivedScreenshot": "assets/0.2.3/testchat-0203-delivery-768-dark-cjs.png"
+    }
+  ],
+  "actualDelivery": {
+    "id": "01a077d8-504b-7343-9740-719826644610",
+    "deliveryId": "d-1788717060733-5a7cc362-1dd5-47e9-a002-9bf6baa5fb38",
+    "turnId": "01a077d8-53ca-7820-b077-d1e84378b648",
+    "marker": "CODEXAPP_0203_ACCEPTED_1788717060733",
+    "model": "gpt-6-astra",
+    "initialStatus": "accepted",
+    "submissionMs": 335,
+    "retryMs": 6,
+    "acceptedSameTurn": true,
+    "completed": true,
+    "assistantReply": "CODEXAPP_0203_ACCEPTED_1788717060733",
+    "userClientIdCount": 1,
+    "toolExecutions": 0
+  },
+  "actualUi": [
+    {
+      "url": "http://127.0.0.1:59001/#/thread/01a077d8-504b-7343-9740-719826644610",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "replyPersistsAfterReload": true,
+      "oneUserMessage": true,
+      "queueEmpty": true,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "/home/Code/codexapp/output/playwright/0203-actual-candidate-light.png",
+      "archivedScreenshot": "assets/0.2.3/0203-actual-candidate-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/01a077d8-504b-7343-9740-719826644610",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "replyPersistsAfterReload": true,
+      "oneUserMessage": true,
+      "queueEmpty": true,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "/home/Code/codexapp/output/playwright/0203-actual-candidate-dark.png",
+      "archivedScreenshot": "assets/0.2.3/0203-actual-candidate-dark.png"
+    }
+  ],
+  "nativeRecovery": {
+    "threadId": "01a077d9-48d1-7d93-9ea1-862e6bbc18f5",
+    "deliveryId": "d-1788717124299-27b409cb-e028-4a36-9f07-66b5b23cbea9",
+    "turnId": "01a077d9-4c0b-7201-a012-6ab60d05334d",
+    "dropMs": 323,
+    "retryMs": 5,
+    "httpBodyIntentionallyDropped": true,
+    "syntheticInvalidAuthTurnInterrupted": true,
+    "actualRestartReceiptPreserved": true,
+    "clientIdHistoryCount": 1,
+    "simulatedCrashStateOnCopiedFixtureVolume": true,
+    "recoveredSendingViaNativeClientId": true,
+    "turnCountBefore": 1,
+    "turnCountAfter": 1,
+    "ports": [
+      59012,
+      59015
+    ],
+    "copyVolume": "codexapp-0203-recovery-final-0152-home"
+  },
+  "authMatrix": [
+    {
+      "kind": "noauth",
+      "port": 59011,
+      "name": "codexapp-0203-noauth",
+      "hasCodexAuth": false,
+      "enabled": true,
+      "provider": "opencode-zen",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "invalid",
+      "port": 59012,
+      "name": "codexapp-0203-invalid",
+      "hasCodexAuth": true,
+      "enabled": false,
+      "provider": "openrouter",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "malformed",
+      "port": 59013,
+      "name": "codexapp-0203-malformed",
+      "hasCodexAuth": false,
+      "enabled": true,
+      "provider": "opencode-zen",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "provider",
+      "port": 59014,
+      "name": "codexapp-0203-provider",
+      "hasCodexAuth": false,
+      "enabled": true,
+      "provider": "opencode-zen",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "provider-after",
+      "provider": "openrouter",
+      "enabled": true
+    }
+  ],
+  "authUi": [
+    {
+      "url": "http://127.0.0.1:59012/#/thread/01a077d8-af9a-7c11-b29c-24ba7c30c548",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "invalidAuthPersistsAfterReload": true,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "/home/Code/codexapp/output/playwright/0203-invalid-light.png",
+      "archivedScreenshot": "assets/0.2.3/0203-invalid-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59012/#/thread/01a077d8-af9a-7c11-b29c-24ba7c30c548",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "invalidAuthPersistsAfterReload": true,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "/home/Code/codexapp/output/playwright/0203-invalid-dark.png",
+      "archivedScreenshot": "assets/0.2.3/0203-invalid-dark.png"
+    }
+  ],
+  "authImages": [
+    {
+      "name": "codexapp-0203-noauth",
+      "image": "sha256:927aaf1aac7d156fa33ab70be6f759f7dc59d5cb64d386a0387b9f8376357ec0"
+    },
+    {
+      "name": "codexapp-0203-invalid",
+      "image": "sha256:927aaf1aac7d156fa33ab70be6f759f7dc59d5cb64d386a0387b9f8376357ec0"
+    },
+    {
+      "name": "codexapp-0203-malformed",
+      "image": "sha256:927aaf1aac7d156fa33ab70be6f759f7dc59d5cb64d386a0387b9f8376357ec0"
+    },
+    {
+      "name": "codexapp-0203-provider",
+      "image": "sha256:927aaf1aac7d156fa33ab70be6f759f7dc59d5cb64d386a0387b9f8376357ec0"
+    },
+    {
+      "name": "codexapp-0203-recovery",
+      "image": "sha256:927aaf1aac7d156fa33ab70be6f759f7dc59d5cb64d386a0387b9f8376357ec0"
+    }
+  ],
+  "profiles": {
+    "home": {
+      "reportPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-home-2026-09-06T17-52-28-892Z.json",
+      "screenshotPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-home-2026-09-06T17-52-28-892Z.png",
+      "tracePath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-home-2026-09-06T17-52-28-892Z-trace.zip",
+      "targetUrl": "http://127.0.0.1:59001/",
+      "finalUrl": "http://127.0.0.1:59001/#/",
+      "title": "127.0.0.1",
+      "totalMs": 7286.5,
+      "duplicateCounts": {
+        "threadList": 1,
+        "threadListFirstPage": 1,
+        "threadListCursor": 0,
+        "threadResume": 0,
+        "threadRead": 0,
+        "threadReadWithTurns": 0,
+        "threadReadDuplicateKeys": 0,
+        "skillsList": 1,
+        "rateLimitsRead": 1,
+        "providerModels": 0
+      },
+      "warnings": [],
+      "pageState": {
+        "threadLoadingText": "Loading threads...",
+        "threadLoadTimeoutMs": 15000,
+        "stillLoadingThreads": false
+      },
+      "totalApiKB": 90.3,
+      "topApiSummary": [
+        {
+          "key": "account/rateLimits/read",
+          "count": 1,
+          "minMs": 2379.2,
+          "avgMs": 2379.2,
+          "p95Ms": 2379.2,
+          "maxMs": 2379.2,
+          "totalKB": 1.7
+        },
+        {
+          "key": "/codex-api/prompts",
+          "count": 2,
+          "minMs": 70.3,
+          "avgMs": 70.4,
+          "p95Ms": 70.4,
+          "maxMs": 70.4,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/home-directory",
+          "count": 1,
+          "minMs": 70.4,
+          "avgMs": 70.4,
+          "p95Ms": 70.4,
+          "maxMs": 70.4,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/preferences/first-launch-plugins-card",
+          "count": 1,
+          "minMs": 70.4,
+          "avgMs": 70.4,
+          "p95Ms": 70.4,
+          "maxMs": 70.4,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/workspace-roots-state",
+          "count": 1,
+          "minMs": 70.4,
+          "avgMs": 70.4,
+          "p95Ms": 70.4,
+          "maxMs": 70.4,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/telegram/status",
+          "count": 1,
+          "minMs": 70.4,
+          "avgMs": 70.4,
+          "p95Ms": 70.4,
+          "maxMs": 70.4,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/telegram/config",
+          "count": 1,
+          "minMs": 70.4,
+          "avgMs": 70.4,
+          "p95Ms": 70.4,
+          "maxMs": 70.4,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/free-mode/status",
+          "count": 1,
+          "minMs": 70.4,
+          "avgMs": 70.4,
+          "p95Ms": 70.4,
+          "maxMs": 70.4,
+          "totalKB": 0.8
+        },
+        {
+          "key": "/codex-api/thread-terminal/status",
+          "count": 1,
+          "minMs": 70.4,
+          "avgMs": 70.4,
+          "p95Ms": 70.4,
+          "maxMs": 70.4,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/thread-queue-state",
+          "count": 1,
+          "minMs": 70.4,
+          "avgMs": 70.4,
+          "p95Ms": 70.4,
+          "maxMs": 70.4,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/thread-pins",
+          "count": 1,
+          "minMs": 70.3,
+          "avgMs": 70.3,
+          "p95Ms": 70.3,
+          "maxMs": 70.3,
+          "totalKB": 0
+        },
+        {
+          "key": "thread/list:first-page",
+          "count": 1,
+          "minMs": 46.3,
+          "avgMs": 46.3,
+          "p95Ms": 46.3,
+          "maxMs": 46.3,
+          "totalKB": 25.7
+        }
+      ],
+      "slowestApiRows": [
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "account/rateLimits/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": null,
+          "status": 200,
+          "ms": 2379.2,
+          "requestBytes": 50,
+          "responseBytes": 1744,
+          "responseKB": 1.7
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/home-directory",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 70.4,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/preferences/first-launch-plugins-card",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 70.4,
+          "requestBytes": 0,
+          "responseBytes": 27,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/workspace-roots-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 70.4,
+          "requestBytes": 0,
+          "responseBytes": 83,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 70.4,
+          "requestBytes": 0,
+          "responseBytes": 132,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/config",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 70.4,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/free-mode/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 70.4,
+          "requestBytes": 0,
+          "responseBytes": 835,
+          "responseKB": 0.8
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 70.4,
+          "requestBytes": 0,
+          "responseBytes": 32,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 70.4,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-queue-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 70.4,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        }
+      ]
+    },
+    "thread": {
+      "reportPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-thread-01a07750-0202-7000-8000-000000001000-2026-09-06T17-51-19-976Z.json",
+      "screenshotPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-thread-01a07750-0202-7000-8000-000000001000-2026-09-06T17-51-19-976Z.png",
+      "tracePath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-thread-01a07750-0202-7000-8000-000000001000-2026-09-06T17-51-19-976Z-trace.zip",
+      "targetUrl": "http://127.0.0.1:59001/#/thread/01a07750-0202-7000-8000-000000001000",
+      "finalUrl": "http://127.0.0.1:59001/#/thread/01a07750-0202-7000-8000-000000001000",
+      "title": "TestChat 0202 1000 turns",
+      "totalMs": 7364.4,
+      "duplicateCounts": {
+        "threadList": 1,
+        "threadListFirstPage": 1,
+        "threadListCursor": 0,
+        "threadResume": 1,
+        "threadRead": 0,
+        "threadReadWithTurns": 0,
+        "threadReadDuplicateKeys": 0,
+        "skillsList": 1,
+        "rateLimitsRead": 1,
+        "providerModels": 0
+      },
+      "warnings": [],
+      "pageState": {
+        "threadLoadingText": "Loading threads...",
+        "threadLoadTimeoutMs": 15000,
+        "stillLoadingThreads": false
+      },
+      "totalApiKB": 144.2,
+      "topApiSummary": [
+        {
+          "key": "account/rateLimits/read",
+          "count": 1,
+          "minMs": 956.1,
+          "avgMs": 956.1,
+          "p95Ms": 956.1,
+          "maxMs": 956.1,
+          "totalKB": 1.7
+        },
+        {
+          "key": "thread/resume",
+          "count": 1,
+          "minMs": 234.3,
+          "avgMs": 234.3,
+          "p95Ms": 234.3,
+          "maxMs": 234.3,
+          "totalKB": 59.8
+        },
+        {
+          "key": "/codex-api/thread-queue-state",
+          "count": 1,
+          "minMs": 77.8,
+          "avgMs": 77.8,
+          "p95Ms": 77.8,
+          "maxMs": 77.8,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/workspace-roots-state",
+          "count": 1,
+          "minMs": 75.3,
+          "avgMs": 75.3,
+          "p95Ms": 75.3,
+          "maxMs": 75.3,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/thread-pins",
+          "count": 1,
+          "minMs": 75.2,
+          "avgMs": 75.2,
+          "p95Ms": 75.2,
+          "maxMs": 75.2,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/prompts",
+          "count": 1,
+          "minMs": 75.2,
+          "avgMs": 75.2,
+          "p95Ms": 75.2,
+          "maxMs": 75.2,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/home-directory",
+          "count": 1,
+          "minMs": 75.2,
+          "avgMs": 75.2,
+          "p95Ms": 75.2,
+          "maxMs": 75.2,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/preferences/first-launch-plugins-card",
+          "count": 1,
+          "minMs": 75.2,
+          "avgMs": 75.2,
+          "p95Ms": 75.2,
+          "maxMs": 75.2,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/free-mode/status",
+          "count": 1,
+          "minMs": 75.2,
+          "avgMs": 75.2,
+          "p95Ms": 75.2,
+          "maxMs": 75.2,
+          "totalKB": 0.8
+        },
+        {
+          "key": "/codex-api/telegram/config",
+          "count": 1,
+          "minMs": 75.2,
+          "avgMs": 75.2,
+          "p95Ms": 75.2,
+          "maxMs": 75.2,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/telegram/status",
+          "count": 1,
+          "minMs": 75.1,
+          "avgMs": 75.1,
+          "p95Ms": 75.1,
+          "maxMs": 75.1,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/thread-terminal/status",
+          "count": 1,
+          "minMs": 75.1,
+          "avgMs": 75.1,
+          "p95Ms": 75.1,
+          "maxMs": 75.1,
+          "totalKB": 0
+        }
+      ],
+      "slowestApiRows": [
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "account/rateLimits/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": null,
+          "status": 200,
+          "ms": 956.1,
+          "requestBytes": 50,
+          "responseBytes": 1744,
+          "responseKB": 1.7
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "thread/resume",
+          "cursor": "",
+          "threadId": "01a07750-0202-7000-8000-000000001000",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 234.3,
+          "requestBytes": 87,
+          "responseBytes": 61237,
+          "responseKB": 59.8
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-queue-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 77.8,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/workspace-roots-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 75.3,
+          "requestBytes": 0,
+          "responseBytes": 83,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-pins",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 75.2,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 75.2,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/home-directory",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 75.2,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/preferences/first-launch-plugins-card",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 75.2,
+          "requestBytes": 0,
+          "responseBytes": 27,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/free-mode/status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 75.2,
+          "requestBytes": 0,
+          "responseBytes": 835,
+          "responseKB": 0.8
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/telegram/config",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 75.2,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        }
+      ]
+    }
+  },
+  "idle": "idle-check|activeTurns=0|queued=0|pendingApprovals=0|apiConnections=0|apiActiveRequests=0|pages=1",
+  "scopeNotes": [
+    "UI network faults use browser route fixtures; native drop/restart uses the real CLI.",
+    "Crash-window sending state was constructed in a copy of a synthetic-auth volume.",
+    "No power-loss transaction guarantee; missing bounded history evidence stays unknown.",
+    "Production auth and service were not replaced."
+  ]
+}
