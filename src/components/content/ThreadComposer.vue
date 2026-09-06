@@ -370,7 +370,6 @@
 import AppSelect from '../common/AppSelect.vue'
 import { effortOptions, tierOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
 import { isOverlayEventInside } from '../../composables/overlayEvents'
-import { formatLocalDateTime } from '../../dateTime'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ComposerCommandPicker from './ComposerCommandPicker.vue'
 import { buildComposerCommands, type ComposerCommand, type SlashToken } from './composerCommands'
@@ -380,8 +379,6 @@ import type {
   CollaborationModeOption,
   ReasoningEffort,
   SpeedMode,
-  UiRateLimitSnapshot,
-  UiRateLimitWindow,
   UiThreadTokenUsage,
   UiTokenUsageBreakdown,
 } from '../../types/codex'
@@ -431,7 +428,6 @@ const props = defineProps<{
   selectedSpeedMode: SpeedMode
   skills?: SkillItem[]
   threadTokenUsage?: UiThreadTokenUsage | null
-  codexQuota?: UiRateLimitSnapshot | null
   isTurnInProgress?: boolean
   isStopPending?: boolean
   isInterruptingTurn?: boolean
@@ -796,142 +792,11 @@ const placeholderText = computed(() =>
 const hasSubmitContent = computed(() =>
   draft.value.trim().length > 0 || selectedImages.value.length > 0 || fileAttachments.value.length > 0,
 )
-const quotaSummaryText = computed(() => buildQuotaSummaryText(props.codexQuota ?? null))
-const quotaWeeklyRefreshText = computed(() => '')
-const quotaTooltipText = computed(() => buildQuotaTooltipText(props.codexQuota ?? null))
 const contextUsageView = computed(() => buildContextUsageView(props.threadTokenUsage ?? null))
 const contextUsageSummaryText = computed(() => contextUsageView.value?.summaryText ?? '')
 const contextUsageTooltipText = computed(() => contextUsageView.value?.tooltipText ?? '')
 const contextUsageRemainingPercent = computed(() => contextUsageView.value?.percentRemaining ?? 0)
 const contextUsageTone = computed(() => contextUsageView.value?.tone ?? 'healthy')
-
-function formatPlanType(planType: string | null | undefined): string {
-  if (!planType || planType === 'unknown') return ''
-  if (planType === 'edu') return 'Education'
-  return `${planType.slice(0, 1).toUpperCase()}${planType.slice(1)}`
-}
-
-function formatWindowSpan(windowMinutes: number | null): string {
-  if (typeof windowMinutes !== 'number' || !Number.isFinite(windowMinutes) || windowMinutes <= 0) return ''
-  if (windowMinutes % 1440 === 0) return `${windowMinutes / 1440}d`
-  if (windowMinutes % 60 === 0) return `${windowMinutes / 60}h`
-  return `${windowMinutes}m`
-}
-
-function formatResetTime(resetsAt: number | null): string {
-  if (typeof resetsAt !== 'number' || !Number.isFinite(resetsAt)) return ''
-  const resetMs = resetsAt * 1000
-  const diffMs = resetMs - Date.now()
-  if (diffMs <= 0) return 'resetting now'
-
-  const totalMinutes = Math.round(diffMs / 60000)
-  if (totalMinutes < 60) return `resets in ${Math.max(1, totalMinutes)}m`
-
-  const totalHours = Math.round(totalMinutes / 60)
-  if (totalHours < 48) return `resets in ${Math.max(1, totalHours)}h`
-
-  const totalDays = Math.round(totalHours / 24)
-  return `resets in ${Math.max(1, totalDays)}d`
-}
-
-function formatResetDate(resetsAt: number | null): string {
-  if (typeof resetsAt !== 'number' || !Number.isFinite(resetsAt)) return ''
-  return formatLocalDateTime(resetsAt * 1000, {
-    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-  })
-}
-
-function formatResetDateCompact(resetsAt: number | null): string {
-  if (typeof resetsAt !== 'number' || !Number.isFinite(resetsAt)) return ''
-  return formatLocalDateTime(resetsAt * 1000, { year: undefined, month: 'long', day: 'numeric', hour: undefined, minute: undefined }, 'zh-CN')
-}
-
-function pickWeeklyQuotaWindow(quota: UiRateLimitSnapshot): UiRateLimitWindow | null {
-  const windows = [quota.primary, quota.secondary].filter((window): window is UiRateLimitWindow => window !== null)
-  const exactWeekly = windows.find((window) => window.windowMinutes === 7 * 24 * 60)
-  if (exactWeekly) return exactWeekly
-
-  const longerWindows = windows
-    .filter((window) => typeof window.windowMinutes === 'number' && window.windowMinutes >= 7 * 24 * 60)
-    .sort((first, second) => (first.windowMinutes ?? 0) - (second.windowMinutes ?? 0))
-
-  if (longerWindows[0]) return longerWindows[0]
-  return quota.secondary ?? null
-}
-
-function formatWindowSummary(window: UiRateLimitWindow): string {
-  const remainingPercent = Math.max(0, Math.min(100, 100 - Math.round(window.usedPercent)))
-  const span = formatWindowSpan(window.windowMinutes)
-  return span ? `${remainingPercent}% / ${span}` : `${remainingPercent}%`
-}
-
-function buildQuotaSummaryText(quota: UiRateLimitSnapshot | null): string {
-  if (!quota) return ''
-
-  const segments: string[] = []
-  const plan = formatPlanType(quota.planType)
-  if (plan) segments.push(plan)
-  if (quota.primary) segments.push(formatWindowSummary(quota.primary))
-  if (quota.secondary) segments.push(formatWindowSummary(quota.secondary))
-
-  const weeklyWindow = pickWeeklyQuotaWindow(quota)
-  const weeklyRefreshDate = formatResetDateCompact(weeklyWindow?.resetsAt ?? null)
-  if (weeklyRefreshDate) {
-    segments.push(weeklyRefreshDate)
-  }
-
-  if (segments.length === 0 && quota.credits?.unlimited) {
-    segments.push('Unlimited credits')
-  } else if (segments.length === 0 && quota.credits?.hasCredits && quota.credits.balance) {
-    segments.push(`${quota.credits.balance} credits`)
-  }
-
-  return segments.join(' · ')
-}
-
-function buildQuotaTooltipText(quota: UiRateLimitSnapshot | null): string {
-  if (!quota) return ''
-
-  const lines: string[] = []
-  const plan = formatPlanType(quota.planType)
-  if (plan) {
-    lines.push(`Plan: ${plan}`)
-  }
-
-  if (quota.primary) {
-    const reset = formatResetTime(quota.primary.resetsAt)
-    lines.push(`Primary window: ${formatWindowSummary(quota.primary)}${reset ? `, ${reset}` : ''}`)
-  }
-
-  if (quota.secondary) {
-    const reset = formatResetTime(quota.secondary.resetsAt)
-    lines.push(`Secondary window: ${formatWindowSummary(quota.secondary)}${reset ? `, ${reset}` : ''}`)
-  }
-
-  if (quota.credits?.unlimited) {
-    lines.push('Credits: unlimited')
-  } else if (quota.credits?.hasCredits && quota.credits.balance) {
-    lines.push(`Credits: ${quota.credits.balance}`)
-  }
-
-  const weeklyWindow = pickWeeklyQuotaWindow(quota)
-  if (weeklyWindow) {
-    const weeklyRefreshDate = formatResetDate(weeklyWindow.resetsAt)
-    if (weeklyRefreshDate) {
-      lines.push(`Weekly refresh: ${weeklyRefreshDate}`)
-    }
-  }
-
-  return lines.join('\n')
-}
-
-function buildQuotaWeeklyRefreshText(quota: UiRateLimitSnapshot | null): string {
-  if (!quota) return ''
-  const weeklyWindow = pickWeeklyQuotaWindow(quota)
-  if (!weeklyWindow) return ''
-  const weeklyRefreshDate = formatResetDate(weeklyWindow.resetsAt)
-  return weeklyRefreshDate ? `Weekly refresh ${weeklyRefreshDate}` : ''
-}
 
 function formatCompactTokenCount(value: number): string {
   if (!Number.isFinite(value)) return '0'

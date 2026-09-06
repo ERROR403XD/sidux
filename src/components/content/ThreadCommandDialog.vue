@@ -5,7 +5,7 @@
       <p v-if="feedback" class="thread-command-feedback" role="status">{{ feedback }}</p>
       <p v-if="loading">读取中…</p>
       <template v-if="request.name === 'goal'">
-        <p>目标会保存在会话中，由 Codex 持续推进；可随时暂停或清除。保存为运行中后会自动开始。</p>
+        <p>目标保存在会话中，由 Codex 持续推进；保存并开始后可随时暂停。</p>
         <p v-if="goal" class="thread-goal-status">{{ goalLabels[goal.status] }} · Codex 计量 {{ goal.tokensUsed.toLocaleString() }} tokens · {{ Math.round(goal.timeUsedSeconds / 60) }} 分钟</p>
         <p v-if="goal && goalStatusHint(goal)" class="thread-command-hint" role="status">{{ goalStatusHint(goal) }}</p>
         <p v-if="goalConflict" class="thread-command-error" role="alert">目标已在其他位置修改。请重新读取后再编辑。<AppButton :disabled="working" @click="reloadGoalForm">重新读取</AppButton></p>
@@ -26,13 +26,15 @@
         </div>
         <p v-if="goal && goal.status !== 'active' && goalFormDirty" class="thread-command-hint">请先保存目标或预算的修改，再继续。</p>
         <p v-if="goal && goal.status !== 'active' && goalResumeProblem(goal) && goal.status !== 'budgetLimited'" class="thread-command-hint">{{ goalResumeProblem(goal) }}</p>
-        <p class="thread-command-hint">预算按 Codex 目标计数控制后续推进，当前回合可能超出预算；该计数不等于会话历史总 tokens。</p>
-        <p class="thread-command-hint">暂停或清除停止目标的后续推进；当前已开始的回合仍可继续，需立即停止时使用会话停止按钮。</p>
+        <details class="thread-command-hint goal-behavior-help">
+          <summary>预算与暂停说明</summary>
+          <p>预算按 Codex 目标计数控制后续推进，当前回合可能超出预算；该计数不等于会话历史总 tokens。</p>
+          <p>暂停或清除停止目标的后续推进；需立即停止当前回合时，使用会话停止按钮。</p>
+        </details>
       </template>
       <template v-else-if="request.name === 'help'">
         <p>输入 / 后继续搜索；↑↓ 选择，Enter 确认，Esc 收起。未选择命令时按原方式输入和发送文字。</p>
         <dl class="thread-command-help"><template v-for="command in helpCommands" :key="command.id"><dt>{{ command.name }}</dt><dd>{{ command.description }}</dd></template></dl>
-        <p class="thread-command-hint">命令有明确的适用条件。终端退出、桌面专属等操作不放入 WebUI 目录；可用技能及保存的提示词会自动补入。</p>
       </template>
       <template v-else-if="request.name === 'status'">
         <dl class="thread-command-status"><dt>会话</dt><dd>{{ threadName || '新会话' }}</dd><dt>模型</dt><dd>{{ model || '未选择' }}</dd><dt>推理强度</dt><dd>{{ effort || '默认' }}</dd><dt>运行状态</dt><dd>{{ busy ? '当前任务运行中，新消息默认排队' : '空闲' }}</dd><dt>工作目录</dt><dd>{{ cwd || '未选择' }}</dd><dt>上下文</dt><dd>{{ contextSummary }}</dd></dl>

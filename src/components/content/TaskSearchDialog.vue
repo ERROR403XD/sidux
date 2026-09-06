@@ -4,7 +4,7 @@
       <input v-model="query" class="app-input" aria-label="搜索任务" maxlength="200" placeholder="输入任务标题或正文" />
       <AppSelect :model-value="mode" :options="[{ value: 'title', label: '标题' }, { value: 'body', label: '正文' }]" @update:model-value="setMode" />
     </div>
-    <p class="task-search-scope">{{ query.trim() ? (mode === 'body' ? '原生正文搜索；仅已索引内容' : '原生任务标题搜索') : '最近的非归档任务' }} · 每页 20 条</p>
+    <p class="task-search-scope">{{ query.trim() ? (mode === 'body' ? '搜索已索引正文' : '按任务标题搜索') : '最近的非归档任务' }} · 每页 20 条</p>
     <p v-if="error" role="alert">{{ error }} <AppButton :disabled="loading || inserting" @click="load(false)">重试</AppButton></p>
     <p v-if="loading" role="status">搜索中…</p>
     <p v-else-if="!rows.length && !error">未找到匹配任务。</p>

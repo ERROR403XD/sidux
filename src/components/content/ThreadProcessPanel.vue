@@ -6,16 +6,16 @@
     <p v-if="loading" role="status">读取中…</p>
     <p v-if="error" class="process-error" role="alert">{{ error }}</p>
     <template v-if="mode === 'hooks'">
-      <p class="process-note">只读观察记录，始于 {{ formatLocalDateTime(hooks.observedSince) }}；更早或未收到的事件不包含在内。</p>
+      <p class="process-note">观察记录始于 {{ formatLocalDateTime(hooks.observedSince) }}；仅包含已收到的事件。</p>
       <p v-if="hooks.error" class="process-error" role="alert">{{ hooks.error }}</p>
-      <p v-if="hooks.limited" class="process-note">仅保留最近的有界记录。</p>
+      <p v-if="hooks.limited" class="process-note">仅保留最近记录。</p>
       <p v-if="!loading && !error && !hooks.runs.length">尚未观察到本会话的 Hooks 执行。</p>
       <HookRunCard v-for="run in hooks.runs" :key="hookRunKey(run)" :run="run" />
       <details class="process-config"><summary>当前目录的 Hooks 配置（{{ configuration?.hooks.length ?? '—' }}）</summary>
         <p v-if="configError" class="process-error" role="alert">{{ configError }}</p>
         <p v-for="warning in configuration?.warnings" :key="warning" class="process-error">{{ warning }}</p>
         <p v-if="configuration && !configuration.hooks.length">当前目录没有 Hooks 配置。</p>
-        <p class="process-note">启用与信任分别显示；需要审阅的配置请在 Codex CLI 的 /hooks 中处理。</p>
+        <p class="process-note">需审阅的配置请在 Codex CLI 的 /hooks 中处理。</p>
         <details v-for="definition in configuration?.hooks" :key="definition.key" class="process-card">
           <summary><span>{{ definition.statusMessage || definition.eventName }}</span><span>{{ definition.enabled ? '已启用' : '已禁用' }} · {{ trustLabel(definition.trustStatus) }}</span></summary>
           <p>{{ definition.eventName }} · {{ definition.handlerType }} · {{ definition.source }}</p>
@@ -25,7 +25,7 @@
       </details>
     </template>
     <template v-if="mode === 'terminals'">
-      <p class="process-note">这里是 Codex 启动的后台进程。应用自带的交互终端在“终端”入口。</p>
+      <p class="process-note">Codex 启动的后台进程。</p>
       <p v-if="terminalReadAt" class="process-note">上次读取 {{ formatLocalDateTime(terminalReadAt) }}</p>
       <p v-if="!loading && !error && !terminals.length">当前没有 Codex 后台终端。</p>
       <p v-if="notice" role="status">{{ notice }}</p>
