@@ -1,0 +1,616 @@
+{
+  "reviewedCommit": "c9fd5b4f04b2b69bcab7db8b7caefb42caf82b43",
+  "reviewedAt": "2026-09-06T04:21:28.939Z",
+  "unit": {
+    "files": 32,
+    "tests": 240,
+    "passed": true
+  },
+  "build": {
+    "passed": true,
+    "mainJsKB": 560.09,
+    "mainJsGzipKB": 175.5,
+    "mainCssKB": 416.99,
+    "mainCssGzipKB": 43.71
+  },
+  "cjsSmoke": {
+    "command": "node -e \"const pty = require('node-pty'); if(typeof pty.spawn !== 'function') process.exit(1); console.log('node-pty CJS export: spawn=function')\"",
+    "passed": true
+  },
+  "cliHelpPassed": true,
+  "candidate": {
+    "url": "http://127.0.0.1:59001/",
+    "httpStatus": 200,
+    "scheduler": {
+      "ready": true,
+      "activeCount": 0,
+      "queuedCount": 0,
+      "draining": false,
+      "error": "absent"
+    }
+  },
+  "unused": {
+    "diagnosticCount": 59,
+    "files": 14,
+    "byFile": {
+      "src/App.vue": 4,
+      "src/api/codexGateway.ts": 2,
+      "src/api/normalizers/v2.ts": 1,
+      "src/cli/index.ts": 1,
+      "src/components/content/ThreadComposer.vue": 9,
+      "src/components/content/ThreadConversation.vue": 21,
+      "src/components/content/ThreadTerminalPanel.vue": 2,
+      "src/components/sidebar/SidebarThreadTree.vue": 1,
+      "src/composables/useDesktopState.ts": 6,
+      "src/server/automationEngine.ts": 1,
+      "src/server/codexAppServerBridge.ts": 8,
+      "src/server/reviewGit.ts": 1,
+      "src/server/skillsRoutes.ts": 1,
+      "src/server/telegramThreadBridge.ts": 1
+    },
+    "diagnostics": [
+      {
+        "file": "src/App.vue",
+        "line": 1468,
+        "column": 3,
+        "code": "TS6133",
+        "message": "'selectedModelId' is declared but its value is never read."
+      },
+      {
+        "file": "src/App.vue",
+        "line": 1818,
+        "column": 7,
+        "code": "TS6133",
+        "message": "'latestUserTurnId' is declared but its value is never read."
+      },
+      {
+        "file": "src/App.vue",
+        "line": 2126,
+        "column": 7,
+        "code": "TS6133",
+        "message": "'terminalShortcutLabel' is declared but its value is never read."
+      },
+      {
+        "file": "src/App.vue",
+        "line": 4338,
+        "column": 26,
+        "code": "TS6133",
+        "message": "'payload' is declared but its value is never read."
+      },
+      {
+        "file": "src/api/codexGateway.ts",
+        "line": 721,
+        "column": 16,
+        "code": "TS6133",
+        "message": "'enrichThreadMessagesWithFallback' is declared but its value is never read."
+      },
+      {
+        "file": "src/api/codexGateway.ts",
+        "line": 3038,
+        "column": 3,
+        "code": "TS6133",
+        "message": "'workspaceView' is declared but its value is never read."
+      },
+      {
+        "file": "src/api/normalizers/v2.ts",
+        "line": 273,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'extractAssistantFileChanges' is declared but its value is never read."
+      },
+      {
+        "file": "src/cli/index.ts",
+        "line": 2,
+        "column": 21,
+        "code": "TS6133",
+        "message": "'existsSync' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadComposer.vue",
+        "line": 763,
+        "column": 7,
+        "code": "TS6133",
+        "message": "'attachmentFeedbackText' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadComposer.vue",
+        "line": 803,
+        "column": 7,
+        "code": "TS6133",
+        "message": "'quotaSummaryText' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadComposer.vue",
+        "line": 804,
+        "column": 7,
+        "code": "TS6133",
+        "message": "'quotaWeeklyRefreshText' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadComposer.vue",
+        "line": 805,
+        "column": 7,
+        "code": "TS6133",
+        "message": "'quotaTooltipText' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadComposer.vue",
+        "line": 807,
+        "column": 7,
+        "code": "TS6133",
+        "message": "'contextUsageSummaryText' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadComposer.vue",
+        "line": 808,
+        "column": 7,
+        "code": "TS6133",
+        "message": "'contextUsageTooltipText' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadComposer.vue",
+        "line": 809,
+        "column": 7,
+        "code": "TS6133",
+        "message": "'contextUsageRemainingPercent' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadComposer.vue",
+        "line": 810,
+        "column": 7,
+        "code": "TS6133",
+        "message": "'contextUsageTone' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadComposer.vue",
+        "line": 937,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'buildQuotaWeeklyRefreshText' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 1029,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'buildPlanMessageText' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 3779,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'formatIsoTime' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 3785,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'readRequestReason' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 3794,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'requestDisplayTitle' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 3804,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'readMcpElicitationServerName' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 3809,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'readMcpElicitationUrl' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 3990,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'onQuestionAnswerInput' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 4000,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'readQuestionOptionDescription' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 4011,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'onQuestionAnswerChange' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 4019,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'onQuestionOtherAnswerInput' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 4029,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'onMcpElicitationFieldInput' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 4038,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'onMcpElicitationBooleanToggle' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 4047,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'onMcpElicitationMultiToggle' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 4064,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'onRespondApproval' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 4071,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'onRespondPermissionsApproval' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 4107,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'onRespondMcpElicitation' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 4119,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'onRespondToolRequestUserInput' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 4136,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'onRespondToolCallFailure' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 4151,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'onRespondToolCallSuccess' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 4161,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'onRespondEmptyResult' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadConversation.vue",
+        "line": 4168,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'onRejectUnknownRequest' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadTerminalPanel.vue",
+        "line": 107,
+        "column": 7,
+        "code": "TS6133",
+        "message": "'activeTab' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/content/ThreadTerminalPanel.vue",
+        "line": 108,
+        "column": 7,
+        "code": "TS6133",
+        "message": "'quickCommands' is declared but its value is never read."
+      },
+      {
+        "file": "src/components/sidebar/SidebarThreadTree.vue",
+        "line": 894,
+        "column": 3,
+        "code": "TS6133",
+        "message": "'runThreadAutomationNow' is declared but its value is never read."
+      },
+      {
+        "file": "src/composables/useDesktopState.ts",
+        "line": 143,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'saveUnreadCutoffIso' is declared but its value is never read."
+      },
+      {
+        "file": "src/composables/useDesktopState.ts",
+        "line": 786,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'removePersistedLiveMessages' is declared but its value is never read."
+      },
+      {
+        "file": "src/composables/useDesktopState.ts",
+        "line": 1537,
+        "column": 7,
+        "code": "TS6133",
+        "message": "'shouldAutoScrollOnNextAgentEvent' is declared but its value is never read."
+      },
+      {
+        "file": "src/composables/useDesktopState.ts",
+        "line": 2791,
+        "column": 12,
+        "code": "TS6133",
+        "message": "'normalizeRateLimitSnapshotsPayload' is declared but its value is never read."
+      },
+      {
+        "file": "src/composables/useDesktopState.ts",
+        "line": 3807,
+        "column": 13,
+        "code": "TS6133",
+        "message": "'pendingTurnRequest' is declared but its value is never read."
+      },
+      {
+        "file": "src/composables/useDesktopState.ts",
+        "line": 5420,
+        "column": 18,
+        "code": "TS6133",
+        "message": "'syncThreadStatus' is declared but its value is never read."
+      },
+      {
+        "file": "src/server/automationEngine.ts",
+        "line": 59,
+        "column": 105,
+        "code": "TS6138",
+        "message": "Property 'automatic' is declared but its value is never read."
+      },
+      {
+        "file": "src/server/codexAppServerBridge.ts",
+        "line": 10,
+        "column": 63,
+        "code": "TS6133",
+        "message": "'cp' is declared but its value is never read."
+      },
+      {
+        "file": "src/server/codexAppServerBridge.ts",
+        "line": 10,
+        "column": 74,
+        "code": "TS6133",
+        "message": "'readlink' is declared but its value is never read."
+      },
+      {
+        "file": "src/server/codexAppServerBridge.ts",
+        "line": 10,
+        "column": 84,
+        "code": "TS6133",
+        "message": "'symlink' is declared but its value is never read."
+      },
+      {
+        "file": "src/server/codexAppServerBridge.ts",
+        "line": 3823,
+        "column": 9,
+        "code": "TS6133",
+        "message": "'patchHadError' is declared but its value is never read."
+      },
+      {
+        "file": "src/server/codexAppServerBridge.ts",
+        "line": 4055,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'getSkillsInstallDir' is declared but its value is never read."
+      },
+      {
+        "file": "src/server/codexAppServerBridge.ts",
+        "line": 4475,
+        "column": 16,
+        "code": "TS6133",
+        "message": "'runCommandWithOutput' is declared but its value is never read."
+      },
+      {
+        "file": "src/server/codexAppServerBridge.ts",
+        "line": 5355,
+        "column": 16,
+        "code": "TS6133",
+        "message": "'appendThreadQueuedMessage' is declared but its value is never read."
+      },
+      {
+        "file": "src/server/codexAppServerBridge.ts",
+        "line": 5406,
+        "column": 10,
+        "code": "TS6133",
+        "message": "'buildHeartbeatQueuedMessage' is declared but its value is never read."
+      },
+      {
+        "file": "src/server/reviewGit.ts",
+        "line": 11,
+        "column": 6,
+        "code": "TS6196",
+        "message": "'ReviewActionLevel' is declared but never used."
+      },
+      {
+        "file": "src/server/skillsRoutes.ts",
+        "line": 8,
+        "column": 1,
+        "code": "TS6192",
+        "message": "All imports in import declaration are unused."
+      },
+      {
+        "file": "src/server/telegramThreadBridge.ts",
+        "line": 209,
+        "column": 11,
+        "code": "TS6133",
+        "message": "'pollingTask' is declared but its value is never read."
+      }
+    ]
+  },
+  "limitations": [
+    "Read-only code audit plus isolated source fixtures. No external calendar/account mutation/model turns in this review.",
+    "Prior UI/theme/real-goal/real-automation acceptance retained in 0013-0016; not rerun as new acceptance.",
+    "No browser profiler in this review; bundle measurements and queue code-path analysis only."
+  ],
+  "importGraph": {
+    "roots": [
+      "src/main.ts",
+      "src/cli/index.ts",
+      "vite.config.ts",
+      "tsup.config.ts"
+    ],
+    "sourceFiles": 157,
+    "productionReachable": 137,
+    "unreachable": [
+      {
+        "file": "src/components/content/AccountMenu.vue",
+        "lines": 170,
+        "referencedByTests": false,
+        "importedBy": []
+      },
+      {
+        "file": "src/components/content/ApiMethodsPanel.vue",
+        "lines": 59,
+        "referencedByTests": false,
+        "importedBy": []
+      },
+      {
+        "file": "src/components/content/ComposerSkillPicker.vue",
+        "lines": 143,
+        "referencedByTests": false,
+        "importedBy": []
+      },
+      {
+        "file": "src/components/content/ThreadMessageTypeMenu.vue",
+        "lines": 130,
+        "referencedByTests": false,
+        "importedBy": []
+      },
+      {
+        "file": "src/components/icons/IconTablerArchive.vue",
+        "lines": 12,
+        "referencedByTests": false,
+        "importedBy": []
+      },
+      {
+        "file": "src/components/icons/IconTablerChevronLeft.vue",
+        "lines": 5,
+        "referencedByTests": false,
+        "importedBy": []
+      },
+      {
+        "file": "src/components/icons/IconTablerFilter.vue",
+        "lines": 10,
+        "referencedByTests": false,
+        "importedBy": []
+      },
+      {
+        "file": "src/components/icons/IconTablerPin.vue",
+        "lines": 12,
+        "referencedByTests": false,
+        "importedBy": []
+      },
+      {
+        "file": "src/components/sidebar/SidebarPrimaryNav.vue",
+        "lines": 23,
+        "referencedByTests": false,
+        "importedBy": []
+      }
+    ],
+    "unreachableLines": 564
+  },
+  "sourceProbes": {
+    "automationMessageLabel": {
+      "oldEnvelopeRecognized": true,
+      "currentEnvelopeRecognized": false
+    },
+    "historyItems": [
+      {
+        "type": "mcpToolCall",
+        "renderedRows": 0
+      },
+      {
+        "type": "dynamicToolCall",
+        "renderedRows": 0
+      },
+      {
+        "type": "collabAgentToolCall",
+        "renderedRows": 0
+      },
+      {
+        "type": "subAgentActivity",
+        "renderedRows": 0
+      },
+      {
+        "type": "webSearch",
+        "renderedRows": 0
+      },
+      {
+        "type": "contextCompaction",
+        "renderedRows": 0
+      }
+    ],
+    "asyncMessage": {
+      "textPreserved": true,
+      "questionsPreserved": false,
+      "deliveryPreserved": false
+    },
+    "queueLostUpdate": {
+      "sentThreadIds": [
+        "thread-a",
+        "thread-b"
+      ],
+      "persistedThreadIds": [
+        "thread-b"
+      ]
+    },
+    "queueRefreshClear": {
+      "stopPollingContainsQueueClearAndPersist": true,
+      "emptyPutRemovesSavedQueue": true,
+      "scope": "Code path plus extracted backend function; no live account action"
+    },
+    "nonBlockingQuestion": {
+      "idleThreadCanStartAutomation": false,
+      "inputIsBlocking": false
+    },
+    "pwaNavigationCache": {
+      "initialCachedStatus": 200,
+      "subsequentNetworkStatus": 500,
+      "offlineFallbackStatus": 500
+    },
+    "deploymentOrder": {
+      "fixtureOnly": true,
+      "simulatedBuildExit": 42,
+      "calls": [
+        "docker container inspect review-fixture-never-real",
+        "docker stop --timeout 10 review-fixture-never-real",
+        "docker rm review-fixture-never-real",
+        "pnpm --dir /home/Code/codexapp run build"
+      ]
+    }
+  },
+  "baselines": {
+    "upstreamImport": "fac2291",
+    "stable": "stable/ui-0.1.89-ec9cb75",
+    "reviewed": "c9fd5b4"
+  },
+  "productionTouched": false,
+  "sourceChanged": false
+}
