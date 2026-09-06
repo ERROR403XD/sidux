@@ -483,7 +483,8 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', onDocumentPointe
 }
 
 .header-git-menu {
-  @apply w-[42rem] max-w-[calc(100vw-1.5rem)] rounded-xl border border-zinc-200 bg-white p-1 shadow-lg;
+  @apply w-[42rem] max-w-[calc(100vw-1.5rem)] overflow-y-auto rounded-xl border border-zinc-200 bg-white p-1 shadow-lg;
+  max-height: calc(100dvh - 5rem);
 }
 
 .header-git-menu.has-commit-files {
@@ -715,7 +716,7 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', onDocumentPointe
   .header-git-menu,
   .header-git-menu.has-commit-files {
     @apply w-auto max-w-none overflow-y-auto;
-    max-height: calc(100vh - 5.25rem);
+    max-height: calc(100dvh - 5.25rem);
   }
 
   .header-git-review-row {
