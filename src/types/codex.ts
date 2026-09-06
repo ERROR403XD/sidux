@@ -72,6 +72,7 @@ export type UiThread = {
   unread: boolean
   inProgress: boolean
   pendingRequestState?: UiPendingRequestState | null
+  task?: import('../subtasks').TaskIdentity | null
 }
 
 export type UiPendingRequestState = 'approval' | 'response'

@@ -1,6 +1,7 @@
 import { readAsyncQuestions, readQuestionReply } from '../../userQuestions'
 import { normalizeToolSummary } from './toolSummary'
 import { compactionFromTurn } from '../../compaction'
+import { readTaskIdentity } from '../../subtasks'
 import { parseAutomationMessage, type AutomationMessageMetadata } from '../../automationMessage'
 import type {
   Thread,
@@ -605,6 +606,7 @@ function toUiThread(summary: Thread): UiThread {
     preview: summary.preview,
     unread: false,
     inProgress: readThreadInProgress(summary),
+    task: readTaskIdentity(summary),
   }
 }
 

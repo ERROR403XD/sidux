@@ -3,11 +3,12 @@ export type ComposerCommand = {
   action: 'plan' | 'default' | 'model' | 'skills' | 'prompt' | 'skill' | 'app' | 'mention' | 'init'
   value?: string; search: string
 }
-export type AppCommandName = 'goal' | 'compact' | 'new' | 'rename' | 'fork' | 'review' | 'diff' | 'status' | 'copy' | 'resume' | 'apps' | 'plugins' | 'mcp' | 'automations' | 'export' | 'help'
+export type AppCommandName = 'goal' | 'compact' | 'tasks' | 'new' | 'rename' | 'fork' | 'review' | 'diff' | 'status' | 'copy' | 'resume' | 'apps' | 'plugins' | 'mcp' | 'automations' | 'export' | 'help'
 export type AppCommandRequest = { name: AppCommandName; complete: () => void }
 export const APP_COMMANDS: { id: AppCommandName; description: string; requiresThread?: boolean; idleOnly?: boolean }[] = [
   { id: 'goal', description: '设置持续目标，查看进展、暂停或继续' },
   { id: 'compact', description: '压缩当前会话上下文，保留关键内容', requiresThread: true, idleOnly: true },
+  { id: 'tasks', description: '搜索任务，打开或插入近期对话摘录' },
   { id: 'new', description: '在当前项目开始新会话，保留原会话' },
   { id: 'rename', description: '重命名当前会话', requiresThread: true },
   { id: 'fork', description: '从当前会话创建独立分支', requiresThread: true, idleOnly: true },

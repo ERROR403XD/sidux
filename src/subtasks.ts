@@ -45,7 +45,7 @@ export function readTaskIdentity(value: unknown): TaskIdentity | null {
 
 export function normalizeSubtaskEvent(value: unknown): UiMessage | null {
   const row = object(value)
-  if (!taskId(row.id)) return null
+  if (typeof row.id !== 'string' || !row.id) return null
   let event: SubtaskEvent
   if (row.type === 'subAgentActivity') {
     const id = taskId(row.agentThreadId)

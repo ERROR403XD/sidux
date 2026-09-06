@@ -4,7 +4,7 @@ import { mergeSubtaskMessage, normalizeSubtaskEvent, readTaskIdentity } from './
 describe('native task identity and activity', () => {
   it('keeps a normal fork separate from a spawned child, including old source metadata', () => {
     expect(readTaskIdentity({ id: 'fork', forkedFromId: 'main' })?.parentThreadId).toBe('')
-    expect(readTaskIdentity({ id: 'child', source: { subagent: { thread_spawn: { parent_thread_id: 'main', agent_path: '/root/review', agent_nickname: 'Reviewer' } } } })).toMatchObject({ parentThreadId: 'main', nickname: 'Reviewer', path: '/root/review' })
+    expect(readTaskIdentity({ id: 'child', source: { subAgent: { thread_spawn: { parent_thread_id: 'main', agent_path: '/root/review', agent_nickname: 'Reviewer' } } } })).toMatchObject({ parentThreadId: 'main', nickname: 'Reviewer', path: '/root/review' })
   })
   it('does not convert tool completion into child completion and limits returned text and targets', () => {
     const event = normalizeSubtaskEvent({ id: 'spawn', type: 'collabAgentToolCall', tool: 'spawnAgent', status: 'completed', receiverThreadIds: Array.from({ length: 80 }, (_, i) => 'child-' + i), agentsStates: { 'child-0': { status: 'running', message: 'x'.repeat(9000) } }, prompt: 'y'.repeat(9000) })!

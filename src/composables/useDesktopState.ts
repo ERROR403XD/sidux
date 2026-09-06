@@ -702,7 +702,7 @@ function mergeMessages(
     if (previousMessage && areMessageFieldsEqual(previousMessage, incomingMessage)) {
       return previousMessage
     }
-    return incomingMessage
+    return mergeSubtaskMessage(previousMessage, incomingMessage)
   })
 
   if (options.preserveMissing !== true) {
@@ -718,7 +718,7 @@ function mergeMessages(
       if (areMessageFieldsEqual(previousMessage, nextMessage)) {
         return previousMessage
       }
-      return nextMessage
+      return mergeSubtaskMessage(previousMessage, nextMessage)
     })
     .filter(message => {
       if (message.questions?.length && message.questionOrdinal !== undefined && message.turnId && !incomingById.has(message.id)
@@ -973,7 +973,8 @@ function areThreadFieldsEqual(first: UiThread, second: UiThread): boolean {
     first.preview === second.preview &&
     first.unread === second.unread &&
     first.inProgress === second.inProgress &&
-    first.pendingRequestState === second.pendingRequestState
+    first.pendingRequestState === second.pendingRequestState &&
+    JSON.stringify(first.task) === JSON.stringify(second.task)
   )
 }
 
@@ -1421,6 +1422,7 @@ export function useDesktopState() {
   const projectGroups = ref<UiProjectGroup[]>([])
   const sourceGroups = ref<UiProjectGroup[]>([])
   const selectedThreadId = ref(loadSelectedThreadId())
+  const snapshotThreads = ref<Record<string, UiThread>>({})
   const persistedMessagesByThreadId = ref<Record<string, UiMessage[]>>({})
   const livePlanMessagesByThreadId = ref<Record<string, UiMessage[]>>({})
   const liveAgentMessagesByThreadId = ref<Record<string, UiMessage[]>>({})
@@ -1606,9 +1608,14 @@ export function useDesktopState() {
 
 
   const allThreads = computed(() => flattenThreads(projectGroups.value))
-  const selectedThread = computed(() =>
-    allThreads.value.find((thread) => thread.id === selectedThreadId.value) ?? null,
-  )
+  const selectedThread = computed(() => {
+    const threadId = selectedThreadId.value
+    const listed = allThreads.value.find(thread => thread.id === threadId)
+    const snapshot = snapshotThreads.value[threadId]
+    const thread = listed ?? snapshot
+    if (!thread) return null
+    return { ...thread, title: threadTitleById.value[threadId] || thread.title, task: snapshot?.task ?? thread.task }
+  })
   const selectedThreadTerminalOpen = computed(() => {
     const threadId = selectedThreadId.value
     return Boolean(threadId && terminalOpenByThreadId.value[threadId] === true)
@@ -2220,6 +2227,7 @@ export function useDesktopState() {
     if (currentThreadId) {
       activeThreadIds.add(currentThreadId)
     }
+    snapshotThreads.value = pruneThreadContextStateMap(snapshotThreads.value, activeThreadIds)
     const nextSelectedModelMap = pruneThreadContextStateMap(selectedModelIdByContext.value, activeThreadIds)
     if (nextSelectedModelMap !== selectedModelIdByContext.value) {
       selectedModelIdByContext.value = nextSelectedModelMap
@@ -4430,6 +4438,7 @@ export function useDesktopState() {
       const needsResume = resumedThreadById.value[threadId] !== true
       const resumedThread = needsResume ? await resumeThread(threadId) : null
       const detail = resumedThread ?? await getThreadDetail(threadId)
+      if (detail.thread) snapshotThreads.value = { ...snapshotThreads.value, [threadId]: detail.thread }
 
       if (detail.modelProvider) {
         setThreadModelProviderId(threadId, detail.modelProvider)
@@ -5472,6 +5481,7 @@ export function useDesktopState() {
       }
       if (notification.method === 'ready') {
         if (notificationReady) {
+          observeTaskNotification({ method: 'codexapp/reconnected', params: {} })
           invalidateModelCatalog()
           availableModels.value = []
           recentRateLimitsAt = 0

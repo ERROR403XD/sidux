@@ -1033,6 +1033,8 @@
                 <div class="content-thread">
                   <p v-if="threadGoalsError" class="thread-goal-read-error" role="alert">{{ threadGoalsError }} <AppButton @click="refreshThreadGoals">重新读取</AppButton></p>
                   <p v-if="pendingCompactionRequest" class="thread-compaction-pending" role="status">压缩请求等待确认。<AppButton @click="onComposerCommand({ name: 'compact', complete: () => {} })">检查压缩</AppButton></p>
+                  <ThreadTasksPanel :thread-id="selectedThreadId" :identity="selectedThread?.task || null" @return-task="onReturnTask" @open-task="onOpenRelatedTask" @search-tasks="isTaskSearchOpen = true" />
+                  <AppButton v-if="taskReturnId" class="task-return-button" @click="onReturnTask(taskReturnId)">返回原会话</AppButton>
                   <ThreadGoalCard v-if="selectedGoal" :goal="selectedGoal" @manage="onComposerCommand({ name: 'goal', complete: () => {} })" />
                   <ThreadConversation ref="threadConversationRef" :messages="filteredMessages" :is-loading="isLoadingMessages"
                     :active-thread-id="composerThreadContextId" :cwd="composerCwd"
@@ -1042,6 +1044,7 @@
                     :is-loading-persisted-above="isLoadingOlderMessages"
                     :load-earlier-messages="loadOlderMessages"
                     :answer-questions="answerAsyncQuestions"
+                    @open-task="onOpenRelatedTask"
                     @fork-thread="onForkThreadFromMessage"
                     @rollback="onRollback"
                     @implement-plan="onImplementPlan"
@@ -1096,7 +1099,7 @@
                   <ThreadComposer
                     v-if="!selectedThreadPendingRequest || isAsyncUserInputRequest(selectedThreadPendingRequest)"
                     ref="threadComposerRef"
-                    :disabled="isSwitchingAccounts"
+                    :disabled="isSwitchingAccounts || selectedThread?.task?.canAcceptDirectInput === false"
                     :active-thread-id="composerThreadContextId"
                     :draft-key="editingQueuedMessageState?.draftKey"
                     :cwd="composerCwd"
@@ -1130,6 +1133,7 @@
       </section>
     </template>
   </DesktopLayout>
+  <TaskSearchDialog :open="isTaskSearchOpen" :allow-insert="!isSwitchingAccounts && selectedThread?.task?.canAcceptDirectInput !== false" @close="isTaskSearchOpen = false" @open-task="onOpenRelatedTask" @insert="onInsertTaskExcerpt" />
   <ThreadCommandDialog
     v-if="appCommandRequest" :request="appCommandRequest"
     :thread-id="isHomeRoute ? '' : selectedThreadId || ''" :thread-name="isHomeRoute ? '' : selectedThread?.title || ''"
@@ -1279,6 +1283,9 @@ import SidebarThreadTree from './components/sidebar/SidebarThreadTree.vue'
 import ContentHeader from './components/content/ContentHeader.vue'
 import ThreadComposer from './components/content/ThreadComposer.vue'
 import ThreadGoalCard from './components/content/ThreadGoalCard.vue'
+import ThreadTasksPanel from './components/content/ThreadTasksPanel.vue'
+import TaskSearchDialog from './components/content/TaskSearchDialog.vue'
+import { taskId } from './subtasks'
 import { compactionRequests } from './api/threadCompaction'
 import { useThreadGoals } from './composables/useThreadGoals'
 import ThreadPendingRequestPanel from './components/content/ThreadPendingRequestPanel.vue'
@@ -3687,6 +3694,33 @@ const goalThreadIds = computed(() => projectGroups.value.flatMap(group => group.
 const goalSelectedThreadId = computed(() => isHomeRoute.value ? '' : selectedThreadId.value || '')
 const pendingCompactionRequest = computed(() => ['requested', 'unknown'].includes(compactionRequests.value[goalSelectedThreadId.value]?.status ?? ''))
 const { goals: threadGoals, selectedGoal, error: threadGoalsError, update: updateThreadGoal, refresh: refreshThreadGoals } = useThreadGoals(goalThreadIds, goalSelectedThreadId)
+const isTaskSearchOpen = ref(false)
+const taskReturnId = computed(() => {
+  const id = taskId(route.query.fromTask)
+  return id && id !== selectedThreadId.value && id !== selectedThread.value?.task?.parentThreadId ? id : ''
+})
+async function onOpenRelatedTask(threadId: string) {
+  const id = taskId(threadId)
+  if (!id) return
+  isTaskSearchOpen.value = false
+  const from = selectedThreadId.value
+  await router.push({ name: 'thread', params: { threadId: id }, query: from && from !== id ? { fromTask: from } : {} })
+}
+async function onReturnTask(threadId: string) {
+  if (!taskId(threadId)) return
+  await router.push({ name: 'thread', params: { threadId } })
+}
+async function onInsertTaskExcerpt(text: string) {
+  if (isSwitchingAccounts.value || selectedThread.value?.task?.canAcceptDirectInput === false) return
+  const contextId = composerThreadContextId.value
+  const composer = isHomeRoute.value ? homeThreadComposerRef.value : threadComposerRef.value
+  if (!composer) return
+  isTaskSearchOpen.value = false
+  await nextTick()
+  if (contextId !== composerThreadContextId.value) return
+  composer.appendTextToDraft(text)
+}
+watch(() => selectedThreadId.value, () => { isTaskSearchOpen.value = false })
 const appCommandRequest = ref<AppCommandRequest | null>(null)
 const commandContextSummary = computed(() => {
   if (isHomeRoute.value) return '新会话尚无上下文用量'
@@ -3696,8 +3730,8 @@ const commandContextSummary = computed(() => {
 })
 function onComposerCommand(request: AppCommandRequest) {
   if (isSwitchingAccounts.value) return
-  if (['new', 'resume', 'apps', 'plugins', 'mcp', 'automations', 'diff', 'copy', 'export'].includes(request.name)) {
-    const navigation = ['new', 'resume', 'apps', 'plugins', 'mcp', 'automations', 'diff'].includes(request.name)
+  if (['new', 'resume', 'tasks', 'apps', 'plugins', 'mcp', 'automations', 'diff', 'copy', 'export'].includes(request.name)) {
+    const navigation = ['new', 'resume', 'tasks', 'apps', 'plugins', 'mcp', 'automations', 'diff'].includes(request.name)
     if (navigation) request.complete()
     void runAppCommand(request.name).then(() => { if (!navigation) request.complete() }).catch(cause => { desktopError.value = cause instanceof Error ? cause.message : '命令执行失败' })
     return
@@ -3723,6 +3757,7 @@ async function runAppCommand(name: AppCommandName, value?: string): Promise<void
       if (!value) throw new Error('缺少目标会话')
       await router.push({ name: 'thread', params: { threadId: value } }); break
     case 'new': onStartNewThreadFromToolbar(); break
+    case 'tasks': isTaskSearchOpen.value = true; break
     case 'resume':
       setSidebarCollapsed(false); isSidebarSearchVisible.value = true
       await nextTick(); sidebarSearchInputRef.value?.focus(); break

@@ -797,7 +797,14 @@ async function getThreadSummaryV2(threadId: string): Promise<UiThread> {
   return normalizeThreadSummaryV2(payload)
 }
 
+function readLoadedThreadSummary(payload: ThreadReadResponse): UiThread | undefined {
+  const thread = payload.thread
+  if (!thread || typeof thread.cwd !== 'string' || !Number.isFinite(thread.createdAt) || !Number.isFinite(thread.updatedAt)) return undefined
+  return normalizeThreadSummaryV2(payload)
+}
+
 async function getThreadDetailV2(threadId: string): Promise<{
+  thread?: UiThread
   model: string
   modelProvider: string
   messages: UiMessage[]
@@ -814,6 +821,7 @@ async function getThreadDetailV2(threadId: string): Promise<{
   const startTurnIndex = readThreadTurnStartIndex(payload)
   const normalized = normalizeThreadMessagesV2(payload, startTurnIndex)
   return {
+    thread: readLoadedThreadSummary(payload),
     model: normalizeThreadModelFromPayload(payload),
     modelProvider: normalizeThreadModelProviderFromPayload(payload),
     messages: normalized,
@@ -901,6 +909,7 @@ export async function getThreadSummary(threadId: string): Promise<UiThread> {
 }
 
 export async function getThreadDetail(threadId: string): Promise<{
+  thread?: UiThread
   model: string
   modelProvider: string
   messages: UiMessage[]
@@ -1592,6 +1601,7 @@ export async function removeAccount(storageId: string): Promise<AccountsListResu
 }
 
 export type ResumedThread = {
+  thread?: UiThread
   model: string
   modelProvider: string
   messages: UiMessage[]
@@ -1614,6 +1624,7 @@ export async function resumeThread(threadId: string): Promise<ResumedThread> {
     const startTurnIndex = readThreadTurnStartIndex(payload)
     const messages = normalizeThreadMessagesV2(payload, startTurnIndex)
     return {
+      thread: readLoadedThreadSummary(payload),
       model: normalizeThreadModelFromPayload(payload),
       modelProvider: normalizeThreadModelProviderFromPayload(payload),
       messages,

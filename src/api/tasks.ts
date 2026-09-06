@@ -11,7 +11,7 @@ async function rpc(method: string, params: Record<string, unknown>, signal?: Abo
 export async function listTaskPage(options: { query?: string; mode?: 'title' | 'body'; parentId?: string; cursor?: string | null; signal?: AbortSignal }): Promise<TaskPage> {
   const query = options.query?.trim().slice(0, 200) || ''
   const bodySearch = !options.parentId && !!query && options.mode === 'body'
-  const params = { limit: 20, archived: false, cursor: options.cursor || null, sourceKinds: options.parentId ? ['subAgentThreadSpawn'] : sources,
+  const params = { limit: 20, archived: false, sortKey: 'updated_at', cursor: options.cursor || null, sourceKinds: options.parentId ? ['subAgentThreadSpawn'] : sources,
     ...(options.parentId ? { parentThreadId: options.parentId } : query ? { searchTerm: query } : {}) }
   const result = await rpc(bodySearch ? 'thread/search' : 'thread/list', params, options.signal)
   if (!Array.isArray(result.data)) throw new Error('任务列表格式不可用，请刷新后重试。')

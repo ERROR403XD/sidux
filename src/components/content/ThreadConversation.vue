@@ -277,7 +277,8 @@
                   <code v-if="message.automationDisplayName">{{ message.automationDisplayName }}</code>
                   <time v-if="message.automationRun" :datetime="new Date(message.automationRun.startedAt).toISOString()" :title="formatLocalDateTime(message.automationRun.startedAt, { second: '2-digit', timeZoneName: 'short' })">{{ formatLocalDateTime(message.automationRun.startedAt) }}</time>
                 </div>
-                <div v-if="message.compaction" class="thread-compaction-event" :data-status="message.compaction.status" role="status">
+                <SubtaskEventCard v-if="message.subtask" :event="message.subtask" @open-task="emit('openTask', $event)" />
+                <div v-else-if="message.compaction" class="thread-compaction-event" :data-status="message.compaction.status" role="status">
                   <span>{{ message.text }}</span>
                   <small v-if="message.compaction.durationMs != null">{{ (message.compaction.durationMs / 1000).toFixed(1) }} 秒</small>
                   <p v-if="message.compaction.error" role="alert">{{ message.compaction.error }}</p>
@@ -933,6 +934,7 @@
 </template>
 
 <script setup lang="ts">
+import SubtaskEventCard from './SubtaskEventCard.vue'
 import AsyncQuestionCard from './AsyncQuestionCard.vue'
 import { questionRefKey, type AsyncQuestionReply } from '../../userQuestions'
 import { formatLocalDateTime } from '../../dateTime'
@@ -1339,6 +1341,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  openTask: [threadId: string]
   forkThread: [payload: { threadId: string; turnId: string }]
   rollback: [payload: { turnId: string }]
   implementPlan: [payload: { turnId: string }]
