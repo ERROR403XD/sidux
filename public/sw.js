@@ -91,15 +91,15 @@ function isUsableStatic(response, request) {
 
 async function networkFirstStatic(request) {
   const cache = await caches.open(CACHE_NAME).catch(() => null)
-  const cached = await cache?.match(request).catch(() => undefined)
   try {
     const response = await fetch(request)
     if (isUsableStatic(response, request)) {
       await cache?.put(request, response.clone()).catch(() => {})
       return response
     }
-    return isUsableStatic(cached, request) ? cached : Response.error()
   } catch {
-    return isUsableStatic(cached, request) ? cached : Response.error()
+    // A network failure may still have a usable copy from an older release.
   }
+  const cached = await cache?.match(request).catch(() => undefined)
+  return isUsableStatic(cached, request) ? cached : Response.error()
 }
