@@ -1,0 +1,11 @@
+{
+  "name": "CLIProxyAPI",
+  "version": "7.2.152",
+  "commit": "c76dfd4e0edabab9000628b1560ab8ab379eadb8",
+  "license": "MIT",
+  "platform": "linux-x64",
+  "asset": "CLIProxyAPI_7.2.152_linux_amd64_no-plugin.tar.gz",
+  "url": "https://github.com/router-for-me/CLIProxyAPI/releases/download/v7.2.152/CLIProxyAPI_7.2.152_linux_amd64_no-plugin.tar.gz",
+  "archiveSha256": "b5028ae821dc903cc1c2b0a5a0e23a37480a6c52ee73d66f27fc35e204e8d5b8",
+  "binarySha256": "fc9b13ecda255129b7c452a8c0a84bd0669de0b546d0919f5566cff5397c0c23"
+}

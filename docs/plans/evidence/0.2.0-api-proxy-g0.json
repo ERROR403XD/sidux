@@ -1,0 +1,196 @@
+{
+  "date": "2026-09-06",
+  "fixtureOnlyRefresh": true,
+  "realCredentialSource": "59001 isolated access-token projection, no refresh-token copy",
+  "reports": {
+    "component-probe": {
+      "component": "CLIProxyAPI v7.2.152 linux_amd64_no-plugin",
+      "assertions": [
+        "access-only credential loads",
+        "API key required",
+        "Codex model catalog shape",
+        "Responses JSON with projected access token",
+        "Responses SSE terminal",
+        "compact opaque content",
+        "atomic credential projection hot reload",
+        "WebSocket two-turn continuation",
+        "expired access-only projection does not call OAuth refresh",
+        "projection remains free of refresh tokens",
+        "expired projection fails closed",
+        "valid projection restores routing after expiry",
+        "no additional retry on upstream 500",
+        "raw error logs disabled"
+      ],
+      "requests": [
+        {
+          "transport": "http",
+          "path": "/backend-api/codex/responses",
+          "inputCount": 1,
+          "previousResponseId": null
+        },
+        {
+          "transport": "http",
+          "path": "/backend-api/codex/responses",
+          "inputCount": 1,
+          "previousResponseId": null
+        },
+        {
+          "transport": "http",
+          "path": "/backend-api/codex/responses/compact",
+          "inputCount": 1,
+          "previousResponseId": null
+        },
+        {
+          "transport": "http",
+          "path": "/backend-api/codex/responses",
+          "inputCount": 1,
+          "previousResponseId": null
+        },
+        {
+          "transport": "ws",
+          "path": "/backend-api/codex/responses",
+          "inputCount": 1,
+          "previousResponseId": null
+        },
+        {
+          "transport": "ws",
+          "path": "/backend-api/codex/responses",
+          "inputCount": 1,
+          "previousResponseId": "resp_fixture_4"
+        },
+        {
+          "transport": "http",
+          "path": "/backend-api/codex/responses",
+          "inputCount": 1,
+          "previousResponseId": null
+        },
+        {
+          "transport": "http",
+          "path": "/backend-api/codex/responses",
+          "inputCount": 1,
+          "previousResponseId": null
+        }
+      ],
+      "pending": [
+        "real-account generation and refresh",
+        "actual Codex CLI tool/compact/resume",
+        "cross-key cache ownership",
+        "in-flight cancellation and hot reload under long-lived WS"
+      ]
+    },
+    "real-probe": {
+      "component": "v7.2.152",
+      "cli": "0.153.4",
+      "source": "isolated 59001 active access token only",
+      "checks": [
+        {
+          "name": "real HTTP Responses",
+          "status": 200,
+          "completed": true,
+          "marker": true
+        },
+        {
+          "name": "real compact",
+          "status": 404,
+          "opaque": false
+        },
+        {
+          "name": "actual CLI HTTP tools",
+          "exit": 0,
+          "testPassed": true,
+          "eventTypes": [
+            "thread.started",
+            "turn.started",
+            "item.completed",
+            "item.started",
+            "turn.completed"
+          ],
+          "toolItems": 4,
+          "errorMessages": []
+        },
+        {
+          "name": "actual CLI WS tools",
+          "exit": 0,
+          "testPassed": true,
+          "eventTypes": [
+            "thread.started",
+            "turn.started",
+            "item.completed",
+            "item.started",
+            "turn.completed"
+          ],
+          "toolItems": 4,
+          "errorMessages": []
+        }
+      ]
+    },
+    "compact-diagnosis": {
+      "component": "v7.2.152",
+      "cli": "0.153.4",
+      "source": "isolated 59001 active access token only",
+      "checks": [
+        {
+          "name": "real HTTP Responses",
+          "status": 200,
+          "completed": true,
+          "marker": true
+        },
+        {
+          "name": "real compact",
+          "status": 404,
+          "opaque": false,
+          "detail": "Not Found"
+        },
+        {
+          "name": "compact Responses Lite true",
+          "status": 404,
+          "opaque": false,
+          "detail": "Not Found"
+        },
+        {
+          "name": "compact Responses Lite false",
+          "status": 404,
+          "opaque": false,
+          "detail": "Not Found"
+        },
+        {
+          "name": "direct compact comparison",
+          "status": 404,
+          "bodyPreview": "{\"detail\":\"Not Found\"}"
+        }
+      ]
+    },
+    "compact-v2": {
+      "component": "v7.2.152",
+      "cli": "0.153.4",
+      "source": "isolated 59001 active access token only",
+      "checks": [
+        {
+          "name": "real HTTP Responses",
+          "status": 200,
+          "completed": true,
+          "marker": true
+        },
+        {
+          "name": "real compact",
+          "status": 404,
+          "opaque": false,
+          "detail": "Not Found"
+        },
+        {
+          "name": "native compaction V2 via Responses",
+          "status": 200,
+          "outputTypes": [
+            "compaction"
+          ],
+          "opaque": true
+        },
+        {
+          "name": "continue after native V2 compaction",
+          "status": 200,
+          "marker": true
+        }
+      ]
+    }
+  }
+}
