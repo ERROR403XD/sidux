@@ -79,6 +79,8 @@ export type UiPendingRequestState = 'approval' | 'response'
 export type UiThreadAutomationStatus = 'ACTIVE' | 'PAUSED'
 
 export type UiThreadAutomation = {
+  model?: string
+  reasoningEffort?: ReasoningEffort
   id: string
   kind: 'heartbeat' | 'cron'
   name: string

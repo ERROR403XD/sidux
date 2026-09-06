@@ -1168,6 +1168,8 @@ function asAutomation(record: unknown): UiThreadAutomation | null {
     updatedAtMs: readNumber(row.updatedAtMs),
     nextRunAtMs: readNumber(row.nextRunAtMs),
     timezone: readString(row.timezone) ?? undefined,
+    model: readString(row.model) ?? undefined,
+    reasoningEffort: readString(row.reasoningEffort) as UiThreadAutomation['reasoningEffort'],
   }
 }
 
@@ -1233,6 +1235,8 @@ export async function upsertThreadAutomation(input: {
   rrule: string
   status: UiThreadAutomationStatus
   timezone?: string
+  model?: string | null
+  reasoningEffort?: string | null
 }): Promise<UiThreadAutomation> {
   const response = await fetch('/codex-api/thread-automation', {
     method: 'PUT',
@@ -1256,6 +1260,8 @@ export async function upsertProjectAutomation(input: {
   rrule: string
   status: UiThreadAutomationStatus
   timezone?: string
+  model?: string | null
+  reasoningEffort?: string | null
 }): Promise<UiThreadAutomation> {
   const response = await fetch('/codex-api/project-automation', {
     method: 'PUT',

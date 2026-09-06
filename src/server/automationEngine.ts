@@ -1,4 +1,6 @@
 import { AutomationHistory } from './automationHistory.js'
+import type { AutomationModelSettings } from '../automationOptions.js'
+import { automationTimeContext, formatAutomationTime } from './automationTime.js'
 import { createHash, randomUUID } from 'node:crypto'
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { join, isAbsolute } from 'node:path'
@@ -10,8 +12,8 @@ export type AutomationInspection = { status: 'running' | 'waiting_input' | 'comp
 export interface AutomationRuntime {
   accountBusy(): boolean
   canStart(threadId: string): Promise<boolean>
-  createThread(cwd: string, name: string): Promise<{ threadId: string; model?: string }>
-  prepare(threadId: string, text: string, runId: string): Promise<unknown>
+  createThread(cwd: string, name: string, settings?: AutomationModelSettings): Promise<{ threadId: string; model?: string }>
+  prepare(threadId: string, text: string, runId: string, settings?: AutomationModelSettings): Promise<unknown>
   start(params: unknown): Promise<{ turnId: string }>
   inspect(run: AutomationRun): Promise<AutomationInspection>
   interrupt(run: AutomationRun): Promise<void>
@@ -137,8 +139,8 @@ export class AutomationEngine {
         if (!record || record.id !== id) throw new Error('automation.toml 无效或 ID 与目录不符')
         if (record.kind === 'heartbeat' ? !record.targetThreadId : !record.cwds.length || record.cwds.some((cwd) => !isAbsolute(cwd))) throw new Error('缺少有效的执行目标')
         const previous = this.state.definitions[id]
-        const timezone = previous?.timezone ?? this.timezone
-        const revision = createHash('sha256').update(JSON.stringify([record.rrule, record.prompt, record.status, record.targetThreadId, record.cwds, timezone])).digest('hex').slice(0, 16)
+        const timezone = record.timezone ?? previous?.timezone ?? this.timezone
+        const revision = createHash('sha256').update(JSON.stringify([record.rrule, record.prompt, record.status, record.targetThreadId, record.cwds, timezone, record.model, record.reasoningEffort])).digest('hex').slice(0, 16)
         const anchor = previous?.revision === revision ? previous.anchor : this.now()
         const schedule = createAutomationSchedule(record.rrule, timezone, anchor)
         if (previous?.revision !== revision) {
@@ -269,14 +271,16 @@ export class AutomationEngine {
     try {
       if (!run.threadId) {
         if (!(await stat(run.target)).isDirectory()) throw new Error('cwd 不是目录')
-        const thread = await bounded(this.runtime.createThread(run.target, `${record.name} · ${new Date(run.scheduledAt).toISOString()}`))
+        const thread = await bounded(this.runtime.createThread(run.target, `${record.name} · ${formatAutomationTime(run.scheduledAt, run.timezone)}`, record))
         run.threadId = thread.threadId; run.model = thread.model ?? null
         await this.persist()
       }
-      const text = `[CodexApp automation run:${run.runId}]\n计划时间：${new Date(run.scheduledAt).toISOString()}；时区：${run.timezone}。按计划时间理解相对日期。\n\n${record.prompt}`
-      const params = await bounded(this.runtime.prepare(run.threadId, text, run.runId))
-      const model = (params as { collaborationMode?: { settings?: { model?: string } } })?.collaborationMode?.settings?.model
+      const text = `[CodexApp automation run:${run.runId}]\n${automationTimeContext(run)}\n\n${record.prompt}`
+      const params = await bounded(this.runtime.prepare(run.threadId, text, run.runId, record))
+      const execution = params as { model?: string; effort?: string; collaborationMode?: { settings?: { model?: string; reasoning_effort?: string } } }
+      const model = execution.collaborationMode?.settings?.model ?? execution.model
       if (model) run.model = model
+      run.reasoningEffort = execution.collaborationMode?.settings?.reasoning_effort ?? execution.effort ?? null
       if (this.stopped) { this.finish(run, 'interrupted', '服务已停止，尚未提交', 'SERVICE_STOPPED'); await this.persist(); return }
       // Write intent before RPC. Any error after this point requires reconciliation, never an automatic replay.
       run.submittedAt = this.now()

@@ -22,17 +22,24 @@ export function createAutomationRuntime(options: {
       return !['active', 'running', 'inProgress'].includes(String(status))
         && !options.pendingRequests().some((request) => record(record(request).params).threadId === threadId)
     },
-    async createThread(cwd, name) {
-      const response = record(await rpc('thread/start', { cwd }))
+    async createThread(cwd, name, settings = {}) {
+      const response = record(await rpc('thread/start', { cwd, ...(settings.model ? { model: settings.model } : {}) }))
       const thread = record(response.thread)
       if (typeof thread.id !== 'string') throw new Error('未返回 threadId')
       // Failure to set a display name must not orphan an otherwise valid thread.
       await rpc('thread/name/set', { threadId: thread.id, name }).catch(() => {})
       return { threadId: thread.id, model: typeof response.model === 'string' ? response.model : undefined }
     },
-    async prepare(threadId, text, runId) {
-      await rpc('thread/resume', { threadId })
-      return { ...await options.buildParams(threadId, text, runId), clientUserMessageId: runId }
+    async prepare(threadId, text, runId, settings = {}) {
+      await rpc('thread/resume', { threadId, ...(settings.model ? { model: settings.model } : {}) })
+      const params = await options.buildParams(threadId, text, runId)
+      if (settings.model) params.model = settings.model
+      if (settings.reasoningEffort) params.effort = settings.reasoningEffort
+      if (params.collaborationMode) {
+        const mode = record(params.collaborationMode)
+        params.collaborationMode = { ...mode, settings: { ...record(mode.settings), ...(settings.model ? { model: settings.model } : {}), ...(settings.reasoningEffort ? { reasoning_effort: settings.reasoningEffort } : {}) } }
+      }
+      return { ...params, clientUserMessageId: runId }
     },
     async start(params) {
       const response = record(await rpc('turn/start', params))

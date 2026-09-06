@@ -2,9 +2,10 @@ import { parse, stringify } from 'smol-toml'
 import { randomUUID } from 'node:crypto'
 import { mkdir, rename, writeFile, rm } from 'node:fs/promises'
 import { dirname } from 'node:path'
+import { normalizeAutomationModelSettings, type AutomationModelSettings } from '../automationOptions.js'
 
 export type ThreadAutomationStatus = 'ACTIVE' | 'PAUSED'
-export type ThreadAutomationRecord = {
+export type ThreadAutomationRecord = AutomationModelSettings & {
   id: string
   kind: 'heartbeat' | 'cron'
   name: string
@@ -20,7 +21,7 @@ export type ThreadAutomationRecord = {
   timezone?: string
 }
 
-const knownKeys = new Set(['version', 'id', 'kind', 'name', 'prompt', 'rrule', 'status', 'target_thread_id', 'cwds', 'created_at', 'updated_at'])
+const knownKeys = new Set(['version', 'id', 'kind', 'name', 'prompt', 'rrule', 'status', 'target_thread_id', 'cwds', 'created_at', 'updated_at', 'model', 'model_reasoning_effort', 'timezone'])
 
 export function parseAutomationToml(raw: string): ThreadAutomationRecord | null {
   try {
@@ -32,6 +33,8 @@ export function parseAutomationToml(raw: string): ThreadAutomationRecord | null 
     if (status !== 'ACTIVE' && status !== 'PAUSED') return null
     if (value.cwds !== undefined && (!Array.isArray(value.cwds) || !value.cwds.every((cwd) => typeof cwd === 'string'))) return null
     return {
+      ...normalizeAutomationModelSettings({ model: value.model, reasoningEffort: value.model_reasoning_effort }),
+      timezone: typeof value.timezone === 'string' ? value.timezone : undefined,
       id: String(value.id), kind, name: String(value.name), prompt: String(value.prompt), rrule: String(value.rrule), status,
       targetThreadId: typeof value.target_thread_id === 'string' ? value.target_thread_id : null,
       cwds: (value.cwds ?? []) as string[],
@@ -48,6 +51,9 @@ export function serializeAutomationToml(record: ThreadAutomationRecord): string 
   return stringify({
     ...extra, version: 1, id: record.id, kind: record.kind, name: record.name, prompt: record.prompt,
     status: record.status, rrule: record.rrule,
+    ...(record.model ? { model: record.model } : {}),
+    ...(record.reasoningEffort ? { model_reasoning_effort: record.reasoningEffort } : {}),
+    ...(record.timezone ? { timezone: record.timezone } : {}),
     ...(record.targetThreadId ? { target_thread_id: record.targetThreadId } : {}),
     ...(record.cwds.length ? { cwds: record.cwds } : {}),
     created_at: record.createdAtMs ?? Date.now(), updated_at: record.updatedAtMs ?? Date.now(),

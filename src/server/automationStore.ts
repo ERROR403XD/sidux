@@ -11,6 +11,7 @@ export type AutomationRun = {
   status: AutomationRunStatus; attempt: number; retryOf?: string; retryAfter?: number
   createdAt: number; startedAt: number | null; finishedAt: number | null
   threadId: string | null; turnId: string | null; model: string | null
+  reasoningEffort?: string | null
   errorCode: string | null; error: string | null; submittedAt?: number
 }
 export type AutomationMetadata = { revision: string; timezone: string; anchor: number; cursor: number; nextRunAtMs: number | null }

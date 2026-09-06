@@ -758,6 +758,12 @@
             <textarea v-model="automationDraft.prompt" class="automation-thread-textarea" rows="6" :placeholder="t('Describe what the automation should do')"></textarea>
           </label>
 
+          <div class="automation-model-fields">
+            <div class="automation-thread-field"><span class="automation-thread-label">模型</span><ComposerDropdown v-model="automationDraft.model" class="automation-model-picker automation-thread-dropdown" :options="automationModelOptions" enable-search search-placeholder="搜索模型" :disabled="isSavingAutomation || isRunningAutomation" /></div>
+            <div class="automation-thread-field"><span class="automation-thread-label">思考强度</span><ComposerDropdown v-model="automationDraft.reasoningEffort" class="automation-effort-picker automation-thread-dropdown" :options="automationEffortOptions" :disabled="isSavingAutomation || isRunningAutomation" /></div>
+          </div>
+          <p class="automation-schedule-preview">留空跟随运行时默认配置；指定后，每次手动或定时执行均使用该设置。</p>
+
           <div class="automation-thread-field">
             <span class="automation-thread-label">{{ t('Schedule') }}</span>
             <div class="automation-schedule-mode-group" role="radiogroup" :aria-label="t('Automation schedule type')">
@@ -908,11 +914,13 @@ import { useUiLanguage } from '../../composables/useUiLanguage'
 import { useFeedbackDiagnostics } from '../../composables/useFeedbackDiagnostics'
 import { getPathLeafName, getPathParent, isAbsoluteLikePath, isProjectlessChatPath } from '../../pathUtils.js'
 import ComposerDropdown from '../content/ComposerDropdown.vue'
+import { AUTOMATION_EFFORTS } from '../../automationOptions'
 import SidebarMenuRow from './SidebarMenuRow.vue'
 import { reconcilePinnedThreadIds } from './pinnedThreadUtils'
 
 const props = defineProps<{
   groups: UiProjectGroup[]
+  models?: string[]
   projectDisplayNameById: Record<string, string>
   projectGitRepoByName: Record<string, boolean>
   projectCwdByName: Record<string, string>
@@ -1046,12 +1054,16 @@ const automationDraft = ref<{
   prompt: string
   rrule: string
   status: UiThreadAutomationStatus
+  model: string
+  reasoningEffort: string
 }>({
   name: '',
   prompt: '',
   rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0',
-  status: 'ACTIVE',
+  status: 'ACTIVE', model: '', reasoningEffort: '',
 })
+const automationModelOptions = computed(() => [{ value: '', label: '跟随运行时默认模型' }, ...Array.from(new Set([...(props.models ?? []), automationDraft.value.model].filter(Boolean))).map(value => ({ value, label: value }))])
+const automationEffortOptions = [{ value: '', label: '跟随运行时默认强度' }, ...AUTOMATION_EFFORTS.map(value => ({ value, label: ({ none: '无', minimal: '极低', low: '低', medium: '中', high: '高', xhigh: '极高' })[value] }))]
 const automationScheduleDraft = ref<AutomationScheduleDraft>({
   mode: 'daily',
   dailyTime: '09:00',
@@ -1978,7 +1990,7 @@ function startNewAutomationDraft(): void {
     name: automationDialogScope.value === 'project' ? 'Project automation' : 'Thread automation',
     prompt: '',
     rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0',
-    status: 'ACTIVE',
+    status: 'ACTIVE', model: '', reasoningEffort: '',
   }
   automationScheduleDraft.value = createScheduleDraftFromRrule(automationDraft.value.rrule)
 }
@@ -1996,6 +2008,7 @@ function selectAutomationForEditing(automationId: string): void {
     prompt: existing.prompt,
     rrule: existing.rrule,
     status: existing.status,
+    model: existing.model ?? '', reasoningEffort: existing.reasoningEffort ?? '',
   }
   automationScheduleDraft.value = createScheduleDraftFromRrule(existing.rrule)
 }
@@ -2102,6 +2115,7 @@ async function submitAutomationDialog(): Promise<void> {
       rrule: automationDraft.value.rrule,
       timezone: automationTimezone.value || undefined,
       status: automationDraft.value.status,
+      model: automationDraft.value.model || null, reasoningEffort: automationDraft.value.reasoningEffort || null,
     }
     const saved = automationDialogScope.value === 'project'
       ? await upsertProjectAutomation({ ...input, projectName })

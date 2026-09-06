@@ -1,3 +1,4 @@
+import { normalizeAutomationModelSettings } from '../automationOptions.js'
 import { AutomationEngine } from './automationEngine.js'
 import { createAutomationRuntime } from './automationRuntime.js'
 import { createAutomationSchedule, validateAutomationTimezone } from './automationSchedule.js'
@@ -4856,6 +4857,9 @@ async function writeThreadHeartbeatAutomation(input: {
   prompt: string
   rrule: string
   status: ThreadAutomationStatus
+  model?: unknown
+  reasoningEffort?: unknown
+  timezone?: string
 }): Promise<ThreadAutomationRecord> {
   const threadId = input.threadId.trim()
   const name = input.name.trim()
@@ -4874,6 +4878,8 @@ async function writeThreadHeartbeatAutomation(input: {
   const automationDir = join(automationRoot, id)
   const now = Date.now()
   const record: ThreadAutomationRecord = {
+    ...normalizeAutomationModelSettings(input, existing ?? {}),
+    timezone: input.timezone ?? existing?.timezone,
     id,
     kind: 'heartbeat',
     name,
@@ -4964,6 +4970,9 @@ async function writeProjectCronAutomation(input: {
   prompt: string
   rrule: string
   status: ThreadAutomationStatus
+  model?: unknown
+  reasoningEffort?: unknown
+  timezone?: string
 }): Promise<ThreadAutomationRecord> {
   const projectName = input.projectName.trim()
   const name = input.name.trim()
@@ -4985,6 +4994,8 @@ async function writeProjectCronAutomation(input: {
   const automationDir = join(automationRoot, id)
   const now = Date.now()
   const record: ThreadAutomationRecord = {
+    ...normalizeAutomationModelSettings(input, existing ?? {}),
+    timezone: input.timezone ?? existing?.timezone,
     id,
     kind: 'cron',
     name,
@@ -7069,7 +7080,7 @@ type SharedBridgeState = {
 }
 
 const SHARED_BRIDGE_KEY = '__codexRemoteSharedBridge__'
-const SHARED_BRIDGE_VERSION = 'automations-0190-v2'
+const SHARED_BRIDGE_VERSION = 'automations-0190-v3'
 
 function getSharedBridgeState(): SharedBridgeState {
   const globalScope = globalThis as typeof globalThis & {
@@ -9255,7 +9266,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         if (!automationEngine.snapshot().ready) throw new Error(automationEngine.snapshot().error ?? '调度器尚未就绪')
         const timezone = validateAutomationTimezone(typeof payload?.timezone === 'string' ? payload.timezone : automationEngine.snapshot().definitions.find((row) => row.id === id)?.timezone ?? automationEngine.timezone)
         createAutomationSchedule(rrule, timezone, Date.now())
-        const automation = await writeThreadHeartbeatAutomation({ threadId, id, name, prompt, rrule, status })
+        const automation = await writeThreadHeartbeatAutomation({ threadId, id, name, prompt, rrule, status, model: payload?.model, reasoningEffort: payload?.reasoningEffort, timezone })
         await automationEngine.refresh(automation.id, timezone)
         setJson(res, 200, { data: toAutomationApiRecord(automationEngine.decorate(automation)) })
         return
@@ -9281,7 +9292,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         if (!automationEngine.snapshot().ready) throw new Error(automationEngine.snapshot().error ?? '调度器尚未就绪')
         const timezone = validateAutomationTimezone(typeof payload?.timezone === 'string' ? payload.timezone : automationEngine.snapshot().definitions.find((row) => row.id === id)?.timezone ?? automationEngine.timezone)
         createAutomationSchedule(rrule, timezone, Date.now())
-        const automation = await writeProjectCronAutomation({ projectName, id, name, prompt, rrule, status })
+        const automation = await writeProjectCronAutomation({ projectName, id, name, prompt, rrule, status, model: payload?.model, reasoningEffort: payload?.reasoningEffort, timezone })
         await automationEngine.refresh(automation.id, timezone)
         setJson(res, 200, { data: toAutomationApiRecord(automationEngine.decorate(automation)) })
         return

@@ -2003,3 +2003,11 @@
 :root.dark .thread-command-error { color: #fda4af; }
 :root.dark .thread-command-feedback { color: #6ee7b7; }
 :root.dark .thread-goal-status { background: #27272a; }
+
+.automation-model-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+@media (max-width: 480px) { .automation-model-fields { grid-template-columns: minmax(0, 1fr); } }
+
+
+
+:root.dark .rename-thread-overlay .automation-thread-panel .automation-thread-dropdown .composer-dropdown-trigger { border-color: #52525b; background: #3f3f46; color: #f4f4f5; }
+:root.dark .rename-thread-overlay .automation-thread-panel .rename-thread-actions { border-color: #52525b; background: #27272a; }

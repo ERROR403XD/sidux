@@ -80,7 +80,7 @@
             </span>
           </button>
 
-          <SidebarThreadTree ref="sidebarThreadTreeRef" :groups="projectGroups" :project-display-name-by-id="projectDisplayNameById"
+          <SidebarThreadTree ref="sidebarThreadTreeRef" :groups="projectGroups" :models="availableModelIds" :project-display-name-by-id="projectDisplayNameById"
             :project-git-repo-by-name="projectGitRepoByName"
             :project-cwd-by-name="projectCwdByName"
             v-if="!isSidebarCollapsed"
