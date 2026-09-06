@@ -27,3 +27,4 @@ Return to the [manual test index](../../tests.md).
 | [0.1.89 中文界面验收](ui-0.1.89-language.md) |
 | [弹窗视觉统一至持续目标窗口](unified-dialog-visuals.md) |
 | [共用弹窗、浮层、单选和按钮组件](shared-ui-components.md) |
+| [PWA 首页缓存故障恢复](pwa-shell-network-recovery.md) |

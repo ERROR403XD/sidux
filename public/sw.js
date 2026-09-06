@@ -1,4 +1,4 @@
-const CACHE_NAME = 'codexweb-shell-v2'
+const CACHE_NAME = 'codexweb-shell-v3'
 const APP_SHELL_PATHS = ['/', '/manifest.webmanifest']
 const STATIC_DESTINATIONS = new Set(['document', 'script', 'style', 'image', 'font'])
 const BYPASS_PREFIXES = ['/codex-api/', '/codex-local-image', '/codex-local-file', '/codex-local-browse/', '/codex-local-edit/']
@@ -50,8 +50,12 @@ async function networkFirstNavigation(request) {
   const cache = await caches.open(CACHE_NAME)
   try {
     const response = await fetch(request)
-    cache.put('/', response.clone())
-    return response
+    if (response.ok) {
+      // Cache storage failures must not replace a successful network response.
+      await cache.put('/', response.clone()).catch(() => {})
+      return response
+    }
+    return (await cache.match('/')) || response
   } catch {
     return (await cache.match('/')) || Response.error()
   }
