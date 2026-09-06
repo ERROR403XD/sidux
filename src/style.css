@@ -1970,22 +1970,8 @@
   }
 }
 
-.app-dialog-backdrop { position: fixed; inset: 0; z-index: 16000; background: #09090b80; display: flex; align-items: center; justify-content: center; padding: 16px; overscroll-behavior: contain; }
-.app-dialog { width: min(760px, 100%); max-height: min(88dvh, 900px); display: flex; flex-direction: column; background: #fff; color: #27272a; border: 1px solid #d4d4d8; border-radius: 16px; box-shadow: 0 20px 80px #0003; overflow: hidden; }
-.app-dialog-header, .app-dialog-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; flex-shrink: 0; }
-.app-dialog-header { border-bottom: 1px solid #e4e4e7; }
-.app-dialog-header h2 { font-size: 16px; font-weight: 600; margin: 0; overflow-wrap: anywhere; }
-.app-dialog-body { padding: 16px 18px; overflow: auto; min-height: 0; overscroll-behavior: contain; }
-.app-dialog-footer { border-top: 1px solid #e4e4e7; flex-wrap: wrap; font-size: 12px; }
-.app-dialog button { border: 1px solid #d4d4d8; border-radius: 8px; background: #fff; padding: 6px 10px; color: inherit; cursor: pointer; }
-.app-dialog button:disabled { opacity: .5; cursor: default; }
-.app-dialog button:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }
 .automation-history-full { border-top: 0; padding-top: 0; }
 .automation-history-pagination { display: flex; gap: 8px; }
-:root.dark .app-dialog { background: #18181b; color: #e4e4e7; border-color: #52525b; }
-:root.dark .app-dialog-header, :root.dark .app-dialog-footer { border-color: #3f3f46; }
-:root.dark .app-dialog button { background: #27272a; border-color: #52525b; }
-@media (max-width: 600px) { .app-dialog-backdrop { padding: 8px; } .app-dialog { max-height: 92dvh; } .app-dialog-header, .app-dialog-body, .app-dialog-footer { padding: 12px; } }
 .thread-command-dialog { font-size: 14px; line-height: 1.6; }
 .thread-command-dialog p { margin: 0 0 12px; }
 .thread-command-dialog label { display: block; margin: 14px 0; font-size: 13px; font-weight: 500; }
@@ -2022,23 +2008,148 @@
 .content-thread:has(> .thread-goal-card) { display: flex; flex-direction: column; }
 .content-thread:has(> .thread-goal-card) > .conversation-root { flex: 1; min-height: 0; }
 
-:root.dark .rename-thread-overlay .automation-thread-panel .automation-thread-dropdown .composer-dropdown-trigger { border-color: #52525b; background: #3f3f46; color: #f4f4f5; }
-:root.dark .rename-thread-overlay .automation-thread-panel .rename-thread-actions { border-color: #52525b; background: #27272a; }
+/* Shared UI primitives. Keep visual tokens and decisive dark overrides here. */
+:root {
+  --ui-surface: #fff;
+  --ui-text: #27272a;
+  --ui-border: #d4d4d8;
+  --ui-divider: #e4e4e7;
+  --ui-field: #fff;
+  --ui-muted: #71717a;
+  --ui-hover: #f4f4f5;
+  --ui-danger: #be123c;
+  --ui-danger-border: #fda4af;
+  --ui-focus: #6366f1;
+  --ui-radius-dialog: 16px;
+  --ui-radius-popover: 12px;
+  --ui-radius-control: 8px;
+  --ui-layer-dialog: 16000;
+  --ui-layer-popover: 16010;
+}
 
-/* Shared dialog visuals follow the Goal dialog; layout stays with each flow. */
-:root { --dialog-bg: #fff; --dialog-fg: #27272a; --dialog-border: #d4d4d8; --dialog-field-bg: #fff; --dialog-field-border: #d4d4d8; --dialog-muted: #71717a; --dialog-hover: #f4f4f5; --dialog-danger: #be123c; --dialog-danger-border: #fda4af; }
-:root.dark { --dialog-bg: #18181b; --dialog-fg: #e4e4e7; --dialog-border: #52525b; --dialog-field-bg: #27272a; --dialog-field-border: #52525b; --dialog-muted: #a1a1aa; --dialog-hover: #27272a; --dialog-danger: #fda4af; --dialog-danger-border: #9f1239; }
-:root [role="dialog"][aria-modal="true"] { border: 1px solid var(--dialog-border); border-radius: 16px; background: var(--dialog-bg); color: var(--dialog-fg); box-shadow: 0 20px 80px #0003; }
-:root [role="dialog"][aria-modal="true"] button { border: 1px solid var(--dialog-border); border-radius: 8px; background: var(--dialog-bg); color: var(--dialog-fg); padding: 6px 10px; font-size: 13px; line-height: 1.4; cursor: pointer; box-shadow: none; }
-:root [role="dialog"][aria-modal="true"] button:hover:not(:disabled) { background: var(--dialog-hover); }
+:root.dark {
+  --ui-surface: #18181b;
+  --ui-text: #e4e4e7;
+  --ui-border: #52525b;
+  --ui-divider: #3f3f46;
+  --ui-field: #27272a;
+  --ui-muted: #a1a1aa;
+  --ui-hover: #27272a;
+  --ui-danger: #fda4af;
+  --ui-danger-border: #9f1239;
+}
+
+.app-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ui-layer-dialog);
+  background: #09090b80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overscroll-behavior: contain;
+}
+
+.app-dialog {
+  width: min(760px, 100%);
+  max-height: min(88dvh, 900px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Legacy dialog surfaces retain this bridge until their own flow is migrated. */
+:root [role="dialog"][aria-modal="true"] {
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-dialog);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  box-shadow: 0 20px 80px #0003;
+}
+
+.app-dialog-header, .app-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  flex-shrink: 0;
+}
+.app-dialog-header { border-bottom: 1px solid var(--ui-divider); }
+.app-dialog-header h2 { font-size: 16px; font-weight: 600; margin: 0; overflow-wrap: anywhere; }
+.app-dialog-body { padding: 16px 18px; overflow: auto; min-height: 0; overscroll-behavior: contain; }
+.app-dialog-footer { border-top: 1px solid var(--ui-divider); flex-wrap: wrap; font-size: 12px; }
+:root .app-dialog-compact { width: min(460px, 100%); }
+
+:root button.app-button,
+:root [role="dialog"][aria-modal="true"] button:not(.app-button) {
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  padding: 6px 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+  box-shadow: none;
+}
+:root button.app-button:hover:not(:disabled),
+:root [role="dialog"][aria-modal="true"] button:hover:not(:disabled) { background: var(--ui-hover); }
+:root button.app-button:disabled,
 :root [role="dialog"][aria-modal="true"] button:disabled { opacity: .5; cursor: default; }
-:root [role="dialog"][aria-modal="true"] button:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }
-:root [role="dialog"][aria-modal="true"] button:is(.rename-thread-button-danger, .is-danger, [data-danger]) { color: var(--dialog-danger); border-color: var(--dialog-danger-border); background: var(--dialog-bg); }
-:root [role="dialog"][aria-modal="true"] :is(input:not([type="checkbox"]):not([type="radio"]), textarea) { border: 1px solid var(--dialog-field-border); border-radius: 8px; background: var(--dialog-field-bg); color: var(--dialog-fg); padding: 8px 10px; font-size: 13px; }
-:root [role="dialog"][aria-modal="true"] .composer-dropdown-trigger { background: var(--dialog-field-bg); border-color: var(--dialog-field-border); color: var(--dialog-fg); padding: 8px 10px; }
-:root [role="dialog"][aria-modal="true"] :is(.automation-thread-label, .automation-schedule-copy, .automation-schedule-preview, .rename-thread-subtitle) { color: var(--dialog-muted); font-size: 13px; text-transform: none; letter-spacing: normal; }
-:root [role="dialog"][aria-modal="true"] :is(.automation-thread-list-item.is-active, .automation-schedule-mode.is-active, .automation-target-mode.is-active) { background: var(--dialog-hover); border-color: #818cf8; }
-:root .app-dialog.compact-dialog { width: min(460px,100%); }
+:root button.app-button:focus-visible,
+:root [role="dialog"][aria-modal="true"] button:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 2px; }
+:root button.app-button.is-danger,
+:root [role="dialog"][aria-modal="true"] button:is(.rename-thread-button-danger, .is-danger, [data-danger]) {
+  color: var(--ui-danger);
+  border-color: var(--ui-danger-border);
+  background: var(--ui-surface);
+}
+
+:root .app-input,
+:root [role="dialog"][aria-modal="true"] :is(input:not([type="checkbox"]):not([type="radio"]), textarea) {
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-field);
+  color: var(--ui-text);
+  padding: 8px 10px;
+  font-size: 13px;
+}
+:root .app-input:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 1px; }
+:root [role="dialog"][aria-modal="true"] .composer-dropdown-trigger {
+  background: var(--ui-field);
+  border-color: var(--ui-border);
+  color: var(--ui-text);
+  padding: 8px 10px;
+}
+
+:root div.app-popover {
+  z-index: var(--ui-layer-popover);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-popover);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  box-shadow: 0 12px 32px #0003;
+  overflow: auto;
+  overscroll-behavior: contain;
+  outline: none;
+}
+:root .app-popover .composer-dropdown-menu { padding: 4px; min-width: 0; background: transparent; outline: none; }
+:root .app-popover .composer-dropdown-option { color: var(--ui-text); }
+:root .app-popover .composer-dropdown-option:is(:hover, .is-selected, .is-highlighted) { background: var(--ui-hover); }
+:root .app-popover .search-dropdown-search { background: var(--ui-field); color: var(--ui-text); border-color: var(--ui-border); }
+:root .app-popover .search-dropdown-search-wrap { border-color: var(--ui-divider); }
+:root .app-popover .search-dropdown-create-icon { background: var(--ui-field); color: var(--ui-text); border-color: var(--ui-border); }
+
+@media (max-width: 600px) {
+  .app-dialog-backdrop { padding: 8px; }
+  .app-dialog { max-height: 92dvh; }
+  .app-dialog-header, .app-dialog-body, .app-dialog-footer { padding: 12px; }
+}
+
+:root [role="dialog"][aria-modal="true"] :is(.automation-thread-label, .automation-schedule-copy, .automation-schedule-preview, .rename-thread-subtitle) { color: var(--ui-muted); font-size: 13px; text-transform: none; letter-spacing: normal; }
+:root [role="dialog"][aria-modal="true"] :is(.automation-thread-list-item.is-active, .automation-schedule-mode.is-active, .automation-target-mode.is-active) { background: var(--ui-hover); border-color: #818cf8; }
 :root .app-dialog.automation-thread-panel { max-width: none; max-height: min(88dvh,900px); overflow: hidden; padding: 0; }
 :root .app-dialog[role="dialog"][aria-modal="true"] .rename-thread-actions { position: static; margin: 0; padding: 0; width: 100%; border: 0; background: transparent; flex-wrap: wrap; }
 :root .app-dialog[role="dialog"][aria-modal="true"] .automation-thread-textarea { min-height: 140px; }

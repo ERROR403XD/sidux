@@ -2,13 +2,13 @@
   <section class="automation-history" aria-label="执行记录">
     <div class="automation-history-heading">
       <h3>执行记录</h3>
-      <button type="button" :disabled="runDisabled" @click="runNow()">{{ busy ? '提交中…' : '立即运行' }}</button>
+      <AppButton type="button" :disabled="runDisabled" @click="runNow()">{{ busy ? '提交中…' : '立即运行' }}</AppButton>
     </div>
     <p class="automation-history-schedule">{{ nextTime }} · {{ metadata?.timezone || automation.timezone || runtime?.timezone }}</p>
     <p v-if="error" class="automations-error" role="alert">{{ error }}</p>
     <p v-if="!runs.length" class="automation-history-muted">{{ loading ? '读取中…' : '尚无执行记录。' }}</p>
     <AutomationRunList :runs="runs" :target="target" :disabled="runDisabled" @retry="runNow" />
-    <button class="automation-history-all" type="button" @click="openHistory">查看全部</button>
+    <AppButton class="automation-history-all" type="button" @click="openHistory">查看全部</AppButton>
     <AppDialog ref="historyDialog" :open="allOpen" :title="`${automation.name} · 全部执行记录`" @close="closeHistory">
       <section class="automation-history automation-history-full" :aria-busy="pageLoading">
         <p v-if="pageError" class="automation-history-error" role="alert">{{ pageError }}</p>
@@ -19,9 +19,9 @@
       <template #footer>
         <span>第 {{ pageIndex + 1 }} 页 · 每页 100 条</span>
         <div class="automation-history-pagination">
-          <button type="button" :disabled="pageLoading || pageIndex === 0" @click="loadPage(pageIndex - 1)">上一页</button>
-          <button type="button" :disabled="pageLoading || !nextCursor" @click="loadPage(pageIndex + 1)">下一页</button>
-          <button type="button" :disabled="pageLoading" @click="refreshHistory">刷新</button>
+          <AppButton type="button" :disabled="pageLoading || pageIndex === 0" @click="loadPage(pageIndex - 1)">上一页</AppButton>
+          <AppButton type="button" :disabled="pageLoading || !nextCursor" @click="loadPage(pageIndex + 1)">下一页</AppButton>
+          <AppButton type="button" :disabled="pageLoading" @click="refreshHistory">刷新</AppButton>
         </div>
       </template>
     </AppDialog>
@@ -30,6 +30,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AppDialog from '../common/AppDialog.vue'
+import AppButton from '../common/AppButton.vue'
 import AutomationRunList from './AutomationRunList.vue'
 import { getAutomationRuns, createAutomationRequestId, getAutomationRuntime, runAutomationNow, subscribeCodexNotifications, type AutomationRuntimeStatus } from '../../api/automationGateway'
 import type { UiThreadAutomation } from '../../types/codex'

@@ -1,5 +1,5 @@
 <template>
-  <AppDialog :open="true" :title="`/${request.name} · ${title}`" @close="close">
+  <AppDialog :open="true" :busy="working" :title="`/${request.name} · ${title}`" @close="close">
     <div class="thread-command-dialog" :aria-busy="working || loading">
       <p v-if="error" class="thread-command-error" role="alert">{{ error }}</p>
       <p v-if="feedback" class="thread-command-feedback" role="status">{{ feedback }}</p>
@@ -12,9 +12,9 @@
         <p class="thread-command-hint">M = 100 万 tokens；B = 10 亿 tokens。不写单位时按 M 计算。</p>
         <p v-if="goal && objective.trim() !== goal.objective" class="thread-command-hint">修改目标内容会重置该目标的用量统计。</p>
         <div class="thread-command-actions">
-          <button type="button" :disabled="working || loading || !supported || !objective.trim()" @click="saveGoal">{{ goal ? '保存目标' : '保存并开始' }}</button>
-          <button v-if="goal" type="button" :disabled="working || loading || !supported" @click="changeGoalStatus(goal.status === 'active' ? 'paused' : 'active')">{{ goal.status === 'active' ? '暂停目标' : '继续目标' }}</button>
-          <button v-if="goal" type="button" :disabled="working || loading || !supported" @click="clearGoal">清除目标</button>
+          <AppButton type="button" :disabled="working || loading || !supported || !objective.trim()" @click="saveGoal">{{ goal ? '保存目标' : '保存并开始' }}</AppButton>
+          <AppButton v-if="goal" type="button" :disabled="working || loading || !supported" @click="changeGoalStatus(goal.status === 'active' ? 'paused' : 'active')">{{ goal.status === 'active' ? '暂停目标' : '继续目标' }}</AppButton>
+          <AppButton v-if="goal" type="button" :disabled="working || loading || !supported" @click="clearGoal">清除目标</AppButton>
         </div>
         <p class="thread-command-hint">暂停或清除停止目标的后续推进；当前已开始的回合仍可继续，需立即停止时使用会话停止按钮。</p>
       </template>
@@ -32,7 +32,7 @@
         <p v-if="request.name === 'compact'" class="thread-command-hint">开始压缩后请在会话中查看进度。任务运行中时需先等待结束。</p>
         <p v-if="request.name === 'review'" class="thread-command-hint">会在当前会话发起一次代码审查，使用当前运行时模型。</p>
         <p v-if="unavailable" class="thread-command-hint">{{ unavailable }}</p>
-        <button type="button" :disabled="working || loading || !!unavailable || !supported || (request.name === 'rename' && !value.trim())" @click="execute">{{ actionLabel }}</button>
+        <AppButton type="button" :disabled="working || loading || !!unavailable || !supported || (request.name === 'rename' && !value.trim())" @click="execute">{{ actionLabel }}</AppButton>
       </template>
     </div>
   </AppDialog>
@@ -40,6 +40,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import AppDialog from '../common/AppDialog.vue'
+import AppButton from '../common/AppButton.vue'
 import { APP_COMMANDS, buildComposerCommands, type AppCommandName, type AppCommandRequest } from './composerCommands'
 import { getMethodCatalog, subscribeCodexNotifications } from '../../api/codexGateway'
 import { compactThread, getThreadGoal, setThreadGoal, clearThreadGoal, validateGoalInput, formatGoalTokenBudget, goalStatusLabels, type ThreadGoal } from '../../api/threadCommands'

@@ -4,27 +4,28 @@
       class="search-dropdown-trigger"
       type="button"
       :disabled="disabled"
+      aria-haspopup="listbox"
+      :aria-expanded="isOpen"
       @click="onToggle"
     >
       <span class="search-dropdown-value">{{ displayLabel }}</span>
       <IconTablerChevronDown class="search-dropdown-chevron" />
     </button>
 
-    <Teleport to="body">
-      <div
-        v-if="isOpen"
-        ref="menuRef"
-        class="search-dropdown-menu-wrap"
-        :class="{
-          'search-dropdown-menu-wrap-up': openDirection === 'up',
-          'search-dropdown-menu-wrap-down': openDirection === 'down',
-        }"
-        :style="menuStyle"
-      >
+    <AppPopover
+      :open="isOpen"
+      :anchor="rootRef"
+      :width="384"
+      :direction="openDirection"
+      align="end"
+      panel-class="search-dropdown-menu-wrap"
+      @close="isOpen = false"
+    >
+      <div>
         <div class="search-dropdown-search-wrap">
           <div class="search-dropdown-search-row">
             <input
-              ref="searchRef"
+              data-popover-autofocus
               v-model="searchQuery"
               class="search-dropdown-search"
               type="text"
@@ -102,13 +103,14 @@
         </ul>
         <div v-else class="search-dropdown-empty">{{ t('No results') }}</div>
       </div>
-    </Teleport>
+    </AppPopover>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useUiLanguage } from '../../composables/useUiLanguage'
+import AppPopover from '../common/AppPopover.vue'
 import IconTablerChevronDown from '../icons/IconTablerChevronDown.vue'
 
 export type SearchDropdownOption = {
@@ -142,12 +144,9 @@ const emit = defineEmits<{
 }>()
 
 const rootRef = ref<HTMLElement | null>(null)
-const menuRef = ref<HTMLElement | null>(null)
-const searchRef = ref<HTMLInputElement | null>(null)
 const isOpen = ref(false)
 const searchQuery = ref('')
 const highlightIdx = ref(0)
-const menuStyle = ref<Record<string, string>>({})
 const { t } = useUiLanguage()
 
 const openDirection = computed(() => props.openDirection ?? 'down')
@@ -173,57 +172,19 @@ const filtered = computed(() => {
   )
 })
 
-function updateMenuPosition(): void {
-  const menu = menuRef.value
-  const root = rootRef.value
-  if (!menu || !root) return
-  const rect = root.getBoundingClientRect()
-  const viewportWidth = window.innerWidth
-  const viewportHeight = window.innerHeight
-  const desiredWidth = Math.min(384, viewportWidth - 16)
-  const left = Math.max(8, Math.min(rect.right - desiredWidth, viewportWidth - desiredWidth - 8))
-
-  if (viewportWidth < 640) {
-    menuStyle.value = {
-      position: 'fixed',
-      left: '0.5rem',
-      right: '0.5rem',
-      width: 'auto',
-      top: openDirection.value === 'up' ? 'auto' : `${rect.bottom + 8}px`,
-      bottom: openDirection.value === 'up' ? `${viewportHeight - rect.top + 8}px` : 'auto',
-      zIndex: '120',
-    }
-    return
-  }
-
-  menuStyle.value = {
-    position: 'fixed',
-    width: `${desiredWidth}px`,
-    left: `${left}px`,
-    top: openDirection.value === 'up' ? 'auto' : `${rect.bottom + 8}px`,
-    bottom: openDirection.value === 'up' ? `${viewportHeight - rect.top + 8}px` : 'auto',
-    zIndex: '120',
-  }
-}
-
 function onToggle(): void {
   if (props.disabled) return
   isOpen.value = !isOpen.value
   if (isOpen.value) {
     searchQuery.value = ''
     highlightIdx.value = 0
-    nextTick(() => {
-      nextTick(() => {
-        updateMenuPosition()
-      })
-      searchRef.value?.focus()
-    })
   }
 }
 
 function onSelect(opt: SearchDropdownOption): void {
   emit('toggle', opt.value, !selected.value.has(opt.value))
   isOpen.value = false
+  rootRef.value?.querySelector('button')?.focus({ preventScroll: true })
 }
 
 function moveHighlight(delta: number): void {
@@ -236,35 +197,8 @@ function selectHighlighted(): void {
   if (opt) onSelect(opt)
 }
 
-function onDocumentPointerDown(event: PointerEvent): void {
-  if (!isOpen.value) return
-  const root = rootRef.value
-  const menu = menuRef.value
-  if (!root) return
-  const target = event.target
-  if (!(target instanceof Node)) return
-  if (root.contains(target)) return
-  if (menu?.contains(target)) return
-  isOpen.value = false
-}
-
 watch(searchQuery, () => { highlightIdx.value = 0 })
 
-function onWindowLayoutChange(): void {
-  if (!isOpen.value) return
-  updateMenuPosition()
-}
-
-onMounted(() => {
-  window.addEventListener('pointerdown', onDocumentPointerDown)
-  window.addEventListener('resize', onWindowLayoutChange)
-  window.addEventListener('scroll', onWindowLayoutChange, true)
-})
-onBeforeUnmount(() => {
-  window.removeEventListener('pointerdown', onDocumentPointerDown)
-  window.removeEventListener('resize', onWindowLayoutChange)
-  window.removeEventListener('scroll', onWindowLayoutChange, true)
-})
 watch(isOpen, (open) => emit('open-change', open))
 defineExpose({ open: () => { if (!isOpen.value) onToggle() }, close: () => { isOpen.value = false } })
 </script>

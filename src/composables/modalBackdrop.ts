@@ -55,6 +55,7 @@ function click(event: MouseEvent) {
 }
 function keydown(event: KeyboardEvent) {
   if (event.key !== 'Escape' || event.isComposing) return
+  if (event.target instanceof Element && event.target.closest('[data-app-popover]')) return
   const modal = stack.at(-1)
   if (!modal) return
   event.preventDefault()

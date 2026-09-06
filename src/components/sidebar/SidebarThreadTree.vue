@@ -652,7 +652,7 @@
       </div>
     </Teleport>
 
-    <AppDialog :open="renameThreadDialogVisible" :title="t('Rename thread')" panel-class="compact-dialog" @close="closeRenameThreadDialog">
+    <AppDialog :open="renameThreadDialogVisible" :title="t('Rename thread')" size="compact" @close="closeRenameThreadDialog">
           <p class="rename-thread-subtitle">{{ t('Make it short and recognizable.') }}</p>
           <input
             ref="renameThreadInputRef"
@@ -665,13 +665,13 @@
           />
       <template #footer>
           <div class="rename-thread-actions">
-            <button class="rename-thread-button" type="button" @click="closeRenameThreadDialog">{{ t('Cancel') }}</button>
-            <button class="rename-thread-button rename-thread-button-primary" type="button" @click="submitRenameThread">{{ t('Save') }}</button>
+            <AppButton class="rename-thread-button" type="button" @click="closeRenameThreadDialog">{{ t('Cancel') }}</AppButton>
+            <AppButton class="rename-thread-button rename-thread-button-primary" type="button" @click="submitRenameThread">{{ t('Save') }}</AppButton>
           </div>
       </template>
     </AppDialog>
 
-    <AppDialog :open="deleteThreadDialogVisible" :title="deleteThreadHasAutomation ? t('Archive chat and remove automations?') : t('Delete thread?')" panel-class="compact-dialog" @close="closeDeleteThreadDialog">
+    <AppDialog :open="deleteThreadDialogVisible" :title="deleteThreadHasAutomation ? t('Archive chat and remove automations?') : t('Delete thread?')" size="compact" @close="closeDeleteThreadDialog">
           <p class="rename-thread-subtitle">
             <template v-if="deleteThreadHasAutomation">
               {{ t('Archive {title} and remove its heartbeat automations.', { title: deleteThreadTitle }) }}
@@ -682,40 +682,40 @@
           </p>
       <template #footer>
           <div class="rename-thread-actions">
-            <button class="rename-thread-button" type="button" @click="closeDeleteThreadDialog">{{ t('Cancel') }}</button>
-            <button class="rename-thread-button rename-thread-button-danger" type="button" @click="submitDeleteThread">
+            <AppButton class="rename-thread-button" type="button" @click="closeDeleteThreadDialog">{{ t('Cancel') }}</AppButton>
+            <AppButton class="rename-thread-button rename-thread-button-danger" variant="danger" type="button" @click="submitDeleteThread">
               {{ deleteThreadHasAutomation ? t('Archive and remove') : t('Delete') }}
-            </button>
+            </AppButton>
           </div>
       </template>
     </AppDialog>
 
-    <AppDialog :open="automationDialogVisible" :title="automationDialogMode === 'edit' ? t('Edit automation') : t('Add automation')" panel-class="automation-thread-panel" @close="closeAutomationDialog">
+    <AppDialog :open="automationDialogVisible" :title="automationDialogMode === 'edit' ? t('Edit automation') : t('Add automation')" :busy="isSavingAutomation || isRunningAutomation" panel-class="automation-thread-panel" @close="closeAutomationDialog">
           <p class="rename-thread-subtitle">{{ t(automationDialogSubtitle) }}</p>
 
           <div v-if="automationTargetPickerVisible && automationDialogMode === 'create'" class="automation-target-picker">
             <span class="automation-thread-label">{{ t('Target') }}</span>
             <div class="automation-target-mode-group" role="radiogroup" :aria-label="t('Automation target type')">
-              <button
+              <AppButton
                 class="automation-target-mode"
                 :class="{ 'is-active': automationTargetMode === 'thread' }"
                 type="button"
                 @click="setAutomationTargetMode('thread')"
               >
                 {{ t('Existing chat') }}
-              </button>
-              <button
+              </AppButton>
+              <AppButton
                 class="automation-target-mode"
                 :class="{ 'is-active': automationTargetMode === 'project' }"
                 type="button"
                 @click="setAutomationTargetMode('project')"
               >
                 {{ t('Project') }}
-              </button>
+              </AppButton>
             </div>
 
             <div class="automation-target-dropdown">
-              <ComposerDropdown
+              <AppSelect
                 v-model="automationTargetValue"
                 class="automation-thread-dropdown"
                 :options="automationTargetDropdownOptions"
@@ -727,7 +727,7 @@
           </div>
 
           <div v-if="automationDialogAutomations.length > 0" class="automation-thread-list" :aria-label="automationDialogScope === 'project' ? 'Project automations' : 'Thread automations'">
-            <button
+            <AppButton
               v-for="automation in automationDialogAutomations"
               :key="automation.id"
               class="automation-thread-list-item"
@@ -737,10 +737,10 @@
             >
               <span>{{ automation.name }}</span>
               <small>{{ automation.status === 'PAUSED' ? t('Paused') : t('Active') }}</small>
-            </button>
-            <button class="automation-thread-list-item automation-thread-list-add" type="button" @click="startNewAutomationDraft">
+            </AppButton>
+            <AppButton class="automation-thread-list-item automation-thread-list-add" type="button" @click="startNewAutomationDraft">
               {{ t('Add another automation') }}
-            </button>
+            </AppButton>
           </div>
 
           <label class="automation-thread-field">
@@ -754,38 +754,38 @@
           </label>
 
           <div class="automation-model-fields">
-            <div class="automation-thread-field"><span class="automation-thread-label">模型</span><ComposerDropdown v-model="automationDraft.model" class="automation-model-picker automation-thread-dropdown" :options="automationModelOptions" enable-search search-placeholder="搜索模型" :disabled="isSavingAutomation || isRunningAutomation" /></div>
-            <div class="automation-thread-field"><span class="automation-thread-label">思考强度</span><ComposerDropdown v-model="automationDraft.reasoningEffort" class="automation-effort-picker automation-thread-dropdown" :options="automationEffortOptions" :disabled="isSavingAutomation || isRunningAutomation" /></div>
+            <div class="automation-thread-field"><span class="automation-thread-label">模型</span><AppSelect v-model="automationDraft.model" class="automation-model-picker automation-thread-dropdown" :options="automationModelOptions" enable-search search-placeholder="搜索模型" :disabled="isSavingAutomation || isRunningAutomation" /></div>
+            <div class="automation-thread-field"><span class="automation-thread-label">思考强度</span><AppSelect v-model="automationDraft.reasoningEffort" class="automation-effort-picker automation-thread-dropdown" :options="automationEffortOptions" :disabled="isSavingAutomation || isRunningAutomation" /></div>
           </div>
           <p class="automation-schedule-preview">留空跟随运行时默认配置；指定后，每次手动或定时执行均使用该设置。</p>
 
           <div class="automation-thread-field">
             <span class="automation-thread-label">{{ t('Schedule') }}</span>
             <div class="automation-schedule-mode-group" role="radiogroup" :aria-label="t('Automation schedule type')">
-              <button
+              <AppButton
                 class="automation-schedule-mode"
                 :class="{ 'is-active': automationScheduleDraft.mode === 'daily' }"
                 type="button"
                 @click="setAutomationScheduleMode('daily')"
               >
                 {{ t('Daily') }}
-              </button>
-              <button
+              </AppButton>
+              <AppButton
                 class="automation-schedule-mode"
                 :class="{ 'is-active': automationScheduleDraft.mode === 'interval' }"
                 type="button"
                 @click="setAutomationScheduleMode('interval')"
               >
                 {{ t('Interval') }}
-              </button>
-              <button
+              </AppButton>
+              <AppButton
                 class="automation-schedule-mode"
                 :class="{ 'is-active': automationScheduleDraft.mode === 'advanced' }"
                 type="button"
                 @click="setAutomationScheduleMode('advanced')"
               >
                 RRULE
-              </button>
+              </AppButton>
             </div>
 
             <div v-if="automationScheduleDraft.mode === 'daily'" class="automation-schedule-row">
@@ -808,7 +808,7 @@
                 step="1"
                 @input="syncAutomationRruleFromScheduleDraft"
               />
-              <ComposerDropdown
+              <AppSelect
                 class="automation-schedule-unit-dropdown"
                 :model-value="automationScheduleDraft.intervalUnit"
                 :options="automationIntervalUnitOptions"
@@ -834,7 +834,7 @@
           </label>
           <div class="automation-thread-field">
             <span class="automation-thread-label">{{ t('Status') }}</span>
-            <ComposerDropdown
+            <AppSelect
               class="automation-thread-dropdown"
               :model-value="automationDraft.status"
               :options="automationStatusOptions"
@@ -847,7 +847,7 @@
           <p v-else-if="automationDialogNotice" class="rename-thread-subtitle automation-thread-notice">{{ t(automationDialogNotice) }}</p>
       <template #footer>
           <div class="rename-thread-actions">
-            <button
+            <AppButton
               v-if="automationDialogMode === 'edit'"
               class="rename-thread-button"
               type="button"
@@ -855,22 +855,22 @@
               @click="onRunAutomationFromDialog"
             >
               {{ isRunningAutomation ? t('Running…') : t('Run now') }}
-            </button>
-            <button
+            </AppButton>
+            <AppButton
               v-if="automationDialogMode === 'edit'"
-              class="rename-thread-button rename-thread-button-danger"
+              class="rename-thread-button rename-thread-button-danger" variant="danger"
               type="button"
               :disabled="isSavingAutomation || isRunningAutomation"
               @click="onDeleteAutomationFromDialog"
             >
               {{ t('Remove') }}
-            </button>
-            <button class="rename-thread-button" type="button" :disabled="isSavingAutomation || isRunningAutomation" @click="closeAutomationDialog">
+            </AppButton>
+            <AppButton class="rename-thread-button" type="button" :disabled="isSavingAutomation || isRunningAutomation" @click="closeAutomationDialog">
               {{ t('Cancel') }}
-            </button>
-            <button class="rename-thread-button rename-thread-button-primary" type="button" :disabled="isSavingAutomation || isRunningAutomation" @click="submitAutomationDialog">
+            </AppButton>
+            <AppButton class="rename-thread-button rename-thread-button-primary" type="button" :disabled="isSavingAutomation || isRunningAutomation" @click="submitAutomationDialog">
               {{ isSavingAutomation ? t('Saving…') : t('Save') }}
-            </button>
+            </AppButton>
           </div>
       </template>
     </AppDialog>
@@ -880,6 +880,7 @@
 <script setup lang="ts">
 import { getAutomationRuntime, runAutomationNow, createAutomationRequestId } from '../../api/automationGateway'
 import AppDialog from '../common/AppDialog.vue'
+import AppButton from '../common/AppButton.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { ComponentPublicInstance } from 'vue'
 import {
@@ -909,7 +910,7 @@ import IconTablerTrash from '../icons/IconTablerTrash.vue'
 import { useUiLanguage } from '../../composables/useUiLanguage'
 import { useFeedbackDiagnostics } from '../../composables/useFeedbackDiagnostics'
 import { getPathLeafName, getPathParent, isAbsoluteLikePath, isProjectlessChatPath } from '../../pathUtils.js'
-import ComposerDropdown from '../content/ComposerDropdown.vue'
+import AppSelect from '../common/AppSelect.vue'
 import { AUTOMATION_EFFORTS } from '../../automationOptions'
 import SidebarMenuRow from './SidebarMenuRow.vue'
 import { reconcilePinnedThreadIds } from './pinnedThreadUtils'

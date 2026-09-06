@@ -41,6 +41,8 @@ it('handles only the top modal, clears residual gestures and releases listeners'
   const outer = {} as HTMLElement
   const inner = {} as HTMLElement
   let hit = outer
+  class PopoverTarget { closest(selector: string) { return selector === '[data-app-popover]' ? this : null } }
+  vi.stubGlobal('Element', PopoverTarget)
   vi.stubGlobal('document', { ...target('d:'), elementFromPoint: () => hit })
   vi.stubGlobal('window', target('w:'))
   const directive = vModalBackdrop as {
@@ -61,6 +63,8 @@ it('handles only the top modal, clears residual gestures and releases listeners'
     fire('w:keydown', { key: 'Escape' })
     expect(innerClose).not.toHaveBeenCalled()
     busy = false
+    fire('w:keydown', { key: 'Escape', target: new PopoverTarget() })
+    expect(innerClose).not.toHaveBeenCalled()
     fire('w:keydown', { key: 'Escape' })
     expect(innerClose).toHaveBeenCalledTimes(1)
     expect(outerClose).not.toHaveBeenCalled()
