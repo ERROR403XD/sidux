@@ -198,29 +198,6 @@
               {{ t('Take photo') }}
             </button>
             <div class="thread-composer-attach-separator" />
-            <div class="thread-composer-attach-mode">
-              <span class="thread-composer-attach-mode-label">{{ t('In-progress send') }}</span>
-              <div class="thread-composer-attach-mode-buttons">
-                <button
-                  class="thread-composer-attach-mode-button"
-                  :class="{ 'is-active': activeInProgressMode === 'steer' }"
-                  type="button"
-                  :disabled="isInteractionDisabled"
-                  @click="setActiveInProgressMode('steer')"
-                >
-                  {{ t('Steer') }}
-                </button>
-                <button
-                  class="thread-composer-attach-mode-button"
-                  :class="{ 'is-active': activeInProgressMode === 'queue' }"
-                  type="button"
-                  :disabled="isInteractionDisabled"
-                  @click="setActiveInProgressMode('queue')"
-                >
-                  {{ t('Queue') }}
-                </button>
-              </div>
-            </div>
             <div class="thread-composer-attach-separator" />
             <button
               v-if="isFastModeSupported"
@@ -468,7 +445,6 @@ const props = defineProps<{
   disabled?: boolean
   hasQueueAbove?: boolean
   sendWithEnter?: boolean
-  inProgressSubmitMode?: 'steer' | 'queue'
   dictationClickToToggle?: boolean
   dictationAutoSend?: boolean
   dictationLanguage?: string
@@ -558,7 +534,7 @@ const {
     draft.value = draft.value ? `${draft.value}\n${text}` : text
     dictationFeedback.value = ''
     if (props.dictationAutoSend !== false) {
-      const mode = props.isTurnInProgress ? activeInProgressMode.value : 'steer'
+      const mode = props.isTurnInProgress ? activeInProgressMode : 'steer'
       onSubmit(mode)
       return
     }
@@ -760,10 +736,7 @@ const speedModeDescription = computed(() => {
     ? t('About 1.5x faster, with credits used at 2x')
     : t('Default speed with normal credit usage')
 })
-const inProgressMode = computed<'steer' | 'queue'>(() =>
-  props.inProgressSubmitMode === 'steer' ? 'steer' : 'queue',
-)
-const activeInProgressMode = ref<'steer' | 'queue'>(inProgressMode.value)
+const activeInProgressMode = 'queue' as const
 const isDictationRecording = computed(() => dictationState.value === 'recording')
 const dictationButtonLabel = computed(() => {
   if (dictationState.value === 'recording') return t('Stop dictation')
@@ -1036,7 +1009,7 @@ function buildContextUsageView(
   }
 }
 
-function onSubmit(mode: 'steer' | 'queue' = 'steer'): void {
+function onSubmit(mode: 'steer' | 'queue' = 'queue'): void {
   commandPicker.dismiss(); commandContext = null
   const text = draft.value.trim()
   if (!canSubmit.value) return
@@ -1060,9 +1033,6 @@ function onSubmit(mode: 'steer' | 'queue' = 'steer'): void {
   nextTick(() => inputRef.value?.focus())
 }
 
-function setActiveInProgressMode(mode: 'steer' | 'queue'): void {
-  activeInProgressMode.value = mode
-}
 
 function replaceDraftState(payload: ComposerDraftPayload): void {
   draftGeneration.value += 1
@@ -1673,7 +1643,7 @@ function onInputKeydown(event: KeyboardEvent): void {
     : event.key === 'Enter' && (event.metaKey || event.ctrlKey)
   if (shouldSend) {
     event.preventDefault()
-    onSubmit(props.isTurnInProgress ? activeInProgressMode.value : 'steer')
+    onSubmit(props.isTurnInProgress ? activeInProgressMode : 'steer')
     return
   }
 }
@@ -1956,12 +1926,6 @@ watch(
   },
 )
 
-watch(
-  inProgressMode,
-  (nextMode) => {
-    activeInProgressMode.value = nextMode
-  },
-)
 
 
 </script>

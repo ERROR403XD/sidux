@@ -4841,7 +4841,7 @@ export function useDesktopState() {
     text: string,
     imageUrls: string[] = [],
     skills: Array<{ name: string; path: string }> = [],
-    mode: 'steer' | 'queue' = 'steer',
+    mode: 'steer' | 'queue' = 'queue',
     fileAttachments: FileAttachment[] = [],
     queueInsertIndex?: number,
     collaborationModeOverride?: CollaborationModeKind,
@@ -4851,10 +4851,6 @@ export function useDesktopState() {
     const threadId = selectedThreadId.value
     const nextText = text.trim()
     if (!threadId || (!nextText && imageUrls.length === 0 && fileAttachments.length === 0)) return
-
-    if (await maybeReplyToPendingUserInputRequest(threadId, nextText, imageUrls, skills, fileAttachments)) {
-      return
-    }
 
     const isInProgress = inProgressById.value[threadId] === true
 
@@ -4882,6 +4878,10 @@ export function useDesktopState() {
         [threadId]: nextQueue,
       }
       persistQueueState()
+      return
+    }
+
+    if (await maybeReplyToPendingUserInputRequest(threadId, nextText, imageUrls, skills, fileAttachments)) {
       return
     }
 

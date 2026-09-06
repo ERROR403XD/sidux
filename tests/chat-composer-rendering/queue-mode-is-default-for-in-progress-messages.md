@@ -1,28 +1,17 @@
-### Queue mode is default for in-progress messages
+# 0.1.90：忙碌时始终排队，手动引导才立即发送
 
-#### Feature/Change Name
-When a turn is already running, the in-progress message path defaults to `Queue` for new sessions and existing users without a saved preference.
+前提：使用隔离测试会话，当前有一个尚未结束的回合。可预先在 localStorage 设置旧值 `codex-web-local.in-progress-send-mode.v1=steer`，验证旧偏好不会改变新规则。
 
-#### Prerequisites/Setup
-1. Dev server running (`pnpm run dev`)
-2. Open any existing thread with message composer enabled
-3. Start from a clean setting state by clearing localStorage key `codex-web-local.in-progress-send-mode` if present
-4. Light theme and dark theme both available from the appearance switcher
+1. 在全局设置和输入框附加菜单中确认“忙碌时发送方式 / In-progress send”选项均已移除。
+2. 忙碌时输入消息并发送。预期消息进入队列，没有发起 turn/start 或 turn/steer，当前回合继续工作。
+3. 在队列中点击“编辑”，修改文字后重新发送。预期仍回到队列，保留原位置；编辑不自动变成引导。
+4. 点击队列中的取消按钮。预期移除该消息，任务结束后也不会发送它。
+5. 点击某条队列消息的“引导”。预期该条从队列移除，立即向当前回合发送，后续新输入仍默认排队。
+6. 保留一条排队消息，等待当前回合正常结束。预期后端按顺序发送它，页面更新；刷新期间仍保存队列状态。
+7. 在浅色和深色主题检查按钮、队列文字及发送图标；验证 Enter 和 Ctrl/⌘+Enter 配置各自仍遵守原发送快捷键。
 
-#### Steps
-1. Open a thread and ensure no previous turn is running
-2. Confirm settings shows `When busy` line labeled as `Queue`
-3. Send a message that triggers an in-progress response
-4. While the response is running, submit a second message and observe submit mode label / destination behavior
-5. Open the queue list and confirm the second message is queued
-6. Switch to dark theme and repeat step 4 using another thread
+检查结论：原先已经有排队、取消和显式引导链路，但全局/会话偏好可改成引导。本次移除模式偏好并统一默认排队，保留原编辑后重新排队逻辑。待回答问题不能提前截走明确请求排队的消息。
 
-#### Expected Results
-- The in-progress setting defaults to `Queue` when no saved preference exists
-- A second message sent during an active turn is queued, not used as steer
-- Queue order and queued item actions remain functional in both light theme and dark theme
+性能：固定模式不增加监听或请求；排队只保存既有队列接口，显式引导才发起上游发送。封测浏览器用例拦截并断言此区别。
 
-#### Rollback/Cleanup
-- Clear the queue by sending/steering queued items or deleting queued rows
-
----
+清理：删除本次虚构队列消息并等待当前任务结束，保留生产设置和真实会话。旧 localStorage 值不再被读取，无需用户手工清理。

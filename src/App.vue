@@ -251,10 +251,6 @@
                 <span class="sidebar-settings-label">{{ t('Require ⌘ + enter to send') }}</span>
                 <span class="sidebar-settings-toggle" :class="{ 'is-on': !sendWithEnter }" />
               </button>
-              <button class="sidebar-settings-row" type="button" :title="SETTINGS_HELP.inProgressSendMode" @click="cycleInProgressSendMode">
-                <span class="sidebar-settings-label">{{ t('When busy, send as') }}</span>
-                <span class="sidebar-settings-value">{{ inProgressSendMode === 'steer' ? t('Steer') : t('Queue') }}</span>
-              </button>
               <button class="sidebar-settings-row" type="button" :title="SETTINGS_HELP.appearance" @click="cycleDarkMode">
                 <span class="sidebar-settings-label">{{ t('Appearance') }}</span>
                 <span class="sidebar-settings-value">{{ darkMode === 'system' ? t('System') : darkMode === 'dark' ? t('Dark') : t('Light') }}</span>
@@ -981,7 +977,7 @@
                   :codex-quota="codexQuota"
                   :is-turn-in-progress="false"
                   :is-stop-pending="false"
-                  :is-interrupting-turn="false" :send-with-enter="sendWithEnter" :in-progress-submit-mode="inProgressSendMode"
+                  :is-interrupting-turn="false" :send-with-enter="sendWithEnter"
                   :dictation-click-to-toggle="dictationClickToToggle" :dictation-auto-send="dictationAutoSend"
                   :dictation-language="dictationLanguage"
                   @submit="onSubmitThreadMessage"
@@ -1067,7 +1063,7 @@
                     :is-stop-pending="isSelectedThreadInterruptPending"
                     :is-interrupting-turn="isInterruptingTurn"
                     :has-queue-above="selectedThreadQueuedMessages.length > 0"
-                    :send-with-enter="sendWithEnter" :in-progress-submit-mode="inProgressSendMode"
+                    :send-with-enter="sendWithEnter"
                     :dictation-click-to-toggle="dictationClickToToggle" :dictation-auto-send="dictationAutoSend"
                     :dictation-language="dictationLanguage"
                     @update:selected-collaboration-mode="onSelectCollaborationMode"
@@ -1283,7 +1279,6 @@ const worktreeName = import.meta.env.VITE_WORKTREE_NAME ?? 'unknown'
 const appVersion = import.meta.env.VITE_APP_VERSION ?? 'unknown'
 const SETTINGS_HELP = {
   sendWithEnter: t('When enabled, press Enter to send. When disabled, use Command+Enter to send.'),
-  inProgressSendMode: t('If a turn is still running, choose whether a new prompt should steer the current turn or be queued.'),
   appearance: t('Switch between system theme, light mode, and dark mode.'),
   chatWidth: t('Choose how wide the conversation column and composer can grow on desktop screens.'),
   dictationClickToToggle: t('Use click-to-start and click-to-stop dictation instead of hold-to-talk.'),
@@ -1649,7 +1644,6 @@ const hoveredAccountId = ref('')
 const accountActionError = ref('')
 const accountActionNotice = ref('')
 const SEND_WITH_ENTER_KEY = 'codex-web-local.send-with-enter.v1'
-const IN_PROGRESS_SEND_MODE_KEY = 'codex-web-local.in-progress-send-mode.v1'
 const DARK_MODE_KEY = 'codex-web-local.dark-mode.v1'
 const DICTATION_CLICK_TO_TOGGLE_KEY = 'codex-web-local.dictation-click-to-toggle.v1'
 const DICTATION_AUTO_SEND_KEY = 'codex-web-local.dictation-auto-send.v1'
@@ -1658,7 +1652,6 @@ const DICTATION_LANGUAGE_KEY = 'codex-web-local.dictation-language.v1'
 const CHAT_WIDTH_KEY = 'codex-web-local.chat-width.v1'
 const MOBILE_RESUME_RELOAD_MIN_HIDDEN_MS = 400
 const sendWithEnter = ref(loadBoolPref(SEND_WITH_ENTER_KEY, true))
-const inProgressSendMode = ref<'steer' | 'queue'>(loadInProgressSendModePref())
 const darkMode = ref<'system' | 'light' | 'dark'>(loadDarkModePref())
 const chatWidth = ref<ChatWidthMode>(loadChatWidthPref())
 const dictationClickToToggle = ref(loadBoolPref(DICTATION_CLICK_TO_TOGGLE_KEY, false))
@@ -4370,12 +4363,6 @@ function loadDarkModePref(): 'system' | 'light' | 'dark' {
   return 'system'
 }
 
-function loadInProgressSendModePref(): 'steer' | 'queue' {
-  if (typeof window === 'undefined') return 'steer'
-  const v = window.localStorage.getItem(IN_PROGRESS_SEND_MODE_KEY)
-  if (v === 'steer' || v === 'queue') return v
-  return 'queue'
-}
 
 function loadChatWidthPref(): ChatWidthMode {
   if (typeof window === 'undefined') return 'standard'
@@ -4388,10 +4375,6 @@ function toggleSendWithEnter(): void {
   window.localStorage.setItem(SEND_WITH_ENTER_KEY, sendWithEnter.value ? '1' : '0')
 }
 
-function cycleInProgressSendMode(): void {
-  inProgressSendMode.value = inProgressSendMode.value === 'steer' ? 'queue' : 'steer'
-  window.localStorage.setItem(IN_PROGRESS_SEND_MODE_KEY, inProgressSendMode.value)
-}
 
 function cycleDarkMode(): void {
   const order: Array<'system' | 'light' | 'dark'> = ['system', 'light', 'dark']
