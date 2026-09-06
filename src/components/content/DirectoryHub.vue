@@ -37,7 +37,9 @@
 
     <div v-if="toast" class="directory-toast" :class="{ 'is-error': toast.type === 'error' }">{{ t(toast.text, toast.params) }}</div>
 
-    <section v-if="activeTab === 'plugins'" class="directory-section">
+    <div v-if="!methodsLoaded" class="directory-loading">读取扩展能力…</div>
+    <div v-else-if="methodsError" class="directory-error">{{ methodsError }}</div>
+    <section v-else-if="activeTab === 'plugins'" class="directory-section">
       <div class="directory-toolbar">
         <input
           v-model="pluginSearchQuery"
@@ -861,6 +863,7 @@ function tabFromRoute(): DirectoryTab {
 const activeTab = ref<DirectoryTab>(tabFromRoute())
 const methodSet = ref<Set<string>>(new Set())
 const methodsLoaded = ref(false)
+const methodsError = ref('')
 const plugins = ref<DirectoryPluginSummary[]>([])
 const apps = ref<DirectoryAppInfo[]>([])
 const composioStatus = ref<DirectoryComposioStatus | null>(null)
@@ -1371,10 +1374,13 @@ function fallbackStyle(plugin: DirectoryPluginSummary): Record<string, string> {
 }
 
 async function loadMethods(): Promise<void> {
+  methodsLoaded.value = false
+  methodsError.value = ''
   try {
     methodSet.value = new Set(await getMethodCatalog())
-  } catch {
+  } catch (error) {
     methodSet.value = new Set()
+    methodsError.value = error instanceof Error ? error.message : '扩展能力读取失败'
   } finally {
     methodsLoaded.value = true
   }
@@ -1534,6 +1540,10 @@ async function manualRefreshActiveTab(): Promise<void> {
   if (isManualRefreshInFlight.value) return
   isManualRefreshInFlight.value = true
   try {
+    if (methodsError.value) {
+      await loadMethods()
+      if (methodsError.value || disposed) return
+    }
     if (activeTab.value === 'plugins') await loadPlugins(true)
     else if (activeTab.value === 'apps') await loadApps(true)
     else if (activeTab.value === 'composio') await loadComposio()

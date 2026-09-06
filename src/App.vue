@@ -637,7 +637,7 @@
         <section class="content-body">
           <template v-if="isSkillsRoute">
             <DirectoryHub
-              :key="`${directoryCwd}:${directoryThreadId}:${activeAccountStorageId || ''}`"
+              :key="`${directoryCwd}:${directoryThreadId}:${directoryAccountRevision}`"
               :cwd="directoryCwd"
               :thread-id="directoryThreadId"
               :projects="directoryProjects"
@@ -1784,6 +1784,17 @@ function toThreadBranchCommitsKey(branch: string, includeResetHistory: boolean):
 
 const createFolderInputRef = ref<HTMLInputElement | null>(null)
 const accounts = ref<UiAccountEntry[]>([])
+const directoryAccountRevision = ref(0)
+let hasAccountSnapshot = false
+watch(accounts, (next, previous) => {
+  if (!hasAccountSnapshot) {
+    hasAccountSnapshot = true
+    return
+  }
+  const nextId = next.find(account => account.isActive)?.storageId || ''
+  const previousId = previous.find(account => account.isActive)?.storageId || ''
+  if (nextId !== previousId) directoryAccountRevision.value += 1
+})
 const isRefreshingAccounts = ref(false)
 const isSwitchingAccounts = ref(false)
 const isStartingCodexLogin = ref(false)
