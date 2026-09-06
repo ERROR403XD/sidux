@@ -1,0 +1,2592 @@
+{
+  "version": "0.1.90",
+  "sourceCommit": "66346466acbb8fe3f752c51801fbfd80a2c0f54d",
+  "branch": "feature/automation-slash-0.1.90",
+  "baselineTag": "beta/ui-0.1.90-final-20260906",
+  "date": "2026-09-06",
+  "fixCommits": [
+    "b731c9d",
+    "fd95c2b",
+    "acd431c",
+    "b303a8e",
+    "6634646"
+  ],
+  "unit": {
+    "files": 37,
+    "tests": 260,
+    "passed": true
+  },
+  "typecheck": true,
+  "build": true,
+  "uiMatrix": {
+    "chromium": [
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-chromium-language-1440x900-light.png",
+        "autoShot": "output/playwright/0190-final-pass-chromium-automation-1440x900-light.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-chromium-language-1440x900-dark.png",
+        "autoShot": "output/playwright/0190-final-pass-chromium-automation-1440x900-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-chromium-language-1024x768-light.png",
+        "autoShot": "output/playwright/0190-final-pass-chromium-automation-1024x768-light.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-chromium-language-1024x768-dark.png",
+        "autoShot": "output/playwright/0190-final-pass-chromium-automation-1024x768-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-chromium-language-768x1024-light.png",
+        "autoShot": "output/playwright/0190-final-pass-chromium-automation-768x1024-light.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "dark",
+        "timezoneId": "America/New_York",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/06/2026, 13:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-chromium-language-768x1024-dark.png",
+        "autoShot": "output/playwright/0190-final-pass-chromium-automation-768x1024-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1180,
+          "height": 820
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-chromium-language-1180x820-dark.png",
+        "autoShot": "output/playwright/0190-final-pass-chromium-automation-1180x820-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 820,
+          "height": 1180
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-chromium-language-820x1180-light.png",
+        "autoShot": "output/playwright/0190-final-pass-chromium-automation-820x1180-light.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-chromium-language-375x812-light.png",
+        "autoShot": "output/playwright/0190-final-pass-chromium-automation-375x812-light.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "dark",
+        "timezoneId": "America/New_York",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/06/2026, 13:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-chromium-language-375x812-dark.png",
+        "autoShot": "output/playwright/0190-final-pass-chromium-automation-375x812-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1366,
+          "height": 600
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-chromium-language-1366x600-dark.png",
+        "autoShot": "output/playwright/0190-final-pass-chromium-automation-1366x600-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1024,
+          "height": 600
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-chromium-language-1024x600-light.png",
+        "autoShot": "output/playwright/0190-final-pass-chromium-automation-1024x600-light.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 800,
+          "height": 480
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-chromium-language-800x480-dark.png",
+        "autoShot": "output/playwright/0190-final-pass-chromium-automation-800x480-dark.png",
+        "errors": []
+      }
+    ],
+    "webkit": [
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-webkit-language-1440x900-light.png",
+        "autoShot": "output/playwright/0190-final-pass-webkit-automation-1440x900-light.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-webkit-language-1440x900-dark.png",
+        "autoShot": "output/playwright/0190-final-pass-webkit-automation-1440x900-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-webkit-language-1024x768-light.png",
+        "autoShot": "output/playwright/0190-final-pass-webkit-automation-1024x768-light.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-webkit-language-1024x768-dark.png",
+        "autoShot": "output/playwright/0190-final-pass-webkit-automation-1024x768-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-webkit-language-768x1024-light.png",
+        "autoShot": "output/playwright/0190-final-pass-webkit-automation-768x1024-light.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "dark",
+        "timezoneId": "America/New_York",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/06/2026, 13:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-webkit-language-768x1024-dark.png",
+        "autoShot": "output/playwright/0190-final-pass-webkit-automation-768x1024-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1180,
+          "height": 820
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-webkit-language-1180x820-dark.png",
+        "autoShot": "output/playwright/0190-final-pass-webkit-automation-1180x820-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 820,
+          "height": 1180
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-webkit-language-820x1180-light.png",
+        "autoShot": "output/playwright/0190-final-pass-webkit-automation-820x1180-light.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-webkit-language-375x812-light.png",
+        "autoShot": "output/playwright/0190-final-pass-webkit-automation-375x812-light.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "dark",
+        "timezoneId": "America/New_York",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/06/2026, 13:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-webkit-language-375x812-dark.png",
+        "autoShot": "output/playwright/0190-final-pass-webkit-automation-375x812-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1366,
+          "height": 600
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-webkit-language-1366x600-dark.png",
+        "autoShot": "output/playwright/0190-final-pass-webkit-automation-1366x600-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1024,
+          "height": 600
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-webkit-language-1024x600-light.png",
+        "autoShot": "output/playwright/0190-final-pass-webkit-automation-1024x600-light.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 800,
+          "height": 480
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-final-pass-webkit-language-800x480-dark.png",
+        "autoShot": "output/playwright/0190-final-pass-webkit-automation-800x480-dark.png",
+        "errors": []
+      }
+    ]
+  },
+  "gitMenu": {
+    "chromium": [
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "width": 375,
+        "height": 812,
+        "theme": "light",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "resetStyle": {
+          "shared": true,
+          "background": "rgb(255, 255, 255)",
+          "surface": "#fff"
+        },
+        "gitShot": "output/playwright/0190-final-pass-chromium-git-375x812-light.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "width": 375,
+        "height": 812,
+        "theme": "dark",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "resetStyle": {
+          "shared": true,
+          "background": "rgb(24, 24, 27)",
+          "surface": "#18181b"
+        },
+        "gitShot": "output/playwright/0190-final-pass-chromium-git-375x812-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "width": 768,
+        "height": 1024,
+        "theme": "dark",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "resetStyle": {
+          "shared": true,
+          "background": "rgb(24, 24, 27)",
+          "surface": "#18181b"
+        },
+        "gitShot": "output/playwright/0190-final-pass-chromium-git-768x1024-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "width": 1024,
+        "height": 600,
+        "theme": "light",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "resetStyle": {
+          "shared": true,
+          "background": "rgb(255, 255, 255)",
+          "surface": "#fff"
+        },
+        "gitShot": "output/playwright/0190-final-pass-chromium-git-1024x600-light.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "width": 800,
+        "height": 480,
+        "theme": "dark",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "resetStyle": {
+          "shared": true,
+          "background": "rgb(24, 24, 27)",
+          "surface": "#18181b"
+        },
+        "gitShot": "output/playwright/0190-final-pass-chromium-git-800x480-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "width": 1440,
+        "height": 900,
+        "theme": "dark",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "resetStyle": {
+          "shared": true,
+          "background": "rgb(24, 24, 27)",
+          "surface": "#18181b"
+        },
+        "gitShot": "output/playwright/0190-final-pass-chromium-git-1440x900-dark.png",
+        "errors": []
+      }
+    ],
+    "webkit": [
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "width": 375,
+        "height": 812,
+        "theme": "light",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "resetStyle": {
+          "shared": true,
+          "background": "rgb(255, 255, 255)",
+          "surface": "#fff"
+        },
+        "gitShot": "output/playwright/0190-final-pass-webkit-git-375x812-light.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "width": 375,
+        "height": 812,
+        "theme": "dark",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "resetStyle": {
+          "shared": true,
+          "background": "rgb(24, 24, 27)",
+          "surface": "#18181b"
+        },
+        "gitShot": "output/playwright/0190-final-pass-webkit-git-375x812-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "width": 768,
+        "height": 1024,
+        "theme": "dark",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "resetStyle": {
+          "shared": true,
+          "background": "rgb(24, 24, 27)",
+          "surface": "#18181b"
+        },
+        "gitShot": "output/playwright/0190-final-pass-webkit-git-768x1024-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "width": 1024,
+        "height": 600,
+        "theme": "light",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "resetStyle": {
+          "shared": true,
+          "background": "rgb(255, 255, 255)",
+          "surface": "#fff"
+        },
+        "gitShot": "output/playwright/0190-final-pass-webkit-git-1024x600-light.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "width": 800,
+        "height": 480,
+        "theme": "dark",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "resetStyle": {
+          "shared": true,
+          "background": "rgb(24, 24, 27)",
+          "surface": "#18181b"
+        },
+        "gitShot": "output/playwright/0190-final-pass-webkit-git-800x480-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "width": 1440,
+        "height": 900,
+        "theme": "dark",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "resetStyle": {
+          "shared": true,
+          "background": "rgb(24, 24, 27)",
+          "surface": "#18181b"
+        },
+        "gitShot": "output/playwright/0190-final-pass-webkit-git-1440x900-dark.png",
+        "errors": []
+      }
+    ]
+  },
+  "extraSurfaces": {
+    "chromium": [
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "width": 375,
+        "height": 812,
+        "theme": "light",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "directoryTabs": 4,
+        "noHorizontalOverflow": true,
+        "gitShot": "output/playwright/0190-final-pass-chromium-git-375x812-light.png",
+        "directoryShot": "output/playwright/0190-final-pass-chromium-directory-375x812-light.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "width": 375,
+        "height": 812,
+        "theme": "dark",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "directoryTabs": 4,
+        "noHorizontalOverflow": true,
+        "gitShot": "output/playwright/0190-final-pass-chromium-git-375x812-dark.png",
+        "directoryShot": "output/playwright/0190-final-pass-chromium-directory-375x812-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "width": 768,
+        "height": 1024,
+        "theme": "dark",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "directoryTabs": 4,
+        "noHorizontalOverflow": true,
+        "gitShot": "output/playwright/0190-final-pass-chromium-git-768x1024-dark.png",
+        "directoryShot": "output/playwright/0190-final-pass-chromium-directory-768x1024-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "width": 1024,
+        "height": 600,
+        "theme": "light",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "directoryTabs": 4,
+        "noHorizontalOverflow": true,
+        "gitShot": "output/playwright/0190-final-pass-chromium-git-1024x600-light.png",
+        "directoryShot": "output/playwright/0190-final-pass-chromium-directory-1024x600-light.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "width": 800,
+        "height": 480,
+        "theme": "dark",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "directoryTabs": 4,
+        "noHorizontalOverflow": true,
+        "gitShot": "output/playwright/0190-final-pass-chromium-git-800x480-dark.png",
+        "directoryShot": "output/playwright/0190-final-pass-chromium-directory-800x480-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "width": 1440,
+        "height": 900,
+        "theme": "dark",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "directoryTabs": 4,
+        "noHorizontalOverflow": true,
+        "gitShot": "output/playwright/0190-final-pass-chromium-git-1440x900-dark.png",
+        "directoryShot": "output/playwright/0190-final-pass-chromium-directory-1440x900-dark.png",
+        "errors": []
+      }
+    ],
+    "webkit": [
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:4173",
+        "width": 375,
+        "height": 812,
+        "theme": "light",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "directoryTabs": 4,
+        "noHorizontalOverflow": true,
+        "gitShot": "output/playwright/0190-final-pass-webkit-git-375x812-light.png",
+        "directoryShot": "output/playwright/0190-final-pass-webkit-directory-375x812-light.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:4173",
+        "width": 375,
+        "height": 812,
+        "theme": "dark",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "directoryTabs": 4,
+        "noHorizontalOverflow": true,
+        "gitShot": "output/playwright/0190-final-pass-webkit-git-375x812-dark.png",
+        "directoryShot": "output/playwright/0190-final-pass-webkit-directory-375x812-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:4173",
+        "width": 768,
+        "height": 1024,
+        "theme": "dark",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "directoryTabs": 4,
+        "noHorizontalOverflow": true,
+        "gitShot": "output/playwright/0190-final-pass-webkit-git-768x1024-dark.png",
+        "directoryShot": "output/playwright/0190-final-pass-webkit-directory-768x1024-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:4173",
+        "width": 1024,
+        "height": 600,
+        "theme": "light",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "directoryTabs": 4,
+        "noHorizontalOverflow": true,
+        "gitShot": "output/playwright/0190-final-pass-webkit-git-1024x600-light.png",
+        "directoryShot": "output/playwright/0190-final-pass-webkit-directory-1024x600-light.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:4173",
+        "width": 800,
+        "height": 480,
+        "theme": "dark",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "directoryTabs": 4,
+        "noHorizontalOverflow": true,
+        "gitShot": "output/playwright/0190-final-pass-webkit-git-800x480-dark.png",
+        "directoryShot": "output/playwright/0190-final-pass-webkit-directory-800x480-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:4173",
+        "width": 1440,
+        "height": 900,
+        "theme": "dark",
+        "gitMenuInside": true,
+        "commitFilesReadable": true,
+        "directoryTabs": 4,
+        "noHorizontalOverflow": true,
+        "gitShot": "output/playwright/0190-final-pass-webkit-git-1440x900-dark.png",
+        "directoryShot": "output/playwright/0190-final-pass-webkit-directory-1440x900-dark.png",
+        "errors": []
+      }
+    ]
+  },
+  "commands": [
+    {
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000004",
+      "viewport": "1440x900",
+      "theme": "light",
+      "builtins": 22,
+      "nativeGoalLifecycle": true,
+      "compactUsesRpc": true,
+      "renameAndReview": true,
+      "copyCompletedReply": true,
+      "initDraft": true,
+      "mention": true,
+      "chatTurns": 0,
+      "screenshot": "output/playwright/0190-final-pass-command-goal-1440x900-light.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000003",
+      "viewport": "1440x900",
+      "theme": "dark",
+      "builtins": 22,
+      "nativeGoalLifecycle": true,
+      "compactUsesRpc": true,
+      "renameAndReview": true,
+      "copyCompletedReply": true,
+      "initDraft": true,
+      "mention": true,
+      "chatTurns": 0,
+      "screenshot": "output/playwright/0190-final-pass-command-goal-1440x900-dark.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000003",
+      "viewport": "375x812",
+      "theme": "light",
+      "builtins": 22,
+      "nativeGoalLifecycle": true,
+      "compactUsesRpc": true,
+      "renameAndReview": true,
+      "copyCompletedReply": true,
+      "initDraft": true,
+      "mention": true,
+      "chatTurns": 0,
+      "screenshot": "output/playwright/0190-final-pass-command-goal-375x812-light.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000003",
+      "viewport": "375x812",
+      "theme": "dark",
+      "builtins": 22,
+      "nativeGoalLifecycle": true,
+      "compactUsesRpc": true,
+      "renameAndReview": true,
+      "copyCompletedReply": true,
+      "initDraft": true,
+      "mention": true,
+      "chatTurns": 0,
+      "screenshot": "output/playwright/0190-final-pass-command-goal-375x812-dark.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000003",
+      "viewport": "768x1024",
+      "theme": "dark",
+      "builtins": 22,
+      "nativeGoalLifecycle": true,
+      "compactUsesRpc": true,
+      "renameAndReview": true,
+      "copyCompletedReply": true,
+      "initDraft": true,
+      "mention": true,
+      "chatTurns": 0,
+      "screenshot": "output/playwright/0190-final-pass-command-goal-768x1024-dark.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000003",
+      "viewport": "1024x768",
+      "theme": "light",
+      "builtins": 22,
+      "nativeGoalLifecycle": true,
+      "compactUsesRpc": true,
+      "renameAndReview": true,
+      "copyCompletedReply": true,
+      "initDraft": true,
+      "mention": true,
+      "chatTurns": 0,
+      "screenshot": "output/playwright/0190-final-pass-command-goal-1024x768-light.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000003",
+      "viewport": "1024x768",
+      "theme": "dark",
+      "builtins": 22,
+      "nativeGoalLifecycle": true,
+      "compactUsesRpc": true,
+      "renameAndReview": true,
+      "copyCompletedReply": true,
+      "initDraft": true,
+      "mention": true,
+      "chatTurns": 0,
+      "screenshot": "output/playwright/0190-final-pass-command-goal-1024x768-dark.png",
+      "errors": []
+    }
+  ],
+  "sharedInteraction": [
+    {
+      "url": "http://127.0.0.1:59001/#/automations?automationId=0190-settings",
+      "viewport": "1440x900",
+      "theme": "light",
+      "busyCloseGuard": true,
+      "sharedPopoverEscape": true,
+      "backdropDragProtected": true,
+      "focusWrap": true,
+      "closedListenersReleased": true,
+      "keyboardSelect": true,
+      "goalCardAndPlus": true,
+      "goalBadge": true,
+      "goalReload": true,
+      "clearRemovesCardAndBadge": true,
+      "automationModelPersisted": true,
+      "automationEffortPersisted": true,
+      "goalReadBatches": [
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ],
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ],
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ]
+      ],
+      "goalShot": "output/playwright/0190-final-pass-goal-card-1440x900-light.png",
+      "autoShot": "output/playwright/0190-final-pass-automation-model-1440x900-light.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/automations?automationId=0190-settings",
+      "viewport": "1440x900",
+      "theme": "dark",
+      "busyCloseGuard": true,
+      "sharedPopoverEscape": true,
+      "backdropDragProtected": true,
+      "focusWrap": true,
+      "closedListenersReleased": true,
+      "keyboardSelect": true,
+      "goalCardAndPlus": true,
+      "goalBadge": true,
+      "goalReload": true,
+      "clearRemovesCardAndBadge": true,
+      "automationModelPersisted": true,
+      "automationEffortPersisted": true,
+      "goalReadBatches": [
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ],
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ],
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ]
+      ],
+      "goalShot": "output/playwright/0190-final-pass-goal-card-1440x900-dark.png",
+      "autoShot": "output/playwright/0190-final-pass-automation-model-1440x900-dark.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/automations?automationId=0190-settings",
+      "viewport": "375x812",
+      "theme": "light",
+      "busyCloseGuard": true,
+      "sharedPopoverEscape": true,
+      "backdropDragProtected": true,
+      "focusWrap": true,
+      "closedListenersReleased": true,
+      "keyboardSelect": true,
+      "goalCardAndPlus": true,
+      "goalBadge": false,
+      "goalReload": true,
+      "clearRemovesCardAndBadge": true,
+      "automationModelPersisted": true,
+      "automationEffortPersisted": true,
+      "goalReadBatches": [
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ],
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ],
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ]
+      ],
+      "goalShot": "output/playwright/0190-final-pass-goal-card-375x812-light.png",
+      "autoShot": "output/playwright/0190-final-pass-automation-model-375x812-light.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/automations?automationId=0190-settings",
+      "viewport": "375x812",
+      "theme": "dark",
+      "busyCloseGuard": true,
+      "sharedPopoverEscape": true,
+      "backdropDragProtected": true,
+      "focusWrap": true,
+      "closedListenersReleased": true,
+      "keyboardSelect": true,
+      "goalCardAndPlus": true,
+      "goalBadge": false,
+      "goalReload": true,
+      "clearRemovesCardAndBadge": true,
+      "automationModelPersisted": true,
+      "automationEffortPersisted": true,
+      "goalReadBatches": [
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ],
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ],
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ]
+      ],
+      "goalShot": "output/playwright/0190-final-pass-goal-card-375x812-dark.png",
+      "autoShot": "output/playwright/0190-final-pass-automation-model-375x812-dark.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/automations?automationId=0190-settings",
+      "viewport": "768x1024",
+      "theme": "dark",
+      "busyCloseGuard": true,
+      "sharedPopoverEscape": true,
+      "backdropDragProtected": true,
+      "focusWrap": true,
+      "closedListenersReleased": true,
+      "keyboardSelect": true,
+      "goalCardAndPlus": true,
+      "goalBadge": true,
+      "goalReload": true,
+      "clearRemovesCardAndBadge": true,
+      "automationModelPersisted": true,
+      "automationEffortPersisted": true,
+      "goalReadBatches": [
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ],
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ],
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ]
+      ],
+      "goalShot": "output/playwright/0190-final-pass-goal-card-768x1024-dark.png",
+      "autoShot": "output/playwright/0190-final-pass-automation-model-768x1024-dark.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/automations?automationId=0190-settings",
+      "viewport": "1024x768",
+      "theme": "light",
+      "busyCloseGuard": true,
+      "sharedPopoverEscape": true,
+      "backdropDragProtected": true,
+      "focusWrap": true,
+      "closedListenersReleased": true,
+      "keyboardSelect": true,
+      "goalCardAndPlus": true,
+      "goalBadge": true,
+      "goalReload": true,
+      "clearRemovesCardAndBadge": true,
+      "automationModelPersisted": true,
+      "automationEffortPersisted": true,
+      "goalReadBatches": [
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ],
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ],
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ]
+      ],
+      "goalShot": "output/playwright/0190-final-pass-goal-card-1024x768-light.png",
+      "autoShot": "output/playwright/0190-final-pass-automation-model-1024x768-light.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/automations?automationId=0190-settings",
+      "viewport": "1024x768",
+      "theme": "dark",
+      "busyCloseGuard": true,
+      "sharedPopoverEscape": true,
+      "backdropDragProtected": true,
+      "focusWrap": true,
+      "closedListenersReleased": true,
+      "keyboardSelect": true,
+      "goalCardAndPlus": true,
+      "goalBadge": true,
+      "goalReload": true,
+      "clearRemovesCardAndBadge": true,
+      "automationModelPersisted": true,
+      "automationEffortPersisted": true,
+      "goalReadBatches": [
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ],
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ],
+        [
+          "01900000-0000-7000-8000-000000000015"
+        ]
+      ],
+      "goalShot": "output/playwright/0190-final-pass-goal-card-1024x768-dark.png",
+      "autoShot": "output/playwright/0190-final-pass-automation-model-1024x768-dark.png",
+      "errors": []
+    }
+  ],
+  "skills": [
+    {
+      "url": "http://127.0.0.1:4173/#/",
+      "viewport": "1440x900",
+      "theme": "light",
+      "keyboardSelection": true,
+      "noAutoSend": true,
+      "box": {
+        "x": 319.5,
+        "y": 719,
+        "width": 384,
+        "height": 111
+      },
+      "screenshot": "output/playwright/0190-final-pass-shared-skills-1440x900-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:4173/#/",
+      "viewport": "1440x900",
+      "theme": "dark",
+      "keyboardSelection": true,
+      "noAutoSend": true,
+      "box": {
+        "x": 319.5,
+        "y": 719,
+        "width": 384,
+        "height": 111
+      },
+      "screenshot": "output/playwright/0190-final-pass-shared-skills-1440x900-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:4173/#/",
+      "viewport": "375x812",
+      "theme": "light",
+      "keyboardSelection": true,
+      "noAutoSend": true,
+      "box": {
+        "x": 8,
+        "y": 640,
+        "width": 359,
+        "height": 113.84375
+      },
+      "screenshot": "output/playwright/0190-final-pass-shared-skills-375x812-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:4173/#/",
+      "viewport": "375x812",
+      "theme": "dark",
+      "keyboardSelection": true,
+      "noAutoSend": true,
+      "box": {
+        "x": 8,
+        "y": 640,
+        "width": 359,
+        "height": 113.84375
+      },
+      "screenshot": "output/playwright/0190-final-pass-shared-skills-375x812-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:4173/#/",
+      "viewport": "768x1024",
+      "theme": "dark",
+      "keyboardSelection": true,
+      "noAutoSend": true,
+      "box": {
+        "x": 114,
+        "y": 840,
+        "width": 384,
+        "height": 113.84375
+      },
+      "screenshot": "output/playwright/0190-final-pass-shared-skills-768x1024-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:4173/#/",
+      "viewport": "1024x768",
+      "theme": "light",
+      "keyboardSelection": true,
+      "noAutoSend": true,
+      "box": {
+        "x": 114,
+        "y": 587,
+        "width": 384,
+        "height": 111
+      },
+      "screenshot": "output/playwright/0190-final-pass-shared-skills-1024x768-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:4173/#/",
+      "viewport": "1024x768",
+      "theme": "dark",
+      "keyboardSelection": true,
+      "noAutoSend": true,
+      "box": {
+        "x": 114,
+        "y": 587,
+        "width": 384,
+        "height": 111
+      },
+      "screenshot": "output/playwright/0190-final-pass-shared-skills-1024x768-dark.png"
+    }
+  ],
+  "projectDialogs": [
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "viewport": "1440x900",
+      "theme": "light",
+      "dialog": "Create Project",
+      "styles": {
+        "surface": "rgb(255, 255, 255)",
+        "radius": "8px",
+        "border": "1px"
+      },
+      "screenshot": "output/playwright/0190-final-pass-Create-Project-1440x900-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "viewport": "1440x900",
+      "theme": "light",
+      "dialog": "Select folder",
+      "styles": {
+        "surface": "rgb(255, 255, 255)",
+        "radius": "8px",
+        "border": "1px"
+      },
+      "screenshot": "output/playwright/0190-final-pass-Select-folder-1440x900-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "viewport": "1440x900",
+      "theme": "dark",
+      "dialog": "Create Project",
+      "styles": {
+        "surface": "rgb(24, 24, 27)",
+        "radius": "8px",
+        "border": "1px"
+      },
+      "screenshot": "output/playwright/0190-final-pass-Create-Project-1440x900-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "viewport": "1440x900",
+      "theme": "dark",
+      "dialog": "Select folder",
+      "styles": {
+        "surface": "rgb(24, 24, 27)",
+        "radius": "8px",
+        "border": "1px"
+      },
+      "screenshot": "output/playwright/0190-final-pass-Select-folder-1440x900-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "viewport": "375x812",
+      "theme": "light",
+      "dialog": "Create Project",
+      "styles": {
+        "surface": "rgb(255, 255, 255)",
+        "radius": "8px",
+        "border": "1px"
+      },
+      "screenshot": "output/playwright/0190-final-pass-Create-Project-375x812-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "viewport": "375x812",
+      "theme": "light",
+      "dialog": "Select folder",
+      "styles": {
+        "surface": "rgb(255, 255, 255)",
+        "radius": "8px",
+        "border": "1px"
+      },
+      "screenshot": "output/playwright/0190-final-pass-Select-folder-375x812-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "viewport": "375x812",
+      "theme": "dark",
+      "dialog": "Create Project",
+      "styles": {
+        "surface": "rgb(24, 24, 27)",
+        "radius": "8px",
+        "border": "1px"
+      },
+      "screenshot": "output/playwright/0190-final-pass-Create-Project-375x812-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "viewport": "375x812",
+      "theme": "dark",
+      "dialog": "Select folder",
+      "styles": {
+        "surface": "rgb(24, 24, 27)",
+        "radius": "8px",
+        "border": "1px"
+      },
+      "screenshot": "output/playwright/0190-final-pass-Select-folder-375x812-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "viewport": "768x1024",
+      "theme": "dark",
+      "dialog": "Create Project",
+      "styles": {
+        "surface": "rgb(24, 24, 27)",
+        "radius": "8px",
+        "border": "1px"
+      },
+      "screenshot": "output/playwright/0190-final-pass-Create-Project-768x1024-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "viewport": "768x1024",
+      "theme": "dark",
+      "dialog": "Select folder",
+      "styles": {
+        "surface": "rgb(24, 24, 27)",
+        "radius": "8px",
+        "border": "1px"
+      },
+      "screenshot": "output/playwright/0190-final-pass-Select-folder-768x1024-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "viewport": "1024x768",
+      "theme": "light",
+      "dialog": "Create Project",
+      "styles": {
+        "surface": "rgb(255, 255, 255)",
+        "radius": "8px",
+        "border": "1px"
+      },
+      "screenshot": "output/playwright/0190-final-pass-Create-Project-1024x768-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "viewport": "1024x768",
+      "theme": "light",
+      "dialog": "Select folder",
+      "styles": {
+        "surface": "rgb(255, 255, 255)",
+        "radius": "8px",
+        "border": "1px"
+      },
+      "screenshot": "output/playwright/0190-final-pass-Select-folder-1024x768-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "viewport": "1024x768",
+      "theme": "dark",
+      "dialog": "Create Project",
+      "styles": {
+        "surface": "rgb(24, 24, 27)",
+        "radius": "8px",
+        "border": "1px"
+      },
+      "screenshot": "output/playwright/0190-final-pass-Create-Project-1024x768-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "viewport": "1024x768",
+      "theme": "dark",
+      "dialog": "Select folder",
+      "styles": {
+        "surface": "rgb(24, 24, 27)",
+        "radius": "8px",
+        "border": "1px"
+      },
+      "screenshot": "output/playwright/0190-final-pass-Select-folder-1024x768-dark.png"
+    }
+  ],
+  "sidebarDialogs": [
+    {
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000099",
+      "viewport": "1440x900",
+      "theme": "light",
+      "renameEnter": true,
+      "deleteCancel": true,
+      "color": "rgb(190, 18, 60)",
+      "screenshot": "output/playwright/0190-final-pass-sidebar-delete-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000099",
+      "viewport": "1440x900",
+      "theme": "dark",
+      "renameEnter": true,
+      "deleteCancel": true,
+      "color": "rgb(253, 164, 175)",
+      "screenshot": "output/playwright/0190-final-pass-sidebar-delete-dark.png"
+    }
+  ],
+  "reviewSelect": [
+    {
+      "engine": "webkit",
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000018",
+      "viewport": "1024x768",
+      "theme": "dark",
+      "style": {
+        "background": "rgb(39, 39, 42)",
+        "color": "rgb(228, 228, 231)"
+      },
+      "branchTouchSelected": true,
+      "screenshot": "output/playwright/0190-final-pass-review-1024x768-dark.png",
+      "errors": []
+    },
+    {
+      "engine": "webkit",
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000018",
+      "viewport": "1024x768",
+      "theme": "light",
+      "style": {
+        "background": "rgb(255, 255, 255)",
+        "color": "rgb(39, 39, 42)"
+      },
+      "branchTouchSelected": true,
+      "screenshot": "output/playwright/0190-final-pass-review-1024x768-light.png",
+      "errors": []
+    },
+    {
+      "engine": "webkit",
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000018",
+      "viewport": "375x812",
+      "theme": "dark",
+      "style": {
+        "background": "rgb(39, 39, 42)",
+        "color": "rgb(228, 228, 231)"
+      },
+      "branchTouchSelected": true,
+      "screenshot": "output/playwright/0190-final-pass-review-375x812-dark.png",
+      "errors": []
+    },
+    {
+      "engine": "webkit",
+      "url": "http://127.0.0.1:59001/#/thread/01900000-0000-7000-8000-000000000018",
+      "viewport": "375x812",
+      "theme": "light",
+      "style": {
+        "background": "rgb(255, 255, 255)",
+        "color": "rgb(39, 39, 42)"
+      },
+      "branchTouchSelected": true,
+      "screenshot": "output/playwright/0190-final-pass-review-375x812-light.png",
+      "errors": []
+    }
+  ],
+  "actualWebkit": [
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "width": 768,
+      "height": 1024,
+      "theme": "light",
+      "noRouteStubs": true,
+      "noTurnSubmitted": true,
+      "checks": "actual packaged assets; local search; keyboard selection; cancel submenu retains text; slash literals",
+      "screenshot": "output/playwright/0190-final-pass-actual-webkit-768x1024-light.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "width": 1024,
+      "height": 768,
+      "theme": "dark",
+      "noRouteStubs": true,
+      "noTurnSubmitted": true,
+      "checks": "actual packaged assets; local search; keyboard selection; cancel submenu retains text; slash literals",
+      "screenshot": "output/playwright/0190-final-pass-actual-webkit-1024x768-dark.png",
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001/#/",
+      "width": 375,
+      "height": 812,
+      "theme": "dark",
+      "noRouteStubs": true,
+      "noTurnSubmitted": true,
+      "checks": "actual packaged assets; local search; keyboard selection; cancel submenu retains text; slash literals",
+      "screenshot": "output/playwright/0190-final-pass-actual-webkit-375x812-dark.png",
+      "errors": []
+    }
+  ],
+  "actualTime": [
+    {
+      "engine": "webkit",
+      "url": "http://127.0.0.1:59001/#/automations?automationId=0190",
+      "viewport": "1024x768",
+      "theme": "dark",
+      "timezoneId": "Asia/Shanghai",
+      "noRouteStubs": true,
+      "actualHistoryTimes": [
+        {
+          "iso": "2026-09-06T02:23:33.264Z",
+          "displayed": "09/06/2026, 10:23",
+          "expected": "09/06/2026, 10:23"
+        },
+        {
+          "iso": "2026-09-06T02:23:22.265Z",
+          "displayed": "09/06/2026, 10:23",
+          "expected": "09/06/2026, 10:23"
+        },
+        {
+          "iso": "2026-09-05T19:12:00.000Z",
+          "displayed": "09/06/2026, 03:12",
+          "expected": "09/06/2026, 03:12"
+        },
+        {
+          "iso": "2026-09-05T19:10:09.522Z",
+          "displayed": "09/06/2026, 03:10",
+          "expected": "09/06/2026, 03:10"
+        }
+      ],
+      "cache": "codexweb-shell-v3",
+      "screenshot": "output/playwright/0190-final-pass-actual-time-Asia-Shanghai.png",
+      "errors": []
+    },
+    {
+      "engine": "webkit",
+      "url": "http://127.0.0.1:59001/#/automations?automationId=0190",
+      "viewport": "1024x768",
+      "theme": "dark",
+      "timezoneId": "America/New_York",
+      "noRouteStubs": true,
+      "actualHistoryTimes": [
+        {
+          "iso": "2026-09-06T02:23:33.264Z",
+          "displayed": "09/05/2026, 22:23",
+          "expected": "09/05/2026, 22:23"
+        },
+        {
+          "iso": "2026-09-06T02:23:22.265Z",
+          "displayed": "09/05/2026, 22:23",
+          "expected": "09/05/2026, 22:23"
+        },
+        {
+          "iso": "2026-09-05T19:12:00.000Z",
+          "displayed": "09/05/2026, 15:12",
+          "expected": "09/05/2026, 15:12"
+        },
+        {
+          "iso": "2026-09-05T19:10:09.522Z",
+          "displayed": "09/05/2026, 15:10",
+          "expected": "09/05/2026, 15:10"
+        }
+      ],
+      "cache": "codexweb-shell-v3",
+      "screenshot": "output/playwright/0190-final-pass-actual-time-America-New_York.png",
+      "errors": []
+    }
+  ],
+  "realCommands": {
+    "base": "http://127.0.0.1:59001",
+    "cwd": "/test-workspace/automation-0190",
+    "goalThread": "01a0755e-9c93-7c02-a35b-1914a1674a08",
+    "goalCompletedTurn": "01a0755e-bcfc-7a82-bac9-6067388d3811",
+    "nativeBudget": 20000,
+    "goalStatus": "complete",
+    "goalScreenshot": "output/playwright/0190-final-pass-real-goal-dark.png",
+    "compactionCompleted": true,
+    "compactionItemTypes": [
+      "reasoning",
+      "agentMessage",
+      "reasoning",
+      "agentMessage",
+      "agentMessage",
+      "contextCompaction"
+    ],
+    "queueVisibleBeforeCompletion": true,
+    "queuedTurnCompleted": true,
+    "completedTurns": 5,
+    "pageErrors": []
+  },
+  "resizeStress": [
+    {
+      "width": 820,
+      "height": 1180,
+      "reloads": 8,
+      "resizeCycles": 8,
+      "expandCycles": 8,
+      "navigationCancellations": 55,
+      "errors": []
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "reloads": 8,
+      "resizeCycles": 8,
+      "expandCycles": 8,
+      "navigationCancellations": 49,
+      "errors": []
+    },
+    {
+      "width": 375,
+      "height": 812,
+      "reloads": 8,
+      "resizeCycles": 8,
+      "expandCycles": 8,
+      "navigationCancellations": 42,
+      "errors": []
+    }
+  ],
+  "pwaBrowser": [
+    {
+      "engine": "chromium",
+      "url": "http://127.0.0.1:40861",
+      "actualServiceWorker": true,
+      "http503Fallback": true,
+      "offlineFallback": true,
+      "networkFailureMode": "browser offline",
+      "oldCacheRemoved": true,
+      "recoveryUpdatesCache": true
+    },
+    {
+      "engine": "webkit",
+      "url": "http://127.0.0.1:40861",
+      "actualServiceWorker": true,
+      "http503Fallback": true,
+      "offlineFallback": true,
+      "networkFailureMode": "HTTP connection closed",
+      "oldCacheRemoved": true,
+      "recoveryUpdatesCache": true
+    }
+  ],
+  "automationRecheck": {
+    "historicalRunsRechecked": [
+      {
+        "runId": "aa2f8c5b-6422-41fe-8218-a16bfb1947c4",
+        "automationId": "0190",
+        "trigger": "schedule",
+        "status": "completed",
+        "threadId": "01a072fc-1e5b-7c21-83d6-c70b7b85692a"
+      },
+      {
+        "runId": "294cce79-f90a-4776-9fcf-ffb203300ce2",
+        "automationId": "0190",
+        "trigger": "manual",
+        "status": "completed",
+        "threadId": "01a072fa-7633-7170-8d4b-15d4559c125a"
+      },
+      {
+        "runId": "b81a1e74-d5a8-43d1-a1c9-b9f7562af0e1",
+        "automationId": "0190-heartbeat",
+        "trigger": "manual",
+        "status": "completed",
+        "threadId": "01a072fa-7633-7170-8d4b-15d4559c125a"
+      }
+    ],
+    "businessArtifact": {
+      "path": "/test-workspace/automation-0190/日历/fixture-0190.md",
+      "sha256": "912f1cd2f73a5f7c99c32c56477c9e7e975e3118a547b85d1ec2ba72cf765b71",
+      "unchanged": true
+    },
+    "scheduler": {
+      "ready": true,
+      "draining": false,
+      "error": null,
+      "timezone": "Asia/Shanghai",
+      "activeCount": 0,
+      "queuedCount": 0,
+      "definitions": [
+        {
+          "id": "0190",
+          "error": null,
+          "revision": "3aec07555b194a40",
+          "timezone": "Asia/Shanghai",
+          "anchor": 1788663117703,
+          "cursor": 1788663117704,
+          "nextRunAtMs": null
+        },
+        {
+          "id": "0190-heartbeat",
+          "error": null,
+          "revision": "3bef48ec39ba3f64",
+          "timezone": "Asia/Shanghai",
+          "anchor": 1788663117704,
+          "cursor": 1788663117705,
+          "nextRunAtMs": null
+        }
+      ]
+    }
+  },
+  "artifacts": {
+    "release": "/home/docker/codexapp-releases/codexapp-0.1.90-66346466acbb-20260906-143506",
+    "tarball": "/home/docker/codexapp-releases/codexapp-0.1.90-66346466acbb-20260906-143506/codexapp-0.1.90.tgz",
+    "tarballSha256": "b9fdc7e046679882e6e90df7e7d13dbdcc92fab59ec5b4d50769db92e8b2e0aa",
+    "matchedFiles": 29,
+    "ptyCjsExport": true,
+    "ptySpawnExitCode": 0,
+    "cliHelp": true
+  },
+  "performance": {
+    "thread": {
+      "reportPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-thread-01a0755e-9c93-7c02-a35b-1914a1674a08-2026-09-06T06-37-18-362Z.json",
+      "screenshotPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-thread-01a0755e-9c93-7c02-a35b-1914a1674a08-2026-09-06T06-37-18-362Z.png",
+      "tracePath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-thread-01a0755e-9c93-7c02-a35b-1914a1674a08-2026-09-06T06-37-18-362Z-trace.zip",
+      "targetUrl": "http://127.0.0.1:59001/#/thread/01a0755e-9c93-7c02-a35b-1914a1674a08",
+      "finalUrl": "http://127.0.0.1:59001/#/thread/01a0755e-9c93-7c02-a35b-1914a1674a08",
+      "title": "0190 终验目标与压缩",
+      "totalMs": 7235.8,
+      "duplicateCounts": {
+        "threadList": 1,
+        "threadListFirstPage": 1,
+        "threadListCursor": 0,
+        "threadResume": 1,
+        "threadRead": 0,
+        "threadReadWithTurns": 0,
+        "threadReadDuplicateKeys": 0,
+        "skillsList": 1,
+        "rateLimitsRead": 1,
+        "providerModels": 0
+      },
+      "warnings": [],
+      "pageState": {
+        "threadLoadingText": "Loading threads...",
+        "threadLoadTimeoutMs": 15000,
+        "stillLoadingThreads": false
+      },
+      "totalApiKB": 79.3,
+      "topApiSummary": [
+        {
+          "key": "account/rateLimits/read",
+          "count": 1,
+          "minMs": 1379.5,
+          "avgMs": 1379.5,
+          "p95Ms": 1379.5,
+          "maxMs": 1379.5,
+          "totalKB": 1.7
+        },
+        {
+          "key": "thread/resume",
+          "count": 1,
+          "minMs": 134.8,
+          "avgMs": 134.8,
+          "p95Ms": 134.8,
+          "maxMs": 134.8,
+          "totalKB": 4.9
+        },
+        {
+          "key": "/codex-api/thread-terminal/quick-commands",
+          "count": 1,
+          "minMs": 69.4,
+          "avgMs": 69.4,
+          "p95Ms": 69.4,
+          "maxMs": 69.4,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/git/branches",
+          "count": 1,
+          "minMs": 69.3,
+          "avgMs": 69.3,
+          "p95Ms": 69.3,
+          "maxMs": 69.3,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/git/repository-status",
+          "count": 1,
+          "minMs": 68.8,
+          "avgMs": 68.8,
+          "p95Ms": 68.8,
+          "maxMs": 68.8,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/workspace-roots-state",
+          "count": 1,
+          "minMs": 68.2,
+          "avgMs": 68.2,
+          "p95Ms": 68.2,
+          "maxMs": 68.2,
+          "totalKB": 0.1
+        },
+        {
+          "key": "/codex-api/thread-pins",
+          "count": 1,
+          "minMs": 68.1,
+          "avgMs": 68.1,
+          "p95Ms": 68.1,
+          "maxMs": 68.1,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/prompts",
+          "count": 1,
+          "minMs": 68.1,
+          "avgMs": 68.1,
+          "p95Ms": 68.1,
+          "maxMs": 68.1,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/home-directory",
+          "count": 1,
+          "minMs": 68.1,
+          "avgMs": 68.1,
+          "p95Ms": 68.1,
+          "maxMs": 68.1,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/preferences/first-launch-plugins-card",
+          "count": 1,
+          "minMs": 68.1,
+          "avgMs": 68.1,
+          "p95Ms": 68.1,
+          "maxMs": 68.1,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/telegram/config",
+          "count": 1,
+          "minMs": 68.1,
+          "avgMs": 68.1,
+          "p95Ms": 68.1,
+          "maxMs": 68.1,
+          "totalKB": 0
+        },
+        {
+          "key": "/codex-api/telegram/status",
+          "count": 1,
+          "minMs": 68,
+          "avgMs": 68,
+          "p95Ms": 68,
+          "maxMs": 68,
+          "totalKB": 0.1
+        }
+      ],
+      "slowestApiRows": [
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "account/rateLimits/read",
+          "cursor": "",
+          "threadId": "",
+          "includeTurns": null,
+          "status": 200,
+          "ms": 1379.5,
+          "requestBytes": 50,
+          "responseBytes": 1744,
+          "responseKB": 1.7
+        },
+        {
+          "method": "POST",
+          "path": "/codex-api/rpc",
+          "rpc": "thread/resume",
+          "cursor": "",
+          "threadId": "01a0755e-9c93-7c02-a35b-1914a1674a08",
+          "includeTurns": false,
+          "status": 200,
+          "ms": 134.8,
+          "requestBytes": 87,
+          "responseBytes": 5050,
+          "responseKB": 4.9
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-terminal/quick-commands",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 69.4,
+          "requestBytes": 0,
+          "responseBytes": 15,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/git/branches",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 69.3,
+          "requestBytes": 0,
+          "responseBytes": 44,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/project-root-suggestion",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 69.2,
+          "requestBytes": 0,
+          "responseBytes": 76,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/git/repository-status",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 68.8,
+          "requestBytes": 0,
+          "responseBytes": 41,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/workspace-roots-state",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 68.2,
+          "requestBytes": 0,
+          "responseBytes": 83,
+          "responseKB": 0.1
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/thread-pins",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 68.1,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/prompts",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 68.1,
+          "requestBytes": 0,
+          "responseBytes": 11,
+          "responseKB": 0
+        },
+        {
+          "method": "GET",
+          "path": "/codex-api/home-directory",
+          "rpc": "",
+          "cursor": "",
+          "threadId": "",
+          "status": 200,
+          "ms": 68.1,
+          "requestBytes": 0,
+          "responseBytes": 25,
+          "responseKB": 0
+        }
+      ]
+    },
+    "mainJsKB": 562.81,
+    "mainJsGzipKB": 176.83,
+    "mainCssKB": 414.52,
+    "mainCssGzipKB": 43.51,
+    "newUiApiRequests": 0
+  },
+  "priorEvidence": {
+    "schedulerAndDiary": "0.1.90-verification.json",
+    "queueAuthAndTestChat": "0.1.90-closeout.json",
+    "note": "Prior runs remain applicable; they were not re-executed as part of this last UI-only source revision."
+  },
+  "final": {
+    "image": "sha256:a4306bc5e875b5bb3b2d6257eac471633b9a5630995c1480d26f539b9386ccfb",
+    "candidateStatus": 200,
+    "productionStatus": 200,
+    "productionVersion": "0.1.89",
+    "productionService": "MainPID=87226\nActiveState=active\nSubState=running\n",
+    "scheduler": {
+      "ready": true,
+      "draining": false,
+      "activeCount": 0,
+      "queuedCount": 0,
+      "timezone": "Asia/Shanghai"
+    },
+    "idleCheck": "idle-check|activeTurns=0|queued=0|pendingApprovals=0|pages=1"
+  },
+  "limitations": [
+    "Physical iPad Safari, software keyboard and real IME still require manual acceptance",
+    "Production activation and original weekly diary task remain post-handoff acceptance",
+    "R05/R06/R07, ACP, remaining 33 strict unused diagnostics and homepage deduplication deferred to 0.2; R08 error cache fixed",
+    "External calendar, real OAuth, Telegram and microphone business flow not exercised",
+    "WebKit navigation cancellation diagnostics recorded separately; stable interactions assert all page errors"
+  ],
+  "screenshots": [
+    {
+      "source": "/home/Code/codexapp/output/playwright/0190-final-pass-webkit-language-1024x768-dark.png",
+      "archived": "assets/0.1.90-final-acceptance/0190-final-pass-webkit-language-1024x768-dark.png"
+    },
+    {
+      "source": "/home/Code/codexapp/output/playwright/0190-final-pass-webkit-git-800x480-dark.png",
+      "archived": "assets/0.1.90-final-acceptance/0190-final-pass-webkit-git-800x480-dark.png"
+    },
+    {
+      "source": "/home/Code/codexapp/output/playwright/0190-final-pass-webkit-automation-375x812-light.png",
+      "archived": "assets/0.1.90-final-acceptance/0190-final-pass-webkit-automation-375x812-light.png"
+    },
+    {
+      "source": "/home/Code/codexapp/output/playwright/0190-final-pass-review-375x812-dark.png",
+      "archived": "assets/0.1.90-final-acceptance/0190-final-pass-review-375x812-dark.png"
+    },
+    {
+      "source": "/home/Code/codexapp/output/playwright/0190-final-pass-real-goal-dark.png",
+      "archived": "assets/0.1.90-final-acceptance/0190-final-pass-real-goal-dark.png"
+    }
+  ]
+}
