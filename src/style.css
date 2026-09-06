@@ -1086,10 +1086,6 @@
   @apply bg-zinc-900;
 }
 
-:root.dark .header-git-reset-commit {
-  @apply border-zinc-600 bg-zinc-100 text-zinc-900 hover:bg-white disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-500;
-}
-
 :root.dark .header-git-status {
   @apply bg-amber-950/40 text-amber-300;
 }

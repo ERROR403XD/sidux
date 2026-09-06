@@ -51,14 +51,14 @@
                 <span>{{ selectedCommit.date }}</span>
               </div>
               <p class="header-git-commit-detail-subject">{{ selectedCommit.subject }}</p>
-              <button
+              <AppButton
                 class="header-git-reset-commit"
-                type="button"
+                variant="danger"
                 :disabled="busy || selectedBranchIsRemote || !selectedBranch"
                 @click="resetSelectedCommit"
               >
                 Reset
-              </button>
+              </AppButton>
             </div>
 
             <div class="header-git-file-list">
@@ -197,6 +197,7 @@ import type { GitCommitFileChange, GitCommitOption, WorktreeBranchOption } from 
 import IconTablerChevronDown from '../icons/IconTablerChevronDown.vue'
 import IconTablerFilePencil from '../icons/IconTablerFilePencil.vue'
 import IconTablerGitFork from '../icons/IconTablerGitFork.vue'
+import AppButton from '../common/AppButton.vue'
 import { useFeedbackDiagnostics } from '../../composables/useFeedbackDiagnostics'
 import { copyTextToClipboard } from '../../utils/clipboard'
 
@@ -665,7 +666,7 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', onDocumentPointe
 }
 
 .header-git-reset-commit {
-  @apply mt-2 w-full rounded-md border border-zinc-200 bg-zinc-900 px-2 py-1.5 text-xs font-medium text-white transition hover:bg-zinc-800 disabled:cursor-wait disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400;
+  @apply mt-2 w-full;
 }
 
 .header-git-file {
