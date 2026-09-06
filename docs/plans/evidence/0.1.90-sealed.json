@@ -1,0 +1,2338 @@
+{
+  "version": "0.1.90",
+  "source": "b21027d408778b9855e0b5fc76cc7e87f7967ee2",
+  "tag": "release/ui-0.1.90-final",
+  "candidateImage": "sha256:4ae7850d2ece9395a32157e15256f5dfe10c708af52ea2fbda9d9d07639eca43",
+  "unit": {
+    "files": 38,
+    "tests": 268,
+    "result": "passed"
+  },
+  "build": {
+    "result": "passed",
+    "jsKB": 562.86,
+    "jsGzipKB": 176.85,
+    "cssKB": 414.68,
+    "cssGzipKB": 43.54
+  },
+  "reports": {
+    "migration": [
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:33715",
+        "viewport": "1024x768",
+        "theme": "light",
+        "serviceWorkers": "block",
+        "oldCachePreserved": true,
+        "normalRefreshReady": true,
+        "nextRefreshReady": true,
+        "errors": [],
+        "firstLoadMsIncludingScreenshotWait": 2842,
+        "screenshot": "output/playwright/0190-release-migration-chromium-block-light.png",
+        "wire": [
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": "W/\"3db-7438674ba0\"",
+            "requestCacheControl": "max-age=0",
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-DLxMfHOj.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-ByeC45JQ.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/ThreadConversation-AnLN_iYG.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/ThreadConversation-BIKi6uhI.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "ifNoneMatch": "W/\"c15-7438674ba0\"",
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "image/svg+xml"
+          }
+        ],
+        "warmWire": [
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": null,
+            "requestCacheControl": "max-age=0",
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "image/svg+xml"
+          }
+        ]
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:33715",
+        "viewport": "1024x768",
+        "theme": "dark",
+        "serviceWorkers": "block",
+        "oldCachePreserved": true,
+        "normalRefreshReady": true,
+        "nextRefreshReady": true,
+        "errors": [],
+        "firstLoadMsIncludingScreenshotWait": 2707,
+        "screenshot": "output/playwright/0190-release-migration-chromium-block-dark.png",
+        "wire": [
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": "W/\"3db-7438674ba0\"",
+            "requestCacheControl": "max-age=0",
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-ByeC45JQ.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-DLxMfHOj.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/ThreadConversation-BIKi6uhI.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/ThreadConversation-AnLN_iYG.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "ifNoneMatch": "W/\"c15-7438674ba0\"",
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "image/svg+xml"
+          }
+        ],
+        "warmWire": [
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": null,
+            "requestCacheControl": "max-age=0",
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "image/svg+xml"
+          }
+        ]
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:33715",
+        "viewport": "1024x768",
+        "theme": "light",
+        "serviceWorkers": "allow",
+        "oldCachePreserved": true,
+        "normalRefreshReady": true,
+        "nextRefreshReady": true,
+        "errors": [],
+        "firstLoadMsIncludingScreenshotWait": 2675,
+        "screenshot": "output/playwright/0190-release-migration-chromium-allow-light.png",
+        "wire": [
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": "W/\"3db-7438674ba0\"",
+            "requestCacheControl": "max-age=0",
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-ByeC45JQ.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-DLxMfHOj.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/ThreadConversation-BIKi6uhI.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/ThreadConversation-AnLN_iYG.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "ifNoneMatch": "W/\"c15-7438674ba0\"",
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "image/svg+xml"
+          },
+          {
+            "version": 59001,
+            "path": "/sw.js",
+            "ifNoneMatch": "W/\"9e7-7438674ba0\"",
+            "requestCacheControl": "max-age=0",
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/manifest.webmanifest",
+            "ifNoneMatch": "W/\"33a-7438674ba0\"",
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "application/manifest+json; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          }
+        ],
+        "warmWire": [
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": null,
+            "requestCacheControl": "max-age=0",
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "image/svg+xml"
+          }
+        ]
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:33715",
+        "viewport": "1024x768",
+        "theme": "dark",
+        "serviceWorkers": "allow",
+        "oldCachePreserved": true,
+        "normalRefreshReady": true,
+        "nextRefreshReady": true,
+        "errors": [],
+        "firstLoadMsIncludingScreenshotWait": 2708,
+        "screenshot": "output/playwright/0190-release-migration-chromium-allow-dark.png",
+        "wire": [
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": "W/\"3db-7438674ba0\"",
+            "requestCacheControl": "max-age=0",
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-DLxMfHOj.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-ByeC45JQ.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/ThreadConversation-BIKi6uhI.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/ThreadConversation-AnLN_iYG.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "ifNoneMatch": "W/\"c15-7438674ba0\"",
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "image/svg+xml"
+          },
+          {
+            "version": 59001,
+            "path": "/sw.js",
+            "ifNoneMatch": "W/\"9e7-7438674ba0\"",
+            "requestCacheControl": "max-age=0",
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/manifest.webmanifest",
+            "ifNoneMatch": "W/\"33a-7438674ba0\"",
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "application/manifest+json; charset=utf-8"
+          }
+        ],
+        "warmWire": [
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": null,
+            "requestCacheControl": "max-age=0",
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/icons/codexui-icon.svg",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "image/svg+xml"
+          }
+        ]
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:33715",
+        "viewport": "1024x768",
+        "theme": "light",
+        "serviceWorkers": "block",
+        "oldCachePreserved": true,
+        "normalRefreshReady": true,
+        "nextRefreshReady": true,
+        "errors": [],
+        "firstLoadMsIncludingScreenshotWait": 2684,
+        "screenshot": "output/playwright/0190-release-migration-webkit-block-light.png",
+        "wire": [
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/manifest.webmanifest",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "application/manifest+json; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-DLxMfHOj.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-ByeC45JQ.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/ThreadConversation-AnLN_iYG.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/ThreadConversation-BIKi6uhI.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          }
+        ],
+        "warmWire": [
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/manifest.webmanifest",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "application/manifest+json; charset=utf-8"
+          }
+        ]
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:33715",
+        "viewport": "1024x768",
+        "theme": "dark",
+        "serviceWorkers": "block",
+        "oldCachePreserved": true,
+        "normalRefreshReady": true,
+        "nextRefreshReady": true,
+        "errors": [],
+        "firstLoadMsIncludingScreenshotWait": 2853,
+        "screenshot": "output/playwright/0190-release-migration-webkit-block-dark.png",
+        "wire": [
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/manifest.webmanifest",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "application/manifest+json; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-DLxMfHOj.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-ByeC45JQ.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/ThreadConversation-AnLN_iYG.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/ThreadConversation-BIKi6uhI.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          }
+        ],
+        "warmWire": [
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/manifest.webmanifest",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "application/manifest+json; charset=utf-8"
+          }
+        ]
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:33715",
+        "viewport": "1024x768",
+        "theme": "light",
+        "serviceWorkers": "allow",
+        "oldCachePreserved": true,
+        "normalRefreshReady": true,
+        "nextRefreshReady": true,
+        "errors": [],
+        "firstLoadMsIncludingScreenshotWait": 2732,
+        "screenshot": "output/playwright/0190-release-migration-webkit-allow-light.png",
+        "wire": [
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-DLxMfHOj.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/manifest.webmanifest",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "application/manifest+json; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-ByeC45JQ.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/ThreadConversation-AnLN_iYG.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/ThreadConversation-BIKi6uhI.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/sw.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/manifest.webmanifest",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "application/manifest+json; charset=utf-8"
+          }
+        ],
+        "warmWire": [
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-DLxMfHOj.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-ByeC45JQ.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/manifest.webmanifest",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "application/manifest+json; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/ThreadConversation-BIKi6uhI.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          }
+        ]
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:33715",
+        "viewport": "1024x768",
+        "theme": "dark",
+        "serviceWorkers": "allow",
+        "oldCachePreserved": true,
+        "normalRefreshReady": true,
+        "nextRefreshReady": true,
+        "errors": [],
+        "firstLoadMsIncludingScreenshotWait": 2726,
+        "screenshot": "output/playwright/0190-release-migration-webkit-allow-dark.png",
+        "wire": [
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/manifest.webmanifest",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "application/manifest+json; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-DLxMfHOj.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-ByeC45JQ.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/ThreadConversation-AnLN_iYG.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/ThreadConversation-BIKi6uhI.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/sw.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/sw.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/manifest.webmanifest",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "application/manifest+json; charset=utf-8"
+          }
+        ],
+        "warmWire": [
+          {
+            "version": 59001,
+            "path": "/",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/html; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/manifest.webmanifest",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "application/manifest+json; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-DLxMfHOj.js",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/javascript; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/index-ByeC45JQ.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          },
+          {
+            "version": 59001,
+            "path": "/assets/ThreadConversation-BIKi6uhI.css",
+            "ifNoneMatch": null,
+            "requestCacheControl": null,
+            "status": 200,
+            "contentType": "text/css; charset=utf-8"
+          }
+        ]
+      }
+    ],
+    "recovery-chromium": [
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": "1440x900",
+        "theme": "light",
+        "initialFailureVisible": true,
+        "reloadRecovered": true,
+        "reloadQueryRemoved": true,
+        "lazyFailureVisible": true,
+        "laterPreservesDraft": true,
+        "background": "rgb(255, 255, 255)",
+        "screenshot": "output/playwright/0190-release-recovery-chromium-1440x900-light.png"
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": "1440x900",
+        "theme": "dark",
+        "initialFailureVisible": true,
+        "reloadRecovered": true,
+        "reloadQueryRemoved": true,
+        "lazyFailureVisible": true,
+        "laterPreservesDraft": true,
+        "background": "rgb(24, 24, 27)",
+        "screenshot": "output/playwright/0190-release-recovery-chromium-1440x900-dark.png"
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": "375x812",
+        "theme": "light",
+        "initialFailureVisible": true,
+        "reloadRecovered": true,
+        "reloadQueryRemoved": true,
+        "lazyFailureVisible": true,
+        "laterPreservesDraft": true,
+        "background": "rgb(255, 255, 255)",
+        "screenshot": "output/playwright/0190-release-recovery-chromium-375x812-light.png"
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": "768x1024",
+        "theme": "dark",
+        "initialFailureVisible": true,
+        "reloadRecovered": true,
+        "reloadQueryRemoved": true,
+        "lazyFailureVisible": true,
+        "laterPreservesDraft": true,
+        "background": "rgb(24, 24, 27)",
+        "screenshot": "output/playwright/0190-release-recovery-chromium-768x1024-dark.png"
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": "375x812",
+        "theme": "light",
+        "savedTheme": "dark",
+        "initialFailureVisible": true,
+        "reloadRecovered": true,
+        "reloadQueryRemoved": true,
+        "lazyFailureVisible": true,
+        "laterPreservesDraft": true,
+        "background": "rgb(24, 24, 27)",
+        "screenshot": "output/playwright/0190-release-recovery-chromium-375x812-light-saved-dark.png"
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": "768x1024",
+        "theme": "dark",
+        "savedTheme": "light",
+        "initialFailureVisible": true,
+        "reloadRecovered": true,
+        "reloadQueryRemoved": true,
+        "lazyFailureVisible": true,
+        "laterPreservesDraft": true,
+        "background": "rgb(255, 255, 255)",
+        "screenshot": "output/playwright/0190-release-recovery-chromium-768x1024-dark-saved-light.png"
+      }
+    ],
+    "recovery-webkit": [
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": "1440x900",
+        "theme": "light",
+        "initialFailureVisible": true,
+        "reloadRecovered": true,
+        "reloadQueryRemoved": true,
+        "lazyFailureVisible": true,
+        "laterPreservesDraft": true,
+        "background": "rgb(255, 255, 255)",
+        "screenshot": "output/playwright/0190-release-recovery-webkit-1440x900-light.png"
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": "1440x900",
+        "theme": "dark",
+        "initialFailureVisible": true,
+        "reloadRecovered": true,
+        "reloadQueryRemoved": true,
+        "lazyFailureVisible": true,
+        "laterPreservesDraft": true,
+        "background": "rgb(24, 24, 27)",
+        "screenshot": "output/playwright/0190-release-recovery-webkit-1440x900-dark.png"
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": "375x812",
+        "theme": "light",
+        "initialFailureVisible": true,
+        "reloadRecovered": true,
+        "reloadQueryRemoved": true,
+        "lazyFailureVisible": true,
+        "laterPreservesDraft": true,
+        "background": "rgb(255, 255, 255)",
+        "screenshot": "output/playwright/0190-release-recovery-webkit-375x812-light.png"
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": "768x1024",
+        "theme": "dark",
+        "initialFailureVisible": true,
+        "reloadRecovered": true,
+        "reloadQueryRemoved": true,
+        "lazyFailureVisible": true,
+        "laterPreservesDraft": true,
+        "background": "rgb(24, 24, 27)",
+        "screenshot": "output/playwright/0190-release-recovery-webkit-768x1024-dark.png"
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": "375x812",
+        "theme": "light",
+        "savedTheme": "dark",
+        "initialFailureVisible": true,
+        "reloadRecovered": true,
+        "reloadQueryRemoved": true,
+        "lazyFailureVisible": true,
+        "laterPreservesDraft": true,
+        "background": "rgb(24, 24, 27)",
+        "screenshot": "output/playwright/0190-release-recovery-webkit-375x812-light-saved-dark.png"
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": "768x1024",
+        "theme": "dark",
+        "savedTheme": "light",
+        "initialFailureVisible": true,
+        "reloadRecovered": true,
+        "reloadQueryRemoved": true,
+        "lazyFailureVisible": true,
+        "laterPreservesDraft": true,
+        "background": "rgb(255, 255, 255)",
+        "screenshot": "output/playwright/0190-release-recovery-webkit-768x1024-dark-saved-light.png"
+      }
+    ],
+    "ui-chromium": [
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-chromium-language-1440x900-light.png",
+        "autoShot": "output/playwright/0190-release-final-chromium-automation-1440x900-light.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-chromium-language-1440x900-dark.png",
+        "autoShot": "output/playwright/0190-release-final-chromium-automation-1440x900-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-chromium-language-1024x768-light.png",
+        "autoShot": "output/playwright/0190-release-final-chromium-automation-1024x768-light.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-chromium-language-1024x768-dark.png",
+        "autoShot": "output/playwright/0190-release-final-chromium-automation-1024x768-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-chromium-language-768x1024-light.png",
+        "autoShot": "output/playwright/0190-release-final-chromium-automation-768x1024-light.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "dark",
+        "timezoneId": "America/New_York",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/06/2026, 13:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-chromium-language-768x1024-dark.png",
+        "autoShot": "output/playwright/0190-release-final-chromium-automation-768x1024-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1180,
+          "height": 820
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-chromium-language-1180x820-dark.png",
+        "autoShot": "output/playwright/0190-release-final-chromium-automation-1180x820-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 820,
+          "height": 1180
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-chromium-language-820x1180-light.png",
+        "autoShot": "output/playwright/0190-release-final-chromium-automation-820x1180-light.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-chromium-language-375x812-light.png",
+        "autoShot": "output/playwright/0190-release-final-chromium-automation-375x812-light.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "dark",
+        "timezoneId": "America/New_York",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/06/2026, 13:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-chromium-language-375x812-dark.png",
+        "autoShot": "output/playwright/0190-release-final-chromium-automation-375x812-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1366,
+          "height": 600
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-chromium-language-1366x600-dark.png",
+        "autoShot": "output/playwright/0190-release-final-chromium-automation-1366x600-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1024,
+          "height": 600
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-chromium-language-1024x600-light.png",
+        "autoShot": "output/playwright/0190-release-final-chromium-automation-1024x600-light.png",
+        "errors": []
+      },
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 800,
+          "height": 480
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-chromium-language-800x480-dark.png",
+        "autoShot": "output/playwright/0190-release-final-chromium-automation-800x480-dark.png",
+        "errors": []
+      }
+    ],
+    "ui-webkit": [
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-webkit-language-1440x900-light.png",
+        "autoShot": "output/playwright/0190-release-final-webkit-automation-1440x900-light.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-webkit-language-1440x900-dark.png",
+        "autoShot": "output/playwright/0190-release-final-webkit-automation-1440x900-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-webkit-language-1024x768-light.png",
+        "autoShot": "output/playwright/0190-release-final-webkit-automation-1024x768-light.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-webkit-language-1024x768-dark.png",
+        "autoShot": "output/playwright/0190-release-final-webkit-automation-1024x768-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-webkit-language-768x1024-light.png",
+        "autoShot": "output/playwright/0190-release-final-webkit-automation-768x1024-light.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "theme": "dark",
+        "timezoneId": "America/New_York",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/06/2026, 13:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-webkit-language-768x1024-dark.png",
+        "autoShot": "output/playwright/0190-release-final-webkit-automation-768x1024-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1180,
+          "height": 820
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-webkit-language-1180x820-dark.png",
+        "autoShot": "output/playwright/0190-release-final-webkit-automation-1180x820-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 820,
+          "height": 1180
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-webkit-language-820x1180-light.png",
+        "autoShot": "output/playwright/0190-release-final-webkit-automation-820x1180-light.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-webkit-language-375x812-light.png",
+        "autoShot": "output/playwright/0190-release-final-webkit-automation-375x812-light.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 375,
+          "height": 812
+        },
+        "theme": "dark",
+        "timezoneId": "America/New_York",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/06/2026, 13:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-webkit-language-375x812-dark.png",
+        "autoShot": "output/playwright/0190-release-final-webkit-automation-375x812-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1366,
+          "height": 600
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-webkit-language-1366x600-dark.png",
+        "autoShot": "output/playwright/0190-release-final-webkit-automation-1366x600-dark.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 1024,
+          "height": 600
+        },
+        "theme": "light",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "color": "rgb(39, 39, 42)",
+            "border": "rgb(212, 212, 216)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-webkit-language-1024x600-light.png",
+        "autoShot": "output/playwright/0190-release-final-webkit-automation-1024x600-light.png",
+        "errors": []
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:59001",
+        "viewport": {
+          "width": 800,
+          "height": 480
+        },
+        "theme": "dark",
+        "timezoneId": "Asia/Shanghai",
+        "languageTouchAndReload": true,
+        "triggerStyles": [
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          },
+          {
+            "background": "rgb(39, 39, 42)",
+            "color": "rgb(228, 228, 231)",
+            "border": "rgb(82, 82, 91)"
+          }
+        ],
+        "automationNoOverlap": true,
+        "history100PerPage": true,
+        "localTime": "09/07/2026, 01:00",
+        "dropdownTouch": true,
+        "goalAndCommandFit": true,
+        "expandedEffortFit": true,
+        "languageShot": "output/playwright/0190-release-final-webkit-language-800x480-dark.png",
+        "autoShot": "output/playwright/0190-release-final-webkit-automation-800x480-dark.png",
+        "errors": []
+      }
+    ],
+    "pwa-browser": [
+      {
+        "engine": "chromium",
+        "url": "http://127.0.0.1:35483",
+        "actualServiceWorker": true,
+        "http503Fallback": true,
+        "offlineFallback": true,
+        "networkFailureMode": "browser offline",
+        "oldCacheRemoved": true,
+        "recoveryUpdatesCache": true
+      },
+      {
+        "engine": "webkit",
+        "url": "http://127.0.0.1:35483",
+        "actualServiceWorker": true,
+        "http503Fallback": true,
+        "offlineFallback": true,
+        "networkFailureMode": "HTTP connection closed",
+        "oldCacheRemoved": true,
+        "recoveryUpdatesCache": true
+      }
+    ],
+    "auth-matrix": [
+      {
+        "url": "http://127.0.0.1:59012/#/thread/01a0758e-8d72-7000-809c-2ba7e7c3b7f2",
+        "viewport": "1440x900",
+        "theme": "light",
+        "invalidAuthPersistedAfterReload": true,
+        "duplicateLiveOverlayCount": 0,
+        "screenshot": "output/playwright/0190-release-final-invalid-auth-light.png"
+      },
+      {
+        "url": "http://127.0.0.1:59012/#/thread/01a0758e-8d72-7000-809c-2ba7e7c3b7f2",
+        "viewport": "1440x900",
+        "theme": "dark",
+        "invalidAuthPersistedAfterReload": true,
+        "duplicateLiveOverlayCount": 0,
+        "screenshot": "output/playwright/0190-release-final-invalid-auth-dark.png"
+      },
+      {
+        "url": "http://127.0.0.1:59011/#/",
+        "viewport": "1440x900",
+        "provider": "opencode-zen",
+        "enabled": true,
+        "hasCodexAuth": false,
+        "screenshot": "output/playwright/0190-release-final-provider-59011.png"
+      },
+      {
+        "url": "http://127.0.0.1:59013/#/",
+        "viewport": "1440x900",
+        "provider": "opencode-zen",
+        "enabled": true,
+        "hasCodexAuth": false,
+        "screenshot": "output/playwright/0190-release-final-provider-59013.png"
+      },
+      {
+        "url": "http://127.0.0.1:59014/#/",
+        "viewport": "1440x900",
+        "provider": "openrouter",
+        "enabled": true,
+        "hasCodexAuth": false,
+        "screenshot": "output/playwright/0190-release-final-provider-59014.png"
+      }
+    ],
+    "artifacts": {
+      "release": "/home/docker/codexapp-releases/codexapp-0.1.90-b21027d40877-20260906-152441",
+      "tarball": "/home/docker/codexapp-releases/codexapp-0.1.90-b21027d40877-20260906-152441/codexapp-0.1.90.tgz",
+      "tarballSha256": "0b4836cff92948972a7a943af3d95e770694c19c0248b5687c725d8ea3c1d1eb",
+      "matchedFiles": 29,
+      "ptyCjsExport": true,
+      "ptySpawnExitCode": 0,
+      "cliHelp": true
+    }
+  },
+  "authMatrixScope": {
+    "image": "sha256:c464a8e6297981211f75fd8391464f6090ce6ff5672700e34df1c66924d11080",
+    "laterChanges": "recovery appearance, SW fallback read timing, local Node headers for native build; auth/chat code unchanged",
+    "temporaryContainersRemoved": true
+  },
+  "profile": {
+    "reportPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-thread-01a0755e-9c93-7c02-a35b-1914a1674a08-2026-09-06T07-29-19-390Z.json",
+    "screenshotPath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-thread-01a0755e-9c93-7c02-a35b-1914a1674a08-2026-09-06T07-29-19-390Z.png",
+    "tracePath": "/home/Code/codexapp/output/playwright/browser-runtime-profile-thread-01a0755e-9c93-7c02-a35b-1914a1674a08-2026-09-06T07-29-19-390Z-trace.zip",
+    "targetUrl": "http://127.0.0.1:59001/#/thread/01a0755e-9c93-7c02-a35b-1914a1674a08",
+    "finalUrl": "http://127.0.0.1:59001/#/thread/01a0755e-9c93-7c02-a35b-1914a1674a08",
+    "title": "0190 终验目标与压缩",
+    "totalMs": 7351.5,
+    "duplicateCounts": {
+      "threadList": 1,
+      "threadListFirstPage": 1,
+      "threadListCursor": 0,
+      "threadResume": 1,
+      "threadRead": 0,
+      "threadReadWithTurns": 0,
+      "threadReadDuplicateKeys": 0,
+      "skillsList": 1,
+      "rateLimitsRead": 1,
+      "providerModels": 0
+    },
+    "warnings": [],
+    "pageState": {
+      "threadLoadingText": "Loading threads...",
+      "threadLoadTimeoutMs": 15000,
+      "stillLoadingThreads": false
+    },
+    "totalApiKB": 79.3,
+    "topApiSummary": [
+      {
+        "key": "account/rateLimits/read",
+        "count": 1,
+        "minMs": 1591.4,
+        "avgMs": 1591.4,
+        "p95Ms": 1591.4,
+        "maxMs": 1591.4,
+        "totalKB": 1.7
+      },
+      {
+        "key": "thread/resume",
+        "count": 1,
+        "minMs": 168.7,
+        "avgMs": 168.7,
+        "p95Ms": 168.7,
+        "maxMs": 168.7,
+        "totalKB": 4.9
+      },
+      {
+        "key": "/codex-api/git/repository-status",
+        "count": 1,
+        "minMs": 100.7,
+        "avgMs": 100.7,
+        "p95Ms": 100.7,
+        "maxMs": 100.7,
+        "totalKB": 0
+      },
+      {
+        "key": "/codex-api/thread-terminal/quick-commands",
+        "count": 1,
+        "minMs": 100.1,
+        "avgMs": 100.1,
+        "p95Ms": 100.1,
+        "maxMs": 100.1,
+        "totalKB": 0
+      },
+      {
+        "key": "/codex-api/git/branches",
+        "count": 1,
+        "minMs": 98.6,
+        "avgMs": 98.6,
+        "p95Ms": 98.6,
+        "maxMs": 98.6,
+        "totalKB": 0
+      },
+      {
+        "key": "/codex-api/workspace-roots-state",
+        "count": 1,
+        "minMs": 87.3,
+        "avgMs": 87.3,
+        "p95Ms": 87.3,
+        "maxMs": 87.3,
+        "totalKB": 0.1
+      },
+      {
+        "key": "/codex-api/thread-terminal/status",
+        "count": 1,
+        "minMs": 87.3,
+        "avgMs": 87.3,
+        "p95Ms": 87.3,
+        "maxMs": 87.3,
+        "totalKB": 0
+      },
+      {
+        "key": "/codex-api/thread-queue-state",
+        "count": 1,
+        "minMs": 87.3,
+        "avgMs": 87.3,
+        "p95Ms": 87.3,
+        "maxMs": 87.3,
+        "totalKB": 0
+      },
+      {
+        "key": "/codex-api/home-directory",
+        "count": 1,
+        "minMs": 87.2,
+        "avgMs": 87.2,
+        "p95Ms": 87.2,
+        "maxMs": 87.2,
+        "totalKB": 0
+      },
+      {
+        "key": "/codex-api/preferences/first-launch-plugins-card",
+        "count": 1,
+        "minMs": 87.2,
+        "avgMs": 87.2,
+        "p95Ms": 87.2,
+        "maxMs": 87.2,
+        "totalKB": 0
+      },
+      {
+        "key": "/codex-api/telegram/status",
+        "count": 1,
+        "minMs": 87.2,
+        "avgMs": 87.2,
+        "p95Ms": 87.2,
+        "maxMs": 87.2,
+        "totalKB": 0.1
+      },
+      {
+        "key": "/codex-api/telegram/config",
+        "count": 1,
+        "minMs": 87.2,
+        "avgMs": 87.2,
+        "p95Ms": 87.2,
+        "maxMs": 87.2,
+        "totalKB": 0
+      }
+    ],
+    "slowestApiRows": [
+      {
+        "method": "POST",
+        "path": "/codex-api/rpc",
+        "rpc": "account/rateLimits/read",
+        "cursor": "",
+        "threadId": "",
+        "includeTurns": null,
+        "status": 200,
+        "ms": 1591.4,
+        "requestBytes": 50,
+        "responseBytes": 1744,
+        "responseKB": 1.7
+      },
+      {
+        "method": "POST",
+        "path": "/codex-api/rpc",
+        "rpc": "thread/resume",
+        "cursor": "",
+        "threadId": "01a0755e-9c93-7c02-a35b-1914a1674a08",
+        "includeTurns": false,
+        "status": 200,
+        "ms": 168.7,
+        "requestBytes": 87,
+        "responseBytes": 5050,
+        "responseKB": 4.9
+      },
+      {
+        "method": "GET",
+        "path": "/codex-api/git/repository-status",
+        "rpc": "",
+        "cursor": "",
+        "threadId": "",
+        "status": 200,
+        "ms": 100.7,
+        "requestBytes": 0,
+        "responseBytes": 41,
+        "responseKB": 0
+      },
+      {
+        "method": "GET",
+        "path": "/codex-api/thread-terminal/quick-commands",
+        "rpc": "",
+        "cursor": "",
+        "threadId": "",
+        "status": 200,
+        "ms": 100.1,
+        "requestBytes": 0,
+        "responseBytes": 15,
+        "responseKB": 0
+      },
+      {
+        "method": "GET",
+        "path": "/codex-api/project-root-suggestion",
+        "rpc": "",
+        "cursor": "",
+        "threadId": "",
+        "status": 200,
+        "ms": 99.3,
+        "requestBytes": 0,
+        "responseBytes": 76,
+        "responseKB": 0.1
+      },
+      {
+        "method": "GET",
+        "path": "/codex-api/git/branches",
+        "rpc": "",
+        "cursor": "",
+        "threadId": "",
+        "status": 200,
+        "ms": 98.6,
+        "requestBytes": 0,
+        "responseBytes": 44,
+        "responseKB": 0
+      },
+      {
+        "method": "GET",
+        "path": "/codex-api/workspace-roots-state",
+        "rpc": "",
+        "cursor": "",
+        "threadId": "",
+        "status": 200,
+        "ms": 87.3,
+        "requestBytes": 0,
+        "responseBytes": 83,
+        "responseKB": 0.1
+      },
+      {
+        "method": "GET",
+        "path": "/codex-api/thread-terminal/status",
+        "rpc": "",
+        "cursor": "",
+        "threadId": "",
+        "status": 200,
+        "ms": 87.3,
+        "requestBytes": 0,
+        "responseBytes": 32,
+        "responseKB": 0
+      },
+      {
+        "method": "GET",
+        "path": "/codex-api/thread-queue-state",
+        "rpc": "",
+        "cursor": "",
+        "threadId": "",
+        "status": 200,
+        "ms": 87.3,
+        "requestBytes": 0,
+        "responseBytes": 11,
+        "responseKB": 0
+      },
+      {
+        "method": "GET",
+        "path": "/codex-api/home-directory",
+        "rpc": "",
+        "cursor": "",
+        "threadId": "",
+        "status": 200,
+        "ms": 87.2,
+        "requestBytes": 0,
+        "responseBytes": 25,
+        "responseKB": 0
+      }
+    ]
+  },
+  "idle": {
+    "activeTurns": 0,
+    "queuedCount": 0,
+    "pendingCount": 0,
+    "pages": 1,
+    "idle": true
+  },
+  "production": {
+    "port": 5900,
+    "version": "0.1.89",
+    "pid": 87226,
+    "restarted": false
+  },
+  "screenshots": [
+    {
+      "original": "/home/Code/codexapp/output/playwright/0190-release-recovery-chromium-1440x900-dark.png",
+      "archive": "assets/0.1.90-sealed/0190-release-recovery-chromium-1440x900-dark.png",
+      "sha256": "9869c61b6d8a788cc12d67a43f8eef6722f14e79f4e7af78e664e3af4c52fb07"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0190-release-recovery-webkit-375x812-light-saved-dark.png",
+      "archive": "assets/0.1.90-sealed/0190-release-recovery-webkit-375x812-light-saved-dark.png",
+      "sha256": "132a7252932d0d06e139b1ec09a5487b6ea851e15c9579e42fede94864e2b065"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0190-release-recovery-chromium-1440x900-light.png",
+      "archive": "assets/0.1.90-sealed/0190-release-recovery-chromium-1440x900-light.png",
+      "sha256": "54b2f5399aa7cc223e4c6cc8b7b6ffbff510279007cdcfd179f378efd9a34bbc"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0190-release-final-webkit-automation-768x1024-dark.png",
+      "archive": "assets/0.1.90-sealed/0190-release-final-webkit-automation-768x1024-dark.png",
+      "sha256": "93e6dc0d248c559f565768249aebfdd81acdc6d0a0054a363e7d0d4fc44e9b43"
+    },
+    {
+      "original": "/home/Code/codexapp/output/playwright/0190-release-final-chromium-language-1024x768-light.png",
+      "archive": "assets/0.1.90-sealed/0190-release-final-chromium-language-1024x768-light.png",
+      "sha256": "25dab8aaab5f2e80185e90db39f2544ac90fea4729f25403d9bc5844273f7736"
+    }
+  ],
+  "limitations": [
+    "Physical Pad keyboard and IME remain manual acceptance",
+    "Production scheduled natural-week execution remains post-activation acceptance",
+    "Old tabs without recovery bootstrap need normal refresh to migrate",
+    "0.2 roadmap debts remain separately tracked"
+  ]
+}
