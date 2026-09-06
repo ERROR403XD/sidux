@@ -5608,12 +5608,21 @@ export function useDesktopState() {
 
     if (stopNotificationStream) return
     void loadPendingServerRequestsFromBridge()
+    let notificationReady = false
     stopNotificationStream = subscribeCodexNotifications((notification) => {
       if (notification.method === 'codexapp/queue/changed') {
         void refreshQueueState().catch(() => {})
         return
       }
       if (notification.method === 'ready') {
+        if (notificationReady) {
+          invalidateModelCatalog()
+          availableModels.value = []
+          recentRateLimitsAt = 0
+          void refreshModelPreferences()
+          void refreshRateLimits()
+        }
+        notificationReady = true
         clearAllTransientTurnErrors()
         void recoverBridgeState()
         return

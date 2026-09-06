@@ -1273,3 +1273,26 @@ describe('model setting rollback isolation', () => {
     expect(state.selectedReasoningEffort.value).toBe('ultra')
   })
 })
+
+
+describe('runtime reconnect capabilities', () => {
+  it('refreshes metadata on a later ready event without duplicating the initial read', async () => {
+    installTestWindow()
+    gatewayMocks.getCurrentModelConfig.mockResolvedValue({ model: 'gpt-5.5', providerId: '', reasoningEffort: 'low', speedMode: '' })
+    gatewayMocks.getAvailableModelIds.mockResolvedValue(['gpt-5.5'])
+    gatewayMocks.getAccountRateLimits.mockResolvedValue(null)
+    gatewayMocks.getPendingServerRequests.mockResolvedValue([])
+    gatewayMocks.getThreadGroupsPage.mockResolvedValue({ groups: [], nextCursor: null })
+    let callback!: (event: { method: string; params: unknown; atIso: string }) => void
+    gatewayMocks.subscribeCodexNotifications.mockImplementationOnce(fn => { callback = fn; return () => {} })
+    const state = useDesktopState()
+    state.startPolling()
+    const baseline = gatewayMocks.getAvailableModelIds.mock.calls.length
+    callback({ method: 'ready', params: {}, atIso: '' })
+    await Promise.resolve()
+    expect(gatewayMocks.getAvailableModelIds).toHaveBeenCalledTimes(baseline)
+    callback({ method: 'ready', params: {}, atIso: '' })
+    await vi.waitFor(() => expect(gatewayMocks.getAvailableModelIds).toHaveBeenCalledTimes(baseline + 1))
+    state.stopPolling()
+  })
+})
