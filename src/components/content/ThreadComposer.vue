@@ -382,6 +382,8 @@
 </template>
 
 <script setup lang="ts">
+import { isOverlayEventInside } from '../../composables/overlayEvents'
+import { formatLocalDateTime } from '../../dateTime'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ComposerCommandPicker from './ComposerCommandPicker.vue'
 import { buildComposerCommands, type ComposerCommand, type SlashToken } from './composerCommands'
@@ -843,13 +845,9 @@ function formatResetTime(resetsAt: number | null): string {
 
 function formatResetDate(resetsAt: number | null): string {
   if (typeof resetsAt !== 'number' || !Number.isFinite(resetsAt)) return ''
-  return new Intl.DateTimeFormat(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(resetsAt * 1000))
+  return formatLocalDateTime(resetsAt * 1000, {
+    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+  })
 }
 
 function formatResetDateCompact(resetsAt: number | null): string {
@@ -1886,7 +1884,7 @@ function onDocumentClick(event: MouseEvent): void {
   const root = attachMenuRootRef.value
   if (!root) return
   const target = event.target as Node | null
-  if (!target || root.contains(target)) return
+  if (!target || isOverlayEventInside(event, root)) return
   isAttachMenuOpen.value = false
 }
 

@@ -21,7 +21,7 @@
       </div>
     </div>
 
-    <p v-if="runtime" class="automation-runtime-status" :class="{ 'has-error': !runtime.ready }">调度器：{{ runtime.error || (runtime.draining ? '正在交接，停止领取新任务' : runtime.ready ? '运行中' : '初始化中') }} · {{ runtime.timezone }}</p>
+    <p v-if="runtime" class="automation-runtime-status" :class="{ 'has-error': !runtime.ready }">调度器：{{ runtime.error || (runtime.draining ? '正在交接，停止领取新任务' : runtime.ready ? '运行中' : '初始化中') }} · 显示时区 {{ browserTimeZone() }}</p>
     <p v-for="problem in runtime?.definitions.filter(row => row.error) ?? []" :key="problem.id" class="automations-error">{{ problem.id }}：{{ problem.error }}</p>
     <p v-if="loadError" class="automations-error">{{ t(loadError) }}</p>
 
@@ -101,6 +101,7 @@
           </div>
           <div><dt>模型</dt><dd>{{ selectedRow.automation.model || '跟随运行时默认' }}</dd></div>
           <div><dt>思考强度</dt><dd>{{ selectedRow.automation.reasoningEffort || '跟随运行时默认' }}</dd></div>
+          <div><dt>调度时区</dt><dd>{{ selectedRow.automation.timezone || 'Asia/Shanghai' }}</dd></div>
         </dl>
 
         <section class="automation-detail-prompt">
@@ -115,6 +116,7 @@
 </template>
 
 <script setup lang="ts">
+import { browserTimeZone, formatLocalDateTime } from '../../dateTime'
 import AutomationRunHistory from './AutomationRunHistory.vue'
 import { getAutomationRuntime, type AutomationRuntimeStatus } from '../../api/automationGateway'
 import { useUiLanguage } from '../../composables/useUiLanguage'
@@ -324,7 +326,7 @@ function getAutomationRowKey(scope: 'thread' | 'project', target: string, automa
 
 function describeAutomationSchedule(automation: UiThreadAutomation): string {
   if (automation.status === 'PAUSED') return t('Paused')
-  if (automation.nextRunAtMs) return `下次 ${formatDateTime(automation.nextRunAtMs, automation.timezone)}`
+  if (automation.nextRunAtMs) return `下次 ${formatLocalDateTime(automation.nextRunAtMs)}`
   const rrule = automation.rrule.trim()
   if (/FREQ=MINUTELY/i.test(rrule)) {
     const interval = /INTERVAL=(\d+)/i.exec(rrule)?.[1] ?? '1'
@@ -337,16 +339,6 @@ function describeAutomationSchedule(automation: UiThreadAutomation): string {
   if (/FREQ=DAILY/i.test(rrule)) return t('Daily')
   if (/FREQ=WEEKLY/i.test(rrule)) return t('Weekly')
   return t('Custom schedule')
-}
-
-function formatDateTime(value: number, timezone?: string): string {
-  return new Date(value).toLocaleString(undefined, {
-    timeZone: timezone,
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
 }
 
 function getPathLeaf(path: string): string {
@@ -389,10 +381,12 @@ function getPathLeaf(path: string): string {
 
 .automations-layout {
   @apply grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)];
+  grid-template-rows: minmax(112px, 0.35fr) minmax(0, 1fr);
 }
 
 .automations-list {
   @apply min-h-0 overflow-y-auto rounded-lg border border-zinc-200 bg-white;
+  container-type: inline-size;
 }
 
 .automation-row {
@@ -451,12 +445,46 @@ function getPathLeaf(path: string): string {
   @apply h-7 shrink-0 rounded-md border border-zinc-200 bg-white px-2 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50;
 }
 
+@container (max-width: 460px) {
+  .automation-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: 8px;
+    row-gap: 6px;
+  }
+  .automation-row-side {
+    grid-column: 2;
+    grid-row: 2;
+    min-width: 0;
+    align-items: flex-start;
+    text-align: left;
+  }
+  .automation-row-title {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .automation-edit-button {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+}
+
 .automation-detail-edit {
   @apply ml-auto;
 }
 
 .automation-detail {
   @apply flex min-h-0 flex-col gap-4 overflow-y-auto rounded-lg border border-zinc-200 bg-white p-4;
+}
+
+.automation-detail > * {
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .automations-layout {
+    grid-template-rows: minmax(0, 1fr);
+  }
 }
 
 .automation-detail-heading {
@@ -492,7 +520,7 @@ function getPathLeaf(path: string): string {
 }
 
 .automation-detail-prompt {
-  @apply flex min-h-0 flex-col gap-2;
+  @apply flex flex-col gap-2;
 }
 
 .automation-detail-prompt h3 {
@@ -500,6 +528,7 @@ function getPathLeaf(path: string): string {
 }
 
 .automation-detail-prompt p {
+  overflow-wrap: anywhere;
   @apply m-0 whitespace-pre-wrap rounded-lg bg-zinc-50 p-3 text-sm leading-6 text-zinc-800;
 }
 

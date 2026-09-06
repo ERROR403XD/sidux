@@ -17,6 +17,7 @@
 
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch, type CSSProperties } from 'vue'
+import { isOverlayEventInside, setPopoverAnchor, removePopoverAnchor } from '../../composables/overlayEvents'
 import { positionPopover } from './popoverPosition'
 
 const props = withDefaults(defineProps<{
@@ -41,6 +42,7 @@ let cleanup: (() => void) | undefined
 function updatePosition(): void {
   frame = 0
   if (!props.open || !props.anchor || !panel.value) return
+  setPopoverAnchor(panel.value, props.anchor)
   position.value = positionPopover({
     anchor: props.anchor.getBoundingClientRect(),
     height: panel.value.offsetHeight,
@@ -59,7 +61,7 @@ function schedulePosition(): void {
 function onOutsidePointer(event: PointerEvent): void {
   const target = event.target
   if (!(target instanceof Node)) return
-  if (panel.value?.contains(target) || props.anchor?.contains(target)) return
+  if (isOverlayEventInside(event, panel.value) || isOverlayEventInside(event, props.anchor)) return
   emit('close')
 }
 
@@ -74,6 +76,7 @@ function onKeydown(event: KeyboardEvent): void {
 }
 
 function detach(): void {
+  if (panel.value) removePopoverAnchor(panel.value)
   cleanup?.()
   cleanup = undefined
   observer?.disconnect()

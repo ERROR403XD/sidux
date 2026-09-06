@@ -43,6 +43,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatLocalDateTime } from '../../dateTime'
 import { computed } from 'vue'
 import { useUiLanguage } from '../../composables/useUiLanguage'
 import IconTablerFolder from '../icons/IconTablerFolder.vue'
@@ -98,7 +99,7 @@ const publishedLabel = computed(() => {
   if (diff < 3600_000) return `${Math.floor(diff / 60_000)}m ago`
   if (diff < 86400_000) return `${Math.floor(diff / 3600_000)}h ago`
   if (diff < 2592000_000) return `${Math.floor(diff / 86400_000)}d ago`
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return formatLocalDateTime(d.getTime(), { year: undefined, month: 'short', day: 'numeric', hour: undefined, minute: undefined }, 'en-US')
 })
 
 const metaLabels = computed(() => {

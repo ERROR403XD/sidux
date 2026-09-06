@@ -1203,6 +1203,8 @@
 </template>
 
 <script setup lang="ts">
+import { isOverlayEventInside } from './composables/overlayEvents'
+import { formatLocalDateTime, browserTimeZone } from './dateTime'
 import { vModalBackdrop } from './composables/modalBackdrop'
 import { projectDisplayName, projectSetupInput } from './composables/projectSetup'
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -2606,8 +2608,7 @@ function pickWeeklyQuotaWindow(account: UiAccountEntry) {
 
 function formatResetDateCompact(resetsAt: number | null): string {
   if (typeof resetsAt !== 'number' || !Number.isFinite(resetsAt)) return ''
-  const date = new Date(resetsAt * 1000)
-  return `${date.getMonth() + 1}月${date.getDate()}日`
+  return formatLocalDateTime(resetsAt * 1000, { year: undefined, month: 'numeric', day: 'numeric', hour: undefined, minute: undefined }, 'zh-CN')
 }
 
 function formatAccountQuota(account: UiAccountEntry): string {
@@ -3449,7 +3450,7 @@ function onDocumentPointerDown(event: PointerEvent): void {
     }
   }
   if (!isSettingsOpen.value) return
-  if (settingsPanelRef.value?.contains(target)) return
+  if (isOverlayEventInside(event, settingsPanelRef.value)) return
   if (settingsButtonRef.value?.contains(target)) return
   isSettingsOpen.value = false
 }
@@ -3458,7 +3459,7 @@ function onSettingsAreaClick(event: MouseEvent): void {
   if (!isSettingsOpen.value) return
   const target = event.target
   if (!(target instanceof Node)) return
-  if (settingsPanelRef.value?.contains(target)) return
+  if (isOverlayEventInside(event, settingsPanelRef.value)) return
   if (settingsButtonRef.value?.contains(target)) return
   isSettingsOpen.value = false
 }
@@ -4372,7 +4373,7 @@ function buildThreadMarkdown(): string {
   const threadTitle = selectedThread.value?.title?.trim() || 'Untitled thread'
   lines.push(`# ${escapeMarkdownText(threadTitle)}`)
   lines.push('')
-  lines.push(`- Exported: ${new Date().toISOString()}`)
+  lines.push(`- Exported: ${formatLocalDateTime(Date.now(), { second: '2-digit' })} (${browserTimeZone()})`)
   lines.push(`- Thread ID: ${selectedThread.value?.id ?? ''}`)
   lines.push('')
   lines.push('---')

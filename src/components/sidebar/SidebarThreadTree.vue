@@ -878,6 +878,8 @@
 </template>
 
 <script setup lang="ts">
+import { isOverlayEventInside } from '../../composables/overlayEvents'
+import { browserTimeZone, formatLocalDateTime } from '../../dateTime'
 import { getAutomationRuntime, runAutomationNow, createAutomationRequestId } from '../../api/automationGateway'
 import AppDialog from '../common/AppDialog.vue'
 import AppButton from '../common/AppButton.vue'
@@ -1043,9 +1045,8 @@ const projectAutomationActionError = ref('')
 const isSavingAutomation = ref(false)
 const isRunningAutomation = ref(false)
 const automationTimezone = ref('')
-watch(automationDialogVisible, async (visible) => {
-  if (!visible || automationTimezone.value) return
-  try { const state = await getAutomationRuntime(); if (!automationTimezone.value) automationTimezone.value = state.timezone } catch { /* Saving reports connection errors. */ }
+watch(automationDialogVisible, (visible) => {
+  if (visible && !automationTimezone.value) automationTimezone.value = browserTimeZone()
 })
 const automationDraft = ref<{
   name: string
@@ -1597,7 +1598,7 @@ function automationTooltip(automations: UiThreadAutomation[]): string {
   const nextRunLabel = automation.status === 'PAUSED'
     ? '-'
     : automation.nextRunAtMs
-      ? new Date(automation.nextRunAtMs).toLocaleString()
+      ? formatLocalDateTime(automation.nextRunAtMs)
       : 'Not scheduled'
   return `${automation.name} • Next run: ${nextRunLabel}`
 }
@@ -2567,7 +2568,7 @@ function isEventInsideOpenProjectMenu(event: Event): boolean {
   if (eventPath.includes(openMenuWrapElement)) return true
 
   const target = event.target
-  return target instanceof Node ? openMenuWrapElement.contains(target) : false
+  return target instanceof Node ? isOverlayEventInside(event, openMenuWrapElement) : false
 }
 
 function isEventInsideOpenThreadMenu(event: Event): boolean {
@@ -2585,8 +2586,8 @@ function isEventInsideOpenThreadMenu(event: Event): boolean {
 
   const target = event.target
   if (!(target instanceof Node)) return false
-  if (openMenuWrapElement.contains(target)) return true
-  if (panelElement && panelElement.contains(target)) return true
+  if (isOverlayEventInside(event, openMenuWrapElement)) return true
+  if (panelElement && isOverlayEventInside(event, panelElement)) return true
   return false
 }
 

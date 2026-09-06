@@ -2,7 +2,7 @@
     <ol class="automation-history-list">
       <li v-for="run in runs" :key="run.runId" :data-run-status="run.status">
         <div class="automation-history-line"><strong>{{ statusLabels[run.status] }}</strong><span>{{ triggerLabels[run.trigger] }} · 第 {{ run.attempt }} 次</span></div>
-        <div class="automation-history-line"><time>{{ formatTime(run.scheduledAt, run.timezone) }}</time><span>{{ duration(run) }}</span></div>
+        <div class="automation-history-line"><time :datetime="new Date(run.scheduledAt).toISOString()" :title="formatLocalDateTime(run.scheduledAt, { second: '2-digit', timeZoneName: 'short' })">{{ formatLocalDateTime(run.scheduledAt) }}</time><span>{{ duration(run) }}</span></div>
         <p v-if="run.target !== target" class="automation-history-muted">{{ run.target }}</p>
         <p v-if="run.error" class="automation-history-error">{{ run.error }}</p>
         <div class="automation-history-links">
@@ -14,11 +14,12 @@
     </ol>
 </template>
 <script setup lang="ts">
+import { formatLocalDateTime } from '../../dateTime'
 import type { AutomationRun } from '../../server/automationStore'
 defineProps<{ runs: AutomationRun[]; target: string; disabled: boolean }>()
 const emit = defineEmits<{ retry: [run: AutomationRun] }>()
 const statusLabels = { queued: '排队中', starting: '启动 / 核对中', running: '运行中', waiting_input: '等待处理', completed: '完成', failed: '失败', interrupted: '中断，需检查', missed: '漏跑', skipped: '已合并', cancelled: '已取消' }
 const triggerLabels = { manual: '手动', schedule: '定时', retry: '重试' }
-function formatTime(at: number, zone?: string) { return new Date(at).toLocaleString('zh-CN', { timeZone: zone, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }
+
 function duration(run: AutomationRun) { return run.startedAt ? `${Math.max(0, Math.round(((run.finishedAt ?? Date.now()) - run.startedAt) / 1000))} 秒` : '—' }
 </script>

@@ -188,6 +188,7 @@
 </template>
 
 <script setup lang="ts">
+import { isOverlayEventInside } from '../../composables/overlayEvents'
 import { useUiLanguage } from '../../composables/useUiLanguage'
 const { t } = useUiLanguage()
 
@@ -389,7 +390,7 @@ function onDocumentPointerDown(event: PointerEvent): void {
   if (!isOpen.value) return
   const root = rootRef.value
   const target = event.target
-  if (!root || !(target instanceof Node) || root.contains(target)) return
+  if (!root || !(target instanceof Node) || isOverlayEventInside(event, root)) return
   isOpen.value = false
   searchQuery.value = ''
   commitSearchQuery.value = ''

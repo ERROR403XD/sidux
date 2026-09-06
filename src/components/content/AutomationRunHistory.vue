@@ -4,7 +4,7 @@
       <h3>执行记录</h3>
       <AppButton type="button" :disabled="runDisabled" @click="runNow()">{{ busy ? '提交中…' : '立即运行' }}</AppButton>
     </div>
-    <p class="automation-history-schedule">{{ nextTime }} · {{ metadata?.timezone || automation.timezone || runtime?.timezone }}</p>
+    <p class="automation-history-schedule">{{ nextTime }} · 显示时区 {{ browserTimeZone() }}</p>
     <p v-if="error" class="automations-error" role="alert">{{ error }}</p>
     <p v-if="!runs.length" class="automation-history-muted">{{ loading ? '读取中…' : '尚无执行记录。' }}</p>
     <AutomationRunList :runs="runs" :target="target" :disabled="runDisabled" @retry="runNow" />
@@ -28,6 +28,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { browserTimeZone, formatLocalDateTime } from '../../dateTime'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppButton from '../common/AppButton.vue'
@@ -47,7 +48,7 @@ let generation = 0, reloadTimer: ReturnType<typeof setTimeout> | undefined, inte
 let unsubscribe: (() => void) | undefined
 const metadata = computed(() => runtime.value?.definitions.find(row => row.id === props.automation.id))
 const runDisabled = computed(() => busy.value || !runtime.value?.ready || runtime.value.draining)
-const nextTime = computed(() => props.automation.status === 'PAUSED' ? '已暂停' : metadata.value?.nextRunAtMs ? `下次 ${new Date(metadata.value.nextRunAtMs).toLocaleString('zh-CN', { timeZone: metadata.value.timezone })}` : '暂无下次运行时间')
+const nextTime = computed(() => props.automation.status === 'PAUSED' ? '已暂停' : metadata.value?.nextRunAtMs ? `下次 ${formatLocalDateTime(metadata.value.nextRunAtMs)}` : '暂无下次运行时间')
 async function load() {
   const current = ++generation
   loading.value = true
