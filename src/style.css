@@ -2338,3 +2338,29 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .message-code-block .message-code-heading .message-code-language { border: 0; padding: 0; }
 .message-code-heading .message-code-copy { font-size: 11px; padding: 3px 7px; flex-shrink: 0; }
 :root.dark .message-code-heading .message-code-copy { color: var(--ui-text); background: var(--ui-field); border-color: var(--ui-border); }
+/* Composer fast mode uses the same model preference as the service-tier menu. */
+.thread-composer-fast {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-field);
+  color: var(--ui-text);
+  padding: 4px 7px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.thread-composer-fast[aria-checked="true"] {
+  color: #047857;
+  border-color: #059669;
+  background: #ecfdf5;
+}
+:root.dark .thread-composer-fast[aria-checked="true"] {
+  color: #6ee7b7;
+  border-color: #34d399;
+  background: #064e3b;
+}
+.thread-composer-fast:disabled { opacity: .5; cursor: default; }
+.thread-composer-fast:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 2px; }

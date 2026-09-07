@@ -274,6 +274,18 @@
           />
         </template>
 
+        <button
+          class="thread-composer-fast"
+          type="button"
+          role="switch"
+          :aria-checked="isFastSelected"
+          aria-label="Fast 快速模式"
+          :title="fastModeHint"
+          :disabled="isComposerConfigDisabled || (!fastTier && !selectedSpeedMode) || fastIsOnlyDefault"
+          @click="toggleFastMode"
+        >
+          <span aria-hidden="true">ϟ</span> Fast
+        </button>
         <div
           class="thread-composer-actions"
           :class="{ 'thread-composer-actions--recording': isDictationRecording }"
@@ -572,6 +584,16 @@ let lastActiveThreadId = ''
 const modelCapability = computed(() => props.modelCapabilities?.find(model => model.id === props.selectedModel))
 const reasoningOptions = computed(() => effortOptions(modelCapability.value, props.selectedReasoningEffort))
 const serviceTierOptions = computed(() => tierOptions(modelCapability.value, props.selectedSpeedMode))
+const fastTier = computed(() => modelCapability.value?.serviceTiers?.find(tier => tier.value === 'priority' || /^fast$/i.test(tier.label)))
+const isFastSelected = computed(() => !!fastTier.value && (props.selectedSpeedMode || modelCapability.value?.defaultServiceTier) === fastTier.value.value)
+const standardTier = computed(() => modelCapability.value?.serviceTiers?.find(tier => /^(default|standard)$/i.test(tier.value)))
+const fastIsOnlyDefault = computed(() => isFastSelected.value && modelCapability.value?.defaultServiceTier === fastTier.value?.value && !standardTier.value)
+const fastModeHint = computed(() => fastIsOnlyDefault.value ? '该模型默认使用 Fast，目录未公布标准档位' : fastTier.value?.description || (props.selectedSpeedMode && !fastTier.value ? '已保存的速度档位不受支持；点击恢复模型默认速度' : '当前模型未公布 Fast 快速模式'))
+function toggleFastMode(): void {
+  if (isComposerConfigDisabled.value || fastIsOnlyDefault.value) return
+  const standard = modelCapability.value?.defaultServiceTier === fastTier.value?.value ? standardTier.value?.value || '' : ''
+  emit('update:selected-speed-mode', isFastSelected.value || !fastTier.value ? standard : fastTier.value.value)
+}
 const modelSettingsWarning = computed(() => modelSettingsProblem(modelCapability.value, props.selectedReasoningEffort, props.selectedSpeedMode, selectedImages.value.length > 0))
 const modelCapabilityDescription = computed(() => {
   const model = modelCapability.value
