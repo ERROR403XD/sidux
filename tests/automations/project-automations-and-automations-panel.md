@@ -30,7 +30,7 @@
 #### Rollback/Cleanup
 - Remove any test project automations from the project automation dialog or delete their folders under `$CODEX_HOME/automations/<automation-id>/`.
 - Remove temporary test projects or workspace roots created for verification.
-# 0.2.10 自动化入口钟表图标
+## 0.2.10 自动化入口钟表图标
 
 准备：打开当前候选，使用 1440×900 浅色和深色主题。
 
