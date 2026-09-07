@@ -1,0 +1,78 @@
+<template>
+  <div class="account-panel">
+    <header class="account-panel-header">
+      <h3>{{ t('Accounts') }} <small>{{ accounts.length }}</small></h3>
+      <AppButton :disabled="busy" title="刷新账号列表" aria-label="刷新账号列表" @click="$emit('refresh')">↻</AppButton>
+      <AppButton :disabled="busy" @click="$emit('add')">{{ t('Add account') }}</AppButton>
+    </header>
+    <p v-if="error" class="account-panel-error" role="alert">{{ error }}</p>
+    <p v-if="notice" class="account-panel-notice" role="status">{{ notice }}</p>
+    <div class="account-panel-list">
+      <p v-if="!accounts.length" class="account-panel-empty">{{ t('No accounts yet. Add one from this panel.') }}</p>
+      <article v-for="account in accounts" :key="account.storageId" class="account-card" :class="{ 'is-active': account.isActive }" :data-account-id="account.storageId">
+        <div class="account-card-heading">
+          <strong :title="account.email || account.accountId">{{ account.email || t('Account') }}</strong>
+          <span v-if="account.isActive" class="account-active-badge">当前使用</span>
+        </div>
+        <p class="account-card-meta">{{ account.planType || t('unknown') }} · {{ status(account) }}</p>
+        <AccountQuota v-if="account.quotaSnapshot" :snapshot="account.quotaSnapshot" />
+        <p v-else class="account-card-meta">{{ account.quotaStatus === 'loading' ? t('Loading quota…') : t('Quota unavailable') }}</p>
+        <p v-if="account.quotaError" class="account-panel-error">{{ account.quotaError }}</p>
+        <footer class="account-card-actions">
+          <AppButton v-if="!account.isActive" :disabled="disabled(account) || !account.canSwitch" @click="$emit('switch', account.storageId)">切换至此账号</AppButton>
+          <AppButton v-if="account.actionRequired === 'reauthenticate'" :disabled="disabled(account)" @click="$emit('reauth', account.storageId)">{{ t('Re-authenticate') }}</AppButton>
+          <span class="account-card-spacer" />
+          <div :ref="element => setAnchor(account.storageId, element)" class="account-more-anchor">
+            <AppButton :disabled="busy" aria-label="账号更多操作" :aria-expanded="menuId === account.storageId" @click="menuId = menuId === account.storageId ? '' : account.storageId">⋯</AppButton>
+          </div>
+          <AppPopover :open="menuId === account.storageId" :anchor="anchors[account.storageId] || null" direction="up" align="end" panel-class="account-actions-menu" @close="menuId = ''">
+            <p class="account-card-meta" :title="account.accountId">Workspace {{ account.accountId }}</p>
+            <AppButton :disabled="disabled(account)" @click="run('quota', account.storageId)">{{ t('Refresh quota') }}</AppButton>
+            <AppButton :disabled="disabled(account)" @click="run('reauth', account.storageId)">{{ t('Re-authenticate') }}</AppButton>
+            <AppButton variant="danger" :disabled="disabled(account) || account.isActive" @click="$emit('remove', account.storageId)">{{ confirmingRemoveId === account.storageId ? t('Confirm remove') : t('Remove') }}</AppButton>
+          </AppPopover>
+        </footer>
+      </article>
+    </div>
+    <footer v-if="$slots.footer" class="account-panel-footer"><slot name="footer" /></footer>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, type ComponentPublicInstance } from 'vue'
+import type { UiAccountEntry } from '../../types/codex'
+import { useUiLanguage } from '../../composables/useUiLanguage'
+import AppButton from '../common/AppButton.vue'
+import AppPopover from '../common/AppPopover.vue'
+import AccountQuota from './AccountQuota.vue'
+
+defineProps<{
+  accounts: UiAccountEntry[]
+  busy: boolean
+  error: string
+  notice: string
+  confirmingRemoveId: string
+  disabled: (account: UiAccountEntry) => boolean
+  status: (account: UiAccountEntry) => string
+}>()
+const emit = defineEmits<{
+  refresh: []
+  add: []
+  switch: [storageId: string]
+  quota: [storageId: string]
+  reauth: [storageId: string]
+  remove: [storageId: string]
+}>()
+const { t } = useUiLanguage()
+const menuId = ref('')
+const anchors = ref<Record<string, HTMLElement>>({})
+function setAnchor(id: string, element: Element | ComponentPublicInstance | null): void {
+  if (element instanceof HTMLElement) anchors.value[id] = element
+  else delete anchors.value[id]
+}
+function run(action: 'quota' | 'reauth', id: string): void {
+  menuId.value = ''
+  if (action === 'quota') emit('quota', id)
+  else emit('reauth', id)
+}
+</script>

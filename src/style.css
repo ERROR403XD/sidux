@@ -2371,3 +2371,72 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .account-login-fields .account-login-code { padding: 12px; text-align: center; font: 24px monospace; background: var(--ui-field); border-radius: var(--ui-radius-control); color: var(--ui-text); }
 .account-login-error { color: var(--ui-danger); }
 :root.dark .account-login-dialog { color: var(--ui-text); background: var(--ui-surface); }
+
+/* Settings and account surfaces share the same controls and palette. */
+.settings-page { width: 100%; max-width: 960px; margin: 0 auto; padding: 24px; overflow-y: auto; min-height: 0; }
+.settings-section { padding: 20px; margin-bottom: 20px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-dialog); background: var(--ui-surface); color: var(--ui-text); }
+.settings-section h2 { margin: 0 0 16px; font-size: 16px; font-weight: 600; }
+.settings-section h3 { margin: 8px 0 12px; font-size: 13px; font-weight: 600; }
+.settings-page .sidebar-settings-row { min-height: 44px; padding: 10px 0; border-radius: 0; color: var(--ui-text); background: transparent; gap: 16px; font-size: 13px; }
+.settings-page .sidebar-settings-row--select > .app-select { min-width: 180px; max-width: 55%; }
+.settings-page .sidebar-settings-row--input { align-items: stretch; }
+.settings-page .sidebar-settings-key-input, .settings-page .sidebar-settings-input, .settings-page .sidebar-settings-textarea { color: var(--ui-text); background: var(--ui-field); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); }
+.settings-page .sidebar-settings-key-save, .settings-page .sidebar-settings-telegram-save { color: var(--ui-text); background: var(--ui-field); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); padding: 6px 10px; }
+.settings-optional-provider { border-top: 1px solid var(--ui-border); margin-top: 16px; padding-top: 16px; }
+.settings-optional-provider > summary, .runtime-capabilities > summary { cursor: pointer; font-size: 13px; }
+.settings-about-versions, .runtime-capabilities { font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
+.sidebar-account-footer { flex-shrink: 0; padding: 10px; border-top: 1px solid var(--ui-border); color: var(--ui-text); }
+.sidebar-context-summary { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; font-size: 12px; padding: 6px 8px 12px; border-bottom: 1px solid var(--ui-border); margin-bottom: 8px; }
+.sidebar-context-summary small { grid-column: 1 / -1; opacity: .7; }
+.account-usage-button { display: block; width: 100%; border: 0; border-radius: var(--ui-radius-control); background: transparent; text-align: left; color: var(--ui-text); padding: 8px; cursor: pointer; }
+.account-usage-button:hover { background: var(--ui-hover); }
+.account-usage-button:focus-visible { outline: 2px solid var(--ui-focus); }
+.account-usage-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 6px; }
+.account-usage-heading strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0; }
+.account-usage-button small { opacity: .7; }
+.account-popover { padding: 0; overflow: hidden; }
+.account-panel { display: flex; flex-direction: column; min-height: 0; color: var(--ui-text); font-size: 13px; }
+.account-popover .account-panel { max-height: min(660px, calc(100dvh - 24px)); }
+.account-panel-header { display: flex; align-items: center; gap: 8px; padding: 12px; flex-shrink: 0; }
+.account-panel-header h3 { font-size: 16px; font-weight: 600; margin: 0; flex: 1; }
+.account-panel-header small { font-size: 12px; font-weight: 400; opacity: .6; }
+.account-panel-list { min-height: 0; overflow-y: auto; padding: 0 12px 12px; }
+.account-card { padding: 12px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-popover); margin-bottom: 10px; background: var(--ui-surface); }
+.account-card:last-child { margin-bottom: 0; }
+.account-card.is-active { background: var(--ui-hover); }
+.account-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.account-card-heading strong { font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-active-badge { flex-shrink: 0; font-size: 12px; color: var(--ui-text); border: 1px solid var(--ui-border); padding: 1px 6px; border-radius: 6px; }
+.account-card-meta { font-size: 12px; opacity: .75; margin: 6px 0; overflow-wrap: anywhere; }
+.account-card-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.account-card-spacer { flex: 1; }
+.account-more-anchor { display: flex; }
+.account-actions-menu { display: flex; flex-direction: column; gap: 6px; }
+.account-panel-error, .account-panel-notice { margin: 6px 12px; overflow-wrap: anywhere; font-size: 12px; }
+.account-panel-error { color: var(--ui-danger); }
+.account-card > .account-panel-error { margin: 6px 0; }
+.account-panel-empty { margin: 12px 0; opacity: .7; }
+.account-panel-footer { border-top: 1px solid var(--ui-border); padding: 12px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
+.account-versions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 12px; overflow-wrap: anywhere; }
+.account-card .rate-limit-status, .account-usage-button .rate-limit-status { margin: 0; }
+.account-card .rate-limit-card, .account-usage-button .rate-limit-card { padding: 6px 0; border: 0; background: transparent; color: var(--ui-text); }
+.account-usage-button .rate-limit-card-header, .account-usage-button .rate-limit-card-footer { display: none; }
+.account-card .rate-limit-card-title, .account-card .rate-limit-card-plan, .account-card .rate-limit-card-metric, .account-usage-button .rate-limit-card-metric { font-size: 12px; color: var(--ui-text); }
+:root.dark .settings-section, :root.dark .account-card, :root.dark .account-popover, :root.dark .account-actions-menu { background: var(--ui-surface); color: var(--ui-text); border-color: var(--ui-border); }
+:root.dark .account-card.is-active { background: var(--ui-hover); }
+.sidebar-thread-controls-button.is-active { background: var(--ui-hover); color: var(--ui-text); }
+@media (max-width: 640px) {
+  .settings-page { padding: 12px; }
+  .settings-section { padding: 14px; }
+  .settings-page .sidebar-settings-row--select { flex-wrap: wrap; gap: 8px; }
+  .settings-page .sidebar-settings-row--select > .app-select { max-width: 100%; min-width: 0; width: 100%; }
+}
+.account-quota-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 10px 0 2px; }
+.account-quota-window > div { display: flex; justify-content: space-between; gap: 4px; font-size: 12px; }
+.account-quota-window strong { font-weight: 500; font-variant-numeric: tabular-nums; }
+.account-quota-window progress { display: block; width: 100%; height: 4px; margin: 6px 0; border: none; border-radius: 4px; overflow: hidden; background: var(--ui-border); color: #10b981; }
+.account-quota-window progress::-webkit-progress-bar { background: var(--ui-border); }
+.account-quota-window progress::-webkit-progress-value { background: #10b981; border-radius: 4px; }
+.account-quota-window small { font-size: 11px; opacity: .65; }
+.account-quota-grid.is-compact { gap: 10px; }
+.account-quota-grid.is-compact .account-quota-window > div { flex-direction: column; font-size: 11px; }

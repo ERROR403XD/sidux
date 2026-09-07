@@ -12,6 +12,8 @@
             class="sidebar-thread-controls-host"
             :is-sidebar-collapsed="isSidebarCollapsed"
             :show-new-thread-button="true"
+            :theme="darkMode" :settings-active="isSettingsRoute"
+            @cycle-theme="cycleDarkMode" @open-settings="openSettings"
             @toggle-sidebar="setSidebarCollapsed(!isSidebarCollapsed)"
             @start-new-thread="onStartNewThreadFromToolbar"
           >
@@ -121,198 +123,136 @@
             @start-new-chat="onStartProjectlessNewChat" />
         </div>
 
-        <div
-          v-if="!isSidebarCollapsed"
-          ref="settingsAreaRef"
-          class="sidebar-settings-area"
-          @click="onSettingsAreaClick"
-        >
-          <Transition name="settings-panel">
-            <div
-              v-if="isSettingsOpen"
-              ref="settingsPanelRef"
-              class="sidebar-settings-panel"
-              @click.stop
-            >
-              <div class="sidebar-settings-account-section">
-                <div class="sidebar-settings-account-header">
-                  <div class="sidebar-settings-account-header-main">
-                    <button
-                      class="sidebar-settings-account-collapse"
-                      type="button"
-                      :aria-expanded="!isAccountsSectionCollapsed"
-                      :title="isAccountsSectionCollapsed ? t('Expand accounts') : t('Collapse accounts')"
-                      @click="toggleAccountsSectionCollapsed"
-                    >
-                      <span class="sidebar-settings-account-collapse-icon">{{ isAccountsSectionCollapsed ? '▸' : '▾' }}</span>
-                    </button>
-                    <span class="sidebar-settings-account-title">{{ t('Accounts') }}</span>
-                    <span class="sidebar-settings-account-count">{{ accounts.length }}</span>
-                  </div>
-                  <button
-                    class="sidebar-settings-account-refresh"
-                    type="button"
-                    :disabled="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin"
-                    @click="onRefreshAccounts"
-                  >
-                    {{ isRefreshingAccounts ? t('Reloading…') : t('Reload') }}
-                  </button>
-                </div>
-                <template v-if="!isAccountsSectionCollapsed">
-                  <div v-if="accountActionError" class="sidebar-settings-account-error visible-error-with-feedback">
-                    <span>{{ accountActionError }}</span>
-                    <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, accountActionError)">{{ t('Send feedback') }}</a>
-                  </div>
-                  <div v-if="accountActionNotice" class="sidebar-settings-account-notice" role="status">
-                    {{ accountActionNotice }}
-                  </div>
-                  <div class="sidebar-settings-account-login">
-                    <button
-                      class="sidebar-settings-account-login-button"
-                      type="button"
-                      :disabled="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin"
-                      @click="onStartCodexLogin('add')"
-                    >
-                      {{ isStartingCodexLogin ? t('Starting login…') : t('Add account') }}
-                    </button>
-                  </div>
-                  <p class="sidebar-settings-account-help">
-                    {{ t('Signing in adds or refreshes an account without switching the active quota source.') }}
-                  </p>
-                  <p v-if="accounts.length === 0" class="sidebar-settings-account-empty">
-                    {{ t('No accounts yet. Add one from this panel.') }}
-                  </p>
-                  <div v-else class="sidebar-settings-account-list">
-                  <article
-                    v-for="account in accounts"
-                    :key="account.storageId"
-                    class="sidebar-settings-account-item"
-                    :class="{
-                      'is-active': account.isActive,
-                      'is-unavailable': isAccountUnavailable(account),
-                      'is-warning': account.authStatus === 'stale' || account.authStatus === 'transient_error',
-                      'is-confirming-remove': isRemoveConfirmationActive(account),
-                      'is-remove-visible': isRemoveVisible(account),
-                    }"
-                    :title="buildAccountTitle(account)"
-                    @mouseenter="onAccountCardPointerEnter(account.storageId)"
-                    @mouseleave="onAccountCardPointerLeave(account.storageId)"
-                  >
-                    <div class="sidebar-settings-account-main">
-                      <p class="sidebar-settings-account-email">{{ account.email || t('Account') }}</p>
-                      <p class="sidebar-settings-account-meta">
-                        {{ formatAccountMeta(account) }}
-                      </p>
-                      <span class="sidebar-settings-account-status" :data-status="account.authStatus">
-                        {{ formatAccountStatus(account) }}
-                      </span>
-                      <p class="sidebar-settings-account-quota">
-                        {{ formatAccountQuota(account) }}
-                      </p>
-                      <p class="sidebar-settings-account-id">
-                        Workspace {{ shortAccountId(account.accountId) }}
-                      </p>
-                    </div>
-                    <div class="sidebar-settings-account-actions">
-                      <button
-                        class="sidebar-settings-account-secondary"
-                        type="button"
-                        :disabled="isAccountActionDisabled(account)"
-                        @click="onStartCodexLogin('reauth', account.storageId)"
-                      >
-                        {{ t('Re-authenticate') }}
-                      </button>
-                      <button
-                        class="sidebar-settings-account-secondary"
-                        type="button"
-                        :disabled="isAccountActionDisabled(account)"
-                        @click="onRefreshAccountQuota(account.storageId)"
-                      >
-                        {{ refreshingAccountId === account.storageId ? t('Refreshing…') : t('Refresh quota') }}
-                      </button>
-                      <button
-                        class="sidebar-settings-account-switch"
-                        type="button"
-                        :disabled="isAccountActionDisabled(account) || account.isActive || !account.canSwitch"
-                        @click="onSwitchAccount(account.storageId)"
-                      >
-                        {{ getAccountSwitchLabel(account) }}
-                      </button>
-                      <button
-                        class="sidebar-settings-account-remove"
-                        :class="{
-                          'is-visible': isRemoveVisible(account),
-                          'is-confirming': isRemoveConfirmationActive(account),
-                        }"
-                        type="button"
-                        :disabled="isAccountActionDisabled(account) || account.isActive"
-                        @click="onRemoveAccount(account.storageId)"
-                      >
-                        {{ getAccountRemoveLabel(account) }}
-                      </button>
-                    </div>
-                  </article>
-                  </div>
-                </template>
-              </div>
-              <button class="sidebar-settings-row" type="button" :title="SETTINGS_HELP.sendWithEnter" @click="toggleSendWithEnter">
-                <span class="sidebar-settings-label">{{ t('Require ⌘ + enter to send') }}</span>
-                <span class="sidebar-settings-toggle" :class="{ 'is-on': !sendWithEnter }" />
-              </button>
-              <button class="sidebar-settings-row" type="button" :title="SETTINGS_HELP.appearance" @click="cycleDarkMode">
-                <span class="sidebar-settings-label">{{ t('Appearance') }}</span>
-                <span class="sidebar-settings-value">{{ darkMode === 'system' ? t('System') : darkMode === 'dark' ? t('Dark') : t('Light') }}</span>
-              </button>
-              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the interface language for the app.')">
-                <span class="sidebar-settings-label">{{ t('UI language') }}</span>
-                <ComposerDropdown
-                  class="sidebar-settings-provider-dropdown"
-                  :model-value="uiLanguage"
-                  :options="uiLanguageOptions"
-                  :placeholder="t('UI language')"
-                  menu-align="end"
-                  @update:model-value="setUiLanguage($event as 'en' | 'zh-CN')"
-                />
-              </div>
-              <div class="sidebar-settings-row sidebar-settings-timezone">
-                <span class="sidebar-settings-label">{{ t('Display timezone') }}</span>
-                <AppSelect
-                  :model-value="displayTimeZonePreference"
-                  :options="displayTimeZoneOptions"
-                  :placeholder="t('Display timezone')"
-                  enable-search
-                  :search-placeholder="t('Search timezones')"
-                  menu-align="end"
-                  @update:model-value="onDisplayTimeZoneChange"
-                />
-                <small>{{ t('Applies to all pages in this browser.') }}</small>
-                <p v-if="displayTimeZoneError" class="sidebar-timezone-error" role="alert">{{ displayTimeZoneError }}</p>
-              </div>
-              <button class="sidebar-settings-row" type="button" :title="SETTINGS_HELP.chatWidth" @click="cycleChatWidth">
-                <span class="sidebar-settings-label">{{ t('Chat width') }}</span>
-                <span class="sidebar-settings-value">{{ chatWidthLabel }}</span>
-              </button>
-              <button class="sidebar-settings-row" type="button" :title="SETTINGS_HELP.dictationClickToToggle" @click="toggleDictationClickToToggle">
-                <span class="sidebar-settings-label">{{ t('Click to toggle dictation') }}</span>
-                <span class="sidebar-settings-toggle" :class="{ 'is-on': dictationClickToToggle }" />
-              </button>
-              <button class="sidebar-settings-row" type="button" :title="SETTINGS_HELP.dictationAutoSend" @click="toggleDictationAutoSend">
-                <span class="sidebar-settings-label">{{ t('Auto send dictation') }}</span>
-                <span class="sidebar-settings-toggle" :class="{ 'is-on': dictationAutoSend }" />
-              </button>
-              <a
-                v-if="hasVisibleFeedbackError"
-                class="sidebar-settings-row sidebar-settings-feedback-row"
-                :href="feedbackMailto"
-                @click="prepareFeedbackLink"
-              >
-                <span class="sidebar-settings-label">{{ t('Send feedback') }}</span>
-                <span class="sidebar-settings-value">{{ t('Issue detected') }}</span>
-              </a>
+        <div v-if="!isSidebarCollapsed" class="sidebar-account-footer">
+          <div class="sidebar-context-summary" :title="threadContextTooltip" :data-state="threadContextBadgeState">
+            <span>当前会话上下文</span>
+            <strong>{{ selectedThreadId ? threadContextPrimaryText : '未选择会话' }}</strong>
+            <small>{{ selectedThreadId ? threadContextSecondaryText : '' }}</small>
+          </div>
+          <div ref="settingsAreaRef">
+            <button ref="settingsButtonRef" class="account-usage-button" type="button" :aria-expanded="isSettingsOpen" aria-label="账号与用量" @click="isSettingsOpen = !isSettingsOpen">
+              <span class="account-usage-heading"><strong>{{ activeAccount?.email || '添加 GPT 账号' }}</strong><span aria-hidden="true">⌃</span></span>
+              <AccountQuota v-if="activeAccount?.quotaSnapshot" :snapshot="activeAccount.quotaSnapshot" compact />
+              <small v-else>{{ activeAccount ? (activeAccount.quotaStatus === 'loading' ? '正在读取用量…' : '暂无用量数据') : '尚未添加账号' }}</small>
+            </button>
+          </div>
+          <AppPopover :open="isSettingsOpen" :anchor="settingsAreaRef" :width="400" direction="up" panel-class="account-popover" @close="isSettingsOpen = false">
+            <AccountPanel :accounts="accounts" :busy="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
+  @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount">
+              <template #footer><div class="account-versions"><span>Codex {{ runtimeCapabilities?.cliVersion || '检测中…' }}</span><span>CodexApp {{ runtimeCapabilities?.appVersion || appVersion }}</span></div><AppButton @click="openSettings">账号设置 →</AppButton></template>
+            </AccountPanel>
+          </AppPopover>
+        </div>
+      </section>
+    </template>
 
-              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the API provider for the Codex backend')">
+    <template #content>
+      <section
+        class="content-root"
+        :class="{
+          'is-virtual-keyboard-open': isTerminalKeyboardLayoutActive,
+          'is-terminal-open': isComposerTerminalOpen,
+        }"
+        :style="contentStyle"
+      >
+        <span v-if="isVirtualKeyboardOpen" class="content-keyboard-spacer" aria-hidden="true" />
+        <ContentHeader :title="contentTitle" :accent="isSkillsRoute || isAutomationsRoute || isApiProxyRoute || isSettingsRoute">
+          <template #leading>
+            <SidebarThreadControls
+              v-if="isSidebarCollapsed || isMobile"
+              class="sidebar-thread-controls-header-host"
+              :is-sidebar-collapsed="isSidebarCollapsed"
+              :show-new-thread-button="true"
+            :theme="darkMode" :settings-active="isSettingsRoute"
+            @cycle-theme="cycleDarkMode" @open-settings="openSettings"
+              @toggle-sidebar="setSidebarCollapsed(!isSidebarCollapsed)"
+              @start-new-thread="onStartNewThreadFromToolbar"
+            ><button class="sidebar-search-toggle" type="button" :aria-label="t('Search threads')" @click="setSidebarCollapsed(false); toggleSidebarSearch()"><IconTablerSearch class="sidebar-search-toggle-icon" /></button></SidebarThreadControls>
+            <span v-if="isSkillsRoute" class="skills-route-header-icon" aria-hidden="true">
+              <IconTablerBolt />
+            </span>
+            <span v-else-if="isAutomationsRoute" class="skills-route-header-icon automations-route-header-icon" aria-hidden="true">
+              <IconTablerClock />
+            </span>
+          </template>
+          <template #actions>
+            <ComposerDropdown
+              v-if="canShowTerminalToggle"
+              class="content-header-terminal-command"
+              :class="{ 'is-open': isComposerTerminalOpen }"
+              :model-value="terminalHeaderDropdownValue"
+              :options="terminalHeaderDropdownOptions"
+              :placeholder="terminalCommandPlaceholder"
+              :selected-prefix-icon="IconTablerTerminal"
+              :icon-only="true"
+              menu-align="end"
+              :empty-label="t('No commands')"
+              @update:model-value="onSelectHeaderTerminalCommand"
+            />
+            <HeaderGitBranchDropdown
+              v-if="canShowContentHeaderBranchDropdown"
+              class="content-header-branch-dropdown"
+              :current-branch="currentThreadBranch"
+              :head-sha="currentThreadHeadSha"
+              :head-subject="currentThreadHeadSubject"
+              :head-date="currentThreadHeadDate"
+              :detached="isThreadDetachedHead"
+              :dirty="isThreadWorktreeDirty"
+              :worktree-change-summary="threadWorktreeChangeSummary"
+              :branches="threadBranchOptions"
+              :commits-by-branch="threadBranchCommitsByBranch"
+              :commits-loading-for="threadBranchCommitsLoadingFor"
+              :commits-error="threadBranchCommitsError"
+              :commit-files-by-sha="threadCommitFilesBySha"
+              :commit-files-loading-for="threadCommitFilesLoadingFor"
+              :commit-files-error="threadCommitFilesError"
+              :loading="isLoadingThreadBranches"
+              :busy="isSwitchingThreadBranch"
+              :error="threadBranchError"
+              :review-open="isReviewPaneOpen"
+              :show-review="route.name === 'thread' && selectedThreadId.length > 0"
+              @toggle-review="onToggleContentHeaderReview"
+              @checkout-branch="onCheckoutContentHeaderBranch"
+              @reset-branch-to-commit="onResetContentHeaderBranchToCommit"
+              @load-commits="loadThreadBranchCommits"
+              @load-commit-files="loadThreadCommitFiles"
+              @open-commit-file="onOpenContentHeaderCommitFile"
+            />
+          </template>
+        </ContentHeader>
+
+        <section class="content-body">
+          <template v-if="isSkillsRoute">
+            <DirectoryHub
+              :key="`${directoryCwd}:${directoryThreadId}:${directoryAccountRevision}`"
+              :cwd="directoryCwd"
+              :thread-id="directoryThreadId"
+              :projects="directoryProjects"
+              @scope-change="onDirectoryScopeChange"
+              :try-in-flight-key="directoryTryInFlightKey"
+              @skills-changed="onSkillsChanged"
+              @try-item="onTryDirectoryItem"
+            />
+          </template>
+          <template v-else-if="isAutomationsRoute">
+            <AutomationsPanel
+              ref="automationsPanelRef"
+              :groups="projectGroups"
+              :project-cwd-by-name="projectCwdByName"
+              :project-display-name-by-id="projectDisplayNameById"
+              :selected-automation-id="routeAutomationId"
+              @select-automation="onSelectAutomationInPanel"
+              @edit-automation="onEditAutomationFromPanel"
+              @create-automation="onCreateAutomationFromPanel"
+            />
+          </template>
+          <template v-else-if="isApiProxyRoute"><ApiProxyPanel /></template>
+          <template v-else-if="isSettingsRoute"><SettingsPanel>
+<template #accounts><h3>GPT 账号（ChatGPT 登录）</h3><AccountPanel :accounts="accounts" :busy="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
+  @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount" />
+<details class="settings-optional-provider" :open="selectedProvider !== 'codex'"><summary>其他连接（可选） · {{ selectedProvider }}</summary>              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the API provider for the Codex backend')">
                 <span class="sidebar-settings-label">{{ t('Provider') }}</span>
-                <ComposerDropdown
+                <AppSelect
                   class="sidebar-settings-provider-dropdown"
                   :model-value="selectedProvider"
                   :options="providerDropdownOptions"
@@ -462,9 +402,57 @@
                   </div>
                 </div>
               </div>
+</details></template>
+<template #general>              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the interface language for the app.')">
+                <span class="sidebar-settings-label">{{ t('UI language') }}</span>
+                <AppSelect
+                  class="sidebar-settings-provider-dropdown"
+                  :model-value="uiLanguage"
+                  :options="uiLanguageOptions"
+                  :placeholder="t('UI language')"
+                  menu-align="end"
+                  @update:model-value="setUiLanguage($event as 'en' | 'zh-CN')"
+                />
+              </div>
+              <div class="sidebar-settings-row sidebar-settings-timezone">
+                <span class="sidebar-settings-label">{{ t('Display timezone') }}</span>
+                <AppSelect
+                  :model-value="displayTimeZonePreference"
+                  :options="displayTimeZoneOptions"
+                  :placeholder="t('Display timezone')"
+                  enable-search
+                  :search-placeholder="t('Search timezones')"
+                  menu-align="end"
+                  @update:model-value="onDisplayTimeZoneChange"
+                />
+                <small>{{ t('Applies to all pages in this browser.') }}</small>
+                <p v-if="displayTimeZoneError" class="sidebar-timezone-error" role="alert">{{ displayTimeZoneError }}</p>
+              </div>
+</template>
+<template #appearance>              <button class="sidebar-settings-row" type="button" :title="SETTINGS_HELP.appearance" @click="cycleDarkMode">
+                <span class="sidebar-settings-label">{{ t('Appearance') }}</span>
+                <span class="sidebar-settings-value">{{ darkMode === 'system' ? t('System') : darkMode === 'dark' ? t('Dark') : t('Light') }}</span>
+              </button>
+              <button class="sidebar-settings-row" type="button" :title="SETTINGS_HELP.chatWidth" @click="cycleChatWidth">
+                <span class="sidebar-settings-label">{{ t('Chat width') }}</span>
+                <span class="sidebar-settings-value">{{ chatWidthLabel }}</span>
+              </button>
+</template>
+<template #input>              <button class="sidebar-settings-row" type="button" :title="SETTINGS_HELP.sendWithEnter" @click="toggleSendWithEnter">
+                <span class="sidebar-settings-label">{{ t('Require ⌘ + enter to send') }}</span>
+                <span class="sidebar-settings-toggle" :class="{ 'is-on': !sendWithEnter }" />
+              </button>
+              <button class="sidebar-settings-row" type="button" :title="SETTINGS_HELP.dictationClickToToggle" @click="toggleDictationClickToToggle">
+                <span class="sidebar-settings-label">{{ t('Click to toggle dictation') }}</span>
+                <span class="sidebar-settings-toggle" :class="{ 'is-on': dictationClickToToggle }" />
+              </button>
+              <button class="sidebar-settings-row" type="button" :title="SETTINGS_HELP.dictationAutoSend" @click="toggleDictationAutoSend">
+                <span class="sidebar-settings-label">{{ t('Auto send dictation') }}</span>
+                <span class="sidebar-settings-toggle" :class="{ 'is-on': dictationAutoSend }" />
+              </button>
               <div class="sidebar-settings-row sidebar-settings-row--select" :title="SETTINGS_HELP.dictationLanguage">
                 <span class="sidebar-settings-label">{{ t('Dictation language') }}</span>
-                <ComposerDropdown
+                <AppSelect
                   class="sidebar-settings-language-dropdown"
                   :model-value="dictationLanguage"
                   :options="dictationLanguageOptions"
@@ -475,7 +463,8 @@
                   @update:model-value="onDictationLanguageChange"
                 />
               </div>
-              <button class="sidebar-settings-row" type="button" aria-live="polite" @click="isTelegramConfigOpen = !isTelegramConfigOpen">
+</template>
+<template #integrations>              <button class="sidebar-settings-row" type="button" aria-live="polite" @click="isTelegramConfigOpen = !isTelegramConfigOpen">
                 <span class="sidebar-settings-label">{{ t('Telegram') }}</span>
                 <span class="sidebar-settings-value">{{ telegramStatusText }}</span>
               </button>
@@ -519,152 +508,24 @@
                   </button>
                 </div>
               </div>
-              <div
-                v-if="showThreadContextBadge"
-                class="sidebar-settings-row sidebar-settings-context-row"
-                :data-state="threadContextBadgeState"
-                :title="threadContextTooltip"
+</template>
+<template #about><div class="settings-about-versions"><div class="account-versions"><span>Codex {{ runtimeCapabilities?.cliVersion || '检测中…' }}</span><span>CodexApp {{ runtimeCapabilities?.appVersion || appVersion }}</span></div><p>工作树 {{ worktreeName }}</p>
+<p v-if="runtimeCapabilities && runtimeCapabilities.appVersion !== appVersion" role="alert">前端版本 {{ appVersion }} 与服务端版本不同，请刷新页面。</p></div>
+<details class="runtime-capabilities"><summary>运行版本与能力</summary>
+<template v-if="runtimeCapabilities"><p>模型：动态目录 · 工具：轻量摘要</p><p>异步问题：已接入</p><p>原生历史分页：{{ runtimeCapabilities.features?.historyPaging ? '可用' : 'CLI 未声明，使用兼容路径' }}</p><p>协议 {{ runtimeCapabilities.experimental ? 'experimental' : '默认' }} · {{ runtimeCapabilities.schemaHash.slice(0,12) }}</p><p>CLI 声明 {{ runtimeCapabilities.methods.length }} 个方法，声明数量不代表客户端支持率。</p><p>检测时间 {{ runtimeCapabilities.generatedAt }}</p></template>
+<p v-if="runtimeCapabilitiesError" role="alert">{{ runtimeCapabilitiesError }}</p>
+<AppButton :busy="runtimeCapabilitiesLoading" @click="loadRuntimeCapabilities">重新检测</AppButton></details>              <a
+                v-if="hasVisibleFeedbackError"
+                class="sidebar-settings-row sidebar-settings-feedback-row"
+                :href="feedbackMailto"
+                @click="prepareFeedbackLink"
               >
-                <span class="sidebar-settings-label">{{ t('Context') }}</span>
-                <span class="sidebar-settings-context-value" :data-state="threadContextBadgeState">
-                  {{ threadContextPrimaryText }}
-                  <span class="sidebar-settings-context-meta">{{ threadContextSecondaryText }}</span>
-                </span>
-              </div>
-              <div class="sidebar-settings-rate-limits">
-                <RateLimitStatus :snapshots="accountRateLimitSnapshots" />
-              </div>
-              <div class="sidebar-settings-build-label" :aria-label="t('Worktree name and version')">
-                WT {{ worktreeName }} · v{{ appVersion }}
-                <details class="runtime-capabilities"><summary>运行版本与能力</summary>
-                  <template v-if="runtimeCapabilities">
-                    <p>{{ runtimeCapabilities.cliVersion }}</p>
-                    <p>模型能力：按目录动态选择；工具事件：轻量摘要</p>
-                    <p>异步问题、原生历史分页：尚未接入</p>
-                    <p>协议 {{ runtimeCapabilities.experimental ? 'experimental' : '默认' }} · {{ runtimeCapabilities.schemaHash.slice(0, 12) }}</p>
-                    <p>CLI 声明 {{ runtimeCapabilities.methods.length }} 个方法，声明数量不代表客户端支持率。</p>
-                  </template>
-                  <p v-else>{{ runtimeCapabilitiesLoading ? '正在检测…' : runtimeCapabilitiesError }}</p>
-                  <button type="button" :disabled="runtimeCapabilitiesLoading" @click="loadRuntimeCapabilities">重新检测</button>
-                </details>
-              </div>
-            </div>
-          </Transition>
-          <button
-            ref="settingsButtonRef"
-            class="sidebar-settings-button"
-            type="button"
-            @click.stop="isSettingsOpen = !isSettingsOpen"
-          >
-            <IconTablerSettings class="sidebar-settings-icon" />
-            <span>{{ t('Settings') }}</span>
-            <span class="sidebar-settings-button-version">
-              {{ worktreeName }} · v{{ appVersion }}
-            </span>
-          </button>
-        </div>
-      </section>
-    </template>
+                <span class="sidebar-settings-label">{{ t('Send feedback') }}</span>
+                <span class="sidebar-settings-value">{{ t('Issue detected') }}</span>
+              </a>
 
-    <template #content>
-      <section
-        class="content-root"
-        :class="{
-          'is-virtual-keyboard-open': isTerminalKeyboardLayoutActive,
-          'is-terminal-open': isComposerTerminalOpen,
-        }"
-        :style="contentStyle"
-      >
-        <span v-if="isVirtualKeyboardOpen" class="content-keyboard-spacer" aria-hidden="true" />
-        <ContentHeader :title="contentTitle" :accent="isSkillsRoute || isAutomationsRoute || isApiProxyRoute">
-          <template #leading>
-            <SidebarThreadControls
-              v-if="isSidebarCollapsed || isMobile"
-              class="sidebar-thread-controls-header-host"
-              :is-sidebar-collapsed="isSidebarCollapsed"
-              :show-new-thread-button="true"
-              @toggle-sidebar="setSidebarCollapsed(!isSidebarCollapsed)"
-              @start-new-thread="onStartNewThreadFromToolbar"
-            />
-            <span v-if="isSkillsRoute" class="skills-route-header-icon" aria-hidden="true">
-              <IconTablerBolt />
-            </span>
-            <span v-else-if="isAutomationsRoute" class="skills-route-header-icon automations-route-header-icon" aria-hidden="true">
-              <IconTablerClock />
-            </span>
-          </template>
-          <template #actions>
-            <ComposerDropdown
-              v-if="canShowTerminalToggle"
-              class="content-header-terminal-command"
-              :class="{ 'is-open': isComposerTerminalOpen }"
-              :model-value="terminalHeaderDropdownValue"
-              :options="terminalHeaderDropdownOptions"
-              :placeholder="terminalCommandPlaceholder"
-              :selected-prefix-icon="IconTablerTerminal"
-              :icon-only="true"
-              menu-align="end"
-              :empty-label="t('No commands')"
-              @update:model-value="onSelectHeaderTerminalCommand"
-            />
-            <HeaderGitBranchDropdown
-              v-if="canShowContentHeaderBranchDropdown"
-              class="content-header-branch-dropdown"
-              :current-branch="currentThreadBranch"
-              :head-sha="currentThreadHeadSha"
-              :head-subject="currentThreadHeadSubject"
-              :head-date="currentThreadHeadDate"
-              :detached="isThreadDetachedHead"
-              :dirty="isThreadWorktreeDirty"
-              :worktree-change-summary="threadWorktreeChangeSummary"
-              :branches="threadBranchOptions"
-              :commits-by-branch="threadBranchCommitsByBranch"
-              :commits-loading-for="threadBranchCommitsLoadingFor"
-              :commits-error="threadBranchCommitsError"
-              :commit-files-by-sha="threadCommitFilesBySha"
-              :commit-files-loading-for="threadCommitFilesLoadingFor"
-              :commit-files-error="threadCommitFilesError"
-              :loading="isLoadingThreadBranches"
-              :busy="isSwitchingThreadBranch"
-              :error="threadBranchError"
-              :review-open="isReviewPaneOpen"
-              :show-review="route.name === 'thread' && selectedThreadId.length > 0"
-              @toggle-review="onToggleContentHeaderReview"
-              @checkout-branch="onCheckoutContentHeaderBranch"
-              @reset-branch-to-commit="onResetContentHeaderBranchToCommit"
-              @load-commits="loadThreadBranchCommits"
-              @load-commit-files="loadThreadCommitFiles"
-              @open-commit-file="onOpenContentHeaderCommitFile"
-            />
-          </template>
-        </ContentHeader>
-
-        <section class="content-body">
-          <template v-if="isSkillsRoute">
-            <DirectoryHub
-              :key="`${directoryCwd}:${directoryThreadId}:${directoryAccountRevision}`"
-              :cwd="directoryCwd"
-              :thread-id="directoryThreadId"
-              :projects="directoryProjects"
-              @scope-change="onDirectoryScopeChange"
-              :try-in-flight-key="directoryTryInFlightKey"
-              @skills-changed="onSkillsChanged"
-              @try-item="onTryDirectoryItem"
-            />
-          </template>
-          <template v-else-if="isAutomationsRoute">
-            <AutomationsPanel
-              ref="automationsPanelRef"
-              :groups="projectGroups"
-              :project-cwd-by-name="projectCwdByName"
-              :project-display-name-by-id="projectDisplayNameById"
-              :selected-automation-id="routeAutomationId"
-              @select-automation="onSelectAutomationInPanel"
-              @edit-automation="onEditAutomationFromPanel"
-              @create-automation="onCreateAutomationFromPanel"
-            />
-          </template>
-          <template v-else-if="isApiProxyRoute"><ApiProxyPanel /></template>
+</template>
+</SettingsPanel></template>
           <template v-else-if="isHomeRoute">
             <div class="content-grid content-grid-home">
               <div class="new-thread-empty">
@@ -1202,6 +1063,10 @@
 
 <script setup lang="ts">
 import AppDialog from './components/common/AppDialog.vue'
+import SettingsPanel from './components/settings/SettingsPanel.vue'
+import AccountQuota from './components/accounts/AccountQuota.vue'
+import AccountPanel from './components/accounts/AccountPanel.vue'
+import AppPopover from './components/common/AppPopover.vue'
 import AccountLoginDialog from './components/accounts/AccountLoginDialog.vue'
 import type { AccountLoginCompleteResult } from './api/codexGateway'
 import AppButton from './components/common/AppButton.vue'
@@ -1668,7 +1533,6 @@ const isSidebarSearchVisible = ref(false)
 const sidebarScrollableRef = ref<HTMLElement | null>(null)
 const sidebarSearchInputRef = ref<HTMLInputElement | null>(null)
 const settingsAreaRef = ref<HTMLElement | null>(null)
-const settingsPanelRef = ref<HTMLElement | null>(null)
 const settingsButtonRef = ref<HTMLElement | null>(null)
 const serverMatchedThreadIds = ref<string[] | null>(null)
 const threadSearchStatus = ref('')
@@ -1688,7 +1552,7 @@ let threadWorktreeSummaryRequestId = 0
 const defaultNewProjectName = ref('New Project (1)')
 const homeDirectory = ref('')
 const isSettingsOpen = ref(false)
-const runtimeCapabilities = ref<{ cliVersion: string; schemaHash: string; experimental: boolean; methods: string[]; appVersion: string } | null>(null)
+const runtimeCapabilities = ref<{ cliVersion: string; schemaHash: string; experimental: boolean; methods: string[]; appVersion: string; generatedAt: string; features?: { historyPaging: boolean } } | null>(null)
 const runtimeCapabilitiesError = ref('')
 const runtimeCapabilitiesLoading = ref(false)
 async function loadRuntimeCapabilities(): Promise<void> {
@@ -1703,7 +1567,7 @@ async function loadRuntimeCapabilities(): Promise<void> {
     runtimeCapabilitiesError.value = error instanceof Error ? error.message : '能力检测失败'
   } finally { runtimeCapabilitiesLoading.value = false }
 }
-watch(isSettingsOpen, open => { if (open) void loadRuntimeCapabilities() })
+watch(isSettingsOpen, open => { if (open && !runtimeCapabilities.value) void loadRuntimeCapabilities() })
 const isAccountsSectionCollapsed = ref(loadAccountsSectionCollapsed())
 const isReviewPaneOpen = ref(false)
 const reviewInitialFilePath = ref('')
@@ -1732,6 +1596,7 @@ function toThreadBranchCommitsKey(branch: string, includeResetHistory: boolean):
 
 const createFolderInputRef = ref<HTMLInputElement | null>(null)
 const accounts = ref<UiAccountEntry[]>([])
+const activeAccount = computed(() => accounts.value.find(account => account.isActive))
 const directoryAccountRevision = ref(0)
 let hasAccountSnapshot = false
 watch(accounts, (next, previous) => {
@@ -1884,6 +1749,13 @@ const routeThreadId = computed(() => {
 })
 
 const isHomeRoute = computed(() => route.name === 'home')
+const isSettingsRoute = computed(() => route.name === 'settings')
+function openSettings(): void {
+  isSettingsOpen.value = false
+  if (!isSettingsRoute.value) void router.push({ name: 'settings' })
+  if (isMobile.value) setSidebarCollapsed(true)
+}
+watch(isSettingsRoute, open => { if (open && !runtimeCapabilities.value) void loadRuntimeCapabilities() })
 const isSkillsRoute = computed(() => route.name === 'skills')
 const isApiProxyRoute = computed(() => route.name === 'api-proxy')
 const isAutomationsRoute = computed(() => route.name === 'automations')
@@ -1892,6 +1764,7 @@ const routeAutomationId = computed(() => {
   return typeof raw === 'string' ? raw : ''
 })
 const contentTitle = computed(() => {
+  if (isSettingsRoute.value) return t('Settings')
   if (isApiProxyRoute.value) return t('API outlet')
   if (isAutomationsRoute.value) return t('Automations')
   if (isSkillsRoute.value) return t('Skills')
@@ -2821,11 +2694,7 @@ async function onRefreshAccounts(): Promise<void> {
   try {
     const result = await getAccounts()
     accounts.value = result.accounts
-    stopPolling()
-    startPolling()
-    void refreshAll({
-      includeSelectedThreadMessages: true,
-    })
+
   } catch (error) {
     accountActionError.value = error instanceof Error ? error.message : t('Failed to refresh accounts')
   } finally {
@@ -3560,19 +3429,6 @@ function onDocumentPointerDown(event: PointerEvent): void {
       resetTerminalKeyboardFocusState()
     }
   }
-  if (!isSettingsOpen.value) return
-  if (isOverlayEventInside(event, settingsPanelRef.value)) return
-  if (settingsButtonRef.value?.contains(target)) return
-  isSettingsOpen.value = false
-}
-
-function onSettingsAreaClick(event: MouseEvent): void {
-  if (!isSettingsOpen.value) return
-  const target = event.target
-  if (!(target instanceof Node)) return
-  if (isOverlayEventInside(event, settingsPanelRef.value)) return
-  if (settingsButtonRef.value?.contains(target)) return
-  isSettingsOpen.value = false
 }
 
 function onDocumentVisibilityChange(): void {
@@ -4532,7 +4388,7 @@ function onImplementPlan(payload: { turnId: string }): void {
 
 
 async function copySelectedThreadChat(): Promise<void> {
-  if (isHomeRoute.value || isSkillsRoute.value || isAutomationsRoute.value || isApiProxyRoute.value) return
+  if (isHomeRoute.value || isSkillsRoute.value || isAutomationsRoute.value || isApiProxyRoute.value || isSettingsRoute.value) return
   if (!selectedThread.value || filteredMessages.value.length === 0) return
   const markdown = buildThreadMarkdown()
   try {
@@ -4631,7 +4487,7 @@ function toggleSendWithEnter(): void {
 
 
 function cycleDarkMode(): void {
-  const order: Array<'system' | 'light' | 'dark'> = ['system', 'light', 'dark']
+  const order: Array<'system' | 'light' | 'dark'> = ['dark', 'light', 'system']
   const idx = order.indexOf(darkMode.value)
   darkMode.value = order[(idx + 1) % order.length]
   window.localStorage.setItem(DARK_MODE_KEY, darkMode.value)
@@ -5048,7 +4904,7 @@ watch(
   async (threadId) => {
     if (!hasInitialized.value) return
     if (isRouteSyncInProgress.value) return
-    if (isHomeRoute.value || isSkillsRoute.value || isAutomationsRoute.value || isApiProxyRoute.value) return
+    if (isHomeRoute.value || isSkillsRoute.value || isAutomationsRoute.value || isApiProxyRoute.value || isSettingsRoute.value) return
 
     if (!threadId) {
       if (route.name !== 'home') {

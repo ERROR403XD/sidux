@@ -27,6 +27,7 @@ const router = createRouter({
       name: 'automations',
       component: EmptyRouteView,
     },
+    { path: '/settings', name: 'settings', component: EmptyRouteView },
     {
       path: '/api-proxy',
       name: 'api-proxy',
