@@ -56,10 +56,12 @@ export class ProxyUsageStore {
   private prune(): void {
     const cutoff = Date.now() - RETENTION_MS
     const sorted = this.state.buckets.filter(row => row.at >= cutoff).sort((a, b) => a.at - b.at)
-    const removed = sorted.slice(0, Math.max(0, sorted.length - MAX_BUCKETS))
+    // Evict a batch: a full ledger must not sort all buckets for every new row.
+    const keep = sorted.length > MAX_BUCKETS ? MAX_BUCKETS - 2048 : MAX_BUCKETS
+    const removed = sorted.slice(0, Math.max(0, sorted.length - keep))
     if (removed.length) this.state.coverageFrom = Math.max(this.state.coverageFrom, removed.at(-1)!.at + BUCKET_MS)
     this.state.coverageFrom = Math.max(this.state.coverageFrom, cutoff)
-    this.state.buckets = sorted.slice(-MAX_BUCKETS)
+    this.state.buckets = sorted.slice(-keep)
     this.index = new Map(this.state.buckets.map(row => [`${row.at}:${row.keyId}`, row]))
   }
   begin(keyId: string, catalog = false) {
@@ -129,7 +131,7 @@ export class ProxyUsageStore {
       this.prune()
       this.dirty = false
       try {
-        await privateJson(join(this.directory, 'usage.json'), this.state)
+        await privateJson(join(this.directory, 'usage.json'), this.state, true)
         this.error = null
       } catch {
         this.dirty = true

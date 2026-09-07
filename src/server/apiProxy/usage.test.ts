@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, expect, it, vi } from 'vitest'
@@ -52,4 +52,21 @@ it('preserves unreadable state while new usage remains visible in memory', async
   expect(broken.summary().error).toBeTruthy()
   expect(broken.summary().keys[first].cumulative.unknown).toBe(1)
   expect(await readFile(join(f.home, 'usage.json'), 'utf8')).toBe('{')
+})
+
+it('retains counters after a write failure and recovers on a later flush', async () => {
+  const f = await store()
+  await mkdir(join(f.home, 'usage.json'))
+  f.store.begin(first)('completed')
+  await f.store.flush()
+  expect(f.store.summary().error).toBeTruthy()
+  expect(f.store.summary().keys[first].cumulative.requests).toBe(1)
+  await rm(join(f.home, 'usage.json'), { recursive: true })
+  f.store.begin(first)('failed')
+  await f.store.close()
+  expect(f.store.summary().error).toBeNull()
+  const restarted = new ProxyUsageStore(f.home)
+  await restarted.ready
+  expect(restarted.summary().keys[first].cumulative).toMatchObject({ requests: 2, completed: 1, failed: 1 })
+  await restarted.close()
 })

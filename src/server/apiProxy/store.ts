@@ -36,9 +36,9 @@ export const defaultSettings: ProxySettings = {
 export function hashSecret(value: string): string {
   return createHash('sha256').update(value).digest('hex')
 }
-export async function privateJson(path: string, value: unknown): Promise<void> {
+export async function privateJson(path: string, value: unknown, compact = false): Promise<void> {
   const temporary = `${path}.${randomUUID()}.tmp`
-  await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 })
+  await writeFile(temporary, `${JSON.stringify(value, null, compact ? undefined : 2)}\n`, { mode: 0o600 })
   await rename(temporary, path)
   await chmod(path, 0o600)
 }
