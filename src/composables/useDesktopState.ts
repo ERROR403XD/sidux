@@ -1,3 +1,4 @@
+import { useWebConversationPreferences, type ConversationChoice } from '../webConversationPreferences'
 import { historyMessageKey, combineHistoryAndLive, sameMessageIdentity } from '../messageIdentity'
 import { mergeSubtaskMessage, observeTaskNotification } from '../subtasks'
 import { createDeliveryId } from '../delivery'
@@ -37,7 +38,6 @@ import {
   getThreadGroupsPage,
   getThreadQueueState,
   getWorkspaceRootsState,
-  setCodexSpeedMode,
   mutateThreadQueueState,
   setWorkspaceRootsState,
   getThreadTitleCache,
@@ -1404,6 +1404,25 @@ export function filterGroupsByWorkspaceRoots(
 }
 
 export function useDesktopState() {
+  const webPreferences = useWebConversationPreferences(typeof window !== 'undefined' ? window.localStorage : undefined)
+  const webPreferenceState = webPreferences.state
+  const webPreferenceError = webPreferences.error
+  const webDefaultChoice = computed<ConversationChoice>(() => webPreferences.state.value.defaults || {
+    model: configuredModelSettings.value.model || readSelectedModel(selectedModelIdByContext.value, ''),
+    provider: configuredModelSettings.value.provider || activeProviderId.value,
+    effort: configuredModelSettings.value.effort, tier: configuredModelSettings.value.tier,
+  })
+  function initializeWebConversation(threadId: string): void {
+    if (!threadId && !webPreferences.state.value.defaults) return
+    const value = webPreferences.enter(threadId, webDefaultChoice.value)
+    if (value?.model) selectedModelId.value = value.model
+  }
+  function configureWebDefaults(value: ConversationChoice, remember: boolean): void {
+    const model = availableModels.value.find(row => row.id === value.model)
+    const problem = modelSettingsProblem(model, value.effort, value.tier)
+    if (problem) { webPreferenceError.value = problem; return }
+    try { webPreferences.configure(value, remember) } catch { /* The settings page exposes the storage error. */ }
+  }
   const projectGroups = ref<UiProjectGroup[]>([])
   const sourceGroups = ref<UiProjectGroup[]>([])
   const selectedThreadId = ref(loadSelectedThreadId())
@@ -1469,7 +1488,8 @@ export function useDesktopState() {
   const modelSettingsKey = computed(() => JSON.stringify([readProviderIdForThread(selectedThreadId.value), selectedModelId.value]))
   const selectedModelCapability = computed(() => availableModels.value.find(model => model.id === selectedModelId.value))
   const currentModelSettings = computed(() => {
-    const stored = savedModelSettings.value[modelSettingsKey.value]
+    const session = webPreferences.sessions.value[selectedThreadId.value]
+    const stored = session || savedModelSettings.value[modelSettingsKey.value]
     const defaults = configuredModelSettings.value
     const matches = defaults.model === selectedModelId.value && defaults.provider === readProviderIdForThread(selectedThreadId.value)
     const settings = stored || (matches ? defaults : { effort: '', tier: '' })
@@ -1477,6 +1497,11 @@ export function useDesktopState() {
     return { effort: settings.effort, tier }
   })
   function saveCurrentModelSettings(patch: Partial<{ effort: string; tier: string }>): void {
+    const session = webPreferences.sessions.value[selectedThreadId.value]
+    if (session) {
+      webPreferences.select(selectedThreadId.value, { ...session, ...patch })
+      return
+    }
     savedModelSettings.value = { ...savedModelSettings.value, [modelSettingsKey.value]: { ...currentModelSettings.value, ...patch } }
     // Bound preferences without pruning the selected entry.
     const entries = Object.entries(savedModelSettings.value)
@@ -1489,6 +1514,9 @@ export function useDesktopState() {
     const model = availableModels.value.find(item => item.id === modelId)
     const effort = selectedReasoningEffort.value
     const tier = selectedSpeedMode.value
+    const session = webPreferences.sessions.value[selectedThreadId.value]
+    if (session && normalizeProviderContextId(session.provider) !== readProviderIdForThread(selectedThreadId.value)) throw new Error('保存的模型属于其他来源，请重新选择模型。')
+    if (session?.model && availableModels.value.length && !model) throw new Error('保存的模型暂不可用，请重新选择模型。')
     const problem = modelSettingsProblem(model, effort, tier, hasImages)
     if (problem) throw new Error(problem)
     return { model: model?.model || modelId, effort: effort || model?.defaultEffort || '', serviceTier: tier || model?.defaultServiceTier || null }
@@ -1709,6 +1737,8 @@ export function useDesktopState() {
   }
 
   function readModelIdForThread(threadId: string): string {
+    const session = webPreferences.sessions.value[threadId === NEW_THREAD_COLLABORATION_MODE_CONTEXT ? '' : threadId]
+    if (session) return session.model
     const contextId = toThreadContextId(threadId)
     if (contextId === NEW_THREAD_COLLABORATION_MODE_CONTEXT) {
       const normalizedProviderId = normalizeProviderContextId(activeProviderId.value)
@@ -1754,6 +1784,7 @@ export function useDesktopState() {
       saveSelectedThreadId(nextThreadId)
     }
     selectedModelId.value = readProviderCompatibleSelectedModel(readModelIdForThread(nextThreadId))
+    initializeWebConversation(nextThreadId)
     selectedCollaborationMode.value = readSelectedCollaborationMode(
       selectedCollaborationModeByContext.value,
       nextThreadId,
@@ -1765,6 +1796,12 @@ export function useDesktopState() {
 
   function setSelectedModelIdForThread(threadId: string, modelId: string): void {
     const normalizedModelId = modelId.trim()
+    const session = webPreferences.sessions.value[threadId]
+    if (session) {
+      webPreferences.select(threadId, { model: normalizedModelId, provider: readProviderIdForThread(threadId), effort: '', tier: '' })
+      if (threadId === selectedThreadId.value) selectedModelId.value = normalizedModelId
+      return
+    }
     if (configuredModelSettings.value.model && selectedModelId.value && selectedModelId.value !== normalizedModelId && !savedModelSettings.value[modelSettingsKey.value]) saveCurrentModelSettings({})
     const contextId = toThreadContextId(threadId)
     const normalizedProviderId = normalizeProviderContextId(activeProviderId.value)
@@ -1927,25 +1964,13 @@ export function useDesktopState() {
       return
     }
 
-    const settingsKey = modelSettingsKey.value
-    const previousSettings = { ...currentModelSettings.value }
-    selectedSpeedMode.value = nextMode
-    isUpdatingSpeedMode.value = true
-    error.value = ''
-
+    const problem = modelSettingsProblem(selectedModelCapability.value, selectedReasoningEffort.value, nextMode)
+    if (problem) { error.value = problem; return }
     try {
-      await setCodexSpeedMode(nextMode)
-    } catch (unknownError) {
-      savedModelSettings.value = { ...savedModelSettings.value, [settingsKey]: previousSettings }
-      try {
-        window.localStorage.setItem(modelSettingsStorageKey, JSON.stringify(savedModelSettings.value))
-      } catch {
-        // Keep the restored in-memory settings when browser storage is unavailable.
-      }
-      error.value = unknownError instanceof Error ? unknownError.message : 'Failed to update Fast mode'
-    } finally {
-      isUpdatingSpeedMode.value = false
-    }
+      selectedSpeedMode.value = nextMode
+      error.value = ''
+    } catch (cause) { error.value = cause instanceof Error ? cause.message : 'Fast 设置保存失败' }
+
   }
 
   async function refreshCollaborationModes(): Promise<void> {
@@ -2012,6 +2037,14 @@ export function useDesktopState() {
       }
       availableModelIds.value = nextModelIds
 
+      configuredModelSettings.value = { model: normalizedConfiguredModelId, provider: normalizedProviderId, effort: currentConfig.reasoningEffort, tier: currentConfig.speedMode }
+      if (!webPreferences.sessions.value[selectedThreadId.value]) initializeWebConversation(selectedThreadId.value)
+      const webSession = webPreferences.sessions.value[selectedThreadId.value]
+      if (webSession?.model) {
+        selectedModelId.value = webSession.model
+        if (!modelIds.includes(webSession.model)) modelCatalogError.value = '保存的模型暂不可用，请重新选择模型。'
+        return
+      }
       const currentModelInNewList = normalizedSelectedModelId && modelIds.includes(normalizedSelectedModelId)
       if (!normalizedSelectedModelId || !currentModelInNewList || options?.providerChanged) {
         if (options?.providerChanged && nextModelIds.length > 0) {
@@ -5006,6 +5039,8 @@ export function useDesktopState() {
         [threadId]: true,
       }
       setSelectedThreadId(threadId)
+      webPreferences.register(threadId, { model: selectedModel || newThreadSettings.model, provider: readProviderIdForThread(threadId), effort: newThreadSettings.effort, tier: newThreadSettings.serviceTier || '' })
+      selectedModelId.value = selectedModel || newThreadSettings.model
       saveCurrentModelSettings({ effort: newThreadSettings.effort, tier: newThreadSettings.serviceTier || '' })
       shouldAutoScrollOnNextAgentEvent = true
       setTurnSummaryForThread(threadId, null)
@@ -5730,6 +5765,8 @@ export function useDesktopState() {
   }
 
   return {
+    webPreferenceState, webPreferenceError, webDefaultChoice, configureWebDefaults,
+    webDefaultsProvider: computed(() => readProviderIdForThread(selectedThreadId.value)),
     projectGroups,
     projectDisplayNameById,
     selectedThread,

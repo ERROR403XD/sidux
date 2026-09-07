@@ -403,7 +403,7 @@
                 </div>
               </div>
 </details></template>
-<template #general>              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the interface language for the app.')">
+<template #general><ConversationDefaults :value="webDefaultChoice" :remember="webPreferenceState.remember" :models="availableModels" :provider="webDefaultsProvider" :error="webPreferenceError" @save="configureWebDefaults" />              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the interface language for the app.')">
                 <span class="sidebar-settings-label">{{ t('UI language') }}</span>
                 <AppSelect
                   class="sidebar-settings-provider-dropdown"
@@ -1063,6 +1063,7 @@
 
 <script setup lang="ts">
 import AppDialog from './components/common/AppDialog.vue'
+import ConversationDefaults from './components/settings/ConversationDefaults.vue'
 import SettingsPanel from './components/settings/SettingsPanel.vue'
 import AccountQuota from './components/accounts/AccountQuota.vue'
 import AccountPanel from './components/accounts/AccountPanel.vue'
@@ -1347,6 +1348,7 @@ const WHISPER_LANGUAGES: Record<string, string> = {
 }
 
 const {
+  webPreferenceState, webPreferenceError, webDefaultChoice, configureWebDefaults, webDefaultsProvider,
   projectGroups,
   projectDisplayNameById,
   selectedThread,

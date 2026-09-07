@@ -1257,8 +1257,8 @@ describe('durable queue lifecycle', () => {
 })
 
 
-describe('model setting rollback isolation', () => {
-  it('restores only the failed model when the user changes context during a speed write', async () => {
+describe('local model setting isolation', () => {
+  it('keeps model settings separate and never writes global Codex Fast config', async () => {
     installTestWindow()
     const state = useDesktopState()
     state.setSelectedModelId('model-b')
@@ -1266,16 +1266,14 @@ describe('model setting rollback isolation', () => {
     state.setSelectedReasoningEffort('low')
     state.setSelectedModelId('model-a')
     state.setSelectedReasoningEffort('ultra')
-    let rejectWrite!: (error: Error) => void
-    gatewayMocks.setCodexSpeedMode.mockImplementationOnce(() => new Promise((_, reject) => { rejectWrite = reject }))
     const writing = state.updateSelectedSpeedMode('priority')
     state.setSelectedModelId('model-b')
-    rejectWrite(new Error('fixture write failed'))
     await writing
+    expect(gatewayMocks.setCodexSpeedMode).not.toHaveBeenCalled()
     expect(state.selectedSpeedMode.value).toBe('other-tier')
     expect(state.selectedReasoningEffort.value).toBe('low')
     state.setSelectedModelId('model-a')
-    expect(state.selectedSpeedMode.value).toBe('')
+    expect(state.selectedSpeedMode.value).toBe('priority')
     expect(state.selectedReasoningEffort.value).toBe('ultra')
   })
 })
