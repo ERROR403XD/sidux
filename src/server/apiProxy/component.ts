@@ -42,16 +42,17 @@ export class ProxyComponent {
   async available(): Promise<boolean> { return access(this.binary).then(() => true, () => false) }
   status() {
     const current = this.current
-    return { ready: !!current && current.process.exitCode === null && current.process.signalCode === null,
+    return { ready: !!current && current.process.exitCode === null && current.process.signalCode === null && Date.now() >= this.retryAfter,
+      retryAt: Date.now() < this.retryAfter ? new Date(this.retryAfter).toISOString() : null,
       componentVersion: manifest.version, selectedStorageId: current?.storageId ?? null,
       credentialRevision: current?.revision ?? null, lastError: this.lastError }
   }
   async prepare(storageId: string | null): Promise<ComponentGeneration> {
     if (this.flight) return await this.flight
+    if (Date.now() < this.retryAfter) throw new ProxyError('component_backoff', '出口暂时不可用，正在等待重试窗口。', 503)
     const current = this.current
     if (current && current.process.exitCode === null && current.process.signalCode === null && !this.coordinator.isAccountOperationInProgress()
       && Date.now() - this.checkedAt < 10_000 && Date.parse(current.expiresAt) > Date.now() + 300_000) return current
-    if (Date.now() < this.retryAfter) throw new ProxyError('component_backoff', '组件暂时不可用，请稍后重试。', 503)
     const flight = this.prepareNext(storageId)
     this.flight = flight
     try { return await flight } finally { this.flight = null }
@@ -85,7 +86,9 @@ export class ProxyComponent {
         host: '127.0.0.1', port, 'auth-dir': authDirectory, 'api-keys': [key],
         'remote-management': { 'secret-key': '', 'disable-control-panel': true, 'disable-auto-update-panel': true },
         'commercial-mode': true, 'logging-to-file': false, 'request-log': false,
-        'request-retry': 0, 'max-retry-credentials': 1, 'max-retry-interval': 0,
+        // One projected account: keep cooldown ownership here so internal route
+        // quarantine cannot hide a recovered upstream behind auth_unavailable.
+        'request-retry': 0, 'max-retry-credentials': 1, 'max-retry-interval': 0, 'disable-cooling': true,
         'quota-exceeded': { 'switch-project': false, 'switch-preview-model': false },
         'ws-auth': true, 'usage-statistics-enabled': false, 'disable-image-generation': 'passthrough',
         plugins: { enabled: false }, routing: { strategy: 'fill-first', 'session-affinity': false },
@@ -133,6 +136,28 @@ export class ProxyComponent {
       released = true
       generation.references--
       if (generation !== this.current && generation.references === 0) void this.stopGeneration(generation).catch(() => undefined)
+    }
+  }
+  recordResult(generation: ComponentGeneration, status: number, retryAfter?: string, disconnected = false): void {
+    if (this.current !== generation) return
+    if (status < 400) {
+      // A concurrent successful request must not erase a later failure's cooldown.
+      if (Date.now() >= this.retryAfter) {
+        this.failures = 0
+        this.lastError = null
+      }
+      return
+    }
+    this.lastError = `上游返回 HTTP ${status}，${status === 400 ? '请检查请求参数。' : '后续请求将在等待窗口结束后重试。'}`
+    if (status === 401 || status === 403 || status === 429 || status >= 500) {
+      const seconds = Number(retryAfter)
+      const hinted = retryAfter ? (Number.isFinite(seconds) ? seconds * 1000 : Date.parse(retryAfter) - Date.now()) : 0
+      const delay = Math.max(Number.isFinite(hinted) ? hinted : 0, status === 401 || status === 403 ? 30_000 : Math.min(30_000, 1000 * 2 ** Math.min(this.failures++, 5)))
+      this.retryAfter = Math.max(this.retryAfter, Date.now() + Math.min(delay, 24 * 3600_000))
+    }
+    if (disconnected) {
+      this.current = null
+      this.checkedAt = 0
     }
   }
   private async stopGeneration(generation: ComponentGeneration): Promise<void> {

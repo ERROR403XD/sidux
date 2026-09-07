@@ -89,7 +89,7 @@ function projection(token, expired = new Date(Date.now() + 3600_000).toISOString
     'api-keys': ['fixture-client-key'], 'proxy-url': `http://127.0.0.1:${proxyPort}`,
     'remote-management': { 'allow-remote': false, 'secret-key': '', 'disable-control-panel': true, 'disable-auto-update-panel': true },
     'commercial-mode': true, 'logging-to-file': false, 'request-log': false,
-    'request-retry': 0, 'max-retry-credentials': 1, 'max-retry-interval': 0,
+    'request-retry': 0, 'max-retry-credentials': 1, 'max-retry-interval': 0, 'disable-cooling': true,
     'quota-exceeded': { 'switch-project': false, 'switch-preview-model': false },
     'ws-auth': true, 'disable-image-generation': 'passthrough',
     'usage-statistics-enabled': false, plugins: { enabled: false },
@@ -177,9 +177,17 @@ function projection(token, expired = new Date(Date.now() + 3600_000).toISOString
     upstreamStatus = 200;
     await require(path.resolve(process.env.CPA_GATEWAY_PROBE)).run({ base, request, key: 'fixture-client-key' });
   }
+  upstreamStatus = 400;
+  assert.equal((await call('/v1/responses', request)).status, 400);
+  upstreamStatus = 200;
+  const afterBadRequest = await call('/v1/responses', request);
+  assert.equal(afterBadRequest.status, 200, afterBadRequest.text); pass('valid request recovers after upstream 400');
   const before = records.length; upstreamStatus = 500;
   const failure = await call('/v1/responses', request); assert.equal(failure.status, 500, failure.text);
   assert.equal(records.length - before, 1); pass('no additional retry on upstream 500');
+  upstreamStatus = 200;
+  const afterServerError = await call('/v1/responses', request);
+  assert.equal(afterServerError.status, 200, afterServerError.text); pass('valid request recovers after upstream 500 with cooling owned by gateway');
   assert(!fs.existsSync(path.join(home, 'logs')) || fs.readdirSync(path.join(home, 'logs')).length === 0); pass('raw error logs disabled');
   const report = { component: 'CLIProxyAPI v7.2.152 linux_amd64_no-plugin', assertions, requests: records.slice(0, 20).map(r => ({ transport: r.transport, path: r.path, inputCount: r.body?.input?.length, previousResponseId: r.body?.previous_response_id || null })), pending: ['real-account generation and refresh', 'actual Codex CLI tool/compact/resume', 'cross-key cache ownership', 'in-flight cancellation and hot reload under long-lived WS'] };
   fs.mkdirSync('output/api-proxy-g0', { recursive: true });

@@ -175,6 +175,7 @@ export class ApiProxyGateway {
         chunks.push(chunk)
       }
       const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+      this.component.recordResult(generation, response.status, response.headers.get('retry-after') || undefined)
       if (!response.ok) { json(res, response.status, parsed); return }
       const output = Array.isArray(parsed.output) ? parsed.output.filter((item: any) => item.type === 'compaction' && typeof item.encrypted_content === 'string') : []
       if (parsed.status !== 'completed' || output.length !== 1) throw new ProxyError('invalid_compaction', '上游未返回完整的加密压缩结果。', 502)
@@ -203,7 +204,7 @@ export class ApiProxyGateway {
     const upstream = httpRequest(target, { method: req.method, headers }, response => {
       upstreamResponse = response
       res.statusCode = response.statusCode || 502
-      if (res.statusCode >= 400) this.component.lastError = `上游返回 HTTP ${res.statusCode}，请检查账号或客户端请求。`
+      if (res.statusCode >= 400) this.component.recordResult(generation, res.statusCode, String(response.headers['retry-after'] || ''))
       for (const name of ['content-type', 'retry-after', 'x-request-id', 'x-codex-turn-state', 'openai-processing-ms']) {
         const value = response.headers[name]
         if (value) res.setHeader(name, value)
@@ -263,15 +264,20 @@ export class ApiProxyGateway {
       response.once('end', () => {
         if (!streaming) { try { this.observe(JSON.parse(pending), entry.keyId) } catch {} }
         completed ||= !streaming || url.pathname === '/v1/chat/completions'
+        if (res.statusCode < 400 && entry.status !== 'failed' && completed) this.component.recordResult(generation, res.statusCode)
       })
       response.once('aborted', () => res.destroy())
       response.once('error', () => res.destroy())
-      response.once('close', () => finalize(response.complete && completed && res.statusCode < 400 && entry.status !== 'failed' ? 'completed' : 'interrupted'))
+      response.once('close', () => finalize(res.statusCode >= 400 || entry.status === 'failed' ? 'failed' : response.complete && completed ? 'completed' : 'interrupted'))
       response.pipe(inspect).pipe(res)
     })
     entry.abort = () => { upstream.destroy(); upstreamResponse?.destroy(); res.destroy() }
     res.once('close', () => { if (!res.writableEnded) { upstream.destroy(); upstreamResponse?.destroy() } })
-    upstream.once('error', () => { finalize('failed'); errorResponse(res, new ProxyError('upstream_unavailable', '反代组件连接失败。', 502)) })
+    upstream.once('error', () => {
+      this.component.recordResult(generation, 502, undefined, true)
+      finalize('failed')
+      errorResponse(res, new ProxyError('upstream_unavailable', '反代组件连接失败，将为后续请求重新准备组件。', 502))
+    })
     upstream.once('close', () => { if (!upstreamResponse) finalize('interrupted') })
     upstream.setTimeout(30 * 60_000, () => { upstream.destroy(); upstreamResponse?.destroy(); res.destroy() })
     upstream.end(input ? JSON.stringify(input) : undefined)
