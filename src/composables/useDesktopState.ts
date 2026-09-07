@@ -1,3 +1,4 @@
+import { historyMessageKey, combineHistoryAndLive, sameMessageIdentity } from '../messageIdentity'
 import { mergeSubtaskMessage, observeTaskNotification } from '../subtasks'
 import { createDeliveryId } from '../delivery'
 import { changesThreadSearch } from '../threadSearchEvents'
@@ -53,7 +54,7 @@ import {
   type WorkspaceRootsState,
 } from '../api/codexGateway'
 import { CodexApiError } from '../api/codexErrors'
-import { normalizeFileChangeStatus, toUiFileChanges } from '../api/normalizers/v2'
+import { normalizeThreadMessagesV2, normalizeFileChangeStatus, toUiFileChanges } from '../api/normalizers/v2'
 import type {
   CollaborationModeKind,
   CollaborationModeOption,
@@ -651,6 +652,7 @@ function isUnsupportedChatGptModelError(error: unknown): boolean {
 }
 
 function areMessageFieldsEqual(first: UiMessage, second: UiMessage): boolean {
+  if (first.historyOrdinal !== second.historyOrdinal || first.clientUserMessageId !== second.clientUserMessageId) return false
   return (
     first.id === second.id &&
     first.role === second.role &&
@@ -691,44 +693,30 @@ function mergeMessages(
   incoming: UiMessage[],
   options: { preserveMissing?: boolean } = {},
 ): UiMessage[] {
-  const previousById = new Map(previous.map((message) => [message.id, message]))
-  const incomingById = new Map(incoming.map((message) => [message.id, message]))
-  const incomingQuestionKeys = new Set(incoming.flatMap(message => message.questions?.length && message.questionOrdinal !== undefined && message.turnId
-    ? [questionRefKey({ itemId: message.id, turnId: message.turnId, questionOrdinal: message.questionOrdinal })]
-    : []))
-
-  const mergedIncoming = incoming.map((incomingMessage) => {
-    const previousMessage = previousById.get(incomingMessage.id)
-    if (previousMessage && areMessageFieldsEqual(previousMessage, incomingMessage)) {
-      return previousMessage
+  const previousById = new Map(previous.map(message => [JSON.stringify([message.turnId || '', message.id]), message]))
+  const previousByOrdinal = new Map(previous.filter(message => message.historyOrdinal !== undefined).map(message => [historyMessageKey(message), message]))
+  const consumed = new Set<UiMessage>()
+  const replacements = new Map<UiMessage, UiMessage>()
+  const appended: UiMessage[] = []
+  const mergedIncoming = incoming.map(message => {
+    let before = previousById.get(JSON.stringify([message.turnId || '', message.id]))
+      || (message.historyOrdinal !== undefined ? previousByOrdinal.get(historyMessageKey(message)) : undefined)
+    if (!before && message.role === 'user') {
+      before = previous.find(row => !consumed.has(row) && isOptimisticUserMessage(row) && hasEquivalentUserMessage(row, [message]))
     }
-    return mergeSubtaskMessage(previousMessage, incomingMessage)
+    const next = before && areMessageFieldsEqual(before, message) ? before : mergeSubtaskMessage(before, message)
+    if (before) {
+      consumed.add(before)
+      replacements.set(before, next)
+    } else appended.push(next)
+    return next
   })
-
-  if (options.preserveMissing !== true) {
-    return areMessageArraysEqual(previous, mergedIncoming) ? previous : mergedIncoming
-  }
-
-  const mergedFromPrevious = previous
-    .map((previousMessage) => {
-      const nextMessage = incomingById.get(previousMessage.id)
-      if (!nextMessage) {
-        return previousMessage
-      }
-      if (areMessageFieldsEqual(previousMessage, nextMessage)) {
-        return previousMessage
-      }
-      return mergeSubtaskMessage(previousMessage, nextMessage)
-    })
-    .filter(message => {
-      if (message.questions?.length && message.questionOrdinal !== undefined && message.turnId && !incomingById.has(message.id)
-        && incomingQuestionKeys.has(questionRefKey({ itemId: message.id, turnId: message.turnId, questionOrdinal: message.questionOrdinal }))) return false
-      return !isOptimisticUserMessage(message) || !hasEquivalentUserMessage(message, incoming)
-    })
-
-  const previousIdSet = new Set(previous.map((message) => message.id))
-  const appended = mergedIncoming.filter((message) => !previousIdSet.has(message.id))
-  const merged = [...mergedFromPrevious, ...appended]
+  if (options.preserveMissing !== true) return areMessageArraysEqual(previous, mergedIncoming) ? previous : mergedIncoming
+  const incomingQuestionKeys = new Set(incoming.flatMap(message => message.questions?.length && message.turnId && message.questionOrdinal !== undefined
+    ? [questionRefKey({ itemId: message.id, turnId: message.turnId, questionOrdinal: message.questionOrdinal })] : []))
+  const retained = previous.filter(message => consumed.has(message) || !(message.questions?.length && message.turnId && message.questionOrdinal !== undefined
+    && incomingQuestionKeys.has(questionRefKey({ itemId: message.id, turnId: message.turnId, questionOrdinal: message.questionOrdinal }))))
+  const merged = [...retained.map(message => replacements.get(message) || message), ...appended]
 
   return areMessageArraysEqual(previous, merged) ? previous : merged
 }
@@ -775,6 +763,9 @@ function hasEquivalentUserMessage(target: UiMessage, messages: UiMessage[]): boo
 
   return messages.some((message) => {
     if (message === target || message.role !== 'user' || isOptimisticUserMessage(message)) return false
+    if (!target.turnId || message.turnId !== target.turnId) return false
+    if (target.clientUserMessageId && message.clientUserMessageId) return target.clientUserMessageId === message.clientUserMessageId
+    if (target.userMessageOrdinal !== undefined && message.userMessageOrdinal !== undefined && target.userMessageOrdinal !== message.userMessageOrdinal) return false
     const messageText = normalizeMessageText(message.text)
     const messageImages = Array.isArray(message.images) ? message.images : []
     const messageFileCount = Array.isArray(message.fileAttachments) ? message.fileAttachments.length : 0
@@ -790,22 +781,16 @@ function hasEquivalentUserMessage(target: UiMessage, messages: UiMessage[]): boo
 
 function removeRedundantLiveAgentMessages(previous: UiMessage[], incoming: UiMessage[]): UiMessage[] {
   const incomingMessageIds = new Set(incoming.map((message) => message.id))
-  const incomingAssistantTexts = new Set(
-    incoming
-      .filter((message) => message.role === 'assistant')
-      .map((message) => normalizeMessageText(message.text))
-      .filter((text) => text.length > 0),
-  )
 
   if (incomingMessageIds.size === 0) return previous
 
   const next = previous.filter((message) => {
     if (message.messageType !== 'agentMessage.live') return true
-    if (incomingMessageIds.has(message.id)) return false
+    if (incoming.some(row => sameMessageIdentity(row, message))) return false
     if (message.questions?.length) return true
     const normalized = normalizeMessageText(message.text)
     if (normalized.length === 0) return false
-    return !incomingAssistantTexts.has(normalized)
+    return true
   })
 
   return next.length === previous.length ? previous : next
@@ -1430,6 +1415,21 @@ export function useDesktopState() {
   const liveCommandsByThreadId = ref<Record<string, UiMessage[]>>({})
   const liveFileChangeMessagesByThreadId = ref<Record<string, UiMessage[]>>({})
   const inProgressById = ref<Record<string, boolean>>({})
+  const threadStatusRevision = new Map<string, number>()
+  const finishedTurns = new Set<string>()
+  function turnKey(threadId: string, turnId: string): string { return JSON.stringify([threadId, turnId]) }
+  function rememberFinishedTurn(threadId: string, turnId: string): void {
+    finishedTurns.add(turnKey(threadId, turnId))
+    if (finishedTurns.size > 2000) finishedTurns.delete(finishedTurns.values().next().value!)
+  }
+  function applyListedStatuses(groups: UiProjectGroup[], revisions: Map<string, number>): void {
+    for (const thread of flattenThreads(groups)) {
+      if ((revisions.get(thread.id) ?? 0) !== (threadStatusRevision.get(thread.id) ?? 0)) continue
+      const wasRunning = inProgressById.value[thread.id] === true
+      setThreadInProgress(thread.id, thread.inProgress)
+      if (wasRunning && !thread.inProgress) markThreadUnreadByEvent(thread.id)
+    }
+  }
   type FileAttachment = { label: string; path: string; fsPath: string }
   type QueuedMessage = StoredQueuedMessage
   const queuedMessagesByThreadId = ref<Record<string, QueuedMessage[]>>({})
@@ -1684,7 +1684,7 @@ export function useDesktopState() {
     const liveAgent = liveAgentMessagesByThreadId.value[threadId] ?? []
     const liveCommands = liveCommandsByThreadId.value[threadId] ?? []
     const liveFileChanges = liveFileChangeMessagesByThreadId.value[threadId] ?? []
-    const combined = [...persisted, ...livePlan, ...liveCommands, ...liveFileChanges, ...liveAgent]
+    const combined = combineHistoryAndLive(persisted, [...livePlan, ...liveCommands, ...liveFileChanges, ...liveAgent])
 
     const summary = turnSummaryByThreadId.value[threadId]
     if (!summary) return combined
@@ -1760,6 +1760,7 @@ export function useDesktopState() {
     )
     activeReasoningItemId = ''
     shouldAutoScrollOnNextAgentEvent = false
+    applyThreadFlags()
   }
 
   function setSelectedModelIdForThread(threadId: string, modelId: string): void {
@@ -2322,6 +2323,7 @@ export function useDesktopState() {
 
   function setThreadInProgress(threadId: string, nextInProgress: boolean): void {
     if (!threadId) return
+    threadStatusRevision.set(threadId, (threadStatusRevision.get(threadId) ?? 0) + 1)
     const currentValue = inProgressById.value[threadId] === true
     if (currentValue === nextInProgress) return
     if (nextInProgress) {
@@ -2541,10 +2543,14 @@ export function useDesktopState() {
     imageUrls: string[] = [],
     skills: Array<{ name: string; path: string }> = [],
     fileAttachments: FileAttachment[] = [],
+    delivery?: { id: string; turnId: string; userMessageOrdinal?: number },
   ): void {
     const existing = persistedMessagesByThreadId.value[threadId] ?? []
     const nextMessage: UiMessage = {
-      id: `optimistic-user:${threadId}:${Date.now()}`,
+      id: delivery ? `optimistic-user:${delivery.id}` : `optimistic-user:${threadId}:${Date.now()}`,
+      turnId: delivery?.turnId,
+      clientUserMessageId: delivery?.id,
+      userMessageOrdinal: delivery?.userMessageOrdinal,
       role: 'user',
       ...readQuestionReply(text),
       images: imageUrls.length > 0 ? [...imageUrls] : undefined,
@@ -2552,7 +2558,7 @@ export function useDesktopState() {
       fileAttachments: fileAttachments.length > 0 ? fileAttachments.map((file) => ({ ...file })) : undefined,
       messageType: 'userMessage.optimistic',
     }
-    setPersistedMessagesForThread(threadId, [...existing, nextMessage])
+    if (!hasEquivalentUserMessage(nextMessage, existing)) setPersistedMessagesForThread(threadId, [...existing.filter(message => message.id !== nextMessage.id), nextMessage])
   }
 
   function setLiveAgentMessagesForThread(threadId: string, nextMessages: UiMessage[]): void {
@@ -2595,6 +2601,7 @@ export function useDesktopState() {
   }
 
   function upsertLiveAgentMessage(threadId: string, nextMessage: UiMessage): void {
+    nextMessage = { ...nextMessage, turnId: nextMessage.turnId || activeTurnIdByThreadId.value[threadId] }
     const previous = liveAgentMessagesByThreadId.value[threadId] ?? []
     const next = upsertMessage(previous, nextMessage)
     setLiveAgentMessagesForThread(threadId, next)
@@ -3296,7 +3303,7 @@ export function useDesktopState() {
   }
 
   function readTurnCompletedInfo(notification: RpcNotification): TurnCompletedInfo | null {
-    if (notification.method !== 'turn/completed') {
+    if (notification.method !== 'turn/completed' && notification.method !== 'turn/cancelled') {
       return null
     }
 
@@ -3738,6 +3745,17 @@ export function useDesktopState() {
     if (changesThreadSearch(notification.method)) threadSearchVersion.value += 1
     if (notification.method === 'item/started' || notification.method === 'item/completed') {
       const params = asRecord(notification.params)
+      const item = asRecord(params?.item)
+      const threadId = readString(params?.threadId)
+      const turnId = readString(params?.turnId) || activeTurnIdByThreadId.value[threadId]
+      if (item?.type === 'userMessage' && threadId && turnId) {
+        const normalized = normalizeThreadMessagesV2({ thread: { turns: [{ id: turnId, items: [item] }] } } as Parameters<typeof normalizeThreadMessagesV2>[0])
+          .map(message => ({ ...message, historyOrdinal: undefined, userMessageOrdinal: undefined }))
+        setPersistedMessagesForThread(threadId, mergeMessages(persistedMessagesByThreadId.value[threadId] || [], normalized, { preserveMissing: true }))
+      }
+    }
+    if (notification.method === 'item/started' || notification.method === 'item/completed') {
+      const params = asRecord(notification.params)
       const threadId = readString(params?.threadId)
       const summary = normalizeToolSummary(params?.item)
       if (threadId && summary) {
@@ -3807,6 +3825,17 @@ export function useDesktopState() {
       return
     }
 
+    if (notification.method === 'thread/status/changed') {
+      const params = asRecord(notification.params)
+      const threadId = extractThreadIdFromNotification(notification)
+      const status = readString(asRecord(params?.status)?.type) || readString(params?.status)
+      if (threadId && ['active', 'inProgress', 'running', 'idle', 'notLoaded', 'systemError'].includes(status)) {
+        const wasRunning = inProgressById.value[threadId] === true
+        const running = ['active', 'inProgress', 'running'].includes(status)
+        setThreadInProgress(threadId, running)
+        if (wasRunning && !running) markThreadUnreadByEvent(threadId)
+      }
+    }
     const turnActivity = readTurnActivity(notification)
     if (turnActivity) {
       setTurnActivityForThread(turnActivity.threadId, turnActivity.activity)
@@ -3819,6 +3848,7 @@ export function useDesktopState() {
     }
 
     const startedTurn = readTurnStartedInfo(notification)
+    if (startedTurn && finishedTurns.has(turnKey(startedTurn.threadId, startedTurn.turnId))) return
     if (startedTurn) {
       pendingTurnStartsById.set(startedTurn.turnId, startedTurn)
       setTurnIndexForThread(startedTurn.threadId, startedTurn.turnId, inferNextTurnIndex(startedTurn.threadId))
@@ -3841,6 +3871,9 @@ export function useDesktopState() {
     const completedTurn = readTurnCompletedInfo(notification)
     const turnErrorMessage = readTurnErrorMessage(notification)
     if (completedTurn) {
+      rememberFinishedTurn(completedTurn.threadId, completedTurn.turnId)
+      const activeTurn = activeTurnIdByThreadId.value[completedTurn.threadId]
+      if (activeTurn && activeTurn !== completedTurn.turnId) return
       const startedTurnState = pendingTurnStartsById.get(completedTurn.turnId)
       if (startedTurnState) {
         pendingTurnStartsById.delete(completedTurn.turnId)
@@ -3996,7 +4029,7 @@ export function useDesktopState() {
       clearLiveReasoningForThread(notificationThreadId)
     }
 
-    if (notification.method === 'turn/completed') {
+    if (notification.method === 'turn/completed' || notification.method === 'turn/cancelled') {
       activeReasoningItemId = ''
       shouldAutoScrollOnNextAgentEvent = false
       clearLiveReasoningForThread(notificationThreadId)
@@ -4006,10 +4039,7 @@ export function useDesktopState() {
       const completedThreadId = extractThreadIdFromNotification(notification)
       if (completedThreadId) {
         clearDelayedTurnSync(completedThreadId)
-        setThreadInProgress(completedThreadId, false)
-        setTurnActivityForThread(completedThreadId, null)
-        markThreadUnreadByEvent(completedThreadId)
-        scheduleQueueStateRefresh(completedThreadId)
+
       }
     }
 
@@ -4022,6 +4052,8 @@ export function useDesktopState() {
     const shouldRefreshMessages =
       method === 'turn/started' ||
       method === 'turn/completed' ||
+      method === 'turn/cancelled' ||
+      method === 'thread/status/changed' ||
       method === 'error'
     const shouldRefreshThreads =
       method.startsWith('thread/') ||
@@ -4312,7 +4344,9 @@ export function useDesktopState() {
     isLoadingRemainingThreadPages = true
 
     try {
+      const revisions = new Map(threadStatusRevision)
       const page = await getThreadGroupsPage(threadListNextCursor, getBackgroundThreadListLimit())
+      applyListedStatuses(page.groups, revisions)
       threadListNextCursor = page.nextCursor
       hasLoadedAllThreadPages = page.nextCursor === null
       isThreadListFullyLoaded.value = hasLoadedAllThreadPages
@@ -4347,11 +4381,13 @@ export function useDesktopState() {
     }
 
     try {
+      const revisions = new Map(threadStatusRevision)
       const [page, rootsState] = await Promise.all([
         getThreadGroupsPage(),
         loadWorkspaceRootsStateForThreadList(),
         loadThreadTitleCacheIfNeeded({ force: options.force === true }),
       ])
+      applyListedStatuses(page.groups, revisions)
       loadedThreadListRootsState = rootsState
       const groups = page.groups
       loadedThreadListGroups = hasLoadedThreads.value
@@ -4471,7 +4507,7 @@ export function useDesktopState() {
       setPersistedMessagesForThread(threadId, mergedMessages)
 
       const previousLiveAgent = liveAgentMessagesByThreadId.value[threadId] ?? []
-      if (inProgress) {
+      if (inProgress || requestedRevision !== (messageHistoryRevisionByThreadId.get(threadId) ?? 0)) {
         const nextLiveAgent = removeRedundantLiveAgentMessages(previousLiveAgent, nextMessages)
         setLiveAgentMessagesForThread(threadId, nextLiveAgent)
       } else {
@@ -4831,7 +4867,8 @@ export function useDesktopState() {
     const key = questionRefKey({ itemId: question.id, turnId: reply.turnId, questionOrdinal: question.questionOrdinal })
     if ([...(persistedMessagesByThreadId.value[reply.threadId] ?? []), ...detail.messages, ...turnMessages].some(message => message.questionReply && questionRefKey(message.questionReply) === key)) return
     setPersistedMessagesForThread(reply.threadId, mergeMessages(persistedMessagesByThreadId.value[reply.threadId] ?? [], detail.messages, { preserveMissing: true }))
-    await startTurnForThread(reply.threadId, buildQuestionReply(question, reply.answers))
+    await startTurnForThread(reply.threadId, buildQuestionReply(question, reply.answers), [], [], [], undefined, 'steer',
+      { id: `question:${reply.threadId}:${reply.turnId}:${question.questionOrdinal ?? question.id}`, requireConfirmed: true })
   }
 
   async function sendMessageToSelectedThread(
@@ -5028,6 +5065,7 @@ export function useDesktopState() {
     fileAttachments: FileAttachment[] = [],
     collaborationModeOverride?: CollaborationModeKind,
     deliveryMode?: 'immediate' | 'steer',
+    deliveryOptions?: { id: string; requireConfirmed?: boolean },
   ): Promise<void> {
     const executionSettings = checkedModelSettings(readModelIdForThread(threadId), imageUrls.length > 0)
     const reasoningEffort = executionSettings.effort
@@ -5059,21 +5097,31 @@ export function useDesktopState() {
           [threadId]: true,
         }
       }
+      const deliveryId = deliveryOptions?.id || createDeliveryId()
+      const previousTurnId = activeTurnIdByThreadId.value[threadId]
+      const userMessageOrdinal = (persistedMessagesByThreadId.value[threadId] ?? []).filter(message => message.role === 'user' && message.turnId === previousTurnId).length
       const startedTurnId = await startThreadTurn(
         threadId, nextText, normalizedImageUrls, executionSettings.model || undefined,
         reasoningEffort || undefined, skills.length > 0 ? skills : undefined,
         fileAttachments, collaborationMode, executionSettings.serviceTier,
-        ...(deliveryMode ? [deliveryMode] as const : []),
+        deliveryMode || 'immediate', { id: deliveryId, requireConfirmed: deliveryOptions?.requireConfirmed },
       )
       if (!startedTurnId) {
-        setThreadInProgress(threadId, false)
-        setTurnActivityForThread(threadId, null)
+        // A queued steer must not clear the already running turn.
+        if (!previousTurnId) {
+          setThreadInProgress(threadId, false)
+          setTurnActivityForThread(threadId, null)
+        }
         const messages = persistedMessagesByThreadId.value[threadId] ?? []
-        setPersistedMessagesForThread(threadId, messages.filter(message => !isOptimisticUserMessage(message)))
+        setPersistedMessagesForThread(threadId, messages.filter(message => !(isOptimisticUserMessage(message) && !message.turnId && message.text === readQuestionReply(nextText).text)))
         await refreshQueueState().catch(() => {})
       }
 
       if (startedTurnId) {
+        setThreadInProgress(threadId, true)
+        const previous = persistedMessagesByThreadId.value[threadId] ?? []
+        setPersistedMessagesForThread(threadId, previous.filter(message => !(isOptimisticUserMessage(message) && !message.turnId && message.text === readQuestionReply(nextText).text)))
+        appendOptimisticUserMessage(threadId, nextText, normalizedImageUrls, skills, fileAttachments, { id: deliveryId, turnId: startedTurnId, userMessageOrdinal: startedTurnId === previousTurnId ? userMessageOrdinal : 0 })
         activeTurnIdByThreadId.value = {
           ...activeTurnIdByThreadId.value,
           [threadId]: startedTurnId,
@@ -5457,11 +5505,9 @@ export function useDesktopState() {
 
   async function recoverBridgeState(): Promise<void> {
     await loadPendingServerRequestsFromBridge()
-    pendingThreadsRefresh = !hasLoadedThreads.value
-    if (
-      selectedThreadId.value &&
-      loadedMessagesByThreadId.value[selectedThreadId.value] !== true
-    ) {
+    pendingThreadsRefresh = true
+    pendingThreadsRefreshForce = true
+    if (selectedThreadId.value) {
       markThreadHistoryDirty(selectedThreadId.value)
     }
     await syncFromNotifications()
@@ -5643,7 +5689,15 @@ export function useDesktopState() {
     const message = queuedMessagesByThreadId.value[threadId]?.find(row => row.id === messageId)
     if (!message) return
     try {
-      await commitQueueOperation({ type, threadId, messageId, revision: message.delivery?.revision })
+      const previousTurnId = activeTurnIdByThreadId.value[threadId]
+      const ordinal = (persistedMessagesByThreadId.value[threadId] ?? []).filter(row => row.role === 'user' && row.turnId === previousTurnId).length
+      const result = await commitQueueOperation({ type, threadId, messageId, revision: message.delivery?.revision })
+      if (result.delivered) {
+        appendOptimisticUserMessage(threadId, message.text, message.imageUrls, message.skills, message.fileAttachments,
+          { ...result.delivered, userMessageOrdinal: result.delivered.turnId === previousTurnId ? ordinal : 0 })
+        markThreadHistoryDirty(threadId)
+        scheduleDelayedTurnSync(threadId)
+      }
     } catch {
       void refreshQueueState().catch(() => {})
     }

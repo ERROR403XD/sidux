@@ -380,3 +380,24 @@ describe('resumeThread', () => {
     ])
   })
 })
+
+it('does not acknowledge a queued question answer as delivered and reuses its identity', async () => {
+  mockRpcFetch()
+  const original = globalThis.fetch
+  const submitted: string[] = []
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input).endsWith('/delivery')) {
+      const body = JSON.parse(String(init?.body))
+      submitted.push(body.message.id)
+      expect(body.mode).toBe('steer')
+      return new Response(JSON.stringify({ data: { id: body.message.id, status: 'queued' } }))
+    }
+    return original(input, init)
+  }))
+  try {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await expect(startThreadTurn('q', 'answer', [], 'm', undefined, undefined, [], undefined, null, 'steer', { id: 'question:q:t:0', requireConfirmed: true })).rejects.toThrow('尚未确认送达')
+    }
+    expect(submitted).toEqual(['question:q:t:0', 'question:q:t:0'])
+  } finally { vi.unstubAllGlobals() }
+})

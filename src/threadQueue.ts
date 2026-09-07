@@ -20,7 +20,7 @@ export type ThreadQueueOperation =
   | { type: 'edit' | 'update'; threadId: string; messageId: string; revision: number; editToken: string; message?: StoredQueuedMessage }
   | { type: 'move'; threadId: string; messageId: string; targetId: string; revision?: number }
 
-export type ThreadQueueResult = { state: ThreadQueueState; removed?: StoredQueuedMessage }
+export type ThreadQueueResult = { state: ThreadQueueState; removed?: StoredQueuedMessage; delivered?: { id: string; turnId: string } }
 
 function record(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}

@@ -435,6 +435,7 @@ function toUiMessages(item: ThreadItem): UiMessage[] {
         skills: parsed.skills.length > 0 ? parsed.skills : undefined,
         fileAttachments: parsed.fileAttachments.length > 0 ? parsed.fileAttachments : undefined,
         messageType: item.type,
+        clientUserMessageId: typeof (item as Record<string, unknown>).clientUserMessageId === 'string' ? (item as Record<string, unknown>).clientUserMessageId as string : undefined,
         isAutomationRun: parsed.isAutomationRun,
         automationDisplayName: parsed.automationDisplayName,
         automationRun: parsed.automationRun,
@@ -651,15 +652,17 @@ export function normalizeThreadMessagesV2(payload: ThreadReadResponse, baseTurnI
     const turnId = rawTurnId.length > 0 ? rawTurnId : undefined
     const items = Array.isArray(turn.items) ? turn.items : []
     const compactions = compactionFromTurn(turn)
+    let userMessageOrdinal = 0
     let questionOrdinal = 0
-    for (const item of items) {
+    for (const [itemIndex, item] of items.entries()) {
+      let historyOrdinal = itemIndex * 1024
       if (item.type === 'contextCompaction') {
         const message = compactions.find(message => message.id === item.id)
-        if (message) messages.push({ ...message, turnId, turnIndex })
+        if (message) messages.push({ ...message, turnId, turnIndex, historyOrdinal })
         continue
       }
       for (const msg of toUiMessages(item)) {
-        messages.push({ ...msg, turnId, turnIndex, ...(msg.questions?.length ? { questionOrdinal: questionOrdinal++ } : {}) })
+        messages.push({ ...msg, turnId, turnIndex, historyOrdinal: historyOrdinal++, ...(msg.role === 'user' ? { userMessageOrdinal: userMessageOrdinal++ } : {}), ...(msg.questions?.length ? { questionOrdinal: questionOrdinal++ } : {}) })
       }
     }
     const errorText = readTurnErrorText(turn)

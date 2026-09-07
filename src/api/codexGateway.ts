@@ -1980,6 +1980,7 @@ export async function startThreadTurn(
   collaborationMode?: CollaborationModeKind,
   serviceTier?: string | null,
   deliveryMode: 'immediate' | 'steer' = 'immediate',
+  deliveryOptions?: { id: string; requireConfirmed?: boolean },
 ): Promise<string> {
   try {
     const normalizedModel = model?.trim() ?? ''
@@ -2047,7 +2048,7 @@ export async function startThreadTurn(
     const pending = await prepareWebDelivery('delivery', {
       protocol: 2, threadId, params, mode: deliveryMode,
       message: {
-        id: createDeliveryId(), text, imageUrls, skills: skills ?? [], fileAttachments,
+        id: deliveryOptions?.id || createDeliveryId(), text, imageUrls, skills: skills ?? [], fileAttachments,
         collaborationMode: collaborationMode ?? 'default',
         ...(normalizedModel ? { model: normalizedModel } : {}),
         ...(effort !== undefined ? { effort } : {}),
@@ -2056,6 +2057,7 @@ export async function startThreadTurn(
     })
     const payload = await submitRememberedDelivery(pending)
     if (payload.data.status === 'cancelled') throw new Error('此提交已停止跟踪，请核对会话后再发送新消息')
+    if (deliveryOptions?.requireConfirmed && !payload.data.turnId) throw new Error('回答尚未确认送达，请稍后核对；重试将复用本次投递，不重复发送。')
     return typeof payload.data.turnId === 'string' ? payload.data.turnId : ''
   } catch (error) {
     throw normalizeCodexApiError(error, `Failed to start turn for thread ${threadId}`, 'turn/start')
@@ -2647,7 +2649,7 @@ export async function mutateThreadQueueState(operation: ThreadQueueOperation): P
     payload = await response.json()
     if (!response.ok) throw new Error(payload.error || '队列保存失败，请重试')
   }
-  return { state: normalizeThreadQueueState(payload.data?.state), removed: payload.data?.removed }
+  return { state: normalizeThreadQueueState(payload.data?.state), removed: payload.data?.removed, delivered: payload.data?.delivered }
 }
 
 export async function createWorktree(sourceCwd: string, baseBranch?: string): Promise<WorktreeCreateResult> {

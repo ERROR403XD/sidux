@@ -4,7 +4,7 @@
     <div v-for="row in pending" :key="row.id" class="delivery-outbox-row" :data-outbox-id="row.id">
       <div class="delivery-outbox-content">
         <span>提交结果待确认</span>
-        <span class="delivery-outbox-preview">{{ row.body.message.text || '含附件的消息' }}</span>
+        <span class="delivery-outbox-preview">{{ readQuestionReply(row.body.message.text).questionReply ? '问题回答' : row.body.message.text || '含附件的消息' }}</span>
       </div>
       <div class="delivery-outbox-actions">
         <AppButton :busy="busyId === row.id" :disabled="Boolean(busyId)" @click="reconcile(row)">核对提交</AppButton>
@@ -22,6 +22,7 @@
 </template>
 
 <script setup lang="ts">
+import { readQuestionReply } from '../../userQuestions'
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { DELIVERY_OUTBOX_EVENT, forgetWebDelivery, readPendingWebDeliveries, submitRememberedDelivery, type PendingWebDelivery } from '../../api/deliveryOutbox'
 import type { StoredQueuedMessage } from '../../threadQueue'

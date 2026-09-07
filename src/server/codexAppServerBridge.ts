@@ -6764,7 +6764,7 @@ export class BackendQueueProcessor {
       : { id: result.id, status: result.status, turnId: result.turnId }
   }
 
-  async mutate(input: unknown): Promise<{ state: ThreadQueueState; removed?: StoredQueuedMessage }> {
+  async mutate(input: unknown): Promise<{ state: ThreadQueueState; removed?: StoredQueuedMessage; delivered?: { id: string; turnId: string } }> {
     const body = asRecord(input)
     if (body?.protocol !== 2) throw new Error('队列接口已更新，请刷新页面后重试；队列未修改')
     const threadId = readNonEmptyString(body.threadId)
@@ -6808,7 +6808,9 @@ export class BackendQueueProcessor {
     }
     this.appServer.notifyQueueChanged(threadId)
     this.scheduleThreadQueueDrain(threadId, 0)
-    return { state: await this.readState(), ...(removed ? { removed } : {}) }
+    const receipt = body.messageId ? await this.store.readReceipt(String(body.messageId)) : null
+    return { state: await this.readState(), ...(removed ? { removed } : {}),
+      ...(receipt?.turnId ? { delivered: { id: receipt.id, turnId: receipt.turnId } } : {}) }
   }
 
   dispose(): Promise<void> {

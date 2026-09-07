@@ -210,6 +210,9 @@ export type UiPlanData = {
 }
 
 export type UiMessage = {
+  historyOrdinal?: number
+  clientUserMessageId?: string
+  userMessageOrdinal?: number
   id: string
   role: 'user' | 'assistant' | 'system'
   text: string

@@ -1050,6 +1050,7 @@ describe('provider model selection', () => {
       [],
       'default',
       null,
+      'immediate', expect.objectContaining({ id: expect.any(String) }),
     )
     expect(state.readModelIdForThread('codex-thread')).toBe('gpt-5.5')
     expect(state.messages.value.some((message) => (
@@ -1105,6 +1106,8 @@ describe('provider model selection', () => {
       messages: [
         {
           id: 'user-1',
+          turnId: 'turn-1',
+          userMessageOrdinal: 0,
           role: 'user',
           text: 'hi',
           messageType: 'userMessage',
@@ -1317,7 +1320,7 @@ describe('explicit question answers', () => {
     notify({ method: 'server/request', params: { id: 21, method: 'item/tool/requestUserInput', params: { threadId: 'thread-question', turnId: 't', itemId: 'q', isBlocking: false, questions: [{ id: 'scope', question: 'Scope?' }] } } })
     await state.sendMessageToSelectedThread('ordinary text', [], [], 'steer')
     expect(gatewayMocks.replyToServerRequest).not.toHaveBeenCalled()
-    expect(gatewayMocks.startThreadTurn).toHaveBeenCalledWith('thread-question', 'ordinary text', [], undefined, undefined, undefined, [], 'default', null)
+    expect(gatewayMocks.startThreadTurn).toHaveBeenCalledWith('thread-question', 'ordinary text', [], undefined, undefined, undefined, [], 'default', null, 'immediate', expect.objectContaining({ id: expect.any(String) }))
     state.stopPolling()
   })
 })
@@ -1433,4 +1436,84 @@ it('does not let an in-flight older history snapshot swallow a newer completion'
   await state.loadMessages('race')
   expect(state.messages.value.some(message => message.text === 'after old read')).toBe(true)
   expect(gatewayMocks.getThreadDetail).toHaveBeenCalledTimes(2)
+})
+
+ describe('0.2.11 realtime regression', () => {
+  function setup() {
+    installTestWindow()
+    let notify: (notification: { method: string; params: unknown }) => void = () => {}
+    gatewayMocks.subscribeCodexNotifications.mockImplementation(handler => { notify = handler; return vi.fn() })
+    gatewayMocks.getPendingServerRequests.mockResolvedValue([])
+    gatewayMocks.getThreadGroupsPage.mockResolvedValue({ groups: [{ projectName: 'p', threads: [thread('live', '/p'), thread('other', '/p')] }], nextCursor: null })
+    const empty = { messages: [], inProgress: true, activeTurnId: 't1', turnIndexByTurnId: { t1: 0 }, hasMoreOlder: false }
+    gatewayMocks.resumeThread.mockResolvedValue(empty)
+    gatewayMocks.getThreadDetail.mockResolvedValue(empty)
+    gatewayMocks.startThreadTurn.mockResolvedValue('t1')
+    const state = useDesktopState()
+    state.primeSelectedThread('live')
+    state.startPolling()
+    return { state, notify }
+  }
+
+  it('shows confirmed steering immediately, replaces it once, and preserves repeated equal steering text', async () => {
+    const { state, notify } = setup()
+    await state.loadMessages('live')
+    await state.sendMessageToSelectedThread('keep going', [], [], 'steer')
+    expect(gatewayMocks.startThreadTurn.mock.calls.at(-1)?.[9]).toBe('steer')
+    expect(state.messages.value.filter(row => row.text === 'keep going')).toHaveLength(1)
+    const firstId = gatewayMocks.startThreadTurn.mock.calls.at(-1)?.[10].id
+    const event = { method: 'item/completed', params: { threadId: 'live', turnId: 't1', item: { id: 'user-native-1', type: 'userMessage', clientUserMessageId: firstId, content: [{ type: 'text', text: 'keep going' }] } } }
+    notify(event)
+    notify(event)
+    expect(state.messages.value.filter(row => row.text === 'keep going')).toHaveLength(1)
+    await state.sendMessageToSelectedThread('keep going', [], [], 'steer')
+    expect(state.messages.value.filter(row => row.text === 'keep going')).toHaveLength(2)
+    state.stopPolling()
+  })
+
+  it('shows queue-to-steer delivery before a late history snapshot', async () => {
+    const { state } = setup()
+    const message = { id: 'queue-1', text: 'queued steer', imageUrls: [], skills: [], fileAttachments: [], delivery: { status: 'queued', revision: 1 } }
+    gatewayMocks.getThreadQueueState.mockResolvedValue({ live: [message] })
+    await state.loadMessages('live')
+    await state.refreshQueueState()
+    gatewayMocks.mutateThreadQueueState.mockResolvedValue({ state: {}, delivered: { id: 'queue-1', turnId: 't1' } })
+    await state.steerQueuedMessage('queue-1')
+    expect(state.messages.value.filter(row => row.text === 'queued steer')).toHaveLength(1)
+    state.stopPolling()
+  })
+
+  it('keeps a new running turn when an older completion is replayed and ignores an ended turn start', async () => {
+    const { state, notify } = setup()
+    await state.refreshAll({ includeSelectedThreadMessages: false })
+    state.primeSelectedThread('other')
+    notify({ method: 'turn/started', params: { threadId: 'live', turn: { id: 't1' } } })
+    notify({ method: 'turn/started', params: { threadId: 'live', turn: { id: 't2' } } })
+    notify({ method: 'turn/completed', params: { threadId: 'live', turn: { id: 't1' } } })
+    const row = () => state.projectGroups.value.flatMap(group => group.threads).find(row => row.id === 'live')!
+    expect(row().inProgress).toBe(true)
+    expect(row().unread).toBe(false)
+    notify({ method: 'turn/completed', params: { threadId: 'live', turn: { id: 't2' } } })
+    expect(row().inProgress).toBe(false)
+    expect(row().unread).toBe(true)
+    notify({ method: 'turn/started', params: { threadId: 'live', turn: { id: 't2' } } })
+    expect(row().inProgress).toBe(false)
+    state.primeSelectedThread('live')
+    expect(row().unread).toBe(false)
+    state.stopPolling()
+  })
+
+  it('does not let a delayed list snapshot overwrite a newer running notification', async () => {
+    const { state, notify } = setup()
+    let release!: (value: unknown) => void
+    gatewayMocks.getThreadGroupsPage.mockReturnValueOnce(new Promise(resolve => { release = resolve }))
+    const calls = gatewayMocks.getThreadGroupsPage.mock.calls.length
+    const loading = state.refreshAll({ includeSelectedThreadMessages: false })
+    await vi.waitFor(() => expect(gatewayMocks.getThreadGroupsPage.mock.calls.length).toBeGreaterThan(calls))
+    notify({ method: 'turn/started', params: { threadId: 'live', turn: { id: 'new' } } })
+    release({ groups: [{ projectName: 'p', threads: [thread('live', '/p')] }], nextCursor: null })
+    await loading
+    expect(state.projectGroups.value.flatMap(group => group.threads)[0].inProgress).toBe(true)
+    state.stopPolling()
+  })
 })

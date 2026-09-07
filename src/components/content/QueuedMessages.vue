@@ -8,7 +8,7 @@
         :data-delivery-id="msg.id"
         :data-delivery-status="msg.delivery?.status"
         :class="{ 'is-dragging': draggedMessageId === msg.id, 'is-drop-target': dropTargetMessageId === msg.id && draggedMessageId !== msg.id }"
-        :draggable="msg.delivery?.status === 'queued'"
+        :draggable="!isQuestion(msg) && msg.delivery?.status === 'queued'"
         @dragstart="onDragStart($event, msg)"
         @dragover.prevent="onDragOver(msg)"
         @dragleave="onDragLeave(msg.id)"
@@ -20,7 +20,11 @@
           <span class="queued-row-status">{{ msg.delivery ? deliveryStatusLabel(msg.delivery.status) : '等待加载发送状态' }}</span>
           <span v-if="msg.delivery?.error" class="queued-row-error">{{ msg.delivery.error }}</span>
         </div>
-        <div class="queued-row-actions">
+        <div v-if="isQuestion(msg)" class="queued-row-actions">
+          <AppButton v-if="msg.delivery?.status === 'unknown'" @click="emit('reconcile', msg.id)">核对回答</AppButton>
+          <AppButton v-if="msg.delivery?.status === 'failed'" @click="emit('resume', msg.id)">重试回答</AppButton>
+        </div>
+        <div v-else class="queued-row-actions">
           <AppButton v-if="['queued', 'failed', 'editing'].includes(msg.delivery?.status ?? '')" @click="emit('edit', msg.id)">{{ msg.delivery?.status === 'editing' ? '继续编辑' : '编辑' }}</AppButton>
           <AppButton v-if="msg.delivery?.status === 'queued'" title="发送引导消息，不中断当前任务" @click="emit('steer', msg.id)">引导</AppButton>
           <AppButton v-if="msg.delivery?.status === 'unknown'" @click="emit('reconcile', msg.id)">核对结果</AppButton>
@@ -43,6 +47,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { readQuestionReply } from '../../userQuestions'
 import { deliveryStatusLabel } from '../../delivery'
 import type { StoredQueuedMessage } from '../../threadQueue'
 import AppButton from '../common/AppButton.vue'
@@ -72,7 +77,7 @@ function confirmAbandon(): void {
 }
 
 function onDragStart(event: DragEvent, message: StoredQueuedMessage): void {
-  if (message.delivery?.status !== 'queued') {
+  if (isQuestion(message) || message.delivery?.status !== 'queued') {
     event.preventDefault()
     return
   }
@@ -103,7 +108,10 @@ function resetDragState(): void {
   dropTargetMessageId.value = ''
 }
 
+function isQuestion(message: StoredQueuedMessage): boolean { return Boolean(readQuestionReply(message.text).questionReply) }
+
 function getMessagePreview(message: StoredQueuedMessage): string {
+  if (isQuestion(message)) return '问题回答' 
   return message.text.trim() || [
     message.imageUrls.length ? `${message.imageUrls.length} 张图片` : '',
     message.fileAttachments.length ? `${message.fileAttachments.length} 个文件` : '',
