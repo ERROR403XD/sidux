@@ -33,11 +33,11 @@
         <div class="api-proxy-fields"><label>用量范围<AppSelect v-model="usageWindow" :options="usageWindows" /></label></div>
         <p v-if="status.usage" class="api-proxy-muted">统计始于 {{ date(status.usage.startedAt) }}；日期按 {{ status.usage.timeZone }}。近期窗口可用数据始于 {{ date(status.usage.windowCoverageFrom) }}。仅汇总已返回的 Token，用量缺失另列。</p>
         <div v-for="key in status.keys" :key="key.id" class="api-proxy-key-row">
-          <div class="api-proxy-key-copy"><strong>{{ key.name }}</strong><span>••••{{ key.suffix }} · {{ keyLabel(key) }}</span><small>到期：{{ date(key.expiresAt) }} · 最近使用：{{ date(key.lastUsedAt) }}</small>
+          <div class="api-proxy-key-copy"><strong>{{ key.name }}</strong><span>••••{{ key.suffix }} · {{ keyLabel(key) }}</span><small>到期：{{ key.expiresAt ? date(key.expiresAt) : 'Never' }} · 最近使用：{{ date(key.lastUsedAt) }}</small>
             <template v-if="status.usage">
               <small>请求 {{ usageFor(key.id).requests }} · 成功 {{ usageFor(key.id).completed }} · 失败 {{ usageFor(key.id).failed }} · 中断 {{ usageFor(key.id).interrupted }} · 拒绝 {{ usageFor(key.id).rejected }}</small>
               <small>Token {{ usageFor(key.id).total.toLocaleString() }} · 输入 {{ usageFor(key.id).input.toLocaleString() }} · 输出 {{ usageFor(key.id).output.toLocaleString() }} · 用量缺失 {{ usageFor(key.id).unknown }} 次</small>
-              <small>缓存输入 {{ usageFor(key.id).cached.toLocaleString() }} · 推理 {{ usageFor(key.id).reasoning.toLocaleString() }}（均为已知明细，不额外累加）· 模型目录 {{ usageFor(key.id).catalogs }} 次</small>
+              <small>缓存输入 {{ usageFor(key.id).cached.toLocaleString() }} · 推理 {{ usageFor(key.id).reasoning.toLocaleString() }} · 模型目录 {{ usageFor(key.id).catalogs }} 次</small>
             </template>
           </div>
           <div class="api-proxy-actions">
