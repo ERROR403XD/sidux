@@ -111,14 +111,22 @@ export async function handleAccountRoutes(
     return true
   }
 
+  if (req.method === 'GET' && url.pathname === '/codex-api/accounts/login/status') {
+    try { setJson(res, 200, { data: await coordinator.getLoginStatus(context.appServer) }) }
+    catch (error) { sendError(res, error, 'Failed to read login status.') }
+    return true
+  }
+
   if (req.method === 'POST' && url.pathname === '/codex-api/accounts/login/start') {
     try {
       const body = await readJsonBody(req)
       const intent: LoginIntent = body.intent === 'reauth' ? 'reauth' : 'add'
+      if (body.method !== undefined && body.method !== 'link' && body.method !== 'device') throw new AccountCoordinatorError('invalid_login_method', '请选择链接或 Device 登录。', 400)
       const data = await coordinator.startLogin({
         intent,
         targetStorageId: readString(body.targetStorageId),
-      })
+        method: body.method === 'device' ? 'device' : 'link',
+      }, context.appServer)
       setJson(res, 200, { ok: true, data })
     } catch (error) {
       sendError(res, error, 'Failed to start account login.')

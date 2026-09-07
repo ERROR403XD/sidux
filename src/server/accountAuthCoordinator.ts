@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
+import { once } from 'node:events'
 import { readFile, stat } from 'node:fs/promises'
 import { resolveCodexCommand } from '../commandResolution.js'
 import { getSpawnInvocation } from '../utils/commandInvocation.js'
@@ -38,6 +39,14 @@ export type AccountRuntime = {
 }
 
 export type LoginIntent = 'add' | 'reauth'
+export type LoginMethod = 'link' | 'device'
+export type AccountLoginStatus = {
+  loginSessionId: string; method: LoginMethod; intent: LoginIntent; targetStorageId: string | null
+  loginUrl: string | null; userCode: string | null; expiresAt: string
+  status: 'waiting' | 'verifying' | 'completed' | 'failed' | 'expired'
+  error: string | null
+  result?: Awaited<ReturnType<AccountAuthCoordinator['completeLogin']>>
+}
 
 type LoginSession = {
   id: string
@@ -48,6 +57,13 @@ type LoginSession = {
   loginUrl: string | null
   output: string
   exited: boolean
+  exitCode: number | null
+  method: LoginMethod
+  userCode: string | null
+  expiresAt: number
+  timer?: ReturnType<typeof setTimeout>
+  completing?: Promise<Awaited<ReturnType<AccountAuthCoordinator['completeLogin']>>>
+  completionStarted?: boolean
 }
 
 type CoordinatorOperation = {
@@ -155,6 +171,7 @@ export class AccountAuthCoordinator {
   blocksNewSubmissions(): boolean { return this.operation !== null && this.operation.kind !== 'refresh' }
   private operation: CoordinatorOperation | null = null
   private loginSession: LoginSession | null = null
+  private lastLogin: AccountLoginStatus | null = null
   private readonly refreshFlights = new Map<string, Promise<StoredAccountEntry>>()
   private backgroundRefresh: Promise<void> | null = null
   private readonly tokenRefreshFlights = new Map<string, Promise<ChatgptAuthTokensRefreshResponse>>()
@@ -230,7 +247,7 @@ export class AccountAuthCoordinator {
     })
   }
 
-  async startLogin(input: { intent: LoginIntent; targetStorageId?: string | null }): Promise<{ loginSessionId: string; loginUrl: string }> {
+  async startLogin(input: { intent: LoginIntent; targetStorageId?: string | null; method?: LoginMethod }, runtime?: AccountRuntime): Promise<{ loginSessionId: string; loginUrl: string; method: LoginMethod; userCode: string | null; expiresAt: string }> {
     if (this.operation || this.loginSession) {
       throw new AccountCoordinatorError('account_operation_in_progress', 'Another account operation is already in progress.')
     }
@@ -244,18 +261,30 @@ export class AccountAuthCoordinator {
       }
     }
     this.operation = { kind: 'login', startedAt: Date.now(), storageId: input.targetStorageId ?? null }
-    const pending = await this.store.createPendingHome()
+    const pending = await this.store.createPendingHome().catch(error => {
+      this.operation = null
+      throw error
+    })
     const command = resolveCodexCommand()
     if (!command) {
       this.operation = null
       await this.store.removePendingHome(pending.loginSessionId)
       throw new AccountCoordinatorError('codex_cli_missing', 'Codex CLI is not available.', 500)
     }
-    const invocation = getSpawnInvocation(command, ['login', '-c', 'cli_auth_credentials_store="file"'])
-    const proc = (this.dependencies.spawnImpl ?? spawn)(invocation.command, invocation.args, {
-      env: { ...process.env, CODEX_HOME: pending.home },
-      stdio: ['pipe', 'pipe', 'pipe'],
-    })
+    const method = input.method || 'link'
+    this.lastLogin = null
+    const invocation = getSpawnInvocation(command, ['login', ...(method === 'device' ? ['--device-auth'] : []), '-c', 'cli_auth_credentials_store="file"'])
+    let proc: ChildProcessWithoutNullStreams
+    try {
+      proc = (this.dependencies.spawnImpl ?? spawn)(invocation.command, invocation.args, {
+        env: { ...process.env, CODEX_HOME: pending.home },
+        stdio: ['pipe', 'pipe', 'pipe'],
+      })
+    } catch (error) {
+      this.operation = null
+      await this.store.removePendingHome(pending.loginSessionId)
+      throw error
+    }
     proc.stdin.end()
     const session: LoginSession = {
       id: pending.loginSessionId,
@@ -266,19 +295,40 @@ export class AccountAuthCoordinator {
       loginUrl: null,
       output: '',
       exited: false,
+      exitCode: null,
+      method,
+      userCode: null,
+      expiresAt: Date.now() + 15 * 60_000,
     }
     this.loginSession = session
     const append = (chunk: Buffer | string) => {
       if (this.loginSession !== session) return
       session.output = `${session.output}${String(chunk)}`.slice(-16_000)
-      session.loginUrl = session.loginUrl ?? extractLoginUrl(session.output)
+      const plain = session.output.replace(/\u001b\[[0-9;]*m/g, '')
+      session.loginUrl = session.loginUrl ?? (method === 'link' ? extractLoginUrl(plain) : plain.match(/https:\/\/auth\.openai\.com\/codex\/device\b/u)?.[0] || null)
+      if (method === 'device') session.userCode = session.userCode ?? plain.match(/\b[A-Z0-9]{4,5}-[A-Z0-9]{4,5}\b/)?.[0] ?? null
     }
     proc.stdout.on('data', append)
     proc.stderr.on('data', append)
-    proc.once('exit', () => { session.exited = true })
+    proc.once('exit', code => {
+      session.exited = true
+      session.exitCode = code
+      // Completion must continue when the browser is hidden or disconnected.
+      if (this.loginSession === session && session.timer && !session.completionStarted) {
+        void this.getLoginStatus(runtime).catch(() => undefined)
+      }
+    })
     proc.once('error', (error) => { session.exited = true; session.output += getErrorMessage(error, 'Login process failed.') })
     try {
-      return { loginSessionId: session.id, loginUrl: await this.waitForLoginUrl(session) }
+      const loginUrl = await this.waitForLoginUrl(session)
+      session.timer = setTimeout(() => {
+        if (this.loginSession !== session || session.completionStarted) return
+        this.lastLogin = { ...this.loginStatus(session), status: 'expired', error: '登录已过期，请重新开始。', userCode: null, loginUrl: null }
+        void this.finishLoginSession(session)
+      }, Math.max(1, session.expiresAt - Date.now()))
+      session.timer.unref()
+      if (session.exited) void this.getLoginStatus(runtime).catch(() => undefined)
+      return { loginSessionId: session.id, loginUrl, method, userCode: session.userCode, expiresAt: new Date(session.expiresAt).toISOString() }
     } catch (error) {
       await this.cancelLogin(session.id)
       throw error
@@ -294,23 +344,30 @@ export class AccountAuthCoordinator {
     accounts: ReturnType<typeof publicAccount>[]
   }> {
     const session = this.loginSession
-    if (!session || session.id !== input.loginSessionId || session.exited) {
+    if (!session || session.id !== input.loginSessionId || (session.exited && session.method === 'link')) {
       throw new AccountCoordinatorError('login_not_running', 'The account login session is not running.')
     }
-    if (!isLocalCallbackUrl(input.callbackUrl)) {
+    if (session.method === 'device' && (!session.exited || session.exitCode !== 0)) {
+      throw new AccountCoordinatorError('login_pending', '设备授权尚未完成。')
+    }
+    if (session.method === 'link' && !isLocalCallbackUrl(input.callbackUrl)) {
       throw new AccountCoordinatorError('invalid_callback_url', 'The callback URL must use localhost.', 400)
     }
+    if (session.completionStarted) throw new AccountCoordinatorError('login_verifying', '正在验证账号，请等待结果。')
+    session.completionStarted = true
     try {
       const before = await stat(`${session.home}/auth.json`).then((value) => value.mtimeMs).catch(() => null)
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), LOGIN_CALLBACK_TIMEOUT_MS)
-      try {
-        const response = await (this.dependencies.fetchImpl ?? fetch)(input.callbackUrl, { redirect: 'manual', signal: controller.signal })
-        if (response.status >= 400) throw new Error(`Login callback returned HTTP ${String(response.status)}.`)
-      } finally {
-        clearTimeout(timer)
+      if (session.method === 'link') {
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), LOGIN_CALLBACK_TIMEOUT_MS)
+        try {
+          const response = await (this.dependencies.fetchImpl ?? fetch)(input.callbackUrl, { redirect: 'manual', signal: controller.signal })
+          if (response.status >= 400) throw new Error(`Login callback returned HTTP ${String(response.status)}.`)
+        } finally {
+          clearTimeout(timer)
+        }
+        await this.waitForAuthFile(session.home, before)
       }
-      await this.waitForAuthFile(session.home, before)
       let raw = await readFile(`${session.home}/auth.json`, 'utf8')
       const parsed = parseAccountCredential(raw)
       if (session.intent === 'reauth' && session.targetStorageId !== parsed.identity.storageId) {
@@ -357,7 +414,35 @@ export class AccountAuthCoordinator {
   async cancelLogin(loginSessionId: string): Promise<void> {
     const session = this.loginSession
     if (!session || session.id !== loginSessionId) return
+    if (session.completionStarted) throw new AccountCoordinatorError('login_verifying', '正在验证账号，请等待结果。')
     await this.finishLoginSession(session)
+  }
+
+  private loginStatus(session: LoginSession): AccountLoginStatus {
+    return { loginSessionId: session.id, method: session.method, intent: session.intent, targetStorageId: session.targetStorageId,
+      loginUrl: session.loginUrl, userCode: session.userCode, expiresAt: new Date(session.expiresAt).toISOString(),
+      status: session.completionStarted ? 'verifying' : 'waiting', error: null }
+  }
+
+  async getLoginStatus(runtime?: AccountRuntime): Promise<AccountLoginStatus | null> {
+    const session = this.loginSession
+    if (!session) return this.lastLogin
+    if (session.exited && !session.completionStarted) {
+      if (session.exitCode !== 0 || session.method === 'link') {
+        this.lastLogin = { ...this.loginStatus(session), status: 'failed', userCode: null, loginUrl: null,
+          error: session.method === 'device' ? 'Device 授权未完成或已失效，请重试；若账号未开启设备码登录，可改用链接登录。' : '链接登录进程已结束，请重新开始登录。' }
+        await this.finishLoginSession(session)
+        return this.lastLogin
+      }
+      const snapshot = this.loginStatus(session)
+      session.completing = this.completeLogin({ loginSessionId: session.id, callbackUrl: '' }, runtime)
+      void session.completing.then(result => {
+        this.lastLogin = { ...snapshot, status: 'completed', result, userCode: null, loginUrl: null }
+      }, () => {
+        this.lastLogin = { ...snapshot, status: 'failed', error: '授权后账号验证失败，请重新登录。', userCode: null, loginUrl: null }
+      })
+    }
+    return this.loginStatus(session)
   }
 
   async refreshAccount(storageId: string): Promise<StoredAccountEntry> {
@@ -707,7 +792,8 @@ export class AccountAuthCoordinator {
   private async waitForLoginUrl(session: LoginSession): Promise<string> {
     const started = Date.now()
     while (Date.now() - started < LOGIN_URL_TIMEOUT_MS) {
-      if (session.loginUrl) return session.loginUrl
+      if (this.loginSession !== session) throw new AccountCoordinatorError('login_cancelled', '登录已取消。')
+      if (session.loginUrl && (session.method === 'link' || session.userCode)) return session.loginUrl
       if (session.exited) throw new AccountCoordinatorError('account_login_start_failed', 'Codex login exited before returning a login URL.', 500)
       await new Promise((resolve) => setTimeout(resolve, 100))
     }
@@ -726,10 +812,19 @@ export class AccountAuthCoordinator {
 
   private async finishLoginSession(session: LoginSession): Promise<void> {
     if (this.loginSession !== session) return
+    if (session.timer) clearTimeout(session.timer)
     this.loginSession = null
-    try { if (!session.exited) session.proc.kill('SIGTERM') } catch {}
-    await this.store.removePendingHome(session.id)
-    this.operation = null
+    try {
+      if (!session.exited) {
+        const exited = once(session.proc, 'exit').catch(() => undefined)
+        session.proc.kill('SIGTERM')
+        await this.withTimeout(exited, 1500).catch(async () => {
+          session.proc.kill('SIGKILL')
+          await this.withTimeout(exited, 1500)
+        })
+      }
+      await this.store.removePendingHome(session.id)
+    } finally { this.operation = null }
   }
 
   private async withTimeout<T>(promise: Promise<T>, timeoutMs: number, onTimeout?: () => void | Promise<void>): Promise<T> {

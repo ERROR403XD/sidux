@@ -216,6 +216,73 @@ describe('AccountAuthCoordinator', () => {
     expect(result.account.isActive).toBe(false)
   })
 
+  it('completes device authorization once from an isolated credential file and preserves active identity', async () => {
+    const authStore = await store()
+    const active = await authStore.upsertCredential(credential('account-a', 'user-a'), { activate: true })
+    let pendingHome = ''
+    let proc: ReturnType<ReturnType<typeof loginSpawn>>
+    const baseSpawn = loginSpawn(home => { pendingHome = home })
+    const fakeSpawn = vi.fn((command: string, args: readonly string[], options: { env?: NodeJS.ProcessEnv }) => {
+      expect(args).toContain('--device-auth')
+      proc = baseSpawn(command, args, options)
+      queueMicrotask(() => proc.stdout.write('\u001b[1mhttps://auth.openai.com/codex/device\u001b[0m\nABCD-EFGHJ\n'))
+      return proc
+    })
+    const coordinator = new AccountAuthCoordinator(authStore, { spawnImpl: fakeSpawn as unknown as typeof import('node:child_process').spawn, createProbe: probeFactory(inspection('user-b@example.test')) })
+    const started = await coordinator.startLogin({ intent: 'add', method: 'device' })
+    expect(started).toMatchObject({ method: 'device', userCode: 'ABCD-EFGHJ', loginUrl: 'https://auth.openai.com/codex/device' })
+    expect((await coordinator.getLoginStatus())?.status).toBe('waiting')
+    await writeFile(join(pendingHome, 'auth.json'), credential('account-b', 'user-b'))
+    proc!.emit('exit', 0)
+    await expect.poll(() => coordinator.isAccountOperationInProgress()).toBe(false)
+    expect((await authStore.readState()).accounts).toHaveLength(2)
+    await expect.poll(async () => (await coordinator.getLoginStatus())?.status).toBe('completed')
+    const result = (await coordinator.getLoginStatus())!.result!
+    expect(result.activeStorageId).toBe(active.account.storageId)
+    expect(result.poolSize).toBe(2)
+    expect((await coordinator.getLoginStatus())?.userCode).toBeNull()
+    expect(coordinator.isAccountOperationInProgress()).toBe(false)
+  })
+
+  it('cancels a device session before allowing another login and rejects stale completion', async () => {
+    const authStore = await store()
+    const baseSpawn = loginSpawn(() => undefined)
+    const fakeSpawn = (command: string, args: readonly string[], options: { env?: NodeJS.ProcessEnv }) => {
+      const proc = baseSpawn(command, args, options)
+      queueMicrotask(() => proc.stdout.write('https://auth.openai.com/codex/device\nABCD-EFGH\n'))
+      return proc
+    }
+    const coordinator = new AccountAuthCoordinator(authStore, { spawnImpl: fakeSpawn as unknown as typeof import('node:child_process').spawn })
+    const first = await coordinator.startLogin({ intent: 'add', method: 'device' })
+    await coordinator.cancelLogin(first.loginSessionId)
+    const next = await coordinator.startLogin({ intent: 'add' })
+    await expect(coordinator.completeLogin({ loginSessionId: first.loginSessionId, callbackUrl: '' })).rejects.toMatchObject({ code: 'login_not_running' })
+    expect(next.loginSessionId).not.toBe(first.loginSessionId)
+    await coordinator.cancelLogin(next.loginSessionId)
+  })
+
+  it('cleans up a rejected device authorization and a synchronous spawn failure', async () => {
+    const authStore = await store()
+    let proc: ReturnType<ReturnType<typeof loginSpawn>>
+    const baseSpawn = loginSpawn(() => undefined)
+    const fakeSpawn = vi.fn((command: string, args: readonly string[], options: { env?: NodeJS.ProcessEnv }) => {
+      proc = baseSpawn(command, args, options)
+      queueMicrotask(() => proc.stdout.write('https://auth.openai.com/codex/device\nABCD-EFGH\n'))
+      return proc
+    })
+    const coordinator = new AccountAuthCoordinator(authStore, { spawnImpl: fakeSpawn as unknown as typeof import('node:child_process').spawn })
+    fakeSpawn.mockImplementationOnce(() => { throw new Error('fixture spawn failed') })
+    await expect(coordinator.startLogin({ intent: 'add', method: 'device' })).rejects.toThrow('fixture spawn failed')
+    expect(coordinator.isAccountOperationInProgress()).toBe(false)
+    await coordinator.startLogin({ intent: 'add', method: 'device' })
+    proc!.emit('exit', 1)
+    await expect.poll(() => coordinator.isAccountOperationInProgress()).toBe(false)
+    expect(await coordinator.getLoginStatus()).toMatchObject({ status: 'failed', userCode: null, loginUrl: null })
+    expect((await authStore.readState()).accounts).toHaveLength(0)
+    const next = await coordinator.startLogin({ intent: 'add' })
+    await coordinator.cancelLogin(next.loginSessionId)
+  })
+
   it('re-authenticates an existing identity in place without duplicating the pool', async () => {
     const authStore = await store()
     const active = await authStore.upsertCredential(credential('account-a', 'user-a'), { activate: true })

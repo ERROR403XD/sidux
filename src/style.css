@@ -2364,3 +2364,10 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 }
 .thread-composer-fast:disabled { opacity: .5; cursor: default; }
 .thread-composer-fast:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 2px; }
+.account-login-fields { display: flex; flex-direction: column; gap: 12px; }
+.account-login-fields label { display: flex; flex-direction: column; gap: 6px; }
+.account-login-fields p { margin: 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.account-login-fields a { color: var(--ui-text); text-decoration: underline; }
+.account-login-fields .account-login-code { padding: 12px; text-align: center; font: 24px monospace; background: var(--ui-field); border-radius: var(--ui-radius-control); color: var(--ui-text); }
+.account-login-error { color: var(--ui-danger); }
+:root.dark .account-login-dialog { color: var(--ui-text); background: var(--ui-surface); }

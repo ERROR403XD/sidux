@@ -152,7 +152,7 @@
                   <button
                     class="sidebar-settings-account-refresh"
                     type="button"
-                    :disabled="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin || isCompletingCodexLogin"
+                    :disabled="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin"
                     @click="onRefreshAccounts"
                   >
                     {{ isRefreshingAccounts ? t('Reloading…') : t('Reload') }}
@@ -170,20 +170,11 @@
                     <button
                       class="sidebar-settings-account-login-button"
                       type="button"
-                      :disabled="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin || isCompletingCodexLogin"
+                      :disabled="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin"
                       @click="onStartCodexLogin('add')"
                     >
                       {{ isStartingCodexLogin ? t('Starting login…') : t('Add account') }}
                     </button>
-                    <a
-                      v-if="codexLoginUrl"
-                      class="sidebar-settings-account-login-link"
-                      :href="codexLoginUrl"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {{ t('Open login URL') }}
-                    </a>
                   </div>
                   <p class="sidebar-settings-account-help">
                     {{ t('Signing in adds or refreshes an account without switching the active quota source.') }}
@@ -1199,79 +1190,7 @@
       </div>
     </div>
   </div>
-  <div
-    v-if="isCodexLoginModalOpen"
-    class="codex-login-modal-backdrop"
-    role="presentation"
-    @click="onCancelCodexLoginModal"
-  >
-    <form
-      class="codex-login-modal"
-      role="dialog"
-      aria-modal="true"
-      :aria-label="t('Complete Codex login')"
-      @submit.prevent="onSubmitCodexLoginCallback"
-      @click.stop
-    >
-      <div class="codex-login-modal-header">
-        <h2 class="codex-login-modal-title">{{ loginIntent === 'reauth' ? t('Re-authenticate account') : t('Add account') }}</h2>
-        <button
-          class="codex-login-modal-close"
-          type="button"
-          :aria-label="t('Close')"
-          :disabled="isCompletingCodexLogin"
-          @click="onCancelCodexLoginModal"
-        >
-          ×
-        </button>
-      </div>
-      <p class="codex-login-modal-copy">
-        {{ t('Finish login in the browser, then paste the localhost callback URL here.') }}
-      </p>
-      <p v-if="loginTargetAccount" class="codex-login-modal-copy">
-        {{ t('Expected account: {account}', { account: loginTargetAccount.email || shortAccountId(loginTargetAccount.accountId) }) }}
-      </p>
-      <a
-        v-if="codexLoginUrl"
-        class="codex-login-modal-link"
-        :href="codexLoginUrl"
-        target="_blank"
-        rel="noreferrer"
-      >
-        {{ t('Open login URL') }}
-      </a>
-      <input
-        ref="codexLoginCallbackInputRef"
-        v-model="codexLoginCallbackUrl"
-        class="codex-login-modal-input"
-        type="url"
-        inputmode="url"
-        :placeholder="t('Paste localhost callback URL')"
-        :disabled="isCompletingCodexLogin"
-      >
-      <div v-if="accountActionError" class="codex-login-modal-error visible-error-with-feedback">
-        <span>{{ accountActionError }}</span>
-        <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, accountActionError)">{{ t('Send feedback') }}</a>
-      </div>
-      <div class="codex-login-modal-actions">
-        <button
-          class="codex-login-modal-cancel"
-          type="button"
-          :disabled="isCompletingCodexLogin"
-          @click="onCancelCodexLoginModal"
-        >
-          {{ t('Cancel') }}
-        </button>
-        <button
-          class="codex-login-modal-submit"
-          type="submit"
-          :disabled="isCompletingCodexLogin || codexLoginCallbackUrl.trim().length === 0"
-        >
-          {{ isCompletingCodexLogin ? t('Completing…') : t('Complete') }}
-        </button>
-      </div>
-    </form>
-  </div>
+  <AccountLoginDialog :open="isCodexLoginModalOpen" :intent="loginIntent" :target-storage-id="loginTargetStorageId" :target-label="loginTargetAccount?.email || ''" @close="isCodexLoginModalOpen = false" @completed="onAccountLoginCompleted" @resume="resumeAccountLogin" />
   <AppDialog :open="Boolean(replaceQueueDraftId)" title="替换当前草稿？" size="compact" @close="replaceQueueDraftId = ''">
     <p>用这条队列消息替换输入框中的草稿。</p>
     <template #footer>
@@ -1283,6 +1202,8 @@
 
 <script setup lang="ts">
 import AppDialog from './components/common/AppDialog.vue'
+import AccountLoginDialog from './components/accounts/AccountLoginDialog.vue'
+import type { AccountLoginCompleteResult } from './api/codexGateway'
 import AppButton from './components/common/AppButton.vue'
 import DeliveryOutbox from './components/content/DeliveryOutbox.vue'
 import type { PendingWebDelivery } from './api/deliveryOutbox'
@@ -1328,7 +1249,6 @@ import {
   startThread,
   startThreadReview,
   checkoutGitBranch,
-  cancelCodexLogin,
   cloneGithubRepository,
   configureTelegramBot,
   createPermanentWorktree,
@@ -1342,7 +1262,6 @@ import {
   getReviewSummary,
   getWorktreeBranchOptions,
   getAccounts,
-  completeCodexLogin,
   createLocalDirectory,
   getFirstLaunchPluginsCardPreference,
   getHomeDirectory,
@@ -1360,7 +1279,6 @@ import {
   refreshAccountsFromAuth,
   refreshAccountQuota,
   resetGitBranchToCommit,
-  startCodexLogin,
   searchThreads,
   switchAccount,
 } from './api/codexGateway'
@@ -1826,15 +1744,10 @@ watch(accounts, (next, previous) => {
 })
 const isRefreshingAccounts = ref(false)
 const isSwitchingAccounts = ref(false)
-const isStartingCodexLogin = ref(false)
-const isCompletingCodexLogin = ref(false)
+const isStartingCodexLogin = computed(() => isCodexLoginModalOpen.value)
 const isCodexLoginModalOpen = ref(false)
-const codexLoginUrl = ref('')
-const codexLoginSessionId = ref('')
-const codexLoginCallbackUrl = ref('')
 const loginIntent = ref<'add' | 'reauth'>('add')
 const loginTargetStorageId = ref('')
-const codexLoginCallbackInputRef = ref<HTMLInputElement | null>(null)
 const refreshingAccountId = ref('')
 const removingAccountId = ref('')
 const confirmingRemoveAccountId = ref('')
@@ -2759,7 +2672,7 @@ function isAccountUnavailable(account: UiAccountEntry): boolean {
 }
 
 function isAccountActionDisabled(account: UiAccountEntry): boolean {
-  return isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || isCompletingCodexLogin.value || refreshingAccountId.value.length > 0 || removingAccountId.value.length > 0
+  return isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || refreshingAccountId.value.length > 0 || removingAccountId.value.length > 0
     || (account.isActive && removingAccountId.value !== account.storageId && isAccountSwitchBlocked.value)
 }
 
@@ -2898,7 +2811,7 @@ async function loadAccountsState(options: { silent?: boolean } = {}): Promise<vo
 }
 
 async function onRefreshAccounts(): Promise<void> {
-  if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || isCompletingCodexLogin.value) return
+  if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value) return
   accountActionError.value = ''
   accountActionNotice.value = ''
   hoveredAccountId.value = ''
@@ -2920,7 +2833,7 @@ async function onRefreshAccounts(): Promise<void> {
 }
 
 async function onRefreshAccountQuota(storageId: string): Promise<void> {
-  if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || isCompletingCodexLogin.value || refreshingAccountId.value) return
+  if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || refreshingAccountId.value) return
   accountActionError.value = ''
   accountActionNotice.value = ''
   refreshingAccountId.value = storageId
@@ -2935,7 +2848,7 @@ async function onRefreshAccountQuota(storageId: string): Promise<void> {
 }
 
 async function onSwitchAccount(storageId: string): Promise<void> {
-  if (isSwitchingAccounts.value || isRefreshingAccounts.value || isStartingCodexLogin.value || isCompletingCodexLogin.value) return
+  if (isSwitchingAccounts.value || isRefreshingAccounts.value || isStartingCodexLogin.value) return
   if (isAccountSwitchBlocked.value) {
     accountActionError.value = t('Finish the current turn and pending requests before switching accounts.')
     return
@@ -2967,71 +2880,34 @@ async function onSwitchAccount(storageId: string): Promise<void> {
   }
 }
 
-async function onStartCodexLogin(intent: 'add' | 'reauth', targetStorageId = ''): Promise<void> {
-  if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || isCompletingCodexLogin.value) return
+function onStartCodexLogin(intent: 'add' | 'reauth', targetStorageId = ''): void {
+  if (isRefreshingAccounts.value || isSwitchingAccounts.value) return
   accountActionError.value = ''
   accountActionNotice.value = ''
-  codexLoginCallbackUrl.value = ''
   loginIntent.value = intent
   loginTargetStorageId.value = targetStorageId
-  isStartingCodexLogin.value = true
-  try {
-    const started = await startCodexLogin(intent, targetStorageId || undefined)
-    codexLoginUrl.value = started.loginUrl
-    codexLoginSessionId.value = started.loginSessionId
-    isCodexLoginModalOpen.value = true
-    window.open(started.loginUrl, '_blank', 'noopener,noreferrer')
-    await nextTick()
-    codexLoginCallbackInputRef.value?.focus()
-  } catch (error) {
-    accountActionError.value = error instanceof Error ? error.message : t('Failed to start Codex login')
-  } finally {
-    isStartingCodexLogin.value = false
-  }
+  isCodexLoginModalOpen.value = true
 }
 
-function onCancelCodexLoginModal(): void {
-  if (isCompletingCodexLogin.value) return
+function resumeAccountLogin(intent: 'add' | 'reauth', targetStorageId: string): void {
+  loginIntent.value = intent
+  loginTargetStorageId.value = targetStorageId
+  isCodexLoginModalOpen.value = true
+}
+
+function onAccountLoginCompleted(result: AccountLoginCompleteResult): void {
+  accounts.value = result.accounts
   isCodexLoginModalOpen.value = false
-  codexLoginCallbackUrl.value = ''
-  const sessionId = codexLoginSessionId.value
-  codexLoginSessionId.value = ''
   loginTargetStorageId.value = ''
-  if (sessionId) void cancelCodexLogin(sessionId)
-}
-
-async function onSubmitCodexLoginCallback(): Promise<void> {
-  const callbackUrl = codexLoginCallbackUrl.value.trim()
-  if (!callbackUrl) return
-  await completeCodexLoginFromCallback(callbackUrl)
-}
-
-async function completeCodexLoginFromCallback(callbackUrl: string): Promise<void> {
-  if (isCompletingCodexLogin.value || callbackUrl.length === 0) return
-  accountActionError.value = ''
-  isCompletingCodexLogin.value = true
-  try {
-    const result = await completeCodexLogin(codexLoginSessionId.value, callbackUrl)
-    accounts.value = result.accounts
-    codexLoginUrl.value = ''
-    codexLoginSessionId.value = ''
-    codexLoginCallbackUrl.value = ''
-    isCodexLoginModalOpen.value = false
-    stopPolling()
-    startPolling()
-    loginTargetStorageId.value = ''
-    accountActionNotice.value = result.outcome === 'added'
-      ? t('Account added. The active quota source did not change.')
-      : t('Account sign-in refreshed without adding a duplicate.')
-  } catch (error) {
-    accountActionError.value = error instanceof Error ? error.message : t('Failed to complete Codex login')
-  } finally {
-    isCompletingCodexLogin.value = false
-  }
+  stopPolling()
+  startPolling()
+  accountActionNotice.value = result.outcome === 'added'
+    ? t('Account added. The active quota source did not change.')
+    : t('Account sign-in refreshed without adding a duplicate.')
 }
 
 async function onRemoveAccount(storageId: string): Promise<void> {
-  if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || isCompletingCodexLogin.value || removingAccountId.value.length > 0) return
+  if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || removingAccountId.value.length > 0) return
   const targetAccount = accounts.value.find((account) => account.storageId === storageId) ?? null
   if (!targetAccount) return
   if (confirmingRemoveAccountId.value !== storageId) {

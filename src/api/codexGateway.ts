@@ -407,7 +407,18 @@ export type AccountsListResult = {
   operation?: { kind: string; storageId: string | null; startedAt: number } | null
 }
 
-export type AccountLoginStartResult = { loginSessionId: string; loginUrl: string }
+export type AccountLoginStartResult = { loginSessionId: string; loginUrl: string; method?: 'link' | 'device'; userCode?: string | null; expiresAt?: string }
+export type AccountLoginStatus = AccountLoginStartResult & {
+  intent: 'add' | 'reauth'; targetStorageId: string | null
+  status: 'waiting' | 'verifying' | 'completed' | 'failed' | 'expired'
+  error: string | null; result?: AccountLoginCompleteResult
+}
+export async function getCodexLoginStatus(): Promise<AccountLoginStatus | null> {
+  const response = await fetch('/codex-api/accounts/login/status', { cache: 'no-store' })
+  const payload = await response.json()
+  if (!response.ok) throw new Error(getErrorMessageFromPayload(payload, '读取登录状态失败。'))
+  return payload.data ?? null
+}
 export type AccountLoginCompleteResult = AccountsListResult & {
   outcome: 'added' | 'reauthenticated'
   account: UiAccountEntry
@@ -1498,11 +1509,11 @@ export async function refreshAccountsFromAuth(): Promise<AccountsListResult> {
   return normalizeAccountsListResult(envelope?.data)
 }
 
-export async function startCodexLogin(intent: 'add' | 'reauth' = 'add', targetStorageId?: string): Promise<AccountLoginStartResult> {
+export async function startCodexLogin(intent: 'add' | 'reauth' = 'add', targetStorageId?: string, method?: 'link' | 'device'): Promise<AccountLoginStartResult> {
   const response = await fetch('/codex-api/accounts/login/start', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ intent, ...(targetStorageId ? { targetStorageId } : {}) }),
+    body: JSON.stringify({ intent, ...(targetStorageId ? { targetStorageId } : {}), ...(method ? { method } : {}) }),
   })
   const payload = (await response.json()) as unknown
   if (!response.ok) {
@@ -1515,7 +1526,7 @@ export async function startCodexLogin(intent: 'add' | 'reauth' = 'add', targetSt
   if (!loginUrl || !loginSessionId) {
     throw new Error('Failed to start Codex login')
   }
-  return { loginUrl, loginSessionId }
+  return { loginUrl, loginSessionId, ...(data?.method ? { method: data.method as 'link' | 'device', userCode: readString(data.userCode), expiresAt: readString(data.expiresAt) || undefined } : {}) }
 }
 
 export async function completeCodexLogin(loginSessionId: string, callbackUrl: string): Promise<AccountLoginCompleteResult> {
