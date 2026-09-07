@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { combineHistoryAndLive, historyMessageKey, sameMessageIdentity } from './messageIdentity'
+import { combineHistoryAndLive, historyMessageKey, sameMessageIdentity, messageRenderKey } from './messageIdentity'
 import type { UiMessage } from './types/codex'
 const message = (id: string, turnId = 't1', patch: Partial<UiMessage> = {}): UiMessage => ({ id, turnId, role: 'assistant', text: 'same text', messageType: 'agentMessage', ...patch })
 describe('message identity across refresh and live replay', () => {
@@ -19,4 +19,9 @@ describe('message identity across refresh and live replay', () => {
     expect(combineHistoryAndLive([message('a')], [live])[0].text).toBe(live.text)
     expect(combineHistoryAndLive([], [live, live])).toHaveLength(1)
   })
+})
+
+it('scopes rendering and interaction identity to both thread and turn', () => {
+  expect(messageRenderKey(message('item-0', 't1'), 'a')).not.toBe(messageRenderKey(message('item-0', 't2'), 'a'))
+  expect(messageRenderKey(message('item-0', 't1'), 'a')).not.toBe(messageRenderKey(message('item-0', 't1'), 'b'))
 })

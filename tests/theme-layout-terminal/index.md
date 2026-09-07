@@ -33,3 +33,7 @@ Return to the [manual test index](../../tests.md).
 - [Hooks 观察与 Codex 后台终端](hooks-and-background-processes.md)：只读 Hooks、观察恢复、单项停止与输出。
 
 - [全局显示时区、复制与输入恢复](display-timezone-and-copy.md)：显示偏好、复制失败与焦点、草稿和输入法。
+
+- [0.2.11 消息与侧栏状态一致性](chat-state-0211.md)
+
+- [0.2.11 设置与账号 UI](settings-0211.md)

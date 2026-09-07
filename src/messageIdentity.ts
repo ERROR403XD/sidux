@@ -31,3 +31,8 @@ export function combineHistoryAndLive(history: UiMessage[], live: UiMessage[]): 
   }
   return result
 }
+
+/** Native item IDs may be reconstructed and reused by a different turn. */
+export function messageRenderKey(message: UiMessage, threadId: string): string {
+  return JSON.stringify([threadId, message.turnId || '', message.id])
+}

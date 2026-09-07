@@ -21,9 +21,9 @@
         </button>
         <p v-if="historyLoadError" class="history-load-error" role="alert">{{ historyLoadError }}</p>
       </li>
-      <template v-for="message in visibleMessages" :key="message.id">
+      <template v-for="message in visibleMessages" :key="renderKey(message)">
       <li
-        v-if="!hiddenGroupedCommandIds.has(message.id) && !hiddenFileChangeMessageIds.has(message.id)"
+        v-if="!hiddenGroupedCommandIds.has(renderKey(message)) && !hiddenFileChangeMessageIds.has(renderKey(message))"
         class="conversation-item"
         :data-role="message.role"
         :data-message-type="message.messageType || ''"
@@ -49,7 +49,7 @@
               <div class="cmd-group-inner">
                 <div
                   v-for="cmd in getCommandBlockForLatest(message)"
-                  :key="`grouped-cmd-${cmd.id}`"
+                  :key="`grouped-cmd-${renderKey(cmd)}`"
                   class="worked-cmd-item"
                 >
                   <button
@@ -138,7 +138,7 @@
                   <span class="file-change-summary-status">
                     <span
                       v-for="part in fileChangeSummaryStatusParts(readStandaloneFileChangeSummary(message))"
-                      :key="`summary-status:${message.id}:${part.tone}:${part.label}`"
+                      :key="`summary-status:${renderKey(message)}:${part.tone}:${part.label}`"
                       class="file-change-signed-count"
                       :data-tone="part.tone"
                     >
@@ -151,7 +151,7 @@
                     <ul class="file-change-list">
                       <li
                         v-for="change in readStandaloneFileChangeSummary(message)?.changes ?? []"
-                        :key="`file-change:${message.id}:${change.path}:${change.movedToPath || ''}`"
+                        :key="`file-change:${renderKey(message)}:${change.path}:${change.movedToPath || ''}`"
                         class="file-change-item"
                       >
                         <span class="file-change-badge" :data-operation="fileChangeOperationTone(change)">
@@ -178,7 +178,7 @@
                         <span v-if="change.addedLineCount > 0 || change.removedLineCount > 0" class="file-change-delta">
                           <span
                             v-for="part in fileChangeDeltaParts(change)"
-                            :key="`change-delta:${message.id}:${change.path}:${part.tone}:${part.label}`"
+                            :key="`change-delta:${renderKey(message)}:${change.path}:${part.tone}:${part.label}`"
                             class="file-change-signed-count"
                             :data-tone="part.tone"
                           >
@@ -236,7 +236,7 @@
               </ul>
 
               <div v-if="message.fileAttachments && message.fileAttachments.length > 0" class="message-file-attachments">
-                <span v-for="att in message.fileAttachments" :key="`${message.id}:${att.path}`" class="message-file-chip">
+                <span v-for="att in message.fileAttachments" :key="`${renderKey(message)}:${att.path}`" class="message-file-chip">
                   <span class="message-file-chip-icon">📄</span>
                   <a
                     class="message-file-link message-file-chip-name"
@@ -253,7 +253,7 @@
               <div v-if="message.skills && message.skills.length > 0" class="message-skill-attachments">
                 <a
                   v-for="skill in message.skills"
-                  :key="`${message.id}:${skill.path}`"
+                  :key="`${renderKey(message)}:${skill.path}`"
                   class="message-skill-chip"
                   :href="toBrowseUrl(skill.path)"
                   :title="skill.path"
@@ -265,7 +265,7 @@
 
               <AsyncQuestionCard
                 v-if="message.questions?.length && answerQuestions"
-                :key="`${activeThreadId}:${message.id}`"
+                :key="`${activeThreadId}:${renderKey(message)}`"
                 :message="message"
                 :thread-id="activeThreadId"
                 :answered="answeredQuestionRefs.has(questionRefKey({ itemId: message.id, turnId: message.turnId ?? '', questionOrdinal: message.questionOrdinal }))"
@@ -294,7 +294,7 @@
                   <div v-if="isWorkedExpanded(message)" class="worked-details">
                     <div
                       v-for="cmd in getCommandsForWorked(messages, messages.indexOf(message))"
-                      :key="`worked-cmd-${cmd.id}`"
+                      :key="`worked-cmd-${renderKey(cmd)}`"
                       class="worked-cmd-item"
                     >
                       <button
@@ -341,7 +341,7 @@
                   <ol v-if="readPlanSteps(message).length > 0" class="plan-step-list">
                     <li
                       v-for="(step, stepIndex) in readPlanSteps(message)"
-                      :key="`${message.id}:plan-step:${stepIndex}`"
+                      :key="`${renderKey(message)}:plan-step:${stepIndex}`"
                       class="plan-step-item"
                       :data-status="step.status"
                     >
@@ -363,7 +363,7 @@
                 <div
                   v-else
                   class="message-text-flow"
-                  v-memo="[message.id, message.text, props.cwd, highlightCacheVersion, markdownImageFailureVersion]"
+                  v-memo="[renderKey(message), message.text, props.cwd, highlightCacheVersion, markdownImageFailureVersion]"
                 >
                   <template v-for="(block, blockIndex) in getMessageBlocks(message)" :key="`block-${blockIndex}`">
                     <p v-if="block.kind === 'paragraph'" class="message-text">
@@ -591,14 +591,14 @@
                         <div class="message-code-language">{{ block.language }}</div>
                         <AppButton
                           class="message-code-copy"
-                          :data-copied="copiedCodeBlockKey === `${message.id}:${blockIndex}`"
-                          @click="copyCodeBlock(`${message.id}:${blockIndex}`, block.value)"
-                        >{{ copyFailureKey === `code:${message.id}:${blockIndex}` ? t('Copy failed') : copiedCodeBlockKey === `${message.id}:${blockIndex}` ? t('Copied') : t('Copy code') }}</AppButton>
+                          :data-copied="copiedCodeBlockKey === `${renderKey(message)}:${blockIndex}`"
+                          @click="copyCodeBlock(`${renderKey(message)}:${blockIndex}`, block.value)"
+                        >{{ copyFailureKey === `code:${renderKey(message)}:${blockIndex}` ? t('Copy failed') : copiedCodeBlockKey === `${renderKey(message)}:${blockIndex}` ? t('Copied') : t('Copy code') }}</AppButton>
                       </div>
                       <pre class="message-code-pre"><code class="hljs" v-html="renderCachedHighlightedCodeAsHtml(block.language, block.value)"></code></pre>
                     </div>
                     <hr v-else-if="block.kind === 'thematicBreak'" class="message-divider" />
-                    <p v-else-if="isMarkdownImageFailed(message.id, blockIndex)" class="message-text">{{ block.markdown }}</p>
+                    <p v-else-if="isMarkdownImageFailed(renderKey(message), blockIndex)" class="message-text">{{ block.markdown }}</p>
                     <button
                       v-else
                       class="message-image-button"
@@ -610,7 +610,7 @@
                         :src="block.url"
                         :alt="block.alt || 'Embedded message image'"
                         loading="lazy"
-                        @error="onMarkdownImageError(message.id, blockIndex)"
+                        @error="onMarkdownImageError(renderKey(message), blockIndex)"
                       />
                     </button>
                   </template>
@@ -639,7 +639,7 @@
                   <span class="file-change-summary-status">
                     <span
                       v-for="part in fileChangeSummaryStatusParts(readAnchoredFileChangeSummary(message))"
-                      :key="`summary-status:${message.id}:${part.tone}:${part.label}`"
+                      :key="`summary-status:${renderKey(message)}:${part.tone}:${part.label}`"
                       class="file-change-signed-count"
                       :data-tone="part.tone"
                     >
@@ -652,7 +652,7 @@
                     <ul class="file-change-list">
                       <li
                         v-for="change in readAnchoredFileChangeSummary(message)?.changes ?? []"
-                        :key="`file-change:inline:${message.id}:${change.path}:${change.movedToPath || ''}`"
+                        :key="`file-change:inline:${renderKey(message)}:${change.path}:${change.movedToPath || ''}`"
                         class="file-change-item"
                       >
                         <span class="file-change-badge" :data-operation="fileChangeOperationTone(change)">
@@ -679,7 +679,7 @@
                         <span v-if="change.addedLineCount > 0 || change.removedLineCount > 0" class="file-change-delta">
                           <span
                             v-for="part in fileChangeDeltaParts(change)"
-                            :key="`change-delta:inline:${message.id}:${change.path}:${part.tone}:${part.label}`"
+                            :key="`change-delta:inline:${renderKey(message)}:${change.path}:${part.tone}:${part.label}`"
                             class="file-change-signed-count"
                             :data-tone="part.tone"
                           >
@@ -722,7 +722,7 @@
                   class="message-edit-button"
                   aria-label="Edit this message"
                   title="Edit this message"
-                  @click="editMessage(message.id)"
+                  @click="editMessage(renderKey(message))"
                 >
                   <IconTablerFilePencil class="icon-svg message-edit-icon" />
                   <span class="message-edit-label">Edit message</span>
@@ -733,7 +733,7 @@
                   class="message-fork-button"
                   aria-label="Fork thread from this response"
                   title="Fork thread from this response"
-                  @click="forkResponse(message.id)"
+                  @click="forkResponse(renderKey(message))"
                 >
                   <IconTablerGitFork class="icon-svg message-fork-icon" />
                   <span class="message-fork-label">Fork</span>
@@ -742,13 +742,13 @@
                   v-if="showCopyResponseButton(message)"
                   type="button"
                   class="message-copy-button"
-                  :data-copied="copiedResponseAnchorId === message.id"
-                  :aria-label="copiedResponseAnchorId === message.id ? 'Response copied' : 'Copy response'"
-                  :title="copiedResponseAnchorId === message.id ? 'Response copied' : 'Copy response'"
-                  @click="copyResponse(message.id)"
+                  :data-copied="copiedResponseAnchorId === renderKey(message)"
+                  :aria-label="copiedResponseAnchorId === renderKey(message) ? 'Response copied' : 'Copy response'"
+                  :title="copiedResponseAnchorId === renderKey(message) ? 'Response copied' : 'Copy response'"
+                  @click="copyResponse(renderKey(message))"
                 >
                   <IconTablerCopy class="icon-svg message-copy-icon" />
-                  <span class="message-copy-label">{{ copyFailureKey === `response:${message.id}` ? t('Copy failed') : copiedResponseAnchorId === message.id ? t('Copied') : t('Copy') }}</span>
+                  <span class="message-copy-label">{{ copyFailureKey === `response:${renderKey(message)}` ? t('Copy failed') : copiedResponseAnchorId === renderKey(message) ? t('Copied') : t('Copy') }}</span>
                 </button>
               </div>
             </article>
@@ -941,6 +941,7 @@
 </template>
 
 <script setup lang="ts">
+import { messageRenderKey } from '../../messageIdentity'
 import SubtaskEventCard from './SubtaskEventCard.vue'
 import AsyncQuestionCard from './AsyncQuestionCard.vue'
 import { questionRefKey, type AsyncQuestionReply } from '../../userQuestions'
@@ -1099,7 +1100,7 @@ const activeCommandMessageId = computed(() => {
   for (let index = props.messages.length - 1; index >= 0; index -= 1) {
     const message = props.messages[index]
     if (message.messageType === 'commandExecution' && message.commandExecution?.status === 'inProgress') {
-      return message.id
+      return renderKey(message)
     }
   }
   return ''
@@ -1134,7 +1135,7 @@ const groupedCommandsByLatestId = computed<Record<string, UiMessage[]>>(() => {
 
     if (block.length <= 1) continue
     const latest = block[block.length - 1]
-    next[latest.id] = block.slice(0, -1)
+    next[renderKey(latest)] = block.slice(0, -1)
   }
   return next
 })
@@ -1143,7 +1144,7 @@ const hiddenGroupedCommandIds = computed(() => {
   const next = new Set<string>()
   for (const commands of Object.values(groupedCommandsByLatestId.value)) {
     for (const command of commands) {
-      next.add(command.id)
+      next.add(renderKey(command))
     }
   }
   return next
@@ -1169,13 +1170,13 @@ function planStepStatusIcon(status: UiPlanStep['status']): string {
 }
 
 function isCommandAutoExpanded(message: UiMessage): boolean {
-  return !hasLiveAssistantText.value && message.id === activeCommandMessageId.value
+  return !hasLiveAssistantText.value && renderKey(message) === activeCommandMessageId.value
 }
 
 function isCommandExpanded(message: UiMessage): boolean {
   if (!isCommandMessage(message)) return false
-  return expandedCommandIds.value.has(message.id)
-    || (!collapsedAutoCommandIds.value.has(message.id) && isCommandAutoExpanded(message))
+  return expandedCommandIds.value.has(renderKey(message))
+    || (!collapsedAutoCommandIds.value.has(renderKey(message)) && isCommandAutoExpanded(message))
 }
 
 function isCommandCompact(message: UiMessage): boolean {
@@ -1192,16 +1193,16 @@ function toggleCommandExpand(message: UiMessage): void {
   const nextExpanded = new Set(expandedCommandIds.value)
   const nextCollapsedAuto = new Set(collapsedAutoCommandIds.value)
   const isAutoExpanded = isCommandAutoExpanded(message)
-  const isManuallyExpanded = nextExpanded.has(message.id)
+  const isManuallyExpanded = nextExpanded.has(renderKey(message))
 
   if (isManuallyExpanded) {
-    nextExpanded.delete(message.id)
-    if (isAutoExpanded) nextCollapsedAuto.add(message.id)
-  } else if (isAutoExpanded && !nextCollapsedAuto.has(message.id)) {
-    nextCollapsedAuto.add(message.id)
+    nextExpanded.delete(renderKey(message))
+    if (isAutoExpanded) nextCollapsedAuto.add(renderKey(message))
+  } else if (isAutoExpanded && !nextCollapsedAuto.has(renderKey(message))) {
+    nextCollapsedAuto.add(renderKey(message))
   } else {
-    nextExpanded.add(message.id)
-    nextCollapsedAuto.delete(message.id)
+    nextExpanded.add(renderKey(message))
+    nextCollapsedAuto.delete(renderKey(message))
   }
 
   expandedCommandIds.value = nextExpanded
@@ -1209,7 +1210,7 @@ function toggleCommandExpand(message: UiMessage): void {
 }
 
 function getGroupedCommandsForLatest(message: UiMessage): UiMessage[] {
-  return groupedCommandsByLatestId.value[message.id] ?? []
+  return groupedCommandsByLatestId.value[renderKey(message)] ?? []
 }
 
 function getCommandBlockForLatest(message: UiMessage): UiMessage[] {
@@ -1221,13 +1222,13 @@ function toggleCommandGroup(message: UiMessage): void {
   const groupedCommands = getGroupedCommandsForLatest(message)
   if (groupedCommands.length === 0) return
   const next = new Set(expandedCommandGroupIds.value)
-  if (next.has(message.id)) next.delete(message.id)
-  else next.add(message.id)
+  if (next.has(renderKey(message))) next.delete(renderKey(message))
+  else next.add(renderKey(message))
   expandedCommandGroupIds.value = next
 }
 
 function isCommandGroupExpanded(message: UiMessage): boolean {
-  return expandedCommandGroupIds.value.has(message.id)
+  return expandedCommandGroupIds.value.has(renderKey(message))
 }
 
 function commandGroupSummaryLabel(message: UiMessage): string {
@@ -1244,24 +1245,24 @@ function commandGroupSummaryStatus(message: UiMessage): string {
 
 function toggleWorkedExpand(message: UiMessage): void {
   const next = new Set(expandedWorkedIds.value)
-  if (next.has(message.id)) next.delete(message.id)
-  else next.add(message.id)
+  if (next.has(renderKey(message))) next.delete(renderKey(message))
+  else next.add(renderKey(message))
   expandedWorkedIds.value = next
 }
 
 function isWorkedExpanded(message: UiMessage): boolean {
-  return expandedWorkedIds.value.has(message.id)
+  return expandedWorkedIds.value.has(renderKey(message))
 }
 
 function toggleFileChangeSummary(message: UiMessage): void {
   const next = new Set(expandedFileChangeSummaryIds.value)
-  if (next.has(message.id)) next.delete(message.id)
-  else next.add(message.id)
+  if (next.has(renderKey(message))) next.delete(renderKey(message))
+  else next.add(renderKey(message))
   expandedFileChangeSummaryIds.value = next
 }
 
 function isFileChangeSummaryExpanded(message: UiMessage): boolean {
-  return expandedFileChangeSummaryIds.value.has(message.id)
+  return expandedFileChangeSummaryIds.value.has(renderKey(message))
 }
 
 function fileChangeKey(change: UiFileChange): string {
@@ -1822,16 +1823,16 @@ const copyableResponseContentByAnchorId = computed<Record<string, string>>(() =>
 
     const responseKey = typeof message.turnIndex === 'number'
       ? `turn:${message.turnIndex}`
-      : `message:${message.id}`
+      : `message:${renderKey(message)}`
     const existing = groupedResponses.get(responseKey)
     if (existing) {
-      existing.anchorMessageId = message.id
+      existing.anchorMessageId = renderKey(message)
       existing.parts.push(content)
       continue
     }
 
     groupedResponses.set(responseKey, {
-      anchorMessageId: message.id,
+      anchorMessageId: renderKey(message),
       parts: [content],
     })
   }
@@ -1856,17 +1857,17 @@ const copyableResponseContentByAnchorId = computed<Record<string, string>>(() =>
 const forkableTurnIdByAnchorId = computed<Record<string, string>>(() => {
   const anchors = new Map<string, string>()
   for (const message of props.messages) {
-    if (isCopyableAssistantMessage(message) && message.turnId) anchors.set(message.turnId, message.id)
+    if (isCopyableAssistantMessage(message) && message.turnId) anchors.set(message.turnId, renderKey(message))
   }
   return Object.fromEntries([...anchors].map(([turnId, anchorId]) => [anchorId, turnId]))
 })
 
 function showCopyResponseButton(message: UiMessage): boolean {
-  return typeof copyableResponseContentByAnchorId.value[message.id] === 'string'
+  return typeof copyableResponseContentByAnchorId.value[renderKey(message)] === 'string'
 }
 
 function showForkResponseButton(message: UiMessage): boolean {
-  return typeof forkableTurnIdByAnchorId.value[message.id] === 'string'
+  return typeof forkableTurnIdByAnchorId.value[renderKey(message)] === 'string'
 }
 
 function mergeFileChangeDiff(first: string, second: string): string {
@@ -1917,9 +1918,9 @@ const anchoredFileChangeSummaryByAnchorId = computed<Record<string, TurnFileChan
 
   for (const message of props.messages) {
     if (isCopyableAssistantMessage(message) && typeof message.turnIndex === 'number') {
-      assistantAnchorIdByTurnKey.set(`turn:${message.turnIndex}`, message.id)
+      assistantAnchorIdByTurnKey.set(`turn:${message.turnIndex}`, renderKey(message))
       if (Array.isArray(message.fileChanges) && message.fileChanges.length > 0) {
-        assistantSummaryByAnchorId.set(message.id, {
+        assistantSummaryByAnchorId.set(renderKey(message), {
           changes: aggregateFileChanges(message.fileChanges),
           sourceMessageIds: [],
           source: 'assistant',
@@ -1929,7 +1930,7 @@ const anchoredFileChangeSummaryByAnchorId = computed<Record<string, TurnFileChan
     }
 
     if (!isFileChangeMessage(message)) continue
-    const turnKey = typeof message.turnIndex === 'number' ? `turn:${message.turnIndex}` : `message:${message.id}`
+    const turnKey = typeof message.turnIndex === 'number' ? `turn:${message.turnIndex}` : `message:${renderKey(message)}`
     const current = fileChangeMessagesByTurnKey.get(turnKey)
     if (current) current.push(message)
     else fileChangeMessagesByTurnKey.set(turnKey, [message])
@@ -1942,7 +1943,7 @@ const anchoredFileChangeSummaryByAnchorId = computed<Record<string, TurnFileChan
     const assistantTurnId = assistantSummaryByAnchorId.get(anchorId)?.turnId ?? ''
     summaries[anchorId] = {
       changes: aggregateFileChanges(messages.flatMap((message) => message.fileChanges ?? [])),
-      sourceMessageIds: messages.map((message) => message.id),
+      sourceMessageIds: messages.map((message) => renderKey(message)),
       source: 'metadata',
       turnId: messages.find((message) => typeof message.turnId === 'string' && message.turnId.length > 0)?.turnId ?? assistantTurnId,
     }
@@ -1963,11 +1964,11 @@ const standaloneFileChangeSummaryByMessageId = computed<Record<string, TurnFileC
 
   for (const message of props.messages) {
     if (isCopyableAssistantMessage(message) && typeof message.turnIndex === 'number') {
-      assistantAnchorIdByTurnKey.set(`turn:${message.turnIndex}`, message.id)
+      assistantAnchorIdByTurnKey.set(`turn:${message.turnIndex}`, renderKey(message))
     }
 
     if (!isFileChangeMessage(message)) continue
-    const turnKey = typeof message.turnIndex === 'number' ? `turn:${message.turnIndex}` : `message:${message.id}`
+    const turnKey = typeof message.turnIndex === 'number' ? `turn:${message.turnIndex}` : `message:${renderKey(message)}`
     const current = fileChangeMessagesByTurnKey.get(turnKey)
     if (current) current.push(message)
     else fileChangeMessagesByTurnKey.set(turnKey, [message])
@@ -1980,7 +1981,7 @@ const standaloneFileChangeSummaryByMessageId = computed<Record<string, TurnFileC
     if (!visibleMessage) continue
     summaries[visibleMessage.id] = {
       changes: aggregateFileChanges(messages.flatMap((message) => message.fileChanges ?? [])),
-      sourceMessageIds: messages.map((message) => message.id),
+      sourceMessageIds: messages.map((message) => renderKey(message)),
       source: 'metadata',
       turnId: visibleMessage.turnId ?? messages.find((message) => typeof message.turnId === 'string' && message.turnId.length > 0)?.turnId ?? '',
     }
@@ -2007,11 +2008,11 @@ const hiddenFileChangeMessageIds = computed(() => {
 })
 
 function readAnchoredFileChangeSummary(message: UiMessage): TurnFileChangeSummary | null {
-  return anchoredFileChangeSummaryByAnchorId.value[message.id] ?? null
+  return anchoredFileChangeSummaryByAnchorId.value[renderKey(message)] ?? null
 }
 
 function readStandaloneFileChangeSummary(message: UiMessage): TurnFileChangeSummary | null {
-  return standaloneFileChangeSummaryByMessageId.value[message.id] ?? null
+  return standaloneFileChangeSummaryByMessageId.value[renderKey(message)] ?? null
 }
 
 function fileChangeActionKey(summary: TurnFileChangeSummary | null): string {
@@ -2383,13 +2384,13 @@ const editableTurnIdByMessageId = computed<Record<string, string>>(() => {
     if (message.role !== 'user' || typeof message.turnIndex !== 'number') continue
     const turnId = typeof message.turnId === 'string' && message.turnId.length > 0 ? message.turnId : ''
     if (!turnId || message.text.trim().length === 0) continue
-    next[message.id] = turnId
+    next[renderKey(message)] = turnId
   }
   return next
 })
 
 function showEditMessageButton(message: UiMessage): boolean {
-  return typeof editableTurnIdByMessageId.value[message.id] === 'string'
+  return typeof editableTurnIdByMessageId.value[renderKey(message)] === 'string'
 }
 
 function editMessage(messageId: string): void {
@@ -3570,17 +3571,19 @@ function parseMessageBlocks(text: string): MessageBlock[] {
   return blocks.length > 0 ? blocks : [{ kind: 'paragraph', value: text }]
 }
 
+function renderKey(message: UiMessage): string { return messageRenderKey(message, props.activeThreadId || '') }
+
 function getMessageBlocks(message: UiMessage): MessageBlock[] {
-  const cached = messageBlockCache.get(message.id)
+  const cached = messageBlockCache.get(renderKey(message))
   if (cached && cached.text === message.text && cached.cwd === props.cwd) {
-    messageBlockCache.delete(message.id)
-    messageBlockCache.set(message.id, cached)
+    messageBlockCache.delete(renderKey(message))
+    messageBlockCache.set(renderKey(message), cached)
     return cached.blocks
   }
   const blocks = parseMessageBlocks(message.text)
   return setBoundedCacheEntry(
     messageBlockCache,
-    message.id,
+    renderKey(message),
     { text: message.text, cwd: props.cwd, blocks },
     MESSAGE_BLOCK_CACHE_LIMIT,
   ).blocks
@@ -3922,7 +3925,7 @@ watch(
     const commandIds = new Set(
       next
         .filter((message) => message.messageType === 'commandExecution' && message.commandExecution)
-        .map((message) => message.id),
+        .map((message) => renderKey(message)),
     )
     expandedCommandIds.value = pruneCommandIdSet(expandedCommandIds.value, commandIds)
     collapsedAutoCommandIds.value = pruneCommandIdSet(collapsedAutoCommandIds.value, commandIds)

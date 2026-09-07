@@ -695,6 +695,7 @@ function mergeMessages(
 ): UiMessage[] {
   const previousById = new Map(previous.map(message => [JSON.stringify([message.turnId || '', message.id]), message]))
   const previousByOrdinal = new Map(previous.filter(message => message.historyOrdinal !== undefined).map(message => [historyMessageKey(message), message]))
+  const optimistic = previous.filter(isOptimisticUserMessage)
   const consumed = new Set<UiMessage>()
   const replacements = new Map<UiMessage, UiMessage>()
   const appended: UiMessage[] = []
@@ -702,7 +703,7 @@ function mergeMessages(
     let before = previousById.get(JSON.stringify([message.turnId || '', message.id]))
       || (message.historyOrdinal !== undefined ? previousByOrdinal.get(historyMessageKey(message)) : undefined)
     if (!before && message.role === 'user') {
-      before = previous.find(row => !consumed.has(row) && isOptimisticUserMessage(row) && hasEquivalentUserMessage(row, [message]))
+      before = optimistic.find(row => !consumed.has(row) && hasEquivalentUserMessage(row, [message]))
     }
     const next = before && areMessageFieldsEqual(before, message) ? before : mergeSubtaskMessage(before, message)
     if (before) {
@@ -1519,7 +1520,7 @@ export function useDesktopState() {
     if (session?.model && availableModels.value.length && !model) throw new Error('保存的模型暂不可用，请重新选择模型。')
     const problem = modelSettingsProblem(model, effort, tier, hasImages)
     if (problem) throw new Error(problem)
-    return { model: model?.model || modelId, effort: effort || model?.defaultEffort || '', serviceTier: tier || model?.defaultServiceTier || null }
+    return { model: model?.model || modelId, effort: effort || model?.defaultEffort || '', serviceTier: session ? tier || null : tier || model?.defaultServiceTier || null }
   }
   const activeProviderId = ref('')
   const codexCliMissingError = ref('')
