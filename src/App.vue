@@ -1350,7 +1350,7 @@ const WHISPER_LANGUAGES: Record<string, string> = {
 }
 
 const {
-  webPreferenceState, webPreferenceError, webDefaultChoice, configureWebDefaults, webDefaultsProvider,
+  webPreferenceState, webPreferenceError, webDefaultChoice, configureWebDefaults, webDefaultsProvider, initializeWebConversation,
   projectGroups,
   projectDisplayNameById,
   selectedThread,
@@ -2851,7 +2851,7 @@ function onStartNewThread(projectName: string): void {
     newThreadCwd.value = projectCwd
   }
   if (isMobile.value) setSidebarCollapsed(true)
-  if (isHomeRoute.value) return
+  if (isHomeRoute.value) { initializeWebConversation(''); return }
   void router.push({ name: 'home' })
 }
 
@@ -3059,7 +3059,7 @@ function onStartNewThreadFromToolbar(): void {
   }
   newThreadRuntime.value = 'local'
   if (isMobile.value) setSidebarCollapsed(true)
-  if (isHomeRoute.value) return
+  if (isHomeRoute.value) { initializeWebConversation(''); return }
   void router.push({ name: 'home' })
 }
 
@@ -3067,7 +3067,7 @@ function onStartProjectlessNewChat(): void {
   newThreadCwd.value = ''
   newThreadRuntime.value = 'local'
   if (isMobile.value) setSidebarCollapsed(true)
-  if (isHomeRoute.value) return
+  if (isHomeRoute.value) { initializeWebConversation(''); return }
   void router.push({ name: 'home' })
 }
 
@@ -5002,6 +5002,8 @@ watch(
 watch(
   () => route.name,
   (name) => {
+    if (name === 'home' && selectedThreadId.value === '') initializeWebConversation('')
+    if (name === 'thread' && routeThreadId.value === selectedThreadId.value) initializeWebConversation(selectedThreadId.value)
     if (name !== 'home') {
       worktreeInitStatus.value = { phase: 'idle', title: '', message: '' }
     }

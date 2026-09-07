@@ -5767,7 +5767,7 @@ export function useDesktopState() {
   }
 
   return {
-    webPreferenceState, webPreferenceError, webDefaultChoice, configureWebDefaults,
+    webPreferenceState, webPreferenceError, webDefaultChoice, configureWebDefaults, initializeWebConversation,
     webDefaultsProvider: computed(() => readProviderIdForThread(selectedThreadId.value)),
     projectGroups,
     projectDisplayNameById,
