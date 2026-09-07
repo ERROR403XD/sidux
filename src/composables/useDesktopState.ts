@@ -5539,11 +5539,11 @@ export function useDesktopState() {
     }
   }
 
-  async function recoverBridgeState(): Promise<void> {
+  async function recoverBridgeState(reconnected = false): Promise<void> {
     await loadPendingServerRequestsFromBridge()
-    pendingThreadsRefresh = true
-    pendingThreadsRefreshForce = true
-    if (selectedThreadId.value) {
+    pendingThreadsRefresh ||= reconnected || !hasLoadedThreads.value
+    pendingThreadsRefreshForce ||= reconnected
+    if (selectedThreadId.value && (reconnected || loadedMessagesByThreadId.value[selectedThreadId.value] !== true)) {
       markThreadHistoryDirty(selectedThreadId.value)
     }
     await syncFromNotifications()
@@ -5562,6 +5562,7 @@ export function useDesktopState() {
         return
       }
       if (notification.method === 'ready') {
+        const reconnected = notificationReady
         if (notificationReady) {
           observeTaskNotification({ method: 'codexapp/reconnected', params: {} })
           invalidateModelCatalog()
@@ -5572,7 +5573,7 @@ export function useDesktopState() {
         }
         notificationReady = true
         clearAllTransientTurnErrors()
-        void recoverBridgeState()
+        void recoverBridgeState(reconnected)
         return
       }
       applyRealtimeUpdates(notification)

@@ -6,7 +6,7 @@ import { ProxyComponent } from './apiProxy/component.js'
 import { AccountAppServerProbe } from './accountAppServerProbe.js'
 import { normalizeRateLimitPayload } from './accountAuthStore.js'
 import { AccountActivationScheduler } from './accountActivationScheduler.js'
-const ACTIVATION_MODEL = 'gpt-5.4-mini'
+const ACTIVATION_MODEL = 'gpt-5.6-luna'
 export function createAccountActivationRuntime(coordinator: AccountAuthCoordinator, gateway: ApiProxyGateway) {
   const directory = join(coordinator.store.codexHome, 'account-activation')
   const busy = (id: string) => coordinator.isAccountOperationInProgress() || gateway.accountHasConnections(id)
