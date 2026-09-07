@@ -2458,3 +2458,6 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 :root.dark .settings-page .sidebar-settings-toggle.is-on { background: #e4e4e7; }
 :root.dark .settings-page .sidebar-settings-toggle::after { background: #18181b; }
 .settings-page .sidebar-settings-timezone { flex-direction: column; align-items: stretch; }
+:root .settings-page .sidebar-settings-row .composer-dropdown-trigger { background: var(--ui-surface); border: 1px solid var(--ui-border); color: var(--ui-text); border-radius: 8px; }
+:root.dark .settings-page .sidebar-settings-row .composer-dropdown-trigger { background: var(--ui-surface); border-color: var(--ui-border); color: var(--ui-text); }
+:root .settings-page .sidebar-settings-row .composer-dropdown-trigger { width: 100%; min-height: 32px; justify-content: space-between; padding: 4px 8px; font-size: 13px; }
