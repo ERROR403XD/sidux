@@ -2352,16 +2352,9 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
   font-size: 12px;
   cursor: pointer;
 }
-.thread-composer-fast[aria-checked="true"] {
-  color: #047857;
-  border-color: #059669;
-  background: #ecfdf5;
-}
-:root.dark .thread-composer-fast[aria-checked="true"] {
-  color: #6ee7b7;
-  border-color: #34d399;
-  background: #064e3b;
-}
+.thread-composer-fast-icon { width: 14px; height: 14px; color: #71717a; flex-shrink: 0; }
+.thread-composer-fast[aria-checked="true"] .thread-composer-fast-icon { color: #059669; fill: #059669; }
+:root.dark .thread-composer-fast[aria-checked="true"] .thread-composer-fast-icon { color: #6ee7b7; fill: #6ee7b7; }
 .thread-composer-fast:disabled { opacity: .5; cursor: default; }
 .thread-composer-fast:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 2px; }
 .account-login-fields { display: flex; flex-direction: column; gap: 12px; }

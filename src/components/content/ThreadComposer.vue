@@ -169,7 +169,7 @@
             :disabled="isInteractionDisabled"
             @click="toggleAttachMenu"
           >
-            +
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
           </button>
 
           <div v-if="isAttachMenuOpen" class="thread-composer-attach-menu">
@@ -235,7 +235,6 @@
             class="thread-composer-control"
             :model-value="selectedModel"
             :options="modelOptions"
-            :selected-prefix-icon="showFastModeModelIcon ? IconTablerBolt : null"
             :placeholder="t('Model')"
             open-direction="up"
             :disabled="isComposerConfigDisabled || models.length === 0"
@@ -284,7 +283,7 @@
           :disabled="isComposerConfigDisabled || (!fastTier && !selectedSpeedMode) || fastIsOnlyDefault"
           @click="toggleFastMode"
         >
-          <span aria-hidden="true">ϟ</span> Fast
+          <IconTablerBolt class="thread-composer-fast-icon" aria-hidden="true" /> Fast
         </button>
         <div
           class="thread-composer-actions"
@@ -2099,11 +2098,11 @@ watch(
 }
 
 .thread-composer-attach {
-  @apply relative shrink-0;
+  @apply relative flex items-center shrink-0;
 }
 
 .thread-composer-attach-trigger {
-  @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-none border-0 bg-transparent pb-px text-xl leading-tight text-zinc-700 transition hover:text-zinc-900 disabled:cursor-not-allowed disabled:text-zinc-400;
+  @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-none border-0 bg-transparent text-xl leading-none text-zinc-700 transition hover:text-zinc-900 disabled:cursor-not-allowed disabled:text-zinc-400;
 }
 
 .thread-composer-attach-menu {
