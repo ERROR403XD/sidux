@@ -5,6 +5,8 @@ export type ApiProxySettings = {
   enabled: boolean; accountStorageId: string | null; globalConcurrency: number; keyConcurrency: number; drainTimeoutSeconds: number
 }
 export type ApiProxyStatus = {
+  retryAt?: string | null
+  usage?: import('./proxyUsageTypes').ProxyUsageSummary
   settings: ApiProxySettings; installed: boolean; ready: boolean; componentVersion: string; selectedStorageId: string | null; lastError: string | null
   keys: ApiProxyKey[]
   accounts: { activeStorageId: string | null; accounts: { storageId: string; email: string | null; accountId: string; authStatus: string }[] }

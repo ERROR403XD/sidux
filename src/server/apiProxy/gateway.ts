@@ -8,6 +8,8 @@ import { AccountCoordinatorError, getAccountAuthCoordinator, type AccountAuthCoo
 import { ProxyActivity, type Activity } from './activity.js'
 import { ProxyComponent, proxyManifest, type ComponentGeneration } from './component.js'
 import { hashSecret, ProxyError, ProxyStore, type ProxySettings } from './store.js'
+import { ProxyUsageStore, extractUsage } from './usage.js'
+import type { TokenUsage, UsageOutcome } from '../../api/proxyUsageTypes.js'
 
 const configuredBodyMB = Number(process.env.CODEXAPP_API_PROXY_MAX_BODY_MB || 64)
 const MAX_BODY = (Number.isInteger(configuredBodyMB) && configuredBodyMB >= 1 && configuredBodyMB <= 128 ? configuredBodyMB : 64) * 1024 * 1024
@@ -48,6 +50,7 @@ export class ApiProxyGateway {
   readonly store: ProxyStore
   readonly activity = new ProxyActivity()
   readonly component: ProxyComponent
+  readonly usage: ProxyUsageStore
   private readonly unregisterLifecycle?: () => void
   private mutation = false
   private epoch = randomUUID()
@@ -55,6 +58,7 @@ export class ApiProxyGateway {
   private readonly sockets = new WebSocketServer({ noServer: true, maxPayload: MAX_BODY, perMessageDeflate: false })
   constructor(private coordinator: AccountAuthCoordinator = getAccountAuthCoordinator()) {
     this.store = new ProxyStore(join(coordinator.store.codexHome, 'api-proxy'))
+    this.usage = new ProxyUsageStore(this.store.directory)
     this.component = new ProxyComponent(this.store.directory, coordinator)
     void this.store.ready.catch(() => undefined)
     this.unregisterLifecycle = coordinator.setApiLifecycle({
@@ -128,35 +132,39 @@ export class ApiProxyGateway {
   async handleApi(req: IncomingMessage, res: ServerResponse): Promise<void> {
     let entry: Activity | undefined
     let release: (() => void) | undefined
+    let settle: ReturnType<ProxyUsageStore['begin']> | undefined
     try {
       const keyId = await this.authorize(req)
+      await this.usage.ready
       const url = new URL(req.url || '/', 'http://localhost')
+      settle = this.usage.begin(keyId, url.pathname === '/v1/models')
       if (!allowedRoutes.has(`${req.method} ${url.pathname}`)) throw new ProxyError('unsupported_endpoint', '此 API 路径未开放。', 404)
       entry = this.activity.admit(keyId, 'http', this.store.settings)
       entry.abort = () => res.destroy()
       const input = req.method === 'POST' ? this.adapt(await body(req), keyId) : undefined
-      if (res.destroyed) { this.activity.finish(entry.id, 'interrupted'); return }
+      if (res.destroyed) { settle('interrupted'); this.activity.finish(entry.id, 'interrupted'); return }
       entry.model = typeof input?.model === 'string' ? input.model : null
       const generation = await this.component.prepare(this.store.settings.accountStorageId)
-      if (res.destroyed) { this.activity.finish(entry.id, 'interrupted'); return }
+      if (res.destroyed) { settle('interrupted'); this.activity.finish(entry.id, 'interrupted'); return }
       release = this.component.hold(generation)
       const headers = this.headers(req, generation, keyId)
       this.store.touch(keyId)
       if (url.pathname === '/v1/responses/compact') {
-        await this.compact(req, res, input!, generation, headers, entry)
+        await this.compact(req, res, input!, generation, headers, entry, settle)
         release()
         this.activity.finish(entry.id, res.statusCode < 400 ? 'completed' : 'failed')
         return
       }
-      this.forwardHttp(req, res, url, input, headers, generation, entry, release)
+      this.forwardHttp(req, res, url, input, headers, generation, entry, release, settle)
     } catch (error) {
+      settle?.(res.destroyed ? 'interrupted' : entry ? 'failed' : 'rejected')
       release?.()
       if (entry) this.activity.finish(entry.id, 'failed')
       errorResponse(res, error)
     }
   }
   private async compact(req: IncomingMessage, res: ServerResponse, input: Record<string, unknown>, generation: ComponentGeneration,
-    headers: Record<string, string>, entry: Activity): Promise<void> {
+    headers: Record<string, string>, entry: Activity, settle: ReturnType<ProxyUsageStore['begin']>): Promise<void> {
     if (input.stream === true) throw new ProxyError('streaming_compact_unsupported', 'compact 不支持流式返回。')
     if (!Array.isArray(input.input)) throw new ProxyError('invalid_input', 'compact 的 input 必须为数组。')
     const abort = new AbortController()
@@ -175,6 +183,7 @@ export class ApiProxyGateway {
         chunks.push(chunk)
       }
       const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+      settle(response.ok && parsed.status === 'completed' ? 'completed' : 'failed', extractUsage(parsed))
       this.component.recordResult(generation, response.status, response.headers.get('retry-after') || undefined)
       if (!response.ok) { json(res, response.status, parsed); return }
       const output = Array.isArray(parsed.output) ? parsed.output.filter((item: any) => item.type === 'compaction' && typeof item.encrypted_content === 'string') : []
@@ -185,10 +194,12 @@ export class ApiProxyGateway {
     } finally { res.off('close', onClose) }
   }
   private forwardHttp(req: IncomingMessage, res: ServerResponse, url: URL, input: Record<string, unknown> | undefined,
-    headers: Record<string, string>, generation: ComponentGeneration, entry: Activity, release: () => void): void {
+    headers: Record<string, string>, generation: ComponentGeneration, entry: Activity, release: () => void,
+    settle: ReturnType<ProxyUsageStore['begin']>): void {
     const target = new URL(url.pathname + url.search, generation.url)
     let finalized = false
     let completed = false
+    let usage: TokenUsage | null = null
     let upstreamResponse: IncomingMessage | undefined
     let upstreamFinishedStatus: string | null = null
     const finalize = (status: string) => {
@@ -196,6 +207,7 @@ export class ApiProxyGateway {
       upstreamFinishedStatus = status
       if (!res.writableFinished && !res.destroyed) return
       finalized = true
+      settle(status as UsageOutcome, usage)
       this.activity.finish(entry.id, status)
       release()
     }
@@ -234,8 +246,12 @@ export class ApiProxyGateway {
               try {
                 const event = JSON.parse(line.slice(6))
                 this.observe(event, entry.keyId)
-                if (event.type === 'response.completed') { completed = true; this.component.lastError = null }
-                if (['response.failed', 'response.incomplete', 'error'].includes(event.type)) entry.status = 'failed'
+                if (extractUsage(event)) usage = extractUsage(event)
+                if (event.type === 'response.completed') completed = true
+                if (['response.failed', 'response.incomplete', 'error'].includes(event.type)) {
+                  entry.status = 'failed'
+                  this.component.recordResult(generation, typeof event.status === 'number' ? event.status : 502)
+                }
               } catch { /* Comments and [DONE] need no JSON interpretation. */ }
             }
             newline = pending.indexOf('\n')
@@ -262,7 +278,14 @@ export class ApiProxyGateway {
       } })
       inspect.on('error', () => { upstream.destroy(); response.destroy(); res.destroy() })
       response.once('end', () => {
-        if (!streaming) { try { this.observe(JSON.parse(pending), entry.keyId) } catch {} }
+        if (!streaming) {
+          try {
+            const parsed = JSON.parse(pending)
+            this.observe(parsed, entry.keyId)
+            usage = extractUsage(parsed)
+            if (parsed.error || ['failed', 'incomplete'].includes(parsed.status)) entry.status = 'failed'
+          } catch { /* Forwarding remains independent of optional usage. */ }
+        }
         completed ||= !streaming || url.pathname === '/v1/chat/completions'
         if (res.statusCode < 400 && entry.status !== 'failed' && completed) this.component.recordResult(generation, res.statusCode)
       })
@@ -294,6 +317,7 @@ export class ApiProxyGateway {
     let release: (() => void) | undefined
     try {
       const keyId = await this.authorize(req)
+      await this.usage.ready
       const url = new URL(req.url || '/', 'http://localhost')
       if (url.pathname !== '/v1/responses') throw new ProxyError('unsupported_endpoint', '此 WebSocket 路径未开放。', 404)
       entry = this.activity.admit(keyId, 'ws', this.store.settings)
@@ -312,9 +336,12 @@ export class ApiProxyGateway {
       this.sockets.handleUpgrade(req, socket, head, downstream => {
         let closed = false
         let processing = false
+        let settle: ReturnType<ProxyUsageStore['begin']> | null = null
         const cleanup = () => {
           if (closed) return
           closed = true
+          settle?.('interrupted')
+          settle = null
           downstream.terminate()
           upstreamSocket.terminate()
           // ws 'close' is emitted after the underlying transport is closed.
@@ -347,6 +374,9 @@ export class ApiProxyGateway {
             const event = JSON.parse(bytes.toString())
             this.observe(event, keyId)
             if (['response.completed', 'response.failed', 'response.incomplete', 'error'].includes(event.type)) {
+              settle?.(event.type === 'response.completed' ? 'completed' : 'failed', extractUsage(event))
+              settle = null
+              this.component.recordResult(generation, event.type === 'response.completed' ? 200 : typeof event.status === 'number' ? event.status : 502)
               record.busy = false
               record.status = event.type === 'response.completed' ? 'idle' : 'failed'
               processing = false
@@ -355,15 +385,18 @@ export class ApiProxyGateway {
           send(downstream, upstreamSocket, bytes as Buffer)
         })
         downstream.on('message', async (bytes, binary) => {
+          let pending: ReturnType<ProxyUsageStore['begin']> | undefined
           try {
             if (binary) throw new ProxyError('invalid_frame', '只接受 JSON 文本帧。')
             if (!this.store.isKeyUsable(keyId)) throw new ProxyError('invalid_api_key', 'API key 已停用、撤销或到期。', 401)
+            pending = this.usage.begin(keyId)
             if (processing || record.busy) throw new ProxyError('response_in_progress', '当前响应尚未结束。', 409)
             if (this.coordinator.isAccountOperationInProgress()) throw new ProxyError('account_busy', '账号正在切换。', 503)
             const input = JSON.parse(bytes.toString())
             if (!['response.create', 'response.append'].includes(input.type)) throw new ProxyError('unsupported_frame', '不支持此 WebSocket 事件。')
             const adapted = this.adapt(input, keyId, true)
             this.activity.begin(record, this.store.settings)
+            settle = pending
             processing = true
             const current = await this.component.prepare(this.store.settings.accountStorageId)
             if (closed) return
@@ -372,6 +405,7 @@ export class ApiProxyGateway {
             this.store.touch(keyId)
             send(upstreamSocket, downstream, JSON.stringify(adapted))
           } catch (error) {
+            pending?.('rejected')
             const known = error instanceof ProxyError ? error : new ProxyError('invalid_frame', '请求帧无效。')
             // Close after a protocol error so an error for a second request cannot terminate the first response ambiguously.
             if (downstream.readyState === WebSocket.OPEN) downstream.send(JSON.stringify({ type: 'error', status: known.status, error: { type: 'invalid_request_error', code: known.code, message: known.message } }), cleanup)
@@ -393,7 +427,9 @@ export class ApiProxyGateway {
       const url = new URL(req.url || '/', 'http://localhost')
       const path = url.pathname.slice('/codex-api/api-proxy'.length)
       if (req.method === 'GET' && path === '/status') {
+        await this.usage.ready
         json(res, 200, { data: { settings: this.store.settings, ...this.component.status(), installed: await this.component.available(),
+          usage: this.usage.summary(url.searchParams.get('timeZone') || 'UTC'),
           activity: this.activity.snapshot(), keys: this.store.listKeys(), manifest: { name: proxyManifest.name, version: proxyManifest.version },
           accounts: await this.coordinator.listAccounts({ scheduleRefresh: false }) } })
         return
@@ -469,6 +505,7 @@ export class ApiProxyGateway {
     await this.activity.drain(5000, true)
     await this.component.stop()
     await this.store.close()
+    await this.usage.close()
     this.sockets.close()
     this.unregisterLifecycle?.()
   }

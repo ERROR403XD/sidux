@@ -7,6 +7,7 @@
       <section class="api-proxy-card">
         <div class="api-proxy-heading"><h2>服务与账号</h2><span class="api-proxy-state">{{ stateLabel }}</span></div>
         <p v-if="status.lastError" class="api-proxy-error">{{ status.lastError }}</p>
+        <p v-if="status.retryAt" class="api-proxy-muted">下次可重试：{{ date(status.retryAt) }}；保持启用即可等待恢复。</p>
         <label class="api-proxy-check"><input v-model="settings.enabled" type="checkbox" :disabled="busy || !status.installed" />启用 API 出口</label>
         <div class="api-proxy-fields">
           <label>API 使用账号
@@ -28,8 +29,17 @@
         <div class="api-proxy-heading"><h2>API key</h2><AppButton :disabled="busy" @click="openCreate()">创建 key</AppButton></div>
         <p class="api-proxy-muted">完整 key 仅创建时显示一次。撤销后立即阻止新请求，已经开始的响应默认继续完成。</p>
         <p v-if="!status.keys.length">尚未创建 API key。</p>
+        <p v-if="status.usage?.error" role="alert" class="api-proxy-error">{{ status.usage.error }}</p>
+        <div class="api-proxy-fields"><label>用量范围<AppSelect v-model="usageWindow" :options="usageWindows" /></label></div>
+        <p v-if="status.usage" class="api-proxy-muted">统计始于 {{ date(status.usage.startedAt) }}；日期按 {{ status.usage.timeZone }}。近期窗口可用数据始于 {{ date(status.usage.windowCoverageFrom) }}。仅汇总已返回的 Token，用量缺失另列。</p>
         <div v-for="key in status.keys" :key="key.id" class="api-proxy-key-row">
-          <div class="api-proxy-key-copy"><strong>{{ key.name }}</strong><span>••••{{ key.suffix }} · {{ keyLabel(key) }}</span><small>到期：{{ date(key.expiresAt) }} · 最近使用：{{ date(key.lastUsedAt) }}</small></div>
+          <div class="api-proxy-key-copy"><strong>{{ key.name }}</strong><span>••••{{ key.suffix }} · {{ keyLabel(key) }}</span><small>到期：{{ date(key.expiresAt) }} · 最近使用：{{ date(key.lastUsedAt) }}</small>
+            <template v-if="status.usage">
+              <small>请求 {{ usageFor(key.id).requests }} · 成功 {{ usageFor(key.id).completed }} · 失败 {{ usageFor(key.id).failed }} · 中断 {{ usageFor(key.id).interrupted }} · 拒绝 {{ usageFor(key.id).rejected }}</small>
+              <small>Token {{ usageFor(key.id).total.toLocaleString() }} · 输入 {{ usageFor(key.id).input.toLocaleString() }} · 输出 {{ usageFor(key.id).output.toLocaleString() }} · 用量缺失 {{ usageFor(key.id).unknown }} 次</small>
+              <small>缓存输入 {{ usageFor(key.id).cached.toLocaleString() }} · 推理 {{ usageFor(key.id).reasoning.toLocaleString() }}（均为已知明细，不额外累加）· 模型目录 {{ usageFor(key.id).catalogs }} 次</small>
+            </template>
+          </div>
           <div class="api-proxy-actions">
             <AppButton :disabled="busy || !!key.revokedAt" @click="renameTarget = key; renameValue = key.name">重命名</AppButton>
             <AppButton :disabled="busy || !!key.revokedAt" @click="updateKey(key, { enabled: !key.enabled })">{{ key.enabled ? '停用' : '启用' }}</AppButton>
@@ -88,7 +98,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import AppButton from '../common/AppButton.vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppSelect from '../common/AppSelect.vue'
-import { formatLocalDateTime } from '../../dateTime'
+import { formatLocalDateTime, displayTimeZone } from '../../dateTime'
+import { emptyUsage } from '../../api/proxyUsageTypes'
 import { copyTextToClipboard } from '../../utils/clipboard'
 import { apiProxyRequest, type ApiProxyKey, type ApiProxySettings, type ApiProxyStatus } from '../../api/apiProxy'
 
@@ -108,6 +119,9 @@ const renameValue = ref('')
 const interruptKey = ref(false)
 const model = ref('gpt-5.6-luna')
 const models = ref<string[]>([])
+const usageWindow = ref<'cumulative' | 'today' | 'week'>('cumulative')
+const usageWindows = [{ value: 'cumulative', label: '累计' }, { value: 'today', label: '今日' }, { value: 'week', label: '近 7 天' }]
+function usageFor(id: string) { return status.value?.usage?.keys[id]?.[usageWindow.value] || emptyUsage() }
 let timer: ReturnType<typeof setInterval> | undefined
 let refreshing = false
 let disposed = false
@@ -115,7 +129,7 @@ const selectedAccount = computed({ get: () => settings.value.accountStorageId ||
 const accountOptions = computed(() => [{ value: 'follow', label: '跟随 WebUI 当前账号' }, ...(status.value?.accounts.accounts || []).map(account => ({ value: account.storageId, label: `${account.email || account.accountId} · ${accountStatusLabel(account.authStatus)}` }))])
 const modelOptions = computed(() => [...new Set([model.value, ...models.value])].map(value => ({ value, label: value })))
 const baseUrl = `${window.location.origin}/v1`
-const stateLabel = computed(() => !status.value?.installed ? '组件未安装' : status.value.activity.draining ? '等待活动请求结束' : !status.value.settings.enabled ? '未启用' : status.value.ready ? '可用' : status.value.lastError ? '异常' : '按需启动')
+const stateLabel = computed(() => !status.value?.installed ? '组件未安装' : status.value.activity.draining ? '等待活动请求结束' : !status.value.settings.enabled ? '未启用' : status.value.retryAt ? '等待恢复' : status.value.ready ? '可用' : status.value.lastError ? '异常' : '按需启动')
 const keyActivityCount = computed(() => status.value?.activity.entries.filter(entry => entry.keyId === revokeTarget.value?.id).length || 0)
 const clientConfig = computed(() => `model_provider = "codexapp_gateway"\nmodel = "${model.value}"\n\n[model_providers.codexapp_gateway]\nname = "CodexApp API"\nbase_url = "${baseUrl}"\nenv_key = "CODEXAPP_API_KEY"\nwire_api = "responses"\nrequires_openai_auth = false\nsupports_websockets = true`)
 function accountStatusLabel(value: string): string { return ({ ready: '可用', stale: '待确认', refreshing: '刷新中', reauth_required: '需重新登录', payment_required: '需处理额度', transient_error: '暂时异常', materialization_dirty: '需修复认证' } as Record<string, string>)[value] || value }
@@ -127,7 +141,7 @@ async function refresh(reset = false): Promise<void> {
   if (refreshing || disposed) return
   refreshing = true
   try {
-    const next = await apiProxyRequest<ApiProxyStatus>('/status')
+    const next = await apiProxyRequest<ApiProxyStatus>(`/status?timeZone=${encodeURIComponent(displayTimeZone())}`)
     if (disposed) return
     status.value = next
     if (reset) settings.value = { ...next.settings }

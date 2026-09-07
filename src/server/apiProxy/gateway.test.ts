@@ -117,6 +117,27 @@ describe('API outlet state and admission', () => {
 })
 
 describe('API outlet transport boundaries', () => {
+  it('accounts for HTTP, compact, cancellation and WS rounds without connection double-counting', async () => {
+    const f = await fixture()
+    await (await f.post('/v1/responses', { model: 'fixture' })).text()
+    await (await f.post('/v1/responses/compact', { model: 'fixture', input: [] })).text()
+    const aborted = await f.post('/v1/responses', { model: 'slow' })
+    await aborted.body!.cancel()
+    const ws = new WebSocket(f.base.replace('http:', 'ws:') + '/v1/responses', { headers: f.headers(f.second.secret) })
+    await once(ws, 'open')
+    for (let i = 0; i < 2; i++) {
+      const event = once(ws, 'message')
+      ws.send(JSON.stringify({ type: 'response.create', model: 'fixture', input: [] }))
+      await event
+    }
+    ws.close()
+    await once(ws, 'close')
+    await sleep(30)
+    const summary = f.gateway.usage.summary()
+    expect(summary.keys[f.first.key.id].cumulative).toMatchObject({ requests: 3, completed: 2, interrupted: 1, total: 20, unknown: 1 })
+    expect(summary.keys[f.second.key.id].cumulative).toMatchObject({ requests: 2, completed: 2, unknown: 2 })
+    expect(f.gateway.activity.entries.size).toBe(0)
+  })
   it('requires a key, isolates management origin and terminates unknown /v1 paths with JSON', async () => {
     const f = await fixture()
     expect((await fetch(f.base + '/v1/models')).status).toBe(401)
