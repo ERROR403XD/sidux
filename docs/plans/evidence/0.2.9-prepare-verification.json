@@ -1,0 +1,20 @@
+{
+  "release": "/home/docker/codexapp-releases/codexapp-0.2.9-dc2f41030065-20260907-092836",
+  "artifactCount": 30,
+  "candidateMatched": true,
+  "componentVersion": "7.2.152",
+  "componentSha": "fc9b13ecda255129b7c452a8c0a84bd0669de0b546d0919f5566cff5397c0c23",
+  "packageSha": "05762672359d8b0a82c23e1218ff2f867ce3526345644c65fc057ffebb743c0a",
+  "cjs": true,
+  "pty": true,
+  "isolatedPort": 59015,
+  "proxyInstalled": true,
+  "proxyEnabled": false,
+  "missingKeyStatus": 401,
+  "checkExitCode": 3,
+  "checkOutput": "# Warning: codexapp.service changed on disk, the version systemd has loaded is outdated.\n# This output shows the current version of the unit's original fragment and drop-in files.\n# If fragments or drop-ins were added or removed, they are not properly reflected in this output.\n# Run 'systemctl daemon-reload' to reload units.\nidle-check|activeTurns=1|queued=0|pendingApprovals=0|apiConnections=0|apiActiveRequests=0|backgroundThreads=skipped-busy|loadedThreads=0|pages=2\n",
+  "productionUnchanged": true,
+  "production": "MainPID=3456650\nExecMainStartTimestamp=Sun 2026-09-06 22:21:46 CST\nExecStart={ path=/root/.nvm/versions/node/v24.19.0/bin/node ; argv[]=/root/.nvm/versions/node/v24.19.0/bin/node /home/docker/codexapp-releases/codexapp-0.2.0-8542ec5e58c8-20260906-221809/dist-cli/index.js --port 5900 --strict-port --no-password --no-open ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\n",
+  "nativeRepair": "node-pty built against /root/.nvm/versions/node/v24.19.0; real PTY passed",
+  "temporaryPortClosed": true
+}
