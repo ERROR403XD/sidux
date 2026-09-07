@@ -30,3 +30,12 @@
 #### Rollback/Cleanup
 - Remove any test project automations from the project automation dialog or delete their folders under `$CODEX_HOME/automations/<automation-id>/`.
 - Remove temporary test projects or workspace roots created for verification.
+# 0.2.10 自动化入口钟表图标
+
+准备：打开当前候选，使用 1440×900 浅色和深色主题。
+
+操作：检查左上侧栏“自动化”的图标，点击进入自动化页面，再检查页面标题旁图标。
+
+预期：两处均为圆形表盘和时针/分针，保持原有颜色、尺寸和点击导航；技能入口仍保留原图标。图标无外部图片请求、无计时器或动画。
+
+清理/回滚：无需清理数据；回退代码即可恢复旧图标，不修改自动化任务。

@@ -75,7 +75,7 @@
             @click="router.push({ name: 'automations' }); isMobile && setSidebarCollapsed(true)"
           >
             <span class="sidebar-skills-link-icon sidebar-automations-link-icon" aria-hidden="true">
-              <IconTablerBolt />
+              <IconTablerClock />
             </span>
             <span class="sidebar-skills-link-copy">
               <span class="sidebar-skills-link-title">{{ t('Automations') }}</span>
@@ -590,7 +590,7 @@
               <IconTablerBolt />
             </span>
             <span v-else-if="isAutomationsRoute" class="skills-route-header-icon automations-route-header-icon" aria-hidden="true">
-              <IconTablerBolt />
+              <IconTablerClock />
             </span>
           </template>
           <template #actions>
@@ -1237,6 +1237,7 @@ import ComposerRuntimeDropdown from './components/content/ComposerRuntimeDropdow
 import SidebarThreadControls from './components/sidebar/SidebarThreadControls.vue'
 import IconTablerPlug from './components/icons/IconTablerPlug.vue'
 import IconTablerBolt from './components/icons/IconTablerBolt.vue'
+import IconTablerClock from './components/icons/IconTablerClock.vue'
 import IconTablerSearch from './components/icons/IconTablerSearch.vue'
 import IconTablerSettings from './components/icons/IconTablerSettings.vue'
 import IconTablerTerminal from './components/icons/IconTablerTerminal.vue'
