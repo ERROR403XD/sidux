@@ -250,6 +250,7 @@
           <template v-else-if="isSettingsRoute"><SettingsPanel>
 <template #accounts><h3>GPT 账号（ChatGPT 登录）</h3><AccountPanel :accounts="accounts" :busy="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
   @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount" />
+<AccountActivation :accounts="accounts" />
 <details class="settings-optional-provider" :open="selectedProvider !== 'codex'"><summary>其他连接（可选） · {{ selectedProvider }}</summary>              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the API provider for the Codex backend')">
                 <span class="sidebar-settings-label">{{ t('Provider') }}</span>
                 <AppSelect
@@ -1063,6 +1064,7 @@
 
 <script setup lang="ts">
 import AppDialog from './components/common/AppDialog.vue'
+import AccountActivation from './components/settings/AccountActivation.vue'
 import ConversationDefaults from './components/settings/ConversationDefaults.vue'
 import SettingsPanel from './components/settings/SettingsPanel.vue'
 import AccountQuota from './components/accounts/AccountQuota.vue'

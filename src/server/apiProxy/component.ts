@@ -38,7 +38,7 @@ export class ProxyComponent {
   private failures = 0
   lastError: string | null = null
   readonly binary = process.env.CODEXAPP_API_PROXY_BINARY || '/opt/codexapp-api-proxy/cli-proxy-api'
-  constructor(private directory: string, private coordinator: AccountAuthCoordinator) {}
+  constructor(private directory: string, private coordinator: AccountAuthCoordinator, private options: { allowRefresh?: boolean } = {}) {}
   async available(): Promise<boolean> { return access(this.binary).then(() => true, () => false) }
   status() {
     const current = this.current
@@ -59,7 +59,7 @@ export class ProxyComponent {
   }
   private async prepareNext(storageId: string | null): Promise<ComponentGeneration> {
     try {
-      const credential = await this.coordinator.getApiCredential(storageId)
+      const credential = await this.coordinator.getApiCredential(storageId, this.options)
       const current = this.current
       if (current && current.storageId === credential.storageId && current.revision === credential.revision
         && current.process.exitCode === null && current.process.signalCode === null) {

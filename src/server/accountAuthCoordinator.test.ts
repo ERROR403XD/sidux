@@ -386,3 +386,14 @@ describe('API outlet credential ownership', () => {
     expect((await accounts.readCredential(fixed.account.storageId)).auth.tokens?.refresh_token).toBe('fixed-rotated')
   })
 })
+
+it('skips activation credentials needing refresh without taking the global account lock', async () => {
+  const accounts = await store()
+  const saved = await accounts.upsertCredential(credential('background', 'user'), { activate: false })
+  const fetchImpl = vi.fn(async () => { throw new Error('must not refresh') })
+  const coordinator = new AccountAuthCoordinator(accounts, { fetchImpl })
+  await expect(coordinator.getApiCredential(saved.account.storageId, { allowRefresh: false })).rejects.toMatchObject({ code: 'background_refresh_skipped' })
+  expect(fetchImpl).not.toHaveBeenCalled()
+  expect(coordinator.isAccountOperationInProgress()).toBe(false)
+  expect((await accounts.readState()).accounts[0].credentialRevision).toBe(saved.account.credentialRevision)
+})

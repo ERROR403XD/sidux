@@ -1,3 +1,4 @@
+import { once } from 'node:events'
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -113,6 +114,7 @@ export class AccountAppServerProbe {
     expectedAccountId: string
     persistRefreshedCredential: (raw: string) => Promise<void>
     command?: string
+    externalTokens?: { accessToken: string; chatgptAccountId: string; chatgptPlanType?: string }
     spawnImpl?: typeof spawn
   }) {}
 
@@ -124,6 +126,7 @@ export class AccountAppServerProbe {
         capabilities: { experimentalApi: true },
       })
       client.notify('initialized')
+      if (this.options.externalTokens) await client.call('account/login/start', { type: 'chatgptAuthTokens', ...this.options.externalTokens })
       const accountPayload = asRecord(await client.call('account/read', { refreshToken: false }))
       const account = asRecord(accountPayload?.account)
       const runtimeAccountId = readString(account?.id ?? account?.accountId ?? account?.account_id)
@@ -148,8 +151,17 @@ export class AccountAppServerProbe {
     this.client?.rejectAll(new Error('Account probe stopped.'))
     this.client = null
     if (!proc) return
+    const exited = this.options.externalTokens ? once(proc, 'exit').catch(() => undefined) : null
     try { proc.stdin.end() } catch {}
     try { proc.kill('SIGTERM') } catch {}
+    if (exited && proc.exitCode === null && proc.signalCode === null) {
+      await Promise.race([exited, new Promise(resolve => setTimeout(resolve, 1000))])
+      if (proc.exitCode === null && proc.signalCode === null) {
+        proc.kill('SIGKILL')
+        await Promise.race([exited, new Promise(resolve => setTimeout(resolve, 1000))])
+      }
+      if (proc.exitCode === null && proc.signalCode === null) throw new Error('临时额度探针未退出')
+    }
   }
 
   private start(): AccountProbeRpcClient {
@@ -165,6 +177,7 @@ export class AccountAppServerProbe {
     const client = new AccountProbeRpcClient(
       (message) => proc.stdin.write(`${JSON.stringify(message)}\n`),
       async (params) => {
+        if (this.options.externalTokens) throw new Error('定时激活不刷新凭据')
         const request = asRecord(params)
         const raw = await readFile(join(this.options.profileDir, 'auth.json'), 'utf8')
         const refreshed = await refreshChatgptAccountCredential(raw, {

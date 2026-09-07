@@ -1,3 +1,5 @@
+import { createAccountActivationRuntime } from '../accountActivationRuntime.js'
+import type { AccountActivationScheduler } from '../accountActivationScheduler.js'
 import { randomUUID } from 'node:crypto'
 import { request as httpRequest, type IncomingMessage, type ServerResponse, type Server } from 'node:http'
 import type { Duplex } from 'node:stream'
@@ -47,6 +49,16 @@ async function body(req: IncomingMessage, limit = MAX_BODY): Promise<Record<stri
   } catch { throw new ProxyError('invalid_json', '请求体必须是 JSON 对象。') }
 }
 export class ApiProxyGateway {
+  readonly activation: AccountActivationScheduler
+  private readonly accountEpochs = new Map<string, number>()
+  accountActivityEpoch(id: string): number { return this.accountEpochs.get(id) || 0 }
+  accountHasConnections(id: string): boolean {
+    return this.activity.entries.size > 0 && (this.store.settings.accountStorageId === id || this.component.status().selectedStorageId === id)
+  }
+  private recordAccountActivity(): void {
+    const id = this.store.settings.accountStorageId || this.component.status().selectedStorageId
+    if (id) this.accountEpochs.set(id, this.accountActivityEpoch(id) + 1)
+  }
   readonly store: ProxyStore
   readonly activity = new ProxyActivity()
   readonly component: ProxyComponent
@@ -60,6 +72,7 @@ export class ApiProxyGateway {
     this.store = new ProxyStore(join(coordinator.store.codexHome, 'api-proxy'))
     this.usage = new ProxyUsageStore(this.store.directory)
     this.component = new ProxyComponent(this.store.directory, coordinator)
+    this.activation = createAccountActivationRuntime(coordinator, this)
     void this.store.ready.catch(() => undefined)
     this.unregisterLifecycle = coordinator.setApiLifecycle({
       isIdle: () => !!this.store.settings.accountStorageId || this.activity.entries.size === 0,
@@ -140,6 +153,7 @@ export class ApiProxyGateway {
       settle = this.usage.begin(keyId, url.pathname === '/v1/models')
       if (!allowedRoutes.has(`${req.method} ${url.pathname}`)) throw new ProxyError('unsupported_endpoint', '此 API 路径未开放。', 404)
       entry = this.activity.admit(keyId, 'http', this.store.settings)
+      this.recordAccountActivity()
       entry.abort = () => res.destroy()
       const input = req.method === 'POST' ? this.adapt(await body(req), keyId) : undefined
       if (res.destroyed) { settle('interrupted'); this.activity.finish(entry.id, 'interrupted'); return }
@@ -321,6 +335,7 @@ export class ApiProxyGateway {
       const url = new URL(req.url || '/', 'http://localhost')
       if (url.pathname !== '/v1/responses') throw new ProxyError('unsupported_endpoint', '此 WebSocket 路径未开放。', 404)
       entry = this.activity.admit(keyId, 'ws', this.store.settings)
+      this.recordAccountActivity()
       entry.abort = () => socket.destroy()
       const generation = await this.component.prepare(this.store.settings.accountStorageId)
       if (socket.destroyed) { this.activity.finish(entry.id, 'interrupted'); return }
@@ -426,6 +441,10 @@ export class ApiProxyGateway {
       await this.store.ready
       const url = new URL(req.url || '/', 'http://localhost')
       const path = url.pathname.slice('/codex-api/api-proxy'.length)
+      if (req.method === 'GET' && path === '/activation') {
+        json(res, 200, { data: await this.activation.snapshot() })
+        return
+      }
       if (req.method === 'GET' && path === '/status') {
         await this.usage.ready
         json(res, 200, { data: { settings: this.store.settings, ...this.component.status(), installed: await this.component.available(),
@@ -444,6 +463,11 @@ export class ApiProxyGateway {
       if (req.method !== 'POST') throw new ProxyError('unsupported_endpoint', '管理接口不存在。', 404)
       if (req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) throw new ProxyError('cross_origin', '不接受跨站管理操作。', 403)
       const input = await body(req, 64 * 1024)
+      if (path === '/activation') {
+        try { json(res, 200, { data: await this.activation.configure(input) }) }
+        catch (cause) { throw new ProxyError('invalid_activation_settings', cause instanceof Error ? cause.message : '激活计划保存失败') }
+        return
+      }
       if (path === '/keys') {
         json(res, 201, { data: await this.store.createKey(String(input.name || ''), typeof input.expiresAt === 'string' ? input.expiresAt : null) })
         return
@@ -502,6 +526,7 @@ export class ApiProxyGateway {
     } catch (error) { errorResponse(res, error) }
   }
   async close(): Promise<void> {
+    await this.activation.dispose()
     await this.activity.drain(5000, true)
     await this.component.stop()
     await this.store.close()

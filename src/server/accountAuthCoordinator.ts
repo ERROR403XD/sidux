@@ -182,7 +182,7 @@ export class AccountAuthCoordinator {
     return () => { if (this.apiLifecycle === lifecycle) this.apiLifecycle = null }
   }
 
-  async getApiCredential(selectedStorageId: string | null): Promise<{
+  async getApiCredential(selectedStorageId: string | null, options: { allowRefresh?: boolean } = {}): Promise<{
     storageId: string; revision: number; accessToken: string; accountId: string; expiresAt: string
   }> {
     if (this.operation) throw new AccountCoordinatorError('account_operation_in_progress', '账号正在处理其他操作，请稍后重试。', 503)
@@ -201,6 +201,7 @@ export class AccountAuthCoordinator {
       } catch { return 0 }
     }
     if (expiry(credential.auth.tokens?.access_token ?? '') < Date.now() + 300_000) {
+      if (options.allowRefresh === false) throw new AccountCoordinatorError('background_refresh_skipped', '凭据需要刷新，跳过本次激活。', 503)
       await this.refreshTokensForStorage(storageId, { reason: 'api_proxy_expiry', previousAccountId: entry.accountId })
       state = await this.store.readState()
       entry = state.accounts.find(item => item.storageId === storageId)
