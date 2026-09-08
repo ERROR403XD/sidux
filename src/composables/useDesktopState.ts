@@ -1,3 +1,4 @@
+import { mergeQuotaUpdate } from '../quotaRefresh'
 import { useWebConversationPreferences, type ConversationChoice } from '../webConversationPreferences'
 import { historyMessageKey, combineHistoryAndLive, sameMessageIdentity } from '../messageIdentity'
 import { mergeSubtaskMessage, observeTaskNotification } from '../subtasks'
@@ -1464,6 +1465,7 @@ export function useDesktopState() {
   const reportedModelByThreadId = ref<Record<string, string>>({})
   const reportedModel = computed(() => reportedModelByThreadId.value[selectedThreadId.value] || '')
   let modelRefreshGeneration = 0
+  let rateLimitUpdateRevision = 0
   let recentRateLimitsAt = 0
   const availableCollaborationModes = ref<CollaborationModeOption[]>([
     { value: 'default', label: 'Default' },
@@ -2103,10 +2105,11 @@ export function useDesktopState() {
 
     rateLimitRefreshPromise = (async () => {
       try {
+        const revision = rateLimitUpdateRevision
         const snapshot = await getAccountRateLimits()
         recentRateLimitsAt = Date.now()
-        setCodexRateLimit(snapshot)
-        accountRateLimitSnapshots.value = snapshot ? [snapshot] : []
+        if (revision === rateLimitUpdateRevision) setCodexRateLimit(snapshot)
+        accountRateLimitSnapshots.value = codexRateLimit.value ? [codexRateLimit.value] : []
       } catch {
         // Keep the last known rate-limit state if the endpoint is temporarily unavailable.
       } finally {
@@ -3833,7 +3836,8 @@ export function useDesktopState() {
       return
     }
 
-    if (notification.method === 'account/rateLimits/updated') {
+    if (notification.method === 'account/updated' || notification.method === 'account/login/completed') {
+      rateLimitUpdateRevision += 1
       scheduleRateLimitRefresh()
     }
 
@@ -3849,7 +3853,9 @@ export function useDesktopState() {
     }
 
     if (notification.method === 'account/rateLimits/updated') {
-      setCodexRateLimit(pickCodexRateLimitSnapshot(notification.params))
+      rateLimitUpdateRevision += 1
+      setCodexRateLimit(pickCodexRateLimitSnapshot({ rateLimits: mergeQuotaUpdate(codexRateLimit.value, notification.params) }))
+      accountRateLimitSnapshots.value = codexRateLimit.value ? [codexRateLimit.value] : []
       return
     }
 

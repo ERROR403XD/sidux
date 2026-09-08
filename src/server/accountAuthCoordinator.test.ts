@@ -102,6 +102,40 @@ afterEach(async () => {
 })
 
 describe('AccountAuthCoordinator', () => {
+  it('merges rolling quota without losing weekly/reset metadata and ignores a late older full read', async () => {
+    const authStore = await store()
+    const saved = await authStore.upsertCredential(credential('account-a', 'user-a'), { activate: true })
+    const coordinator = new AccountAuthCoordinator(authStore)
+    const id = saved.account.storageId
+    await coordinator.applyRuntimeQuotaRead(id, { rateLimits: { primary: { usedPercent: 10, windowDurationMins: 300 }, secondary: { usedPercent: 90, windowDurationMins: 10080 } }, rateLimitResetCredits: { availableCount: 3 } }, 0)
+    const revision = coordinator.quotaRevision(id)
+    const updates = vi.fn()
+    const stop = coordinator.subscribeQuotaUpdates(updates)
+    await coordinator.observeRuntimeQuota(id, { rateLimits: { primary: { usedPercent: 99 }, secondary: null } })
+    const current = (await authStore.readState()).accounts[0]!
+    expect(current.quotaSnapshot?.primary).toMatchObject({ usedPercent: 99, windowMinutes: 300 })
+    expect(current.quotaSnapshot?.secondary?.usedPercent).toBe(90)
+    expect(current.resetCredits?.availableCount).toBe(3)
+    await coordinator.applyRuntimeQuotaRead(id, { rateLimits: { primary: { usedPercent: 10, windowDurationMins: 300 } } }, revision)
+    expect((await authStore.readState()).accounts[0]?.quotaSnapshot?.primary?.usedPercent).toBe(99)
+    expect(updates).toHaveBeenCalledTimes(2)
+    stop()
+  })
+
+  it('honors Retry-After and does not let an older successful request cancel a newer backoff', async () => {
+    const coordinator = new AccountAuthCoordinator(await store())
+    let resolve!: () => void
+    const old = coordinator.readQuotaWithBackoff('account', () => new Promise<void>(done => { resolve = done }))
+    const limited = Object.assign(new Error('429'), { data: { headers: { 'Retry-After': '120' } } })
+    await expect(coordinator.readQuotaWithBackoff('account', async () => { throw limited })).rejects.toThrow('429')
+    resolve()
+    await old
+    const read = vi.fn(async () => {})
+    await expect(coordinator.readQuotaWithBackoff('account', read)).rejects.toThrow('退避')
+    expect(read).not.toHaveBeenCalled()
+    expect(coordinator.quotaRetryAt('account')).toBeGreaterThan(Date.now() + 119000)
+  })
+
   it('consumes the selected reset credit and retains account protection across refresh', async () => {
     const authStore = await store()
     const saved = await authStore.upsertCredential(credential('account-a', 'user-a'), { activate: true })

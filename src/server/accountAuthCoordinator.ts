@@ -1,4 +1,5 @@
 import { normalizeResetCredits } from '../accountResetCredits.js'
+import { mergeQuotaUpdate, quotaRetryDelay } from '../quotaRefresh.js'
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { once } from 'node:events'
 import { readFile, stat } from 'node:fs/promises'
@@ -168,6 +169,37 @@ function sameContinuity(left: ReturnType<typeof threadContinuity>, right: Return
 }
 
 export class AccountAuthCoordinator {
+  private quotaRevisions = new Map<string, number>()
+  private quotaBackoff = new Map<string, { until: number; failures: number }>()
+  private quotaReadGeneration = new Map<string, number>()
+  private quotaListeners = new Set<(account: StoredAccountEntry) => void>()
+  private rollingUpdates = new Map<string, Promise<void>>()
+  runtimeQuotaReader: ((storageId: string) => Promise<StoredAccountEntry | null>) | null = null
+  subscribeQuotaUpdates(listener: (account: StoredAccountEntry) => void): () => void {
+    this.quotaListeners.add(listener)
+    return () => this.quotaListeners.delete(listener)
+  }
+  quotaRevision(storageId: string): number { return this.quotaRevisions.get(storageId) || 0 }
+  quotaRetryAt(storageId: string): number { return this.quotaBackoff.get(storageId)?.until || 0 }
+  async readQuotaWithBackoff<T>(storageId: string, read: () => Promise<T>): Promise<T> {
+    const backoff = this.quotaBackoff.get(storageId)
+    if (backoff && backoff.until > Date.now()) throw new Error(`额度读取退避中，请等待${Math.ceil((backoff.until - Date.now()) / 1000)}秒`)
+    const generation = (this.quotaReadGeneration.get(storageId) || 0) + 1
+    this.quotaReadGeneration.set(storageId, generation)
+    try {
+      const result = await read()
+      if (this.quotaReadGeneration.get(storageId) === generation) this.quotaBackoff.delete(storageId)
+      return result
+    } catch (error) {
+      if (error instanceof Error && /app-server stopped|账号正在切换/.test(error.message)) throw error
+      const failures = (backoff?.failures || 0) + 1
+      if (this.quotaReadGeneration.get(storageId) === generation) this.quotaBackoff.set(storageId, { failures, until: Date.now() + quotaRetryDelay(error, failures) })
+      throw error
+    }
+  }
+  async applyRuntimeQuotaRead(storageId: string, payload: unknown, revision: number): Promise<StoredAccountEntry> {
+    return this.applyInspection(storageId, { accountId: null, email: null, planType: null, rateLimits: payload }, undefined, revision)
+  }
   private protectionInterrupt: ((storageId: string) => Promise<void>) | null = null
   setProtectionInterrupt(handler: (storageId: string) => Promise<void>): void { this.protectionInterrupt = handler }
   async interruptProtectedUsage(storageId: string): Promise<void> { await this.protectionInterrupt?.(storageId) }
@@ -178,13 +210,21 @@ export class AccountAuthCoordinator {
   async assertSubmissionAllowed(isChatGPT?: () => Promise<boolean>, policy?: { storageId?: string; protected?: boolean }): Promise<void> { await this.submissionGuard?.(isChatGPT, policy) }
   activeUsageAccounts: () => Promise<string[]> = async () => []
   async observeRuntimeQuota(storageId: string, payload: unknown): Promise<void> {
-    const quotaSnapshot = normalizeRateLimitPayload(payload)
+    this.quotaRevisions.set(storageId, this.quotaRevision(storageId) + 1)
+    const update = (this.rollingUpdates.get(storageId) || Promise.resolve()).catch(() => undefined).then(async () => {
+    const current = (await this.store.readState()).accounts.find(account => account.storageId === storageId)
+    const quotaSnapshot = normalizeRateLimitPayload(mergeQuotaUpdate(current?.quotaSnapshot, payload))
     if (!quotaSnapshot) return
     const account = await this.patchAccount(storageId, {
       quotaSnapshot, quotaUpdatedAtIso: new Date().toISOString(), quotaStatus: 'ready', quotaError: null,
       ...(quotaSnapshot.planType ? { planType: quotaSnapshot.planType } : {}),
     })
+    for (const listener of this.quotaListeners) listener(account)
     await this.quotaObserver?.(account)
+    })
+    this.rollingUpdates.set(storageId, update)
+    try { await update }
+    finally { if (this.rollingUpdates.get(storageId) === update) this.rollingUpdates.delete(storageId) }
   }
   isAccountOperationInProgress(): boolean { return this.operation !== null }
   blocksNewSubmissions(): boolean { return this.operation !== null && this.operation.kind !== 'refresh' }
@@ -492,6 +532,20 @@ export class AccountAuthCoordinator {
       const state = await this.store.readState()
       const entry = state.accounts.find((item) => item.storageId === storageId)
       if (!entry) throw new AccountCoordinatorError('account_not_found', 'The selected account was not found.', 404)
+      if (this.quotaRetryAt(storageId) > Date.now()) return entry
+      if (this.runtimeQuotaReader) {
+        try {
+          const runtime = await this.runtimeQuotaReader(storageId)
+          if (runtime) return runtime
+        } catch (error) {
+          const classified = classifyAccountAuthError(error)
+          const failed = await this.patchAccount(storageId, { authStatus: classified.authStatus, unavailableReason: classified.unavailableReason, quotaStatus: 'error', quotaError: getErrorMessage(error, '额度读取失败'), quotaUpdatedAtIso: new Date().toISOString() })
+          for (const listener of this.quotaListeners) listener(failed)
+          await this.quotaObserver?.(failed).catch(() => undefined)
+          return failed
+        }
+      }
+      const quotaRevision = this.quotaRevision(storageId)
       await this.patchAccount(storageId, { authStatus: 'refreshing', quotaStatus: 'loading', quotaError: null })
       let revision = entry.credentialRevision
       const probe = this.createProbe({
@@ -503,8 +557,8 @@ export class AccountAuthCoordinator {
         },
       })
       try {
-        const inspection = await this.withTimeout(probe.inspect(), ACCOUNT_INSPECTION_TIMEOUT_MS, () => probe.dispose())
-        return await this.applyInspection(storageId, inspection, 'ready')
+        const inspection = await this.readQuotaWithBackoff(storageId, () => this.withTimeout(probe.inspect(), ACCOUNT_INSPECTION_TIMEOUT_MS, () => probe.dispose()))
+        return await this.applyInspection(storageId, inspection, 'ready', quotaRevision)
       } catch (error) {
         const classified = classifyAccountAuthError(error)
         const failed = await this.patchAccount(storageId, {
@@ -515,6 +569,7 @@ export class AccountAuthCoordinator {
           quotaUpdatedAtIso: new Date().toISOString(),
         })
         await this.quotaObserver?.(failed).catch(() => undefined)
+        for (const listener of this.quotaListeners) listener(failed)
         return failed
       }
     })
@@ -722,11 +777,12 @@ export class AccountAuthCoordinator {
     return this.dependencies.createProbe?.(options) ?? new AccountAppServerProbe(options)
   }
 
-  private async applyInspection(storageId: string, inspection: AccountProbeInspection, authStatus?: AccountAuthStatus): Promise<StoredAccountEntry> {
+  private async applyInspection(storageId: string, inspection: AccountProbeInspection, authStatus?: AccountAuthStatus, revision?: number): Promise<StoredAccountEntry> {
+    await this.rollingUpdates.get(storageId)
     const quotaSnapshot = normalizeRateLimitPayload(inspection.rateLimits)
     const account = await this.patchAccount(storageId, {
-      email: inspection.email ?? undefined,
-      planType: quotaSnapshot?.planType ?? inspection.planType ?? undefined,
+      ...(inspection.email ? { email: inspection.email } : {}),
+      ...(quotaSnapshot?.planType || inspection.planType ? { planType: quotaSnapshot?.planType || inspection.planType } : {}),
       authStatus: authStatus ?? 'ready',
       lastVerifiedAtIso: new Date().toISOString(),
       quotaSnapshot,
@@ -735,16 +791,17 @@ export class AccountAuthCoordinator {
       quotaStatus: 'ready',
       quotaError: null,
       unavailableReason: null,
-    })
+    }, revision)
+    for (const listener of this.quotaListeners) listener(account)
     await this.quotaObserver?.(account).catch(() => undefined)
     return account
   }
 
-  private async patchAccount(storageId: string, patch: Partial<StoredAccountEntry>): Promise<StoredAccountEntry> {
+  private async patchAccount(storageId: string, patch: Partial<StoredAccountEntry>, quotaRevision?: number): Promise<StoredAccountEntry> {
     return await this.store.updateState((state) => {
       const current = state.accounts.find((entry) => entry.storageId === storageId)
       if (!current) throw new AccountCoordinatorError('account_not_found', 'The selected account was not found.', 404)
-      const next = { ...current, ...patch }
+      const next = { ...current, ...patch, ...(quotaRevision !== undefined && quotaRevision !== this.quotaRevision(storageId) ? { quotaSnapshot: current.quotaSnapshot, planType: current.planType } : {}) }
       return {
         state: { ...state, accounts: state.accounts.map((entry) => entry.storageId === storageId ? next : entry) },
         result: next,

@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { defaultNotificationSettings, defaultNoticeRule, inQuietHours, renderNotice, renderNoticeBody, validateNotificationSettings, type NotificationSettings, type AccountNoticeRule } from '../accountNotifications.js'
 import type { AccountAuthCoordinator } from './accountAuthCoordinator.js'
 import type { StoredAccountEntry } from './accountAuthStore.js'
+import { quotaRefreshInterval } from '../quotaRefresh.js'
 import { privateJson } from './apiProxy/store.js'
 
 type WindowState = { reset: number; used: number }
@@ -31,7 +32,7 @@ export class AccountNotificationService {
     })()
     void this.ready.catch(() => undefined)
     if (autoStart) {
-      this.timer = setInterval(() => { void this.tick().catch(() => undefined) }, 30_000)
+      this.timer = setInterval(() => { void this.tick().catch(() => undefined) }, 5000)
       this.timer.unref()
     }
   }
@@ -116,13 +117,16 @@ export class AccountNotificationService {
     if (this.ticking) return this.ticking
     this.ticking = (async () => {
       await this.ready
-      const accounts = (await this.coordinator.store.readState()).accounts
+      const state = await this.coordinator.store.readState()
+      const accounts = state.accounts
       const active = new Set(await this.activeAccounts())
+      if (state.activeStorageId) active.add(state.activeStorageId)
       for (const account of accounts) {
         if (this.stopped || this.coordinator.isAccountOperationInProgress()) break
         if (['reauth_required', 'materialization_dirty'].includes(account.authStatus)) continue
-        const maxAge = active.has(account.storageId) && account.protectionPercent ? 30_000 : 5 * 60_000
-        if (!account.quotaUpdatedAtIso || !Number.isFinite(Date.parse(account.quotaUpdatedAtIso)) || Date.now() - Date.parse(account.quotaUpdatedAtIso) >= maxAge) await this.coordinator.refreshAccount(account.storageId).catch(() => undefined)
+        const maxAge = active.has(account.storageId) ? quotaRefreshInterval(account.quotaSnapshot) : 5 * 60_000
+        const updatedAt = account.lastVerifiedAtIso || account.quotaUpdatedAtIso
+        if (!updatedAt || !Number.isFinite(Date.parse(updatedAt)) || Date.now() - Date.parse(updatedAt) >= maxAge) await this.coordinator.refreshAccount(account.storageId).catch(() => undefined)
       }
       await this.flush()
     })().finally(() => { this.ticking = null })

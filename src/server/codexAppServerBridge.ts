@@ -22,6 +22,7 @@ import { ThreadCompactionGate } from './threadCompactionGate.js'
 import { normalizeAutomationModelSettings } from '../automationOptions.js'
 import { AutomationEngine } from './automationEngine.js'
 import { ThreadQuotaResume } from './threadQuotaResume.js'
+import { boundedQuotaRead } from '../quotaRefresh.js'
 import { createAutomationRuntime } from './automationRuntime.js'
 import { createAutomationSchedule, validateAutomationTimezone } from './automationSchedule.js'
 import { parseAutomationToml, serializeAutomationToml, toAutomationApiRecord, writeAutomationFileAtomic, type ThreadAutomationRecord, type ThreadAutomationStatus } from './automationDefinition.js'
@@ -5994,9 +5995,33 @@ const MERGEABLE_ITEM_TYPES = new Set([
 ])
 
 export class AppServerProcess {
+  notifyAccountQuota(account: import('./accountAuthStore.js').StoredAccountEntry): void {
+    this.emitNotification({ method: 'codexapp/accountQuota/updated', params: { account } })
+  }
+  private quotaReadFlight: { storageId: string | null; promise: Promise<{ payload: unknown; account: import('./accountAuthStore.js').StoredAccountEntry | null }> } | null = null
+  private quotaReadCache: { storageId: string | null; at: number; result: { payload: unknown; account: import('./accountAuthStore.js').StoredAccountEntry | null } } | null = null
+  private async readRuntimeQuota(storageId: string | null): Promise<{ payload: unknown; account: import('./accountAuthStore.js').StoredAccountEntry | null }> {
+    const coordinator = getAccountAuthCoordinator()
+    if (coordinator.blocksNewSubmissions()) throw new Error('账号正在切换，稍后读取额度')
+    if (this.quotaReadFlight?.storageId === storageId) return boundedQuotaRead(this.quotaReadFlight.promise)
+    if (this.quotaReadCache?.storageId === storageId && Date.now() - this.quotaReadCache.at < 2000) return this.quotaReadCache.result
+    const revision = storageId ? coordinator.quotaRevision(storageId) : 0
+    const promise = (async () => {
+      const payload = await coordinator.readQuotaWithBackoff(storageId || 'runtime', () => this.call('account/rateLimits/read', null))
+      const account = storageId ? await coordinator.applyRuntimeQuotaRead(storageId, payload, revision) : null
+      const result = { payload, account }
+      this.quotaReadCache = !storageId || revision === coordinator.quotaRevision(storageId) ? { storageId, at: Date.now(), result } : null
+      return result
+    })()
+    this.quotaReadFlight = { storageId, promise }
+    const clear = () => { if (this.quotaReadFlight?.promise === promise) this.quotaReadFlight = null }
+    void promise.then(clear, clear)
+    return boundedQuotaRead(promise)
+  }
   quotaBlocked: (threadId: string, turnId: string) => Promise<void> = async () => {}
   notifyQuotaResumeChanged(): void { this.emitNotification({ method: 'thread/quotaResume/changed', params: {} }) }
   async observeAccountQuota(payload: unknown): Promise<void> {
+    this.quotaReadCache = null
     const coordinator = getAccountAuthCoordinator()
     const id = this.taskLease?.storageId || (await coordinator.store.readState()).activeStorageId
     if (id) await coordinator.observeRuntimeQuota(id, payload)
@@ -6216,7 +6241,7 @@ export class AppServerProcess {
       if (!pendingRequest) return
 
       if (message.error) {
-        pendingRequest.reject(Object.assign(new Error(message.error.message), { rpcRejected: true }))
+        pendingRequest.reject(Object.assign(new Error(message.error.message), { rpcRejected: true, data: (message.error as { data?: unknown }).data }))
       } else {
         pendingRequest.resolve(message.result)
       }
@@ -6565,6 +6590,11 @@ export class AppServerProcess {
         await this.call('account/login/start', { type: 'chatgptAuthTokens', accessToken: credential.accessToken, chatgptAccountId: credential.accountId })
       }
       this.initialized = true
+      void Promise.resolve().then(async () => {
+        const coordinator = getAccountAuthCoordinator()
+        const storageId = this.taskLease?.storageId || (await coordinator.store.readState()).activeStorageId
+        if (storageId && this.initialized && this.process) await this.readRuntimeQuota(storageId)
+      }).catch(() => undefined)
     }).finally(() => {
       this.initializePromise = null
     })
@@ -6574,6 +6604,11 @@ export class AppServerProcess {
 
   async rpc(method: string, params: unknown, taskId?: string): Promise<unknown> {
     const coordinator = getAccountAuthCoordinator()
+    coordinator.runtimeQuotaReader = async storageId => {
+      if (!this.initialized) return null
+      const current = this.taskLease?.storageId || (await coordinator.store.readState()).activeStorageId
+      return current === storageId ? (await this.readRuntimeQuota(storageId)).account : null
+    }
     const mutatingTurn = ['turn/start', 'turn/steer', 'thread/compact/start', 'thread/goal/set'].includes(method)
     if (mutatingTurn && this.taskAccountBusy() && (!taskId || taskId !== this.taskLease?.runId)) {
       throw Object.assign(new Error('自动化正在使用执行账号，请等待当前任务结束'), { rpcRejected: true, submissionNotSent: true })
@@ -6588,12 +6623,16 @@ export class AppServerProcess {
       const config = asRecord(asRecord(await this.call('config/read', {}))?.config)
       if (config?.model_provider && config.model_provider !== 'openai') return
       for (const [threadId, turnId] of this.activeTurnIds) {
-        await this.quotaBlocked(threadId, turnId)
+        void this.quotaBlocked(threadId, turnId).catch(() => undefined)
         await this.call('turn/interrupt', { threadId, turnId }).catch(() => undefined)
       }
     })
     this.disposeIfConfigChanged()
     await this.ensureInitialized()
+    if (method === 'account/rateLimits/read') {
+      const storageId = this.taskLease?.storageId || (await coordinator.store.readState()).activeStorageId
+      return (await this.readRuntimeQuota(storageId)).payload
+    }
     if (mutatingTurn) {
       await getAccountAuthCoordinator().assertSubmissionAllowed(async () => {
         const result = asRecord(await this.call('config/read', {}))
@@ -6720,6 +6759,7 @@ export class AppServerProcess {
   }
 
   dispose(): void {
+    this.quotaReadCache = null
     if (!this.process) return
 
     const proc = this.process
@@ -7133,6 +7173,7 @@ type CodexBridgeMiddleware = ((req: IncomingMessage, res: ServerResponse, next: 
 }
 
 type SharedBridgeState = {
+  unsubscribeQuota: () => void
   quotaResume: ThreadQuotaResume
   disposed: boolean
   owners: number
@@ -7150,12 +7191,13 @@ type SharedBridgeState = {
 }
 
 const SHARED_BRIDGE_KEY = '__codexRemoteSharedBridge__'
-const SHARED_BRIDGE_VERSION = 'shared-runtime-0211-account-policy-v2'
+const SHARED_BRIDGE_VERSION = 'shared-runtime-0211-account-policy-v3'
 
 function disposeSharedBridgeState(state: SharedBridgeState): Promise<void> {
   if (state.disposal) return state.disposal
-  state.disposed = true
+    state.disposed = true
   state.disposal = (async () => {
+    state.unsubscribeQuota?.()
     const automationDisposal = state.automationEngine.dispose()
     state.telegramBridge.stop()
     state.terminalManager.dispose()
@@ -7179,6 +7221,7 @@ function getSharedBridgeState(): SharedBridgeState {
   const previousRuntimeStopped = existing ? disposeSharedBridgeState(existing) : undefined
 
   const appServer = new AppServerProcess()
+  const unsubscribeQuota = getAccountAuthCoordinator().subscribeQuotaUpdates(account => appServer.notifyAccountQuota(account))
   const processActivity = existing?.processActivity ?? new ProcessActivityStore(join(getCodexHomeDir(), 'codexapp-hook-observations.json'))
   const terminalManager = new ThreadTerminalManager()
   const methodCatalog = new MethodCatalog()
@@ -7255,6 +7298,7 @@ function getSharedBridgeState(): SharedBridgeState {
     processActivity.observe(notification)
   })
   const created: SharedBridgeState = {
+    unsubscribeQuota,
     quotaResume,
     disposed: false,
     owners: 0,

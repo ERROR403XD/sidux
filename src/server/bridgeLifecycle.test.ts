@@ -16,7 +16,7 @@ it('keeps the new middleware usable when Vite closes the old server, and release
   const cleanup = vi.fn(async () => { stopped = true })
   const subscribers = new Set<unknown>()
   const state = {
-    disposed: false, owners: 0, disposal: null, version: 'shared-runtime-0211-account-policy-v2',
+    disposed: false, owners: 0, disposal: null, version: 'shared-runtime-0211-account-policy-v3',
     appServer: { dispose: vi.fn(), rpc: vi.fn(), onNotification: (listener: unknown) => { subscribers.add(listener); return () => subscribers.delete(listener) } },
     terminalManager: { dispose: vi.fn() },
     telegramBridge: { stop: vi.fn() },

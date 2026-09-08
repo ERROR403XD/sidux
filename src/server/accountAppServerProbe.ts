@@ -15,7 +15,7 @@ type JsonRpcMessage = {
   method?: string
   params?: unknown
   result?: unknown
-  error?: { code?: number; message?: string }
+  error?: { code?: number; message?: string; data?: unknown }
 }
 
 type PendingRequest = {
@@ -69,7 +69,7 @@ export class AccountProbeRpcClient {
       const pending = this.pending.get(message.id)
       if (!pending) return
       this.pending.delete(message.id)
-      if (message.error) pending.reject(new Error(message.error.message || 'Account probe request failed.'))
+      if (message.error) pending.reject(Object.assign(new Error(message.error.message || 'Account probe request failed.'), { code: message.error.code, data: message.error.data }))
       else pending.resolve(message.result)
       return
     }

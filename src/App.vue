@@ -1100,6 +1100,7 @@ import ThreadProcessPanel from './components/content/ThreadProcessPanel.vue'
 import TaskSearchDialog from './components/content/TaskSearchDialog.vue'
 import { taskId } from './subtasks'
 import { compactionRequests } from './api/threadCompaction'
+import { useAccountQuotaUpdates } from './composables/useAccountQuotaUpdates'
 import { useQuotaResume } from './composables/useQuotaResume'
 import { useThreadGoals } from './composables/useThreadGoals'
 import ThreadPendingRequestPanel from './components/content/ThreadPendingRequestPanel.vue'
@@ -2350,7 +2351,7 @@ async function maybeImportExternalCodexAuthAccount(): Promise<boolean> {
   const previousAccountsJson = JSON.stringify(accounts.value.map((account) => account.accountId).sort())
   try {
     const result = await refreshAccountsFromAuth()
-    accounts.value = result.accounts
+    applyAccountsSnapshot(result.accounts)
   } catch {
     await loadAccountsState({ silent: true })
   }
@@ -2698,10 +2699,19 @@ function buildAccountTitle(account: UiAccountEntry): string {
   ].filter(Boolean).join('\n')
 }
 
+function applyAccountsSnapshot(next: UiAccountEntry[]): void {
+  const current = new Map(accounts.value.map(account => [account.storageId, account]))
+  accounts.value = next.map(account => {
+    const previous = current.get(account.storageId)
+    if (!previous || !Number.isFinite(Date.parse(previous.quotaUpdatedAtIso || '')) || Date.parse(previous.quotaUpdatedAtIso || '') <= Date.parse(account.quotaUpdatedAtIso || '')) return account
+    return { ...account, quotaSnapshot: previous.quotaSnapshot, quotaUpdatedAtIso: previous.quotaUpdatedAtIso, quotaStatus: previous.quotaStatus, quotaError: previous.quotaError, resetCredits: previous.resetCredits, planType: previous.planType }
+  })
+}
+
 async function loadAccountsState(options: { silent?: boolean } = {}): Promise<void> {
   try {
     const result = await getAccounts()
-    accounts.value = result.accounts
+    applyAccountsSnapshot(result.accounts)
     if (!result.accounts.some((account) => account.storageId === hoveredAccountId.value)) {
       hoveredAccountId.value = ''
     }
@@ -2723,10 +2733,10 @@ async function onRefreshAccounts(): Promise<void> {
   isRefreshingAccounts.value = true
   try {
     const result = await getAccounts()
-    accounts.value = result.accounts
+    applyAccountsSnapshot(result.accounts)
     for (const account of result.accounts) {
       const refreshed = await refreshAccountQuota(account.storageId)
-      accounts.value = refreshed.accounts
+      applyAccountsSnapshot(refreshed.accounts)
     }
 
   } catch (error) {
@@ -2743,7 +2753,7 @@ async function onRefreshAccountQuota(storageId: string): Promise<void> {
   refreshingAccountId.value = storageId
   try {
     const result = await refreshAccountQuota(storageId)
-    accounts.value = result.accounts
+    applyAccountsSnapshot(result.accounts)
   } catch (error) {
     accountActionError.value = error instanceof Error ? error.message : t('Failed to refresh account quota')
   } finally {
@@ -2800,7 +2810,7 @@ function resumeAccountLogin(intent: 'add' | 'reauth', targetStorageId: string): 
 }
 
 function onAccountLoginCompleted(result: AccountLoginCompleteResult): void {
-  accounts.value = result.accounts
+  applyAccountsSnapshot(result.accounts)
   isCodexLoginModalOpen.value = false
   loginTargetStorageId.value = ''
   stopPolling()
@@ -2829,7 +2839,7 @@ async function onRemoveAccount(storageId: string): Promise<void> {
   removingAccountId.value = storageId
   try {
     const result = await removeAccount(storageId)
-    accounts.value = result.accounts
+    applyAccountsSnapshot(result.accounts)
     stopPolling()
     startPolling()
     if (removedWasActive) {
@@ -3520,6 +3530,7 @@ async function syncAfterMobileResume(): Promise<void> {
   }
 }
 
+useAccountQuotaUpdates(accounts)
 const { marks: quotaResumeMarks, error: quotaResumeError, toggle: toggleQuotaResume } = useQuotaResume()
 const goalThreadIds = computed(() => projectGroups.value.flatMap(group => group.threads.map(thread => thread.id)))
 const goalSelectedThreadId = computed(() => isHomeRoute.value ? '' : selectedThreadId.value || '')

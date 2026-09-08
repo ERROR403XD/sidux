@@ -530,7 +530,7 @@ function normalizeRateLimitSnapshot(value: unknown): UiRateLimitSnapshot | null 
   }
 }
 
-function normalizeAccountEntry(
+export function normalizeAccountEntry(
   value: unknown,
   activeAccountId: string | null = null,
   activeStorageId: string | null = null,
