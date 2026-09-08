@@ -14,7 +14,8 @@
           <strong :title="account.email || account.accountId">{{ account.email || t('Account') }}</strong>
           <span v-if="account.isActive" class="account-active-badge">当前使用</span>
         </div>
-        <p class="account-card-meta">{{ account.planType || t('unknown') }} · {{ status(account) }}</p>
+        <p class="account-card-meta">{{ account.planType || t('unknown') }}<span v-if="account.authStatus !== 'ready'"> · {{ status(account) }}</span></p>
+        <p v-if="account.quotaUpdatedAtIso" class="account-card-meta">更新于 {{ formatLocalDateTime(account.quotaUpdatedAtIso, { second: '2-digit' }) }}</p>
         <AccountQuota v-if="account.quotaSnapshot" :snapshot="account.quotaSnapshot" />
         <p v-else class="account-card-meta">{{ account.quotaStatus === 'loading' ? t('Loading quota…') : t('Quota unavailable') }}</p>
         <p v-if="account.quotaError" class="account-panel-error">{{ account.quotaError }}</p>
@@ -44,6 +45,7 @@ import type { UiAccountEntry } from '../../types/codex'
 import { useUiLanguage } from '../../composables/useUiLanguage'
 import AppButton from '../common/AppButton.vue'
 import AppPopover from '../common/AppPopover.vue'
+import { formatLocalDateTime } from '../../dateTime'
 import AccountQuota from './AccountQuota.vue'
 
 defineProps<{

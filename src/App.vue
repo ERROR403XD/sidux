@@ -11,7 +11,7 @@
             v-if="!isSidebarCollapsed"
             class="sidebar-thread-controls-host"
             :is-sidebar-collapsed="isSidebarCollapsed"
-            :show-new-thread-button="true"
+            :show-new-thread-button="false"
             :theme="darkMode" :settings-active="isSettingsRoute"
             @cycle-theme="cycleDarkMode" @open-settings="openSettings"
             @toggle-sidebar="setSidebarCollapsed(!isSidebarCollapsed)"
@@ -132,6 +132,8 @@
           <div ref="settingsAreaRef">
             <button ref="settingsButtonRef" class="account-usage-button" type="button" :aria-expanded="isSettingsOpen" aria-label="账号与用量" @click="isSettingsOpen = !isSettingsOpen">
               <span class="account-usage-heading"><strong>{{ activeAccount?.email || '添加 GPT 账号' }}</strong><span aria-hidden="true">⌃</span></span>
+              <small v-if="activeAccount?.quotaUpdatedAtIso">更新于 {{ formatLocalDateTime(activeAccount.quotaUpdatedAtIso, { year: undefined, month: undefined, day: undefined, second: '2-digit' }, 'zh-CN') }}</small>
+              <small v-if="activeAccount && (activeAccount.authStatus !== 'ready' || activeAccount.quotaStatus === 'error')" class="account-panel-error">{{ activeAccount.quotaError || formatAccountStatus(activeAccount) }}</small>
               <AccountQuota v-if="activeAccount?.quotaSnapshot" :snapshot="activeAccount.quotaSnapshot" compact />
               <small v-else>{{ activeAccount ? (activeAccount.quotaStatus === 'loading' ? '正在读取用量…' : '暂无用量数据') : '尚未添加账号' }}</small>
             </button>
@@ -162,7 +164,7 @@
               v-if="isSidebarCollapsed || isMobile"
               class="sidebar-thread-controls-header-host"
               :is-sidebar-collapsed="isSidebarCollapsed"
-              :show-new-thread-button="true"
+              :show-new-thread-button="false"
             :theme="darkMode" :settings-active="isSettingsRoute"
             @cycle-theme="cycleDarkMode" @open-settings="openSettings"
               @toggle-sidebar="setSidebarCollapsed(!isSidebarCollapsed)"
@@ -218,6 +220,7 @@
               @load-commit-files="loadThreadCommitFiles"
               @open-commit-file="onOpenContentHeaderCommitFile"
             />
+            <button class="header-new-thread" type="button" :aria-label="t('Start new thread')" :title="t('Start new thread')" @click="onStartNewThreadFromToolbar"><IconTablerFilePencil /></button>
           </template>
         </ContentHeader>
 
@@ -250,7 +253,7 @@
           <template v-else-if="isSettingsRoute"><SettingsPanel>
 <template #accounts><h3>GPT 账号（ChatGPT 登录）</h3><AccountPanel :accounts="accounts" :busy="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
   @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount" />
-<AccountActivation :accounts="accounts" />
+<AccountActivation :key="displayTimeZonePreference" :accounts="accounts" />
 <details class="settings-optional-provider" :open="selectedProvider !== 'codex'"><summary>其他连接（可选）<span v-if="selectedProvider !== 'codex'"> · {{ selectedProvider }}</span></summary>              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the API provider for the Codex backend')">
                 <span class="sidebar-settings-label">{{ t('Provider') }}</span>
                 <AppSelect
@@ -419,6 +422,7 @@
                 <span class="sidebar-settings-label">{{ t('Display timezone') }}</span>
                 <AppSelect
                   :model-value="displayTimeZonePreference"
+                  :disabled="isSavingDisplayTimeZone"
                   :options="displayTimeZoneOptions"
                   :placeholder="t('Display timezone')"
                   enable-search
@@ -426,7 +430,6 @@
                   menu-align="end"
                   @update:model-value="onDisplayTimeZoneChange"
                 />
-                <small>{{ t('Applies to all pages in this browser.') }}</small>
                 <p v-if="displayTimeZoneError" class="sidebar-timezone-error" role="alert">{{ displayTimeZoneError }}</p>
               </div>
 </template>
@@ -1067,6 +1070,7 @@ import AppDialog from './components/common/AppDialog.vue'
 import AccountActivation from './components/settings/AccountActivation.vue'
 import ConversationDefaults from './components/settings/ConversationDefaults.vue'
 import SettingsPanel from './components/settings/SettingsPanel.vue'
+import IconTablerFilePencil from './components/icons/IconTablerFilePencil.vue'
 import AccountQuota from './components/accounts/AccountQuota.vue'
 import AccountPanel from './components/accounts/AccountPanel.vue'
 import AppPopover from './components/common/AppPopover.vue'
@@ -1169,17 +1173,30 @@ const ApiProxyPanel = defineAsyncComponent(() => import('./components/api-proxy/
 const AutomationsPanel = defineAsyncComponent(() => import('./components/content/AutomationsPanel.vue'))
 const { t, uiLanguage, uiLanguageOptions, setUiLanguage } = useUiLanguage()
 const displayTimeZoneError = ref('')
+const isSavingDisplayTimeZone = ref(false)
 const displayTimeZoneOptions = computed(() => [
   { value: 'system', label: `${t('Follow system')} · ${browserTimeZone()}` },
   ...availableDisplayTimeZones().map(zone => ({ value: zone, label: zone })),
 ])
 let unsubscribeDisplayTimeZone: (() => void) | null = null
-function onDisplayTimeZoneChange(value: string): void {
+async function onDisplayTimeZoneChange(value: string): Promise<void> {
+  if (isSavingDisplayTimeZone.value || value === displayTimeZonePreference.value) return
+  isSavingDisplayTimeZone.value = true
   displayTimeZoneError.value = ''
   try {
+    const currentResponse = await fetch('/codex-api/api-proxy/activation')
+    const current = await currentResponse.json()
+    if (!currentResponse.ok) throw new Error(current.error?.message || '读取激活计划失败')
+    const response = await fetch('/codex-api/api-proxy/activation', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...current.data.settings, timezone: value === 'system' ? browserTimeZone() : value }),
+    })
+    if (!response.ok) throw new Error('同步激活计划时区失败，请重试。')
     setDisplayTimeZone(value)
   } catch (cause) {
     displayTimeZoneError.value = cause instanceof Error ? cause.message : '显示时区保存失败。'
+  } finally {
+    isSavingDisplayTimeZone.value = false
   }
 }
 
@@ -2698,6 +2715,10 @@ async function onRefreshAccounts(): Promise<void> {
   try {
     const result = await getAccounts()
     accounts.value = result.accounts
+    for (const account of result.accounts) {
+      const refreshed = await refreshAccountQuota(account.storageId)
+      accounts.value = refreshed.accounts
+    }
 
   } catch (error) {
     accountActionError.value = error instanceof Error ? error.message : t('Failed to refresh accounts')
@@ -3053,10 +3074,9 @@ function resolveSelectedThreadProjectCwd(): string {
 }
 
 function onStartNewThreadFromToolbar(): void {
-  const resolvedCwd = resolveSelectedThreadProjectCwd()
-  if (resolvedCwd) {
-    newThreadCwd.value = resolvedCwd
-  }
+  const thread = route.name === 'thread' && !isSettingsOpen.value ? selectedThread.value : null
+  newThreadCwd.value = thread?.cwd && !isProjectlessChatPath(thread.cwd) ? thread.cwd.trim() : ''
+  isSettingsOpen.value = false
   newThreadRuntime.value = 'local'
   if (isMobile.value) setSidebarCollapsed(true)
   if (isHomeRoute.value) { initializeWebConversation(''); return }

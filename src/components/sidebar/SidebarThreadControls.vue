@@ -11,15 +11,17 @@
       <IconTablerLayoutSidebar v-else class="sidebar-thread-controls-icon" />
     </button>
 
+    <template v-if="!isSidebarCollapsed">
     <button class="sidebar-thread-controls-button" type="button" :title="`主题：${theme === 'dark' ? '深色' : theme === 'light' ? '浅色' : '跟随系统'}`" :aria-label="`主题：${theme === 'dark' ? '深色' : theme === 'light' ? '浅色' : '跟随系统'}`" @click="$emit('cycle-theme')">
       <svg class="sidebar-thread-controls-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
         <path v-if="theme === 'dark'" d="M20 15.2A8 8 0 0 1 8.8 4 8 8 0 1 0 20 15.2Z" />
         <template v-else-if="theme === 'light'"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></template>
-        <template v-else><rect x="3" y="4" width="18" height="13" rx="2" /><path d="M12 17v4m-4 0h8" /></template>
+        <template v-else><circle cx="9" cy="9" r="3" /><path d="M9 1v2m0 12v2M1 9h2m12 0h2M3 3l1.5 1.5m9 9L15 15M3 15l1.5-1.5m9-9L15 3" /><text x="16" y="23" font-size="12" stroke="none" fill="currentColor" text-anchor="middle">A</text></template>
       </svg>
     </button>
     <button class="sidebar-thread-controls-button" :class="{ 'is-active': settingsActive }" type="button" :aria-label="t('Settings')" :aria-pressed="settingsActive" @click="$emit('open-settings')"><IconTablerSettings class="sidebar-thread-controls-icon" /></button>
     <slot />
+    </template>
 
     <button
       v-if="showNewThreadButton"
