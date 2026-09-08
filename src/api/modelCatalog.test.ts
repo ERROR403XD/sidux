@@ -41,3 +41,13 @@ describe('bounded model catalog reads', () => {
     expect(current[0]?.id).toBe('new-account')
   })
 })
+
+it('keeps the active-account catalog separate from provider and proxy catalogs', async () => {
+  const rpc = vi.fn()
+  const fetcher = vi.fn(async (_url: string, _options?: unknown) => new Response(JSON.stringify({ data: [{ id: 'account-model', model: 'account-model', displayName: 'Account model', supportedReasoningEfforts: [] }] })))
+  vi.stubGlobal('fetch', fetcher)
+  const rows = await loadModelCatalog(rpc, { accountScoped: true, includeProviderModels: false })
+  expect(rows.map(row => row.id)).toEqual(['account-model'])
+  expect(fetcher.mock.calls[0]?.[0]).toBe('/codex-api/accounts/models')
+  expect(rpc).not.toHaveBeenCalled()
+})

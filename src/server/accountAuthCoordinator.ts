@@ -505,6 +505,34 @@ export class AccountAuthCoordinator {
     return this.loginStatus(session)
   }
 
+  private modelCatalogs = new Map<string, { until: number; promise: Promise<unknown[]> }>()
+  async readAccountModels(storageId?: string): Promise<unknown[]> {
+    const state = await this.store.readState()
+    const id = storageId || state.activeStorageId
+    const entry = state.accounts.find(account => account.storageId === id)
+    if (!entry) throw new AccountCoordinatorError('account_not_found', '请选择可用账号。', 404)
+    const key = `${entry.storageId}:${entry.credentialRevision}:${entry.planType}`
+    const cached = this.modelCatalogs.get(key)
+    if (cached && cached.until > Date.now()) return cached.promise
+    const promise = this.withOperation('refresh', entry.storageId, async () => {
+      let revision = entry.credentialRevision
+      const probe = this.createProbe({
+        profileDir: `${this.store.accountsRoot}/${entry.storageId}`,
+        expectedAccountId: entry.accountId,
+        persistRefreshedCredential: async raw => {
+          const saved = await this.store.upsertCredential(raw, { expectedStorageId: entry.storageId, expectedRevision: revision, activate: state.activeStorageId === entry.storageId })
+          revision = saved.account.credentialRevision
+        },
+      })
+      const result = await this.withTimeout(probe.inspect(undefined, true), ACCOUNT_INSPECTION_TIMEOUT_MS, () => probe.dispose())
+      return result.models || []
+    })
+    if (this.modelCatalogs.size >= 16) this.modelCatalogs.delete(this.modelCatalogs.keys().next().value!)
+    this.modelCatalogs.set(key, { until: Date.now() + 30_000, promise })
+    void promise.catch(() => { this.modelCatalogs.delete(key) })
+    return promise
+  }
+
   async consumeResetCredit(storageId: string, creditId: string, idempotencyKey: string): Promise<string> {
     return await this.withOperation('refresh', storageId, async () => {
       const state = await this.store.readState()
@@ -514,6 +542,7 @@ export class AccountAuthCoordinator {
       const probe = this.createProbe({
         profileDir: `${this.store.accountsRoot}/${storageId}`,
         expectedAccountId: entry.accountId,
+        beforeReset: async () => { await this.patchAccount(storageId, { lastResetUsedAtIso: new Date().toISOString() }) },
         persistRefreshedCredential: async raw => {
           const saved = await this.store.upsertCredential(raw, { expectedStorageId: storageId, expectedRevision: revision, activate: state.activeStorageId === storageId })
           revision = saved.account.credentialRevision

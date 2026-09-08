@@ -54,6 +54,7 @@ export type StoredAccountEntry = {
   lastActivatedAtIso: string | null
   protectionPercent?: number
   resetCredits?: ResetCredits | null
+  lastResetUsedAtIso?: string | null
   quotaSnapshot: StoredRateLimitSnapshot | null
   quotaUpdatedAtIso: string | null
   quotaStatus: AccountQuotaStatus
@@ -275,6 +276,7 @@ function normalizeEntry(value: unknown): StoredAccountEntry | null {
     lastActivatedAtIso: readString(record?.lastActivatedAtIso),
     quotaSnapshot: normalizeRateLimitSnapshot(record?.quotaSnapshot),
     resetCredits: normalizeResetCredits(record?.resetCredits),
+    lastResetUsedAtIso: typeof record?.lastResetUsedAtIso === 'string' ? record.lastResetUsedAtIso : null,
     protectionPercent: Math.max(0, Math.min(100, readNumber(record?.protectionPercent) ?? 0)),
     quotaUpdatedAtIso: readString(record?.quotaUpdatedAtIso),
     quotaStatus,
@@ -455,6 +457,7 @@ export class AccountAuthStore {
           lastActivatedAtIso: existing?.lastActivatedAtIso ?? null,
           quotaSnapshot: existing?.quotaSnapshot ?? null,
           resetCredits: existing?.resetCredits ?? null,
+          lastResetUsedAtIso: existing?.lastResetUsedAtIso ?? null,
           protectionPercent: existing?.protectionPercent ?? 0,
           quotaUpdatedAtIso: existing?.quotaUpdatedAtIso ?? null,
           quotaStatus: existing?.quotaStatus ?? 'idle',
@@ -591,6 +594,7 @@ export class AccountAuthStore {
         lastActivatedAtIso: existing?.lastActivatedAtIso ?? null,
         quotaSnapshot: existing?.quotaSnapshot ?? null,
         resetCredits: existing?.resetCredits ?? null,
+        lastResetUsedAtIso: existing?.lastResetUsedAtIso ?? null,
         protectionPercent: existing?.protectionPercent ?? 0,
         quotaUpdatedAtIso: existing?.quotaUpdatedAtIso ?? null,
         quotaStatus: existing?.quotaStatus ?? 'idle',

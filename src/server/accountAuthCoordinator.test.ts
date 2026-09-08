@@ -462,3 +462,38 @@ it('skips activation credentials needing refresh without taking the global accou
   expect(coordinator.isAccountOperationInProgress()).toBe(false)
   expect((await accounts.readState()).accounts[0].credentialRevision).toBe(saved.account.credentialRevision)
 })
+
+it('reads model catalogs in the selected credential profile and deduplicates account reads', async () => {
+  const authStore = await store()
+  const a = await authStore.upsertCredential(credential('account-a', 'user-a'), { activate: true })
+  const b = await authStore.upsertCredential(credential('account-b', 'user-b'))
+  const calls: string[] = []
+  const coordinator = new AccountAuthCoordinator(authStore, { createProbe: options => ({
+    inspect: async (_reset: unknown, models: boolean) => {
+      expect(models).toBe(true)
+      calls.push(options.expectedAccountId)
+      expect(options.profileDir).toContain(options.expectedAccountId === 'account-a' ? a.account.storageId : b.account.storageId)
+      return { ...inspection(), models: [{ id: options.expectedAccountId }] }
+    }, dispose: vi.fn(),
+  }) as unknown as AccountAppServerProbe })
+  expect(await Promise.all([coordinator.readAccountModels(), coordinator.readAccountModels()])).toEqual([[{ id: 'account-a' }], [{ id: 'account-a' }]])
+  expect(await coordinator.readAccountModels(b.account.storageId)).toEqual([{ id: 'account-b' }])
+  expect(calls).toEqual(['account-a', 'account-b'])
+  expect((await authStore.readState()).activeStorageId).toBe(a.account.storageId)
+})
+
+it('persists reset usage before the consume RPC and preserves it after credential refresh', async () => {
+  const authStore = await store()
+  const a = await authStore.upsertCredential(credential('account-a', 'user-a'), { activate: true })
+  const coordinator = new AccountAuthCoordinator(authStore, { createProbe: options => ({
+    inspect: async () => {
+      await options.beforeReset?.()
+      expect((await authStore.readState()).accounts[0]?.lastResetUsedAtIso).toBeTruthy()
+      return { ...inspection(), resetOutcome: 'reset' }
+    }, dispose: vi.fn(),
+  }) as unknown as AccountAppServerProbe })
+  await coordinator.consumeResetCredit(a.account.storageId, 'credit-a', 'attempt-a')
+  const stamp = (await authStore.readState()).accounts[0]?.lastResetUsedAtIso
+  await authStore.upsertCredential(credential('account-a', 'user-a', 'rotated'))
+  expect((await authStore.readState()).accounts[0]?.lastResetUsedAtIso).toBe(stamp)
+})

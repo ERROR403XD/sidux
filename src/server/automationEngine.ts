@@ -58,7 +58,7 @@ export class AutomationEngine {
   private lastRenew = 0
   private lastInspect = 0
   private listeners = new Set<() => void>()
-  readonly timezone = validateAutomationTimezone(process.env.CODEXAPP_DEFAULT_TIMEZONE || DEFAULT_TIME_ZONE)
+  timezone = validateAutomationTimezone(process.env.CODEXAPP_DEFAULT_TIMEZONE || DEFAULT_TIME_ZONE)
   readonly readyPromise: Promise<void>
   constructor(private home: string, private runtime: AutomationRuntime, private now = Date.now, private automatic = true, previousRuntimeStopped?: Promise<void>) {
     this.store = new AutomationStore(join(home, 'codexapp-automations'))
@@ -129,6 +129,12 @@ export class AutomationEngine {
     return { data, nextCursor: items.length > data.length ? data.at(-1)?.createdAt ?? null : null }
   }
   private async scan() {
+    try {
+      const global = JSON.parse(await readFile(join(this.home, 'account-activation', 'state.json'), 'utf8'))
+      this.timezone = validateAutomationTimezone(global.settings.timezone)
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
     const root = join(this.home, 'automations')
     const entries = await readdir(root, { withFileTypes: true }).catch((error) => { if (error.code === 'ENOENT') return []; throw error })
     const seen = new Set<string>()
@@ -139,14 +145,14 @@ export class AutomationEngine {
       let signature = ''
       try {
         const info = await stat(file)
-        signature = `${info.mtimeMs}:${info.size}`
+        signature = `${info.mtimeMs}:${info.size}:${this.timezone}`
         seen.add(id)
         if (this.definitions.get(id)?.signature === signature) continue
         const record = parseAutomationToml(await readFile(file, 'utf8'))
         if (!record || record.id !== id) throw new Error('automation.toml 无效或 ID 与目录不符')
         if (record.kind === 'heartbeat' ? !record.targetThreadId : !record.cwds.length || record.cwds.some((cwd) => !isAbsolute(cwd))) throw new Error('缺少有效的执行目标')
         const previous = this.state.definitions[id]
-        const timezone = record.timezone ?? previous?.timezone ?? this.timezone
+        const timezone = this.timezone
         const revision = createHash('sha256').update(JSON.stringify([record.rrule, record.prompt, record.status, record.targetThreadId, record.cwds, timezone, record.model, record.reasoningEffort, record.serviceTier])).digest('hex').slice(0, 16)
         const anchor = previous?.revision === revision ? previous.anchor : this.now()
         const schedule = createAutomationSchedule(record.rrule, timezone, anchor)

@@ -7254,8 +7254,10 @@ function getSharedBridgeState(): SharedBridgeState {
       try { await coordinator.assertSubmissionAllowed(undefined); return true } catch { return false }
     },
     submit: async (threadId, id) => {
-      const message = { id, text: '额度已恢复，请继续之前尚未完成的工作。先核对现有进度，避免重复执行已完成的操作；如果工作已全部完成，请直接报告结果。', imageUrls: [], skills: [], fileAttachments: [], collaborationMode: 'default' as const }
-      const params = await backendQueueProcessor.buildQueuedTurnParams({ threadId, message })
+      const message = { id, text: '继续刚才做到一半的工作。额度已恢复。先核对现有进度，避免重复执行已完成的操作；如果工作已全部完成，请直接报告结果。', imageUrls: [], skills: [], fileAttachments: [], collaborationMode: 'default' as const }
+      let params: Record<string, unknown>
+      try { params = await backendQueueProcessor.buildQueuedTurnParams({ threadId, message }) }
+      catch { throw Object.assign(new Error('续跑参数准备未完成，稍后重试'), { retryableQuota: true }) }
       const result = await backendQueueProcessor.submit({ protocol: 2, threadId, message, params, expectedContextId: await backendQueueProcessor.deliveryContext() })
       if (result.status === 'failed') {
         const row = await backendQueueProcessor.deliveries.result(id)
@@ -7265,6 +7267,21 @@ function getSharedBridgeState(): SharedBridgeState {
         }
         throw new Error('续跑准备失败，请核对会话')
       }
+    },
+    reconcile: async (threadId, id, attemptedAt) => {
+      const row = await backendQueueProcessor.deliveries.result(id)
+      // A recent durable claim with no ledger record failed before submission.
+      // Old missing receipts may have expired; never replay those automatically.
+      if (!row) {
+        return attemptedAt && Date.now() - attemptedAt < 86400_000 ? 'waiting' : 'unknown'
+      }
+      if (row.threadId !== threadId) return 'unknown'
+      if (!('message' in row) || row.status === 'queued' || row.status === 'sending') return 'submitted'
+      if (row.status === 'unknown') {
+        const reconciled = await backendQueueProcessor.deliveries.reconcile(id)
+        return reconciled && !('message' in reconciled) ? 'submitted' : 'unknown'
+      }
+      return 'unknown'
     },
     cancel: async id => {
       const row = await backendQueueProcessor.deliveries.result(id)

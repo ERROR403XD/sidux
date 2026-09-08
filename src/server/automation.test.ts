@@ -226,3 +226,17 @@ describe('durable automation execution', () => {
     expect(await store.acquire(Date.now())).toBe(false)
   })
 })
+
+it('recomputes existing schedules when the global timezone changes and ignores legacy per-task timezone', async () => {
+  const f = await fixture({ rule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0' })
+  await mkdir(join(f.home, 'account-activation'), { recursive: true })
+  await writeFile(f.path, (await readFile(f.path, 'utf8')) + '\ntimezone = "America/New_York"\n')
+  await writeFile(join(f.home, 'account-activation/state.json'), JSON.stringify({ settings: { timezone: 'UTC' } }))
+  await f.engine.refresh()
+  expect(f.engine.snapshot().definitions[0]?.timezone).toBe('UTC')
+  const before = f.engine.snapshot().definitions[0]?.nextRunAtMs
+  await writeFile(join(f.home, 'account-activation/state.json'), JSON.stringify({ settings: { timezone: 'Asia/Shanghai' } }))
+  await f.engine.refresh()
+  expect(f.engine.snapshot().definitions[0]?.timezone).toBe('Asia/Shanghai')
+  expect(f.engine.snapshot().definitions[0]?.nextRunAtMs).not.toBe(before)
+})

@@ -1,6 +1,6 @@
 import { normalizeModelCapability, type ModelCapability } from '../modelCapabilities'
 
-export type ModelCatalogOptions = { includeProviderModels?: boolean; requireProviderModels?: boolean; providerId?: string }
+export type ModelCatalogOptions = { accountScoped?: boolean; includeProviderModels?: boolean; requireProviderModels?: boolean; providerId?: string }
 type Rpc = (method: string, params: Record<string, unknown>) => Promise<unknown>
 const cache = new Map<string, { promise: Promise<ModelCapability[]>; until: number }>()
 
@@ -9,7 +9,7 @@ export function invalidateModelCatalog(): void {
 }
 
 export function loadModelCatalog(rpc: Rpc, options: ModelCatalogOptions = {}): Promise<ModelCapability[]> {
-  const key = JSON.stringify([options.providerId || '', options.includeProviderModels !== false, !!options.requireProviderModels])
+  const key = JSON.stringify([options.providerId || '', options.includeProviderModels !== false, !!options.requireProviderModels, !!options.accountScoped])
   const cached = cache.get(key)
   if (cached && cached.until > Date.now()) return cached.promise
   const entry = { promise: Promise.resolve([] as ModelCapability[]), until: Infinity }
@@ -27,6 +27,18 @@ export function loadModelCatalog(rpc: Rpc, options: ModelCatalogOptions = {}): P
 }
 
 async function readCatalog(rpc: Rpc, options: ModelCatalogOptions): Promise<ModelCapability[]> {
+  if (options.accountScoped) {
+    const response = await fetch('/codex-api/accounts/models', { signal: AbortSignal.timeout(30_000) })
+    if (response.status !== 404) {
+      const data = await response.json()
+      if (!response.ok || !Array.isArray(data.data)) throw new Error('主激活账号模型目录读取失败')
+      return uniqueModels(data.data.flatMap((row: unknown) => {
+        if (row && typeof row === 'object' && (row as { hidden?: boolean }).hidden) return []
+        const model = normalizeModelCapability(row, 'codex')
+        return model ? [model] : []
+      }))
+    }
+  }
   let providerRows: ModelCapability[] = []
   if (options.includeProviderModels !== false) {
     const suffix = options.providerId ? `?provider=${encodeURIComponent(options.providerId)}` : ''

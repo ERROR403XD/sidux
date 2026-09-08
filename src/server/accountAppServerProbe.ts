@@ -102,6 +102,7 @@ export type AccountProbeInspection = {
   email: string | null
   planType: string | null
   resetOutcome?: string
+  models?: unknown[]
   rateLimits: unknown
 }
 
@@ -114,12 +115,13 @@ export class AccountAppServerProbe {
     profileDir: string
     expectedAccountId: string
     persistRefreshedCredential: (raw: string) => Promise<void>
+    beforeReset?: () => Promise<void>
     command?: string
     externalTokens?: { accessToken: string; chatgptAccountId: string; chatgptPlanType?: string }
     spawnImpl?: typeof spawn
   }) {}
 
-  async inspect(reset?: { creditId: string; idempotencyKey: string }): Promise<AccountProbeInspection> {
+  async inspect(reset?: { creditId: string; idempotencyKey: string }, includeModels = false): Promise<AccountProbeInspection> {
     const client = this.start()
     try {
       await client.call('initialize', {
@@ -136,8 +138,23 @@ export class AccountAppServerProbe {
       }
       let resetOutcome: string | undefined
       if (reset) {
+        await this.options.beforeReset?.()
         const result = asRecord(await client.call('account/rateLimitResetCredit/consume', reset))
         resetOutcome = readString(result?.outcome) || 'unknown'
+      }
+      const models: unknown[] = []
+      if (includeModels) {
+        let cursor: string | null = null
+        const seen = new Set<string>()
+        for (let page = 0; page < 20; page++) {
+          const result = asRecord(await client.call('model/list', { limit: 100, ...(cursor ? { cursor } : {}) }))
+          if (!Array.isArray(result?.data)) throw new Error('账号模型目录格式无效')
+          models.push(...result.data)
+          cursor = readString(result.nextCursor)
+          if (!cursor) break
+          if (seen.has(cursor) || page === 19) throw new Error('账号模型目录分页无效')
+          seen.add(cursor)
+        }
       }
       const rateLimits = await client.call('account/rateLimits/read', null)
       return {
@@ -146,6 +163,7 @@ export class AccountAppServerProbe {
         planType: readString(account?.planType ?? account?.plan_type),
         rateLimits,
         resetOutcome,
+        ...(includeModels ? { models } : {}),
       }
     } finally {
       await this.dispose()

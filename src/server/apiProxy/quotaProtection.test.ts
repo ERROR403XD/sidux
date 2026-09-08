@@ -16,6 +16,13 @@ describe('account-owned quota reserve', () => {
     const weekly = account(2); weekly.quotaSnapshot!.primary = null
     expect(() => assertQuotaAvailable(weekly, 1, false)).not.toThrow()
     weekly.quotaSnapshot!.secondary = null
-    expect(() => assertQuotaAvailable(weekly, 1, false)).toThrow('周限额')
+    expect(() => assertQuotaAvailable(weekly, 1, false)).toThrow('长期限额')
   })
+})
+
+it('reserves the thirty-day quota for free accounts', () => {
+  const account = { quotaStatus: 'ready', quotaSnapshot: { primary: { usedPercent: 95, windowMinutes: 43200 }, secondary: null } } as any
+  expect(() => assertQuotaAvailable(account, 5, false)).toThrow('已保留')
+  expect(() => assertQuotaAvailable(account, 4, false)).not.toThrow()
+  expect(() => assertQuotaAvailable(account, 5, true)).not.toThrow()
 })

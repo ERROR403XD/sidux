@@ -70,6 +70,12 @@ export async function handleAccountRoutes(
 ): Promise<boolean> {
   const coordinator = getAccountAuthCoordinator()
 
+  if (req.method === 'GET' && url.pathname === '/codex-api/accounts/models') {
+    try { setJson(res, 200, { data: await coordinator.readAccountModels(url.searchParams.get('storageId') || undefined) }) }
+    catch (error) { sendError(res, error, '账号模型目录读取失败。') }
+    return true
+  }
+
   if (req.method === 'GET' && url.pathname === '/codex-api/accounts') {
     try {
       setJson(res, 200, { data: await coordinator.listAccounts() })

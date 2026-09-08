@@ -3,13 +3,14 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { privateJson } from './apiProxy/store.js'
 
-export type QuotaResumeMark = { status: 'armed' | 'waiting' | 'submitted' | 'unknown'; blockedTurnId: string | null; attemptId: string | null }
+export type QuotaResumeMark = { status: 'armed' | 'waiting' | 'submitted' | 'unknown'; blockedTurnId: string | null; attemptId: string | null; attemptedAt?: number }
 type ThreadState = { active: boolean; turnId: string | null; status: string; error: string }
 type Runtime = {
   inspect(threadId: string): Promise<ThreadState>
   available(): Promise<boolean>
   submit(threadId: string, attemptId: string): Promise<void>
   cancel(attemptId: string): Promise<void>
+  reconcile?(threadId: string, attemptId: string, attemptedAt?: number): Promise<'waiting' | 'submitted' | 'unknown'>
   changed(): void
 }
 export const isQuotaFailure = (error: string) => /rate.?limit|usage.?limit|quota|429|额度|限额/iu.test(error)
@@ -100,6 +101,15 @@ export class ThreadQuotaResume {
     this.ticking = true
     try {
       await this.operation(async () => {
+        for (const [threadId, mark] of Object.entries(this.marks).filter(([, mark]) => mark.status === 'unknown').slice(0, 8)) {
+          if (!mark.attemptId || !this.runtime.reconcile) continue
+          const status = await this.runtime.reconcile(threadId, mark.attemptId, mark.attemptedAt)
+          if (status !== mark.status) {
+            mark.status = status
+            if (status === 'waiting') mark.attemptId = null
+            await this.save()
+          }
+        }
         const waiting = Object.entries(this.marks).filter(([, mark]) => mark.status === 'waiting').slice(0, 8)
         if (!waiting.length || !await this.runtime.available()) return
         for (const [threadId, mark] of waiting) {
@@ -113,6 +123,7 @@ export class ThreadQuotaResume {
           }
           mark.status = 'submitted'
           mark.attemptId = randomUUID()
+          mark.attemptedAt = Date.now()
           await this.save()
           try { await this.runtime.submit(threadId, mark.attemptId) }
           catch (cause) {

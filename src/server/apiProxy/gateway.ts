@@ -548,6 +548,10 @@ export class ApiProxyGateway {
       if (req.method !== 'POST') throw new ProxyError('unsupported_endpoint', '管理接口不存在。', 404)
       if (req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) throw new ProxyError('cross_origin', '不接受跨站管理操作。', 403)
       const input = await body(req, 64 * 1024)
+      if (path === '/notifications/test') {
+        json(res, 200, { data: await this.notifications.test() })
+        return
+      }
       if (path === '/notifications') {
         try {
           const next = await this.notifications.save(input as any)

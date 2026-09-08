@@ -57,3 +57,17 @@ it('substitutes nested message strings without turning message content into body
   const text = 'quote" and\nnewline {{other}}'
   expect(JSON.parse(renderNoticeBody('{"token":"literal","nested":{"text":"{{message}}"}}', { message: text }))).toEqual({ token: 'literal', nested: { text } })
 })
+
+it('requires exact full recovery and suppresses actual reset use for ten minutes, independent of credit count', async () => {
+  const { service } = await fixture()
+  await service.observe(entry(100, 80))
+  await service.observe(entry(200, 20))
+  expect((await service.snapshot()).pendingCount).toBe(0)
+  await service.observe({ ...entry(200, 0), lastResetUsedAtIso: new Date().toISOString() })
+  expect((await service.snapshot()).pendingCount).toBe(0)
+  await service.observe(entry(200, 10))
+  await service.observe({ ...entry(200, 0), lastResetUsedAtIso: new Date(Date.now() - 600_001).toISOString(), resetCredits: { availableCount: 0, credits: [] } })
+  expect((await service.snapshot()).pendingCount).toBe(2)
+  await service.observe(entry(300, 0))
+  expect((await service.snapshot()).pendingCount).toBe(2)
+})

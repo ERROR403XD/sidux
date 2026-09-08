@@ -74,19 +74,34 @@ export class AccountNotificationService {
     })
     return this.snapshot()
   }
+  async test(): Promise<{ lastResult: string | null }> {
+    await this.ready
+    const settings = { ...this.state.settings }
+    if (!settings.enabled || !settings.url) throw new Error('请先启用并保存通知配置。')
+    let result = '测试发送结果未确认'
+    try {
+      const response = await this.fetchImpl(settings.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: renderNoticeBody(settings.body, { message: 'CodexApp 通知测试：额度恢复通知渠道测试，此消息不代表真实额度重置。', account_id: '' }), redirect: 'error', signal: AbortSignal.timeout(10_000) })
+      await response.body?.cancel()
+      result = response.ok ? '测试通知已发送' : `测试通知失败：HTTP ${response.status}`
+    } catch { /* Keep endpoint credentials and remote error payloads private. */ }
+    await this.mutate(state => { state.lastResult = result })
+    return { lastResult: result }
+  }
   async observe(account: StoredAccountEntry): Promise<void> {
     if (this.stopped || account.quotaStatus !== 'ready' || !account.quotaSnapshot) return
     await this.mutate(state => {
       const rule = state.accounts[account.storageId] || defaultNoticeRule
       for (const window of [account.quotaSnapshot?.primary, account.quotaSnapshot?.secondary]) {
-        const kind = window?.windowMinutes === 300 ? 'fiveHour' : window?.windowMinutes === 10080 ? 'weekly' : null
-        if (!kind || !window?.resetsAt) continue
+        const kind = window?.windowMinutes === 300 ? 'fiveHour' : window && window.windowMinutes !== null && window.windowMinutes >= 10080 ? 'weekly' : null
+        if (!kind || !window || !Number.isFinite(window.usedPercent)) continue
         const key = `${account.storageId}:${kind}`
         const old = state.windows[key]
-        const recovered = !!old && window.resetsAt > old.reset && window.usedPercent < old.used
-        state.windows[key] = { reset: window.resetsAt, used: window.usedPercent }
+        const resetUsedAt = Date.parse(account.lastResetUsedAtIso || '')
+        const recentlyUsedReset = Number.isFinite(resetUsedAt) && Date.now() - resetUsedAt < 10 * 60_000
+        const recovered = !!old && old.used > 0 && window.usedPercent === 0 && !recentlyUsedReset
+        state.windows[key] = { reset: window.resetsAt || 0, used: window.usedPercent }
         if (!state.settings.enabled || !rule[kind] || !recovered) continue
-        const resetAt = new Intl.DateTimeFormat('zh-CN', { timeZone: state.settings.timezone, dateStyle: 'short', timeStyle: 'short' }).format(window.resetsAt * 1000)
+        const resetAt = window.resetsAt ? new Intl.DateTimeFormat('zh-CN', { timeZone: state.settings.timezone, dateStyle: 'short', timeStyle: 'short' }).format(window.resetsAt * 1000) : '未知'
         const values = { account: account.email || account.accountId, account_id: account.storageId, window: kind === 'fiveHour' ? '5小时' : '周', remaining: String(Math.round(100 - window.usedPercent)), reset_at: resetAt }
         state.pending.push({ id: randomUUID(), accountId: account.storageId, kind, message: renderNotice(kind === 'fiveHour' ? rule.fiveHourMessage : rule.weeklyMessage, values), createdAt: Date.now() })
       }
