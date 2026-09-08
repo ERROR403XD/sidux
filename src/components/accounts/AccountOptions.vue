@@ -4,8 +4,8 @@
     <p>{{ account.email || account.accountId }}</p>
     <p v-if="error" class="account-panel-error" role="alert">{{ error }}</p>
     <div v-if="loaded" class="notification-settings">
-      <label>周额度保护值（%）<input v-model.number="percent" class="app-input" type="number" min="0" max="100" step="0.1" :disabled="busy" /></label>
-      <small>5小时额度保护值：{{ Math.min(100, Number(percent) * 2) }}%。预留给使用此账号的受保护任务；0为关闭。</small>
+      <label>保护值（%）<input v-model.number="percent" class="app-input" type="number" min="0" max="100" step="0.1" :disabled="busy" /></label>
+      <small v-if="account.quotaSnapshot?.primary?.windowMinutes === 300 || account.quotaSnapshot?.secondary?.windowMinutes === 300">5小时额度保护值：{{ Math.min(100, Number(percent) * 2) }}%。预留给使用此账号的受保护任务；0为关闭。</small>
       <label class="notification-check"><input v-model="rule.fiveHour" type="checkbox" :disabled="busy" />5小时额度恢复通知</label>
       <textarea v-if="rule.fiveHour" v-model="rule.fiveHourMessage" class="app-input" rows="3" aria-label="5小时恢复通知内容" :disabled="busy" />
       <label class="notification-check"><input v-model="rule.weekly" type="checkbox" :disabled="busy" />周额度恢复通知</label>

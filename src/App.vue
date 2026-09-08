@@ -170,12 +170,6 @@
               @toggle-sidebar="setSidebarCollapsed(!isSidebarCollapsed)"
               @start-new-thread="onStartNewThreadFromToolbar"
             ><button class="sidebar-search-toggle" type="button" :aria-label="t('Search threads')" @click="setSidebarCollapsed(false); toggleSidebarSearch()"><IconTablerSearch class="sidebar-search-toggle-icon" /></button></SidebarThreadControls>
-            <span v-if="isSkillsRoute" class="skills-route-header-icon" aria-hidden="true">
-              <IconTablerBolt />
-            </span>
-            <span v-else-if="isAutomationsRoute" class="skills-route-header-icon automations-route-header-icon" aria-hidden="true">
-              <IconTablerClock />
-            </span>
           </template>
           <template #actions>
             <ComposerDropdown

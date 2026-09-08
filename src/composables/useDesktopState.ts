@@ -2016,6 +2016,7 @@ export function useDesktopState() {
       const isProviderBacked = targetProviderId !== 'codex'
       const normalizedSelectedModelId = readModelIdForThread(selectedThreadId.value)
       const models = await getAvailableModels({
+        ...(!isProviderBacked ? { accountScoped: true } : {}),
         includeProviderModels: isProviderBacked,
         requireProviderModels: isProviderBacked,
         providerId: isProviderBacked ? targetProviderId : undefined,
@@ -2284,11 +2285,8 @@ export function useDesktopState() {
       )
       saveSelectedCollaborationModeMap(nextSelectedCollaborationModeMap)
     }
-    const nextReadState = pruneThreadStateMap(readStateByThreadId.value, activeThreadIds)
-    if (nextReadState !== readStateByThreadId.value) {
-      readStateByThreadId.value = nextReadState
-      saveReadStateMap(nextReadState)
-    }
+    // The current list may be paginated or filtered. Absence is not deletion;
+    // retaining read markers prevents older pages becoming unread after reload.
     loadedMessagesByThreadId.value = pruneThreadStateMap(loadedMessagesByThreadId.value, activeThreadIds)
     for (const map of [messageHistoryRevisionByThreadId, loadedHistoryRevisionByThreadId]) {
       for (const id of map.keys()) if (!activeThreadIds.has(id)) map.delete(id)
@@ -2332,7 +2330,7 @@ export function useDesktopState() {
 
     readStateByThreadId.value = {
       ...readStateByThreadId.value,
-      [threadId]: thread.updatedAtIso,
+      [threadId]: new Date(Math.max(Date.now(), Date.parse(thread.updatedAtIso) || 0)).toISOString(),
     }
     saveReadStateMap(readStateByThreadId.value)
     if (eventUnreadByThreadId.value[threadId]) {

@@ -26,23 +26,26 @@
         </div>
       </section>
       <section class="api-proxy-card">
-        <div class="api-proxy-heading"><h2>API key</h2><AppButton :disabled="busy" @click="openCreate()">创建 key</AppButton></div>
-        <p class="api-proxy-muted">完整 key 仅创建时显示一次。撤销后立即阻止新请求，已经开始的响应默认继续完成。</p>
+        <div class="api-proxy-heading"><h2>API key</h2><div class="api-proxy-actions"><AppButton :busy="busy" @click="savePolicies">保存配置</AppButton><AppButton :disabled="busy" @click="openCreate()">创建 key</AppButton></div></div>
         <p v-if="!status.keys.length">尚未创建 API key。</p>
         <p v-if="status.usage?.error" role="alert" class="api-proxy-error">{{ status.usage.error }}</p>
-        <div class="api-proxy-fields"><label>用量范围<AppSelect v-model="usageWindow" :options="usageWindows" /></label></div>
-        <p v-if="status.usage" class="api-proxy-muted">统计始于 {{ date(status.usage.startedAt) }}；日期按 {{ status.usage.timeZone }}。近期窗口可用数据始于 {{ date(status.usage.windowCoverageFrom) }}。仅汇总已返回的 Token，用量缺失另列。</p>
-        <div v-for="key in status.keys" :key="key.id" class="api-proxy-key-row">
-          <div class="api-proxy-key-copy"><strong>{{ key.name }}</strong><span>••••{{ key.suffix }} · {{ keyLabel(key) }}</span><small>到期：{{ key.expiresAt ? date(key.expiresAt) : 'Never' }} · 最近使用：{{ date(key.lastUsedAt) }}</small>
-            <small>{{ key.accountStorageId ? accountName(key.accountStorageId) : '全局账号' }} · {{ key.protected ? '受保护' : '未保护' }}</small>
-            <template v-if="status.usage">
+        <div v-if="Object.values(expandedUsage).some(Boolean)" class="api-proxy-fields"><label>用量范围<AppSelect v-model="usageWindow" :options="usageWindows" /></label></div>
+        <AppButton @click="showInvalid = !showInvalid">{{ showInvalid ? '返回生效 API Key' : '查看已失效API Key' }}</AppButton>
+        <div v-for="key in visibleKeys" :key="key.id" class="api-proxy-key-row">
+          <div class="api-proxy-key-copy"><div class="api-proxy-key-title"><strong>{{ key.name }}</strong><span>••••{{ key.suffix }}</span><small>到期：{{ key.expiresAt ? date(key.expiresAt) : '无限' }}</small><span v-if="showInvalid">{{ keyLabel(key) }}</span></div>
+            <small>最近使用：{{ date(key.lastUsedAt) }}</small>
+            <div v-if="policyDrafts[key.id]" class="api-proxy-inline-policy">
+              <AppSelect v-model="policyDrafts[key.id]!.account" :options="keyAccountOptions" enable-search :disabled="busy || !!key.revokedAt" />
+              <label class="api-proxy-check"><input v-model="policyDrafts[key.id]!.protected" type="checkbox" :disabled="busy || !!key.revokedAt" />受保护</label>
+            </div>
+            <template v-if="status.usage && expandedUsage[key.id]">
               <small>请求 {{ usageFor(key.id).requests }} · 成功 {{ usageFor(key.id).completed }} · 失败 {{ usageFor(key.id).failed }} · 中断 {{ usageFor(key.id).interrupted }} · 拒绝 {{ usageFor(key.id).rejected }}</small>
               <small>Token {{ usageFor(key.id).total.toLocaleString() }} · 输入 {{ usageFor(key.id).input.toLocaleString() }} · 输出 {{ usageFor(key.id).output.toLocaleString() }} · 用量缺失 {{ usageFor(key.id).unknown }} 次</small>
               <small>缓存输入 {{ usageFor(key.id).cached.toLocaleString() }} · 推理 {{ usageFor(key.id).reasoning.toLocaleString() }} · 模型目录 {{ usageFor(key.id).catalogs }} 次</small>
             </template>
           </div>
           <div class="api-proxy-actions">
-            <AppButton :disabled="busy || !!key.revokedAt" @click="openPolicy(key)">账号与保护</AppButton>
+            <AppButton @click="expandedUsage[key.id] = !expandedUsage[key.id]">{{ expandedUsage[key.id] ? '收起统计' : 'Token 统计' }}</AppButton>
             <AppButton :disabled="busy || !!key.revokedAt" @click="renameTarget = key; renameValue = key.name">重命名</AppButton>
             <AppButton :disabled="busy || !!key.revokedAt" @click="updateKey(key, { enabled: !key.enabled })">{{ key.enabled ? '停用' : '启用' }}</AppButton>
             <AppButton :disabled="busy || !!key.revokedAt" @click="openCreate(key)">轮换</AppButton>
@@ -114,6 +117,26 @@ import { emptyUsage } from '../../api/proxyUsageTypes'
 import { copyTextToClipboard } from '../../utils/clipboard'
 import { apiProxyRequest, type ApiProxyKey, type ApiProxySettings, type ApiProxyStatus } from '../../api/apiProxy'
 
+const showInvalid = ref(false)
+const expandedUsage = ref<Record<string, boolean>>({})
+const policyDrafts = ref<Record<string, { account: string; protected: boolean }>>({})
+const visibleKeys = computed(() => (status.value?.keys || []).filter(key => {
+  const invalid = !!key.revokedAt || !key.enabled || !!key.expiresAt && Date.parse(key.expiresAt) <= Date.now()
+  return showInvalid.value ? invalid : !invalid
+}))
+async function savePolicies(): Promise<void> {
+  await run(async () => {
+    for (const key of status.value?.keys || []) {
+      const draft = policyDrafts.value[key.id]
+      if (!draft || key.revokedAt) continue
+      const accountStorageId = draft.account === 'global' ? null : draft.account
+      if (accountStorageId === key.accountStorageId && draft.protected === key.protected) continue
+      await apiProxyRequest(`/keys/${key.id}`, { accountStorageId, protected: draft.protected })
+      key.accountStorageId = accountStorageId
+      key.protected = draft.protected
+    }
+  })
+}
 const status = ref<ApiProxyStatus | null>(null)
 const settings = ref<ApiProxySettings>({ enabled: false, accountStorageId: null, globalConcurrency: 8, keyConcurrency: 4, drainTimeoutSeconds: 60 })
 const busy = ref(false)
@@ -158,6 +181,9 @@ async function refresh(reset = false): Promise<void> {
   try {
     const next = await apiProxyRequest<ApiProxyStatus>(`/status?timeZone=${encodeURIComponent(displayTimeZone())}`)
     if (disposed) return
+    for (const key of next.keys) {
+      if (!policyDrafts.value[key.id]) policyDrafts.value[key.id] = { account: key.accountStorageId || 'global', protected: !!key.protected }
+    }
     status.value = next
     if (reset) settings.value = { ...next.settings }
   } catch (caught) { error.value = caught instanceof Error ? caught.message : '读取失败。' }

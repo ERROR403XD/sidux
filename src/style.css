@@ -2478,3 +2478,31 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .notification-settings textarea { width: 100%; resize: vertical; }
 .notification-hours { display: flex; gap: 8px; align-items: center; }
 .notification-hours input { width: 80px; }
+
+/* 0.2.12: shared route and compact account controls. */
+.api-proxy-check, .api-proxy-key-form label.api-proxy-check { display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0; }
+.api-proxy-check input[type="checkbox"] { width: 16px; height: 16px; margin: 0; flex: 0 0 16px; }
+.api-proxy-key-form .app-select, .api-proxy-inline-policy .app-select { width: 100%; min-width: 0; }
+.api-proxy-key-form .composer-dropdown-trigger { width: 100%; }
+.composer-dropdown-menu-wrap .composer-dropdown-menu { width: 100%; min-width: 0; box-sizing: border-box; }
+.composer-dropdown-search-wrap, .composer-dropdown-search-input { width: 100%; box-sizing: border-box; min-width: 0; }
+.api-proxy-key-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.api-proxy-key-row { padding: 12px 0; align-items: flex-start; flex-wrap: wrap; }
+.api-proxy-key-copy { flex: 1 1 360px; }
+.api-proxy-inline-policy { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+.api-proxy-inline-policy .app-select { flex: 1; }
+.api-proxy-inline-policy .api-proxy-check { flex-shrink: 0; margin: 0; white-space: nowrap; }
+.api-proxy-key-row > .api-proxy-actions { gap: 6px; }
+.account-actions-menu { padding: 8px; gap: 4px; box-sizing: border-box; }
+.account-actions-menu .app-button { width: 100%; min-width: 0; justify-content: flex-start; margin: 0; box-sizing: border-box; }
+.thread-composer-fast[aria-checked="true"] { color: #a16207; border-color: #eab308; background: #fef9c3; box-shadow: 0 0 0 1px #eab30880, 0 0 12px #eab30866; }
+.thread-composer-fast[aria-checked="true"] .thread-composer-fast-icon { color: #eab308; fill: #facc15; filter: drop-shadow(0 0 4px #eab308); }
+:root.dark .thread-composer-fast[aria-checked="true"] { color: #fde047; background: #422006; border-color: #facc15; box-shadow: 0 0 0 1px #facc1580, 0 0 14px #eab30855; }
+
+:root .directory-hub, :root .automations-panel, :root .api-proxy-panel, :root .settings-page { width: 100%; max-width: 1100px; margin-inline: auto; padding: 24px; box-sizing: border-box; }
+:root .settings-section, :root .api-proxy-card, :root .directory-detail-block { border: 1px solid var(--ui-border); border-radius: var(--ui-radius-popover); background: var(--ui-surface); color: var(--ui-text); }
+:root.dark .automations-toolbar, :root.dark .automation-runtime-status { color: var(--ui-text); border-color: var(--ui-border); }
+@media (max-width: 640px) {
+  :root .directory-hub, :root .automations-panel, :root .api-proxy-panel, :root .settings-page { padding: 12px; }
+  .api-proxy-key-copy { flex-basis: auto; width: 100%; }
+}

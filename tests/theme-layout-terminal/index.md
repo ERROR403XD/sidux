@@ -37,3 +37,5 @@ Return to the [manual test index](../../tests.md).
 - [0.2.11 消息与侧栏状态一致性](chat-state-0211.md)
 
 - [0.2.11 设置与账号 UI](settings-0211.md)
+
+- [0.2.12 设置、API Key 与账号界面](settings-0212.md)

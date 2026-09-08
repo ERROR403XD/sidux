@@ -10,7 +10,7 @@
       <label class="notification-check"><input v-model="settings.quietEnabled" type="checkbox" :disabled="busy" />免打扰</label>
       <div v-if="settings.quietEnabled" class="notification-hours"><input v-model="settings.quietStart" class="app-input" aria-label="免打扰开始" placeholder="22:00" maxlength="5" :disabled="busy" /><span>至</span><input v-model="settings.quietEnd" class="app-input" aria-label="免打扰结束" placeholder="08:00" maxlength="5" :disabled="busy" /></div>
       <small v-if="settings.quietEnabled">期间暂存，结束后发送；使用全局时区。</small>
-      <div><AppButton :busy="busy" @click="save">保存通知设置</AppButton><span v-if="saved" role="status"> 已保存</span></div>
+      <div><AppButton :busy="busy" @click="save">保存通知设置</AppButton><AppButton :disabled="busy || !settings.enabled" @click="test">发送测试通知</AppButton><span v-if="saved" role="status"> 已保存</span></div>
       <small v-if="lastResult">{{ lastResult }}</small>
     </template>
   </div>
@@ -45,6 +45,16 @@ async function save(): Promise<void> {
     await apiProxyRequest('/notifications', { settings: value })
     saved.value = true
   } catch (cause) { error.value = cause instanceof Error ? cause.message : '保存通知设置失败。' }
+  finally { busy.value = false }
+}
+async function test(): Promise<void> {
+  await save()
+  if (!saved.value) return
+  busy.value = true
+  try {
+    const result = await apiProxyRequest<{ lastResult: string }>('/notifications/test', {})
+    lastResult.value = result.lastResult
+  } catch { error.value = '测试通知发送失败。' }
   finally { busy.value = false }
 }
 </script>

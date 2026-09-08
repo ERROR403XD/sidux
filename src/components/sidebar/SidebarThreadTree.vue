@@ -762,7 +762,7 @@
           </label>
 
           <div class="automation-model-fields">
-            <div class="automation-thread-field"><span class="automation-thread-label">模型</span><AppSelect v-model="automationDraft.model" class="automation-model-picker automation-thread-dropdown" :options="automationModelOptions" enable-search search-placeholder="搜索模型" :disabled="isSavingAutomation || isRunningAutomation" /></div>
+            <p v-if="accountModelsError" role="alert">{{ accountModelsError }}</p><div class="automation-thread-field"><span class="automation-thread-label">模型</span><AppSelect v-model="automationDraft.model" class="automation-model-picker automation-thread-dropdown" :options="automationModelOptions" enable-search search-placeholder="搜索模型" :disabled="isSavingAutomation || isRunningAutomation" /></div>
             <div class="automation-thread-field"><span class="automation-thread-label">思考强度</span><AppSelect v-model="automationDraft.reasoningEffort" class="automation-effort-picker automation-thread-dropdown" :options="automationEffortOptions" :disabled="isSavingAutomation || isRunningAutomation" /></div>
             <div class="automation-thread-field"><span class="automation-thread-label">服务档位</span><AppSelect v-model="automationDraft.serviceTier" class="automation-tier-picker automation-thread-dropdown" :options="automationTierOptions" :disabled="isSavingAutomation || isRunningAutomation" /></div>
           </div>
@@ -837,10 +837,6 @@
             <p class="automation-schedule-preview">{{ automationSchedulePreview }}</p>
           </div>
 
-          <label class="automation-thread-field">
-            <span class="automation-thread-label">时区（IANA）</span>
-            <input v-model="automationTimezone" class="rename-thread-input" type="text" placeholder="Asia/Shanghai" aria-label="自动化时区" />
-          </label>
           <div class="automation-thread-field">
             <span class="automation-thread-label">{{ t('Status') }}</span>
             <AppSelect
@@ -888,7 +884,7 @@
 
 <script setup lang="ts">
 import { isOverlayEventInside } from '../../composables/overlayEvents'
-import { browserTimeZone, formatLocalDateTime } from '../../dateTime'
+import { displayTimeZone, browserTimeZone, formatLocalDateTime } from '../../dateTime'
 import { getAutomationRuntime, runAutomationNow, createAutomationRequestId } from '../../api/automationGateway'
 import AppDialog from '../common/AppDialog.vue'
 import AppButton from '../common/AppButton.vue'
@@ -924,7 +920,7 @@ import { useUiLanguage } from '../../composables/useUiLanguage'
 import { useFeedbackDiagnostics } from '../../composables/useFeedbackDiagnostics'
 import { getPathLeafName, getPathParent, isAbsoluteLikePath, isProjectlessChatPath } from '../../pathUtils.js'
 import AppSelect from '../common/AppSelect.vue'
-import { tierOptions, effortOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
+import { normalizeModelCapability, tierOptions, effortOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
 import SidebarMenuRow from './SidebarMenuRow.vue'
 import { reconcilePinnedThreadIds } from './pinnedThreadUtils'
 
@@ -1085,8 +1081,31 @@ const automationDraft = ref<{
   status: 'ACTIVE', model: '', reasoningEffort: '', serviceTier: '', accountStorageId: '', protected: false,
 })
 const automationAccountOptions = computed(() => [{ value: '', label: '跟随全局账号' }, ...(props.accounts || []).map(account => ({ value: account.storageId, label: account.email || account.accountId }))])
-const automationModelOptions = computed(() => [{ value: '', label: '跟随运行时默认模型' }, ...Array.from(new Set([...(props.models ?? []), automationDraft.value.model].filter(Boolean))).map(value => ({ value, label: value }))])
-const automationModelCapability = computed(() => props.modelCapabilities?.find(model => model.id === automationDraft.value.model))
+const accountModels = ref<import('../../modelCapabilities').ModelCapability[]>([])
+const accountModelsLoading = ref(false)
+const accountModelsError = ref('')
+let accountModelGeneration = 0
+watch(() => [automationDialogVisible.value, automationDraft.value.accountStorageId] as const, async ([visible, storageId]) => {
+  const generation = ++accountModelGeneration
+  accountModels.value = []
+  accountModelsError.value = ''
+  accountModelsLoading.value = false
+  if (!visible || !storageId) return
+  accountModelsLoading.value = true
+  try {
+    const response = await fetch(`/codex-api/accounts/models?storageId=${encodeURIComponent(storageId)}`)
+    const data = await response.json()
+    if (!response.ok) throw new Error('所选账号模型目录读取失败')
+    if (generation !== accountModelGeneration) return
+    accountModels.value = data.data.map((row: unknown) => normalizeModelCapability(row, 'codex')).filter(Boolean)
+  } catch {
+    if (generation === accountModelGeneration) accountModelsError.value = '所选账号模型目录读取失败，请重新选择账号重试。'
+  } finally {
+    if (generation === accountModelGeneration) accountModelsLoading.value = false
+  }
+})
+const automationModelOptions = computed(() => [{ value: '', label: '跟随运行时默认模型' }, ...(automationDraft.value.accountStorageId ? accountModels.value.map(model => model.id) : props.models ?? []).map(value => ({ value, label: value }))])
+const automationModelCapability = computed(() => (automationDraft.value.accountStorageId ? accountModels.value : props.modelCapabilities)?.find(model => model.id === automationDraft.value.model))
 const automationTierOptions = computed(() => tierOptions(automationModelCapability.value, automationDraft.value.serviceTier))
 const automationEffortOptions = computed(() => effortOptions(automationModelCapability.value, automationDraft.value.reasoningEffort))
 const automationScheduleDraft = ref<AutomationScheduleDraft>({
@@ -2141,6 +2160,8 @@ async function submitAutomationDialog(): Promise<void> {
     if (automationDialogScope.value === 'project' && !projectName) {
       throw new Error('Select a project target for this automation')
     }
+    if (accountModelsLoading.value || accountModelsError.value) throw new Error(accountModelsError.value || '正在读取所选账号模型目录')
+    if (automationDraft.value.accountStorageId && automationDraft.value.model && !accountModels.value.some(model => model.id === automationDraft.value.model)) throw new Error('所选账号不支持此模型，请重新选择')
     const modelProblem = modelSettingsProblem(automationModelCapability.value, automationDraft.value.reasoningEffort, automationDraft.value.serviceTier)
     if (modelProblem) throw new Error(modelProblem)
     const input = {
@@ -2148,7 +2169,7 @@ async function submitAutomationDialog(): Promise<void> {
       name: automationDraft.value.name,
       prompt: automationDraft.value.prompt,
       rrule: automationDraft.value.rrule,
-      timezone: automationTimezone.value || undefined,
+      timezone: displayTimeZone(),
       status: automationDraft.value.status,
       accountStorageId: automationDraft.value.accountStorageId || null, protected: automationDraft.value.protected,
       model: automationDraft.value.model || null, reasoningEffort: automationDraft.value.reasoningEffort || null, serviceTier: automationDraft.value.serviceTier || null,

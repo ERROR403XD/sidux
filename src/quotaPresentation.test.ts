@@ -34,3 +34,11 @@ it('uses today, tomorrow and the day after for weekly resets before falling back
   const now = Date.parse('2026-09-08T15:00:00Z')
   expect([0, 1, 2, 3].map(days => quotaResetTime((now + days * 86400_000) / 1000, 10080, now))).toEqual(['今天 23:00', '明天 23:00', '后天 23:00', '周五 23:00'])
 })
+
+it('formats monthly recovery as zero-padded dates outside the next week', () => {
+  setDisplayTimeZone('UTC')
+  const now = Date.parse('2026-09-01T00:00:00Z')
+  expect(quotaResetTime(Date.parse('2026-10-01T08:00:00Z') / 1000, 43200, now)).toBe('10/01 08:00')
+  expect(quotaResetTime(Date.parse('2026-09-09T08:00:00Z') / 1000, 43200, now)).toBe('09/09 08:00')
+  expect(quotaResetTime(Date.parse('2026-09-03T08:00:00Z') / 1000, 43200, now)).toBe('后天 08:00')
+})
