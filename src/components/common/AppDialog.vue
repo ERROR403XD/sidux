@@ -3,6 +3,8 @@
     <div
       v-if="open"
       class="app-dialog-backdrop"
+      ref="backdrop"
+      data-app-dialog
       v-modal-backdrop="close"
       @keydown="onKeydown"
     >
@@ -31,6 +33,7 @@
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { vModalBackdrop } from '../../composables/modalBackdrop'
 import AppButton from './AppButton.vue'
+import { setPopoverAnchor, removePopoverAnchor, nestedOverlayLayer } from '../../composables/overlayEvents'
 
 const props = withDefaults(defineProps<{
   open: boolean
@@ -41,6 +44,7 @@ const props = withDefaults(defineProps<{
 }>(), { size: 'default' })
 const emit = defineEmits<{ close: [] }>()
 const panel = ref<HTMLElement | null>(null)
+const backdrop = ref<HTMLElement | null>(null)
 const body = ref<HTMLElement | null>(null)
 let previous: HTMLElement | null = null
 
@@ -49,6 +53,7 @@ function close(): void {
 }
 
 function restoreFocus(): void {
+  if (backdrop.value) removePopoverAnchor(backdrop.value)
   if (previous?.isConnected) previous.focus({ preventScroll: true })
   previous = null
 }
@@ -81,6 +86,8 @@ watch(() => props.open, async (open) => {
   previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
   await nextTick()
   if (props.open) {
+    if (backdrop.value && previous) setPopoverAnchor(backdrop.value, previous)
+    if (backdrop.value) backdrop.value.style.zIndex = String(nestedOverlayLayer(previous, Number(getComputedStyle(document.documentElement).getPropertyValue('--ui-layer-dialog')) || 16000))
     const target = panel.value?.querySelector<HTMLElement>('[data-autofocus]') ?? panel.value
     target?.focus({ preventScroll: true })
   }

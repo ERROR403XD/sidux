@@ -17,7 +17,7 @@
 
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch, type CSSProperties } from 'vue'
-import { isOverlayEventInside, setPopoverAnchor, removePopoverAnchor } from '../../composables/overlayEvents'
+import { isOverlayEventInside, setPopoverAnchor, removePopoverAnchor, nestedOverlayLayer } from '../../composables/overlayEvents'
 import { positionPopover } from './popoverPosition'
 
 const props = withDefaults(defineProps<{
@@ -52,6 +52,7 @@ function updatePosition(): void {
     direction: props.direction,
     align: props.align,
   })
+  position.value.zIndex = nestedOverlayLayer(props.anchor, Number(getComputedStyle(document.documentElement).getPropertyValue('--ui-layer-popover')) || 16010)
 }
 
 function schedulePosition(): void {
