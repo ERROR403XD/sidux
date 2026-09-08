@@ -102,6 +102,20 @@ afterEach(async () => {
 })
 
 describe('AccountAuthCoordinator', () => {
+  it('refreshes the plan from live quota instead of an older account token', async () => {
+    const authStore = await store()
+    const saved = await authStore.upsertCredential(credential('account-a', 'user-a'), { activate: true })
+    const current = inspection()
+    current.rateLimits = { rateLimits: { planType: 'pro', primary: { usedPercent: 40, windowDurationMins: 300, resetsAt: 1 } } }
+    const coordinator = new AccountAuthCoordinator(authStore, { createProbe: probeFactory(current) })
+    const updated = await coordinator.refreshAccount(saved.account.storageId)
+    expect(updated.planType).toBe('pro')
+    expect(updated.quotaSnapshot?.planType).toBe('pro')
+    expect((await authStore.readState()).accounts[0]?.planType).toBe('pro')
+    current.rateLimits = { rateLimits: { planType: 'free', primary: { usedPercent: 0, windowDurationMins: 300 } } }
+    expect((await coordinator.refreshAccount(saved.account.storageId)).planType).toBe('free')
+  })
+
   it('switches A to B transactionally and verifies thread continuity', async () => {
     const authStore = await store()
     const a = await authStore.upsertCredential(credential('account-a', 'user-a'), { activate: true })

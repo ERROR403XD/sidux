@@ -682,12 +682,13 @@ export class AccountAuthCoordinator {
   }
 
   private async applyInspection(storageId: string, inspection: AccountProbeInspection, authStatus?: AccountAuthStatus): Promise<StoredAccountEntry> {
+    const quotaSnapshot = normalizeRateLimitPayload(inspection.rateLimits)
     return await this.patchAccount(storageId, {
       email: inspection.email ?? undefined,
-      planType: inspection.planType ?? undefined,
+      planType: quotaSnapshot?.planType ?? inspection.planType ?? undefined,
       authStatus: authStatus ?? 'ready',
       lastVerifiedAtIso: new Date().toISOString(),
-      quotaSnapshot: normalizeRateLimitPayload(inspection.rateLimits),
+      quotaSnapshot,
       quotaUpdatedAtIso: new Date().toISOString(),
       quotaStatus: 'ready',
       quotaError: null,

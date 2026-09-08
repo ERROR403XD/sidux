@@ -225,6 +225,7 @@ describe('account coordinator gateway', () => {
           credentialRevision: 4,
           authStatus: 'reauth_required',
           quotaStatus: 'error',
+          quotaSnapshot: { primary: { usedPercent: 50, windowMinutes: 300, resetsAt: 1788865200 } },
           unavailableReason: 'reauth_required',
           actionRequired: 'reauthenticate',
           canSwitch: false,
@@ -238,6 +239,7 @@ describe('account coordinator gateway', () => {
       accounts: [{
         storageId: 'storage-a',
         credentialRevision: 4,
+        quotaSnapshot: { primary: { usedPercent: 50, windowDurationMins: 300, windowMinutes: 300 } },
         authStatus: 'reauth_required',
         actionRequired: 'reauthenticate',
         canSwitch: false,

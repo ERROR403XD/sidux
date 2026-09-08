@@ -485,7 +485,7 @@ function normalizeRateLimitWindow(value: unknown): UiRateLimitWindow | null {
   const usedPercent = readNumber(record.usedPercent ?? record.used_percent)
   if (usedPercent === null) return null
 
-  const windowValue = readNumber(record.windowDurationMins ?? record.window_minutes)
+  const windowValue = readNumber(record.windowDurationMins ?? record.windowMinutes ?? record.window_minutes)
   return {
     usedPercent,
     windowDurationMins: windowValue,

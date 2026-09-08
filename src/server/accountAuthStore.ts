@@ -442,7 +442,7 @@ export class AccountAuthStore {
           userId: credential.identity.userId,
           authMode: credential.identity.authMode,
           email: credential.identity.email ?? existing?.email ?? null,
-          planType: credential.identity.planType ?? existing?.planType ?? null,
+          planType: existing?.planType ?? credential.identity.planType ?? null,
           credentialRevision: Math.max(1, existing?.credentialRevision ?? 0),
           authStatus: existing?.authStatus ?? 'ready',
           lastRefreshedAtIso: existing?.lastRefreshedAtIso ?? modifiedAt,
