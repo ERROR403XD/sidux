@@ -13,3 +13,5 @@ Return to the [manual test index](../../tests.md).
 | [Feature: Project automations and `/automations` panel](project-automations-and-automations-panel.md) |
 | [Automation editor scrolls on small viewports](automation-editor-scrolls-on-small-viewports.md) |
 | [Automation panel dark action row specificity fix](automation-panel-dark-action-row-specificity-fix.md) |
+
+- [自动化账号选择与额度恢复续跑](account-routing-quota-resume.md)

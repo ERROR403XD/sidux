@@ -17,7 +17,7 @@ async function fixture() {
     return {}
   })
   const processor = new BackendQueueProcessor({
-    rpc, onNotification: () => () => {}, notifyQueueChanged: () => {}, listPendingServerRequests: () => [],
+    rpc, taskAccountBusy: () => false, onNotification: () => () => {}, notifyQueueChanged: () => {}, listPendingServerRequests: () => [],
   } as never, { directory, startRecovery: false, context: async () => 'fixture-account' })
   cleanups.push(async () => { await processor.dispose(); await rm(directory, { recursive: true, force: true }) })
   const message = { id: createDeliveryId(), text: 'fixture', imageUrls: [], skills: [], fileAttachments: [], collaborationMode: 'default' as const, model: 'saved-model', effort: 'ultra' }

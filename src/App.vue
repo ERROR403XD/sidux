@@ -99,7 +99,7 @@
             </span>
           </button>
 
-          <SidebarThreadTree ref="sidebarThreadTreeRef" :groups="projectGroups" :models="availableModelIds" :model-capabilities="availableModels" :goals="threadGoals" :project-display-name-by-id="projectDisplayNameById"
+          <SidebarThreadTree ref="sidebarThreadTreeRef" :groups="projectGroups" :accounts="accounts" :models="availableModelIds" :model-capabilities="availableModels" :goals="threadGoals" :quota-resume-marks="quotaResumeMarks" :quota-resume-error="quotaResumeError" @toggle-quota-resume="toggleQuotaResume" :project-display-name-by-id="projectDisplayNameById"
             :project-git-repo-by-name="projectGitRepoByName"
             :project-cwd-by-name="projectCwdByName"
             v-if="!isSidebarCollapsed"
@@ -140,7 +140,7 @@
           </div>
           <AppPopover :open="isSettingsOpen" :anchor="settingsAreaRef" :width="400" direction="up" panel-class="account-popover" @close="isSettingsOpen = false">
             <AccountPanel :accounts="accounts" :busy="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
-  @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount">
+  @reload="loadAccountsState()" @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount">
               <template #footer><div class="account-versions"><span>Codex {{ runtimeCapabilities?.cliVersion || '检测中…' }}</span><span>CodexApp {{ runtimeCapabilities?.appVersion || appVersion }}</span></div><AppButton @click="openSettings">账号设置 →</AppButton></template>
             </AccountPanel>
           </AppPopover>
@@ -252,7 +252,7 @@
           <template v-else-if="isApiProxyRoute"><ApiProxyPanel /></template>
           <template v-else-if="isSettingsRoute"><SettingsPanel>
 <template #accounts><h3>GPT 账号（ChatGPT 登录）</h3><AccountPanel :accounts="accounts" :busy="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
-  @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount" />
+  @reload="loadAccountsState()" @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount" />
 <AccountActivation :key="displayTimeZonePreference" :accounts="accounts" />
 <details class="settings-optional-provider" :open="selectedProvider !== 'codex'"><summary>其他连接（可选）<span v-if="selectedProvider !== 'codex'"> · {{ selectedProvider }}</span></summary>              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the API provider for the Codex backend')">
                 <span class="sidebar-settings-label">{{ t('Provider') }}</span>
@@ -468,7 +468,7 @@
                 />
               </div>
 </template>
-<template #integrations>              <button class="sidebar-settings-row" type="button" aria-live="polite" @click="isTelegramConfigOpen = !isTelegramConfigOpen">
+<template #integrations><NotificationSettings :key="displayTimeZonePreference" />              <button class="sidebar-settings-row" type="button" aria-live="polite" @click="isTelegramConfigOpen = !isTelegramConfigOpen">
                 <span class="sidebar-settings-label">{{ t('Telegram') }}</span>
                 <span class="sidebar-settings-value">{{ telegramStatusText }}</span>
               </button>
@@ -1067,6 +1067,7 @@
 
 <script setup lang="ts">
 import AppDialog from './components/common/AppDialog.vue'
+import NotificationSettings from './components/settings/NotificationSettings.vue'
 import AccountActivation from './components/settings/AccountActivation.vue'
 import ConversationDefaults from './components/settings/ConversationDefaults.vue'
 import SettingsPanel from './components/settings/SettingsPanel.vue'
@@ -1099,6 +1100,7 @@ import ThreadProcessPanel from './components/content/ThreadProcessPanel.vue'
 import TaskSearchDialog from './components/content/TaskSearchDialog.vue'
 import { taskId } from './subtasks'
 import { compactionRequests } from './api/threadCompaction'
+import { useQuotaResume } from './composables/useQuotaResume'
 import { useThreadGoals } from './composables/useThreadGoals'
 import ThreadPendingRequestPanel from './components/content/ThreadPendingRequestPanel.vue'
 import QueuedMessages from './components/content/QueuedMessages.vue'
@@ -1179,6 +1181,7 @@ const displayTimeZoneOptions = computed(() => [
   ...availableDisplayTimeZones().map(zone => ({ value: zone, label: zone })),
 ])
 let unsubscribeDisplayTimeZone: (() => void) | null = null
+let accountOverviewPollTimer: ReturnType<typeof setInterval> | null = null
 async function onDisplayTimeZoneChange(value: string): Promise<void> {
   if (isSavingDisplayTimeZone.value || value === displayTimeZonePreference.value) return
   isSavingDisplayTimeZone.value = true
@@ -2196,6 +2199,11 @@ const telegramStatusText = computed(() => {
 
 onMounted(() => {
   unsubscribeDisplayTimeZone = subscribeDisplayTimeZoneStorage()
+  accountOverviewPollTimer = setInterval(() => {
+    if (document.hidden || isAccountStatePollInFlight || isRefreshingAccounts.value) return
+    isAccountStatePollInFlight = true
+    void loadAccountsState({ silent: true }).finally(() => { isAccountStatePollInFlight = false })
+  }, 60_000)
   document.addEventListener('pointerdown', onDocumentPointerDown)
   window.addEventListener('keydown', onWindowKeyDown)
   document.addEventListener('visibilitychange', onDocumentVisibilityChange)
@@ -2231,6 +2239,7 @@ watch(visibleFeedbackErrors, (values, oldValues) => {
 
 onUnmounted(() => {
   unsubscribeDisplayTimeZone?.()
+  if (accountOverviewPollTimer !== null) clearInterval(accountOverviewPollTimer)
   document.removeEventListener('pointerdown', onDocumentPointerDown)
   window.removeEventListener('keydown', onWindowKeyDown)
   document.removeEventListener('visibilitychange', onDocumentVisibilityChange)
@@ -3511,6 +3520,7 @@ async function syncAfterMobileResume(): Promise<void> {
   }
 }
 
+const { marks: quotaResumeMarks, error: quotaResumeError, toggle: toggleQuotaResume } = useQuotaResume()
 const goalThreadIds = computed(() => projectGroups.value.flatMap(group => group.threads.map(thread => thread.id)))
 const goalSelectedThreadId = computed(() => isHomeRoute.value ? '' : selectedThreadId.value || '')
 const pendingCompactionRequest = computed(() => ['requested', 'unknown'].includes(compactionRequests.value[goalSelectedThreadId.value]?.status ?? ''))

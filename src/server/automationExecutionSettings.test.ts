@@ -5,6 +5,14 @@ import { normalizeAutomationModelSettings } from '../automationOptions'
 import { createAutomationRuntime } from './automationRuntime'
 
 describe('automation execution settings and local reference time', () => {
+  it('roundtrips fixed/global accounts and protection without a key-owned percentage', () => {
+    const raw = `id='test'\nname='fixture'\nprompt='fixture'\nrrule='FREQ=DAILY'\ncwds=['/tmp']\naccount_storage_id='${'a'.repeat(64)}'\nprotected=true`
+    const parsed = parseAutomationToml(raw)!
+    expect(parsed).toMatchObject({ accountStorageId: 'a'.repeat(64), protected: true })
+    expect(parseAutomationToml(serializeAutomationToml(parsed))).toMatchObject({ accountStorageId: 'a'.repeat(64), protected: true })
+    expect(normalizeAutomationModelSettings({ accountStorageId: null }, parsed)).toMatchObject({ accountStorageId: null, protected: true })
+    expect(() => normalizeAutomationModelSettings({ protected: 'yes' })).toThrow('保护')
+  })
   it('roundtrips model, effort and timezone while retaining unknown fields and allowing explicit default reset', () => {
     const raw = `id='test'\nname='fixture'\nprompt='fixture'\nrrule='FREQ=DAILY'\ncwds=['/tmp']\nmodel='chosen-model'\nmodel_reasoning_effort='high'\ntimezone='Asia/Shanghai'\ncreated_at=1\nupdated_at=2\ncustom=42`
     const parsed = parseAutomationToml(raw)!

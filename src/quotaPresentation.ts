@@ -14,7 +14,7 @@ export function quotaResetTime(seconds: number, minutes: number | null, now = Da
   if (!Number.isFinite(at)) return '—'
   const time = formatLocalDateTime(at, { year: undefined, month: undefined, day: undefined, hour: '2-digit', minute: '2-digit' }, 'zh-CN')
   let day = formatLocalDateTime(at, { year: undefined, month: undefined, day: undefined, hour: undefined, minute: undefined, weekday: 'short' }, 'zh-CN')
-  if (minutes === 300) {
+  if (minutes === 300 || minutes === 10080) {
     const dateOptions: Intl.DateTimeFormatOptions = { hour: undefined, minute: undefined }
     const targetDate = formatLocalDateTime(at, dateOptions, 'sv-SE')
     const today = formatLocalDateTime(now, dateOptions, 'sv-SE')
@@ -22,6 +22,7 @@ export function quotaResetTime(seconds: number, minutes: number | null, now = Da
     const tomorrow = new Date(Date.parse(`${today}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10)
     if (targetDate === today) day = '今天'
     else if (targetDate === tomorrow) day = '明天'
+    else if (minutes === 10080 && targetDate === new Date(Date.parse(`${today}T00:00:00Z`) + 2 * 86_400_000).toISOString().slice(0, 10)) day = '后天'
   }
   return `${day} ${time}`
 }

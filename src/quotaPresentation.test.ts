@@ -28,3 +28,9 @@ it('uses calendar tomorrow across a daylight-saving transition', () => {
   setDisplayTimeZone('America/New_York')
   expect(quotaResetTime(Date.parse('2026-03-09T04:30:00Z') / 1000, 300, Date.parse('2026-03-08T05:30:00Z'))).toBe('明天 00:30')
 })
+
+it('uses today, tomorrow and the day after for weekly resets before falling back to weekday', () => {
+  setDisplayTimeZone('Asia/Shanghai')
+  const now = Date.parse('2026-09-08T15:00:00Z')
+  expect([0, 1, 2, 3].map(days => quotaResetTime((now + days * 86400_000) / 1000, 10080, now))).toEqual(['今天 23:00', '明天 23:00', '后天 23:00', '周五 23:00'])
+})

@@ -1,3 +1,4 @@
+import { normalizeResetCredits } from '../accountResetCredits'
 import { normalizeInstalledApps, readDirectoryPages, type InstalledDirectoryApp, type DirectoryMcpSnapshot } from '../directory'
 import { prepareWebDelivery, submitRememberedDelivery } from './deliveryOutbox'
 import { createDeliveryId } from '../delivery'
@@ -555,6 +556,8 @@ function normalizeAccountEntry(
     lastRefreshedAtIso: readString(record.lastRefreshedAtIso) ?? '',
     lastActivatedAtIso: readString(record.lastActivatedAtIso),
     quotaSnapshot: normalizeRateLimitSnapshot(record.quotaSnapshot),
+    resetCredits: normalizeResetCredits(record.resetCredits),
+    protectionPercent: readNumber(record.protectionPercent) ?? 0,
     quotaUpdatedAtIso: readString(record.quotaUpdatedAtIso),
     quotaStatus,
     quotaError: readString(record.quotaError),
@@ -1206,6 +1209,8 @@ function asAutomation(record: unknown): UiThreadAutomation | null {
     model: readString(row.model) ?? undefined,
     reasoningEffort: readString(row.reasoningEffort) as UiThreadAutomation['reasoningEffort'],
     serviceTier: readString(row.serviceTier) || undefined,
+    accountStorageId: readString(row.accountStorageId) || null,
+    protected: row.protected === true,
   }
 }
 
@@ -1270,6 +1275,8 @@ export async function upsertThreadAutomation(input: {
   prompt: string
   rrule: string
   status: UiThreadAutomationStatus
+  accountStorageId?: string | null
+  protected?: boolean
   timezone?: string
   model?: string | null
   serviceTier?: string | null
@@ -1296,6 +1303,8 @@ export async function upsertProjectAutomation(input: {
   prompt: string
   rrule: string
   status: UiThreadAutomationStatus
+  accountStorageId?: string | null
+  protected?: boolean
   timezone?: string
   model?: string | null
   serviceTier?: string | null

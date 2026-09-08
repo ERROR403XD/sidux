@@ -34,6 +34,7 @@
         <p v-if="status.usage" class="api-proxy-muted">统计始于 {{ date(status.usage.startedAt) }}；日期按 {{ status.usage.timeZone }}。近期窗口可用数据始于 {{ date(status.usage.windowCoverageFrom) }}。仅汇总已返回的 Token，用量缺失另列。</p>
         <div v-for="key in status.keys" :key="key.id" class="api-proxy-key-row">
           <div class="api-proxy-key-copy"><strong>{{ key.name }}</strong><span>••••{{ key.suffix }} · {{ keyLabel(key) }}</span><small>到期：{{ key.expiresAt ? date(key.expiresAt) : 'Never' }} · 最近使用：{{ date(key.lastUsedAt) }}</small>
+            <small>{{ key.accountStorageId ? accountName(key.accountStorageId) : '全局账号' }} · {{ key.protected ? '受保护' : '未保护' }}</small>
             <template v-if="status.usage">
               <small>请求 {{ usageFor(key.id).requests }} · 成功 {{ usageFor(key.id).completed }} · 失败 {{ usageFor(key.id).failed }} · 中断 {{ usageFor(key.id).interrupted }} · 拒绝 {{ usageFor(key.id).rejected }}</small>
               <small>Token {{ usageFor(key.id).total.toLocaleString() }} · 输入 {{ usageFor(key.id).input.toLocaleString() }} · 输出 {{ usageFor(key.id).output.toLocaleString() }} · 用量缺失 {{ usageFor(key.id).unknown }} 次</small>
@@ -41,6 +42,7 @@
             </template>
           </div>
           <div class="api-proxy-actions">
+            <AppButton :disabled="busy || !!key.revokedAt" @click="openPolicy(key)">账号与保护</AppButton>
             <AppButton :disabled="busy || !!key.revokedAt" @click="renameTarget = key; renameValue = key.name">重命名</AppButton>
             <AppButton :disabled="busy || !!key.revokedAt" @click="updateKey(key, { enabled: !key.enabled })">{{ key.enabled ? '停用' : '启用' }}</AppButton>
             <AppButton :disabled="busy || !!key.revokedAt" @click="openCreate(key)">轮换</AppButton>
@@ -79,6 +81,8 @@
         <label>持续时间（天）
           <input v-model="keyDurationDays" class="app-input" type="number" min="1" step="1" placeholder="无限" :disabled="busy" />
         </label>
+        <label>使用账号<AppSelect v-model="keyAccountDraft" :options="keyAccountOptions" enable-search :disabled="busy" /></label>
+        <label class="api-proxy-check"><input v-model="keyProtectedDraft" type="checkbox" :disabled="busy" />受保护</label>
         <p v-if="rotateTarget" class="api-proxy-muted">旧 key 将于 24 小时后到期，也可提前撤销。</p>
       </div>
       <template v-else><p>请现在保存完整 key，关闭后不会再次显示。</p><textarea class="app-input api-proxy-secret" :value="secret" readonly rows="3" aria-label="新 API key" /><AppButton @click="copySecret">复制 key</AppButton></template>
@@ -88,13 +92,20 @@
       <p>撤销“{{ revokeTarget?.name }}”后无法重新启用。</p><label class="api-proxy-check"><input v-model="interruptKey" type="checkbox" />同时中断这把 key 的活动连接（{{ keyActivityCount }}）</label>
       <template #footer><AppButton :disabled="busy" @click="revokeTarget = null">取消</AppButton><AppButton variant="danger" :busy="busy" @click="revokeKey">撤销</AppButton></template>
     </AppDialog>
+    <AppDialog :open="!!policyTarget" title="账号与额度保护" :busy="busy" size="compact" @close="policyTarget = null">
+      <p v-if="error" class="api-proxy-error" role="alert">{{ error }}</p>
+      <label>使用账号<AppSelect v-model="keyAccountDraft" :options="keyAccountOptions" enable-search :disabled="busy" /></label>
+      <label class="api-proxy-check"><input v-model="keyProtectedDraft" type="checkbox" :disabled="busy" />受保护</label>
+      <p class="api-proxy-muted">保护值在账号设置中配置，受保护Key共享所选账号的预留额度。保存会断开此Key的旧连接。</p>
+      <template #footer><AppButton :disabled="busy" @click="policyTarget = null">取消</AppButton><AppButton :busy="busy" @click="savePolicy">保存</AppButton></template>
+    </AppDialog>
     <AppDialog :open="!!renameTarget" title="重命名 API key" :busy="busy" size="compact" @close="renameTarget = null"><input v-model="renameValue" class="app-input" maxlength="80" data-autofocus /><template #footer><AppButton :busy="busy" @click="renameKey">保存</AppButton></template></AppDialog>
     <AppDialog :open="forceDialog" title="中断活动连接并保存" :busy="busy" size="compact" @close="forceDialog = false"><p>将中断 {{ status?.activity.connections || 0 }} 个连接，其中 {{ status?.activity.activeRequests || 0 }} 个请求正在处理。客户端会收到中断，需要重新连接。</p><template #footer><AppButton :disabled="busy" @click="forceDialog = false">取消</AppButton><AppButton variant="danger" :busy="busy" @click="save(true)">中断并保存</AppButton></template></AppDialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppButton from '../common/AppButton.vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppSelect from '../common/AppSelect.vue'
@@ -117,6 +128,10 @@ const revokeTarget = ref<ApiProxyKey | null>(null)
 const renameTarget = ref<ApiProxyKey | null>(null)
 const renameValue = ref('')
 const interruptKey = ref(false)
+const policyTarget = ref<ApiProxyKey | null>(null)
+const keyAccountDraft = ref('global')
+const keyProtectedDraft = ref(false)
+const keyAccountOptions = computed(() => [{ value: 'global', label: '全局账号' }, ...accountOptions.value.filter(option => option.value !== 'follow')])
 const model = ref('gpt-5.6-luna')
 const models = ref<string[]>([])
 const usageWindow = ref<'cumulative' | 'today' | 'week'>('cumulative')
@@ -164,6 +179,7 @@ async function save(force: boolean): Promise<void> {
 }
 function openCreate(key?: ApiProxyKey): void {
   rotateTarget.value = key || null
+  setPolicyDraft(key)
   keyNameDraft.value = key ? `${key.name}（新）` : 'Codex CLI'
   keyDurationDays.value = ''
   secret.value = ''
@@ -183,11 +199,28 @@ async function createKey(): Promise<void> {
       throw new Error('持续时间请填写正整数天数，留空为无限。')
     }
     const created = await apiProxyRequest<{ secret: string }>('/keys', {
+      ...keyPolicy(),
       name: keyNameDraft.value,
       expiresAt: expiresAt?.toISOString() ?? null,
     })
     secret.value = created.secret
     if (rotateTarget.value) await apiProxyRequest(`/keys/${rotateTarget.value.id}`, { expiresAt: new Date(Date.now() + 86400_000).toISOString() })
+  })
+}
+function setPolicyDraft(key?: ApiProxyKey): void {
+  keyAccountDraft.value = key?.accountStorageId || 'global'
+  keyProtectedDraft.value = key?.protected || false
+}
+function keyPolicy() { return { accountStorageId: keyAccountDraft.value === 'global' ? null : keyAccountDraft.value, protected: keyProtectedDraft.value } }
+function openPolicy(key: ApiProxyKey): void {
+  setPolicyDraft(key)
+  policyTarget.value = key
+}
+async function savePolicy(): Promise<void> {
+  if (!policyTarget.value) return
+  await run(async () => {
+    await apiProxyRequest(`/keys/${policyTarget.value!.id}`, keyPolicy())
+    policyTarget.value = null
   })
 }
 async function copySecret(): Promise<void> { try { await copyTextToClipboard(secret.value) } catch { error.value = '当前浏览器无法自动复制，请选中 key 手动复制。' } }

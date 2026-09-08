@@ -9,7 +9,7 @@ import { ApiProxyGateway } from './gateway.js'
 import { ProxyStore } from './store.js'
 import { ProxyActivity } from './activity.js'
 import type { AccountAuthCoordinator } from '../accountAuthCoordinator.js'
-import type { ComponentGeneration } from './component.js'
+import { ProxyComponent, type ComponentGeneration } from './component.js'
 
 const cleanups: (() => Promise<void>)[] = []
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
@@ -53,7 +53,9 @@ async function fixture() {
   }))
   cleanups.push(async () => { for (const ws of backendWs.clients) ws.terminate(); backendWs.close() })
   let lifecycle: any
-  const coordinator = { store: { codexHome: directory }, isAccountOperationInProgress: () => false,
+  let guard: (() => Promise<void>) | null = null
+  let accountState: any = { activeStorageId: 'account', accounts: [{ storageId: 'account' }, { storageId: 'fixed' }] }
+  const coordinator = { store: { codexHome: directory, readState: async () => accountState }, setSubmissionGuard: (value: any) => { guard = value }, setQuotaObserver: vi.fn(), isAccountOperationInProgress: () => false,
     setApiLifecycle: (value: any) => { lifecycle = value }, listAccounts: async () => ({ activeStorageId: 'account', accounts: [{ storageId: 'account' }] }) } as unknown as AccountAuthCoordinator
   const gateway = new ApiProxyGateway(coordinator)
   await gateway.store.ready
@@ -76,7 +78,7 @@ async function fixture() {
   async function post(path: string, input: unknown, secret = first.secret) {
     return await fetch(base + path, { method: 'POST', headers: headers(secret), body: JSON.stringify(input) })
   }
-  return { gateway, base, first, second, headers, post, requests, stop, lifecycle: () => lifecycle, upstreamClosed: () => upstreamClosed }
+  return { gateway, base, first, second, headers, post, requests, stop, setAccountState: (value: any) => { accountState = value }, guard: () => guard!(), lifecycle: () => lifecycle, upstreamClosed: () => upstreamClosed }
 }
 
 describe('API outlet state and admission', () => {
@@ -242,4 +244,53 @@ describe('API outlet transport boundaries', () => {
     ws.terminate()
     expect(f.requests.filter(row => row.path === 'ws')).toHaveLength(1)
   })
+})
+
+
+it('allows protected global keys and persists protection independently of account selection', async () => {
+  const store = new ProxyStore(await home()); await store.ready
+  const global = await store.createKey('global', null, { protected: true })
+  expect(global.key).toMatchObject({ protected: true, accountStorageId: null })
+  const key = await store.createKey('protected', null, { protected: true, accountStorageId: 'a'.repeat(64) })
+  await store.updateKey(key.key.id, { accountStorageId: null })
+  expect(store.findKey(key.key.id)?.protected).toBe(true)
+  await store.updateKey(key.key.id, { accountStorageId: null, protected: false })
+  expect(store.findKey(key.key.id)?.protected).toBe(false)
+  await store.close()
+})
+
+it('routes fixed keys to isolated account components and enforces account reserve on HTTP and the main guard', async () => {
+  const f = await fixture()
+  const a = 'a'.repeat(64), b = 'b'.repeat(64)
+  f.setAccountState({ activeStorageId: a, accounts: [a, b].map(storageId => ({ storageId, protectionPercent: storageId === a ? 1 : 0, quotaUpdatedAtIso: new Date().toISOString(), quotaStatus: 'ready', quotaSnapshot: { primary: { windowMinutes: 300, usedPercent: 98 }, secondary: { windowMinutes: 10080, usedPercent: 99 } } })) })
+  const defaultGeneration = await f.gateway.component.prepare(null)
+  const prepared: string[] = []
+  const spy = vi.spyOn(ProxyComponent.prototype, 'prepare').mockImplementation(async id => { prepared.push(id!); return { ...defaultGeneration, id: id!, storageId: id!, references: 0 } })
+  try {
+    const keyA = await f.gateway.store.createKey('A', null, { accountStorageId: a, protected: true })
+    const keyB = await f.gateway.store.createKey('B', null, { accountStorageId: b })
+    expect((await f.post('/v1/responses', { input: [] }, keyA.secret)).status).toBe(200)
+    expect((await f.post('/v1/responses', { input: [] }, keyB.secret)).status).toBe(200)
+    expect(prepared).toEqual([a, b])
+    const rejected = await f.post('/v1/responses', { input: [] })
+    expect(rejected.status).toBe(429)
+    expect((await rejected.json()).error.code).toBe('account_quota_protected')
+    await expect(f.guard()).rejects.toThrow('已保留')
+    expect(f.requests).toHaveLength(2)
+  } finally { spy.mockRestore() }
+})
+
+it('checks reserve again for each WebSocket frame, not only at handshake', async () => {
+  const f = await fixture()
+  const state: any = { activeStorageId: 'account', accounts: [{ storageId: 'account', protectionPercent: 1, quotaUpdatedAtIso: new Date().toISOString(), quotaStatus: 'ready', quotaSnapshot: { primary: { windowMinutes: 300, usedPercent: 90 }, secondary: { windowMinutes: 10080, usedPercent: 90 } } }] }
+  f.setAccountState(state)
+  const ws = new WebSocket(f.base.replace('http:', 'ws:') + '/v1/responses', { headers: f.headers() })
+  await once(ws, 'open')
+  state.accounts[0].quotaSnapshot.secondary.usedPercent = 99
+  const received = once(ws, 'message')
+  ws.send(JSON.stringify({ type: 'response.create', model: 'fixture', input: [] }))
+  const [message] = await received
+  expect(JSON.parse(String(message)).error.code).toBe('account_quota_protected')
+  expect(f.requests).toHaveLength(0)
+  ws.terminate()
 })

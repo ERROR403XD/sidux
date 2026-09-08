@@ -51,7 +51,7 @@ export class ProxyComponent {
     if (this.flight) return await this.flight
     if (Date.now() < this.retryAfter) throw new ProxyError('component_backoff', '出口暂时不可用，正在等待重试窗口。', 503)
     const current = this.current
-    if (current && current.process.exitCode === null && current.process.signalCode === null && !this.coordinator.isAccountOperationInProgress()
+    if (current && (!storageId || current.storageId === storageId) && current.process.exitCode === null && current.process.signalCode === null && !this.coordinator.isAccountOperationInProgress()
       && Date.now() - this.checkedAt < 10_000 && Date.parse(current.expiresAt) > Date.now() + 300_000) return current
     const flight = this.prepareNext(storageId)
     this.flight = flight

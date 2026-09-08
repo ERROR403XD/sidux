@@ -12,6 +12,8 @@ import { AutomationStore, isActiveAutomationRun, isPendingAutomationRun, pruneAu
 
 export type AutomationInspection = { status: 'running' | 'waiting_input' | 'completed' | 'failed' | 'interrupted' | 'unknown'; turnId?: string; error?: string }
 export interface AutomationRuntime {
+  acquireAccount?(runId: string, settings: AutomationModelSettings): Promise<boolean>
+  releaseAccount?(runId: string): void
   accountBusy(): boolean
   canStart(threadId: string): Promise<boolean>
   createThread(cwd: string, name: string, settings?: AutomationModelSettings): Promise<{ threadId: string; model?: string }>
@@ -167,6 +169,7 @@ export class AutomationEngine {
     this.lastScan = this.now()
   }
   private finish(run: AutomationRun, status: AutomationRun['status'], error?: string, errorCode?: string) {
+    this.runtime.releaseAccount?.(run.runId)
     run.status = status; run.finishedAt = this.now(); run.error = error ?? null; run.errorCode = errorCode ?? null
   }
   private cancelQueued(id: string, reason: string) {
@@ -270,6 +273,21 @@ export class AutomationEngine {
   private async dispatch(run: AutomationRun) {
     const record = this.definitions.get(run.automationId)?.record
     if (!record || this.state.definitions[record.id]?.revision !== run.revision) { this.finish(run, 'cancelled', '任务已修改'); await this.persist(); return }
+    if (this.runtime.acquireAccount) {
+      try {
+        if (!await this.runtime.acquireAccount(run.runId, record)) {
+          run.retryAfter = this.now() + 30_000
+          run.error = '等待账号额度或当前任务到达可切换边界'
+          run.errorCode = 'WAITING_ACCOUNT'
+          await this.persist()
+          return
+        }
+      } catch (error) {
+        this.finish(run, 'failed', automationError(error).error, 'ACCOUNT_UNAVAILABLE')
+        await this.persist()
+        return
+      }
+    }
     // Claim synchronously before any await, so account switching sees this run.
     run.status = 'starting'; run.startedAt = this.now(); run.error = null; run.errorCode = null
     await this.persist()

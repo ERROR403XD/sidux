@@ -101,6 +101,7 @@ export type AccountProbeInspection = {
   accountId: string | null
   email: string | null
   planType: string | null
+  resetOutcome?: string
   rateLimits: unknown
 }
 
@@ -118,7 +119,7 @@ export class AccountAppServerProbe {
     spawnImpl?: typeof spawn
   }) {}
 
-  async inspect(): Promise<AccountProbeInspection> {
+  async inspect(reset?: { creditId: string; idempotencyKey: string }): Promise<AccountProbeInspection> {
     const client = this.start()
     try {
       await client.call('initialize', {
@@ -133,12 +134,18 @@ export class AccountAppServerProbe {
       if (runtimeAccountId && runtimeAccountId !== this.options.expectedAccountId) {
         throw new Error('account_identity_mismatch')
       }
+      let resetOutcome: string | undefined
+      if (reset) {
+        const result = asRecord(await client.call('account/rateLimitResetCredit/consume', reset))
+        resetOutcome = readString(result?.outcome) || 'unknown'
+      }
       const rateLimits = await client.call('account/rateLimits/read', null)
       return {
         accountId: runtimeAccountId,
         email: readString(account?.email),
         planType: readString(account?.planType ?? account?.plan_type),
         rateLimits,
+        resetOutcome,
       }
     } finally {
       await this.dispose()

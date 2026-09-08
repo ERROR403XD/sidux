@@ -16,10 +16,13 @@
         </div>
         <p class="account-card-meta">{{ account.planType || t('unknown') }}<span v-if="account.authStatus !== 'ready'"> · {{ status(account) }}</span></p>
         <p v-if="account.quotaUpdatedAtIso" class="account-card-meta">更新于 {{ formatLocalDateTime(account.quotaUpdatedAtIso, { second: '2-digit' }) }}</p>
+        <p v-if="account.protectionPercent" class="account-card-meta">周保护 {{ account.protectionPercent }}% · 5h保护 {{ Math.min(100, account.protectionPercent * 2) }}%</p>
         <AccountQuota v-if="account.quotaSnapshot" :snapshot="account.quotaSnapshot" />
         <p v-else class="account-card-meta">{{ account.quotaStatus === 'loading' ? t('Loading quota…') : t('Quota unavailable') }}</p>
         <p v-if="account.quotaError" class="account-panel-error">{{ account.quotaError }}</p>
+        <AccountResetCredits :account="account" :disabled="busy" @changed="$emit('reload')" />
         <footer class="account-card-actions">
+          <AccountOptions :account="account" :disabled="busy" @changed="$emit('reload')" />
           <AppButton v-if="!account.isActive" :disabled="disabled(account) || !account.canSwitch" @click="$emit('switch', account.storageId)">切换至此账号</AppButton>
           <AppButton v-if="account.actionRequired === 'reauthenticate'" :disabled="disabled(account)" @click="$emit('reauth', account.storageId)">{{ t('Re-authenticate') }}</AppButton>
           <span class="account-card-spacer" />
@@ -46,6 +49,8 @@ import { useUiLanguage } from '../../composables/useUiLanguage'
 import AppButton from '../common/AppButton.vue'
 import AppPopover from '../common/AppPopover.vue'
 import { formatLocalDateTime } from '../../dateTime'
+import AccountOptions from './AccountOptions.vue'
+import AccountResetCredits from './AccountResetCredits.vue'
 import AccountQuota from './AccountQuota.vue'
 
 defineProps<{
@@ -58,6 +63,7 @@ defineProps<{
   status: (account: UiAccountEntry) => string
 }>()
 const emit = defineEmits<{
+  reload: []
   refresh: []
   add: []
   switch: [storageId: string]

@@ -102,6 +102,23 @@ afterEach(async () => {
 })
 
 describe('AccountAuthCoordinator', () => {
+  it('consumes the selected reset credit and retains account protection across refresh', async () => {
+    const authStore = await store()
+    const saved = await authStore.upsertCredential(credential('account-a', 'user-a'), { activate: true })
+    await authStore.updateState(state => ({ state: { ...state, accounts: state.accounts.map(account => ({ ...account, protectionPercent: 1 })) }, result: undefined }))
+    const inspect = vi.fn(async () => ({ ...inspection(), resetOutcome: 'reset', rateLimits: { rateLimits: { primary: { usedPercent: 0, windowDurationMins: 300 } }, rateLimitResetCredits: { availableCount: 2, credits: null } } }))
+    const createProbe = vi.fn((_options: { expectedAccountId: string }) => ({ inspect, dispose: vi.fn() }) as unknown as AccountAppServerProbe)
+    const coordinator = new AccountAuthCoordinator(authStore, { createProbe })
+    expect(await coordinator.consumeResetCredit(saved.account.storageId, 'credit-a', 'attempt-a')).toBe('reset')
+    expect(inspect).toHaveBeenCalledExactlyOnceWith({ creditId: 'credit-a', idempotencyKey: 'attempt-a' })
+    expect(createProbe.mock.calls[0]?.[0]).toMatchObject({ expectedAccountId: 'account-a' })
+    const account = (await authStore.readState()).accounts[0]
+    expect(account?.resetCredits?.availableCount).toBe(2)
+    expect(account?.protectionPercent).toBe(1)
+    await authStore.upsertCredential(credential('account-a', 'user-a', 'rotated'))
+    expect((await authStore.readState()).accounts[0]?.protectionPercent).toBe(1)
+  })
+
   it('refreshes the plan from live quota instead of an older account token', async () => {
     const authStore = await store()
     const saved = await authStore.upsertCredential(credential('account-a', 'user-a'), { activate: true })

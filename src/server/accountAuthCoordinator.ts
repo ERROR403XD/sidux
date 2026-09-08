@@ -1,3 +1,4 @@
+import { normalizeResetCredits } from '../accountResetCredits.js'
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { once } from 'node:events'
 import { readFile, stat } from 'node:fs/promises'
@@ -167,6 +168,24 @@ function sameContinuity(left: ReturnType<typeof threadContinuity>, right: Return
 }
 
 export class AccountAuthCoordinator {
+  private protectionInterrupt: ((storageId: string) => Promise<void>) | null = null
+  setProtectionInterrupt(handler: (storageId: string) => Promise<void>): void { this.protectionInterrupt = handler }
+  async interruptProtectedUsage(storageId: string): Promise<void> { await this.protectionInterrupt?.(storageId) }
+  private quotaObserver: ((account: StoredAccountEntry) => Promise<void>) | null = null
+  setQuotaObserver(observer: ((account: StoredAccountEntry) => Promise<void>) | null): void { this.quotaObserver = observer }
+  private submissionGuard: ((isChatGPT?: () => Promise<boolean>, policy?: { storageId?: string; protected?: boolean }) => Promise<void>) | null = null
+  setSubmissionGuard(guard: typeof this.submissionGuard): void { this.submissionGuard = guard }
+  async assertSubmissionAllowed(isChatGPT?: () => Promise<boolean>, policy?: { storageId?: string; protected?: boolean }): Promise<void> { await this.submissionGuard?.(isChatGPT, policy) }
+  activeUsageAccounts: () => Promise<string[]> = async () => []
+  async observeRuntimeQuota(storageId: string, payload: unknown): Promise<void> {
+    const quotaSnapshot = normalizeRateLimitPayload(payload)
+    if (!quotaSnapshot) return
+    const account = await this.patchAccount(storageId, {
+      quotaSnapshot, quotaUpdatedAtIso: new Date().toISOString(), quotaStatus: 'ready', quotaError: null,
+      ...(quotaSnapshot.planType ? { planType: quotaSnapshot.planType } : {}),
+    })
+    await this.quotaObserver?.(account)
+  }
   isAccountOperationInProgress(): boolean { return this.operation !== null }
   blocksNewSubmissions(): boolean { return this.operation !== null && this.operation.kind !== 'refresh' }
   private operation: CoordinatorOperation | null = null
@@ -446,6 +465,26 @@ export class AccountAuthCoordinator {
     return this.loginStatus(session)
   }
 
+  async consumeResetCredit(storageId: string, creditId: string, idempotencyKey: string): Promise<string> {
+    return await this.withOperation('refresh', storageId, async () => {
+      const state = await this.store.readState()
+      const entry = state.accounts.find(account => account.storageId === storageId)
+      if (!entry) throw new AccountCoordinatorError('account_not_found', '账号不存在。', 404)
+      let revision = entry.credentialRevision
+      const probe = this.createProbe({
+        profileDir: `${this.store.accountsRoot}/${storageId}`,
+        expectedAccountId: entry.accountId,
+        persistRefreshedCredential: async raw => {
+          const saved = await this.store.upsertCredential(raw, { expectedStorageId: storageId, expectedRevision: revision, activate: state.activeStorageId === storageId })
+          revision = saved.account.credentialRevision
+        },
+      })
+      const inspection = await this.withTimeout(probe.inspect({ creditId, idempotencyKey }), ACCOUNT_INSPECTION_TIMEOUT_MS, () => probe.dispose())
+      await this.applyInspection(storageId, inspection)
+      return inspection.resetOutcome || 'unknown'
+    })
+  }
+
   async refreshAccount(storageId: string): Promise<StoredAccountEntry> {
     const existing = this.refreshFlights.get(storageId)
     if (existing) return await existing
@@ -468,13 +507,15 @@ export class AccountAuthCoordinator {
         return await this.applyInspection(storageId, inspection, 'ready')
       } catch (error) {
         const classified = classifyAccountAuthError(error)
-        return await this.patchAccount(storageId, {
+        const failed = await this.patchAccount(storageId, {
           authStatus: classified.authStatus,
           unavailableReason: classified.unavailableReason,
           quotaStatus: 'error',
           quotaError: getErrorMessage(error, 'Failed to refresh account quota.'),
           quotaUpdatedAtIso: new Date().toISOString(),
         })
+        await this.quotaObserver?.(failed).catch(() => undefined)
+        return failed
       }
     })
     this.refreshFlights.set(storageId, promise)
@@ -491,7 +532,7 @@ export class AccountAuthCoordinator {
     return await this.refreshTokensForStorage(state.activeStorageId, params)
   }
 
-  private async refreshTokensForStorage(storageId: string, params: ChatgptAuthTokensRefreshParams): Promise<ChatgptAuthTokensRefreshResponse> {
+  async refreshTokensForStorage(storageId: string, params: ChatgptAuthTokensRefreshParams): Promise<ChatgptAuthTokensRefreshResponse> {
     const existing = this.tokenRefreshFlights.get(storageId)
     if (existing) return await existing
     const flight = this.withOperation('refresh', storageId, async () => {
@@ -683,17 +724,20 @@ export class AccountAuthCoordinator {
 
   private async applyInspection(storageId: string, inspection: AccountProbeInspection, authStatus?: AccountAuthStatus): Promise<StoredAccountEntry> {
     const quotaSnapshot = normalizeRateLimitPayload(inspection.rateLimits)
-    return await this.patchAccount(storageId, {
+    const account = await this.patchAccount(storageId, {
       email: inspection.email ?? undefined,
       planType: quotaSnapshot?.planType ?? inspection.planType ?? undefined,
       authStatus: authStatus ?? 'ready',
       lastVerifiedAtIso: new Date().toISOString(),
       quotaSnapshot,
+      resetCredits: normalizeResetCredits(asRecord(inspection.rateLimits)?.rateLimitResetCredits),
       quotaUpdatedAtIso: new Date().toISOString(),
       quotaStatus: 'ready',
       quotaError: null,
       unavailableReason: null,
     })
+    await this.quotaObserver?.(account).catch(() => undefined)
+    return account
   }
 
   private async patchAccount(storageId: string, patch: Partial<StoredAccountEntry>): Promise<StoredAccountEntry> {

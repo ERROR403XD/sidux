@@ -33,6 +33,13 @@ afterEach(async () => {
 })
 
 describe('delivery before replay', () => {
+  it('records a local quota rejection as unsent rather than an ambiguous upstream submission', async () => {
+    const { service, dependencies } = await fixture()
+    dependencies.start.mockRejectedValue(Object.assign(new Error('账号额度已保留'), { submissionNotSent: true }))
+    const result = await service.submit(input())
+    expect(result).toMatchObject({ status: 'failed', error: '账号额度已保留' })
+    expect(dependencies.inspect).not.toHaveBeenCalled()
+  })
   it('persists during credential refresh and waits to dispatch until refresh ends', async () => {
     const { service, dependencies } = await fixture()
     dependencies.accountBusy.mockReturnValue(true)

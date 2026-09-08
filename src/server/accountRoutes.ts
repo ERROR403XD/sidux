@@ -89,6 +89,18 @@ export async function handleAccountRoutes(
     return true
   }
 
+  if (req.method === 'POST' && url.pathname === '/codex-api/accounts/reset-credit') {
+    try {
+      const input = await readJsonBody(req)
+      if (input.confirmed !== true || typeof input.storageId !== 'string' || typeof input.creditId !== 'string' || !input.creditId || typeof input.idempotencyKey !== 'string' || !/^[a-f0-9-]{36}$/i.test(input.idempotencyKey)) {
+        throw new AccountCoordinatorError('confirmation_required', '请先确认所选账号与重置机会。', 400)
+      }
+      const outcome = await coordinator.consumeResetCredit(input.storageId, input.creditId, input.idempotencyKey)
+      setJson(res, 200, { data: { outcome } })
+    } catch (error) { sendError(res, error, '重置结果未确认，请刷新额度后核对；不要重复使用其他重置机会。') }
+    return true
+  }
+
   if (req.method === 'POST' && url.pathname === '/codex-api/accounts/refresh') {
     try {
       setJson(res, 200, { data: await coordinator.importActiveCredential() })

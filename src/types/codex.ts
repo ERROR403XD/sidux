@@ -95,6 +95,8 @@ export type UiThreadAutomation = {
   updatedAtMs: number | null
   nextRunAtMs: number | null
   timezone?: string
+  accountStorageId?: string | null
+  protected?: boolean
 }
 
 export type CommandExecutionData = {
@@ -316,6 +318,8 @@ export type UiAccountUnavailableReason = 'payment_required' | 'reauth_required'
 export type UiAccountActionRequired = 'reauthenticate' | 'resolve_payment' | 'repair_active_credential'
 
 export type UiAccountEntry = {
+  protectionPercent?: number
+  resetCredits?: import('../accountResetCredits').ResetCredits | null
   accountId: string
   storageId: string
   userId: string | null

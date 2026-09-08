@@ -78,8 +78,12 @@ export class DeliveryService {
     } catch (cause) {
       const receipt = await this.store.readReceipt(row.message.id)
       if (!receipt) {
-        await this.store.unknown(row.message.id, cause instanceof Error ? cause.message : '未收到发送结果')
-        await this.reconcile(row.message.id)
+        if ((cause as { submissionNotSent?: boolean })?.submissionNotSent) {
+          await this.store.rejectedBeforeSend(row.message.id, cause instanceof Error ? cause.message : '发送前已拒绝')
+        } else {
+          await this.store.unknown(row.message.id, cause instanceof Error ? cause.message : '未收到发送结果')
+          await this.reconcile(row.message.id)
+        }
       }
     }
     this.changed(threadId)

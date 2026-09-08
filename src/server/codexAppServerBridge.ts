@@ -21,6 +21,7 @@ import { ThreadGoalReader } from './threadGoalReader.js'
 import { ThreadCompactionGate } from './threadCompactionGate.js'
 import { normalizeAutomationModelSettings } from '../automationOptions.js'
 import { AutomationEngine } from './automationEngine.js'
+import { ThreadQuotaResume } from './threadQuotaResume.js'
 import { createAutomationRuntime } from './automationRuntime.js'
 import { createAutomationSchedule, validateAutomationTimezone } from './automationSchedule.js'
 import { parseAutomationToml, serializeAutomationToml, toAutomationApiRecord, writeAutomationFileAtomic, type ThreadAutomationRecord, type ThreadAutomationStatus } from './automationDefinition.js'
@@ -4916,6 +4917,8 @@ async function writeThreadHeartbeatAutomation(input: {
   status: ThreadAutomationStatus
   model?: unknown
   serviceTier?: unknown
+  accountStorageId?: unknown
+  protected?: unknown
   reasoningEffort?: unknown
   timezone?: string
 }): Promise<ThreadAutomationRecord> {
@@ -5030,6 +5033,8 @@ async function writeProjectCronAutomation(input: {
   status: ThreadAutomationStatus
   model?: unknown
   serviceTier?: unknown
+  accountStorageId?: unknown
+  protected?: unknown
   reasoningEffort?: unknown
   timezone?: string
 }): Promise<ThreadAutomationRecord> {
@@ -5989,6 +5994,79 @@ const MERGEABLE_ITEM_TYPES = new Set([
 ])
 
 export class AppServerProcess {
+  quotaBlocked: (threadId: string, turnId: string) => Promise<void> = async () => {}
+  notifyQuotaResumeChanged(): void { this.emitNotification({ method: 'thread/quotaResume/changed', params: {} }) }
+  async observeAccountQuota(payload: unknown): Promise<void> {
+    const coordinator = getAccountAuthCoordinator()
+    const id = this.taskLease?.storageId || (await coordinator.store.readState()).activeStorageId
+    if (id) await coordinator.observeRuntimeQuota(id, payload)
+  }
+  private taskLease: { runId: string; storageId: string | null; protected: boolean } | null = null
+  private acquiringTask = false
+  private releaseTaskRequested = false
+  private taskReleaseTimer: ReturnType<typeof setTimeout> | null = null
+  stopTaskRouting(): void {
+    if (this.taskReleaseTimer) clearTimeout(this.taskReleaseTimer)
+    this.taskReleaseTimer = null
+    this.taskLease = null
+    this.releaseTaskRequested = false
+  }
+  taskAccountBusy(): boolean { return this.acquiringTask || !!this.taskLease }
+
+  async acquireTaskAccount(runId: string, settings: import('../automationOptions.js').AutomationModelSettings): Promise<boolean> {
+    if (this.taskAccountBusy() || getAccountAuthCoordinator().isAccountOperationInProgress()) return false
+    this.acquiringTask = true
+    try {
+      if (!(await this.getRuntimeQuiescenceSnapshot(true)).idle) return false
+      const coordinator = getAccountAuthCoordinator()
+      const state = await coordinator.store.readState()
+      const config = asRecord(asRecord(await this.rpc('config/read', {}))?.config)
+      const followsOtherProvider = !settings.accountStorageId && !settings.protected && config?.model_provider && config.model_provider !== 'openai'
+      const storageId = followsOtherProvider ? null : settings.accountStorageId || state.activeStorageId
+      if (settings.accountStorageId && !state.accounts.some(account => account.storageId === storageId)) throw new Error('所选账号已不存在')
+      if (storageId) {
+        const account = await coordinator.refreshAccount(storageId)
+        if (account.quotaStatus !== 'ready' || !account.quotaSnapshot) return false
+        const windows = [account.quotaSnapshot.primary, account.quotaSnapshot.secondary].filter(Boolean)
+        if (!windows.length || windows.some(window => window!.usedPercent >= 100)) return false
+        try { await coordinator.assertSubmissionAllowed(undefined, { storageId, protected: settings.protected }) }
+        catch { return false }
+      } else if (settings.protected) return false
+      this.dispose()
+      this.taskLease = { runId, storageId, protected: settings.protected === true }
+      this.releaseTaskRequested = false
+      return true
+    } finally { this.acquiringTask = false }
+  }
+
+  releaseTaskAccount(runId: string): void {
+    if (this.taskLease?.runId !== runId) return
+    this.releaseTaskRequested = true
+    if (this.taskReleaseTimer) return
+    const check = async () => {
+      this.taskReleaseTimer = null
+      if (!this.taskLease || !this.releaseTaskRequested) return
+      if (!this.activeTurnThreadIds.size && !this.pendingServerRequests.size && (!this.initialized || !(await this.backgroundActivity()).length)) {
+        this.dispose()
+        this.taskLease = null
+        this.releaseTaskRequested = false
+      } else {
+        this.taskReleaseTimer = setTimeout(() => { void check().catch(() => this.releaseTaskAccount(runId)) }, 1000)
+        this.taskReleaseTimer.unref()
+      }
+    }
+    void check().catch(() => {
+      this.taskReleaseTimer = setTimeout(() => { this.taskReleaseTimer = null; this.releaseTaskAccount(runId) }, 1000)
+      this.taskReleaseTimer.unref()
+    })
+  }
+
+  automationRpc(method: string, params: unknown): Promise<unknown> {
+    const input = this.taskLease?.storageId && ['thread/start', 'thread/resume'].includes(method)
+      ? { ...asRecord(params), modelProvider: 'openai' }
+      : params
+    return this.rpc(method, input, this.taskLease?.runId)
+  }
   readonly authRecovery = new AuthRecoveryRegistry()
   automationActivity: () => string[] = () => []
   backgroundActivity: () => Promise<string[]> = async () => []
@@ -6008,6 +6086,7 @@ export class AppServerProcess {
   private readonly liveStateCache = new Map<string, { data: unknown; turnCount: number; sessionSize: number }>()
   private chatgptAuthRefreshPromise: Promise<ChatgptAuthTokensRefreshResponse> | null = null
   private readonly activeTurnThreadIds = new Set<string>()
+  private readonly activeTurnIds = new Map<string, string>()
   private activityRevision = 0
   private activeConfigSignature = ''
 
@@ -6022,6 +6101,10 @@ export class AppServerProcess {
 
   private buildAppServerConfig(): { args: string[]; env: Record<string, string> } {
     const args = buildAppServerArgs()
+    if (this.taskLease?.storageId) {
+      args.push('-c', 'model_provider="openai"')
+      return { args, env: {} }
+    }
     let extraEnv: Record<string, string> = {}
     const serverPort = parseInt(process.env.CODEXUI_SERVER_PORT ?? '', 10) || undefined
     args.push(...getProviderCompatibilityConfigArgs(serverPort))
@@ -6170,9 +6253,13 @@ export class AppServerProcess {
     const notificationThreadId = this.extractThreadIdFromParams(notification.params)
     if (notificationThreadId && notification.method === 'turn/started') {
       this.activeTurnThreadIds.add(notificationThreadId)
+      const params = asRecord(notification.params)
+      const turnId = readNonEmptyString(asRecord(params?.turn)?.id) || readNonEmptyString(params?.turnId)
+      if (turnId) this.activeTurnIds.set(notificationThreadId, turnId)
     }
     if (notificationThreadId && (notification.method === 'turn/completed' || notification.method === 'turn/cancelled')) {
       this.activeTurnThreadIds.delete(notificationThreadId)
+      this.activeTurnIds.delete(notificationThreadId)
     }
     this.recordStreamEvent(notification)
     this.captureItemFromNotification(notification)
@@ -6377,6 +6464,10 @@ export class AppServerProcess {
   }
 
   private async refreshChatgptAuthTokens(params: ChatgptAuthTokensRefreshParams): Promise<ChatgptAuthTokensRefreshResponse> {
+    if (this.taskLease?.storageId) {
+      const credential = await getAccountAuthCoordinator().refreshTokensForStorage(this.taskLease.storageId, params)
+      return credential
+    }
     if (!this.chatgptAuthRefreshPromise) {
       this.chatgptAuthRefreshPromise = refreshChatgptAuthTokensForExternalAuth(params).finally(() => {
         this.chatgptAuthRefreshPromise = null
@@ -6464,11 +6555,15 @@ export class AppServerProcess {
       capabilities: {
         experimentalApi: true,
       },
-    }).then(() => {
+    }).then(async () => {
       this.sendLine({
         jsonrpc: '2.0',
         method: 'initialized',
       })
+      if (this.taskLease?.storageId) {
+        const credential = await getAccountAuthCoordinator().getApiCredential(this.taskLease.storageId)
+        await this.call('account/login/start', { type: 'chatgptAuthTokens', accessToken: credential.accessToken, chatgptAccountId: credential.accountId })
+      }
       this.initialized = true
     }).finally(() => {
       this.initializePromise = null
@@ -6477,9 +6572,37 @@ export class AppServerProcess {
     await this.initializePromise
   }
 
-  async rpc(method: string, params: unknown): Promise<unknown> {
+  async rpc(method: string, params: unknown, taskId?: string): Promise<unknown> {
+    const coordinator = getAccountAuthCoordinator()
+    const mutatingTurn = ['turn/start', 'turn/steer', 'thread/compact/start', 'thread/goal/set'].includes(method)
+    if (mutatingTurn && this.taskAccountBusy() && (!taskId || taskId !== this.taskLease?.runId)) {
+      throw Object.assign(new Error('自动化正在使用执行账号，请等待当前任务结束'), { rpcRejected: true, submissionNotSent: true })
+    }
+    coordinator.activeUsageAccounts = async () => {
+      const id = this.taskLease?.storageId || (await coordinator.store.readState()).activeStorageId
+      return id && this.activeTurnThreadIds.size ? [id] : []
+    }
+    getAccountAuthCoordinator().setProtectionInterrupt(async storageId => {
+      const state = await getAccountAuthCoordinator().store.readState()
+      if ((this.taskLease?.storageId || state.activeStorageId) !== storageId || this.taskLease?.protected || !this.activeTurnThreadIds.size) return
+      const config = asRecord(asRecord(await this.call('config/read', {}))?.config)
+      if (config?.model_provider && config.model_provider !== 'openai') return
+      for (const [threadId, turnId] of this.activeTurnIds) {
+        await this.quotaBlocked(threadId, turnId)
+        await this.call('turn/interrupt', { threadId, turnId }).catch(() => undefined)
+      }
+    })
     this.disposeIfConfigChanged()
     await this.ensureInitialized()
+    if (mutatingTurn) {
+      await getAccountAuthCoordinator().assertSubmissionAllowed(async () => {
+        const result = asRecord(await this.call('config/read', {}))
+        const config = asRecord(result?.config)
+        return !config?.model_provider || config.model_provider === 'openai'
+      }, this.taskLease ? { storageId: this.taskLease.storageId || undefined, protected: this.taskLease.protected } : undefined).catch(error => {
+        throw Object.assign(error instanceof Error ? error : new Error('额度校验失败'), { rpcRejected: true, submissionNotSent: true })
+      })
+    }
     return this.call(method, params)
   }
 
@@ -6526,7 +6649,7 @@ export class AppServerProcess {
     return Array.from(this.pendingServerRequests.values())
   }
 
-  async getRuntimeQuiescenceSnapshot(): Promise<RuntimeQuiescenceSnapshot> {
+  async getRuntimeQuiescenceSnapshot(ignoreTaskAcquisition = false): Promise<RuntimeQuiescenceSnapshot> {
     const activityRevision = this.activityRevision
     const activeTurnThreadIds = new Set(this.activeTurnThreadIds)
     let cursor: string | null = null
@@ -6577,6 +6700,7 @@ export class AppServerProcess {
     )).length
     const pendingServerRequestCount = this.pendingServerRequests.size
     const automationRunIds = this.automationActivity()
+    if (!ignoreTaskAcquisition && this.taskAccountBusy()) automationRunIds.push('__account_task_lease__')
     const backgroundThreadIds = activeTurnThreadIds.size || queuedThreadIds.length || automationRunIds.length
       || pendingServerRequestCount || pendingTurnMutationCount ? [] : await this.backgroundActivity()
     if (activityRevision !== this.activityRevision) throw new Error('核对期间运行状态已变化，请稍后重试')
@@ -6613,6 +6737,7 @@ export class AppServerProcess {
     this.pending.clear()
     this.pendingServerRequests.clear()
     this.activeTurnThreadIds.clear()
+    this.activeTurnIds.clear()
     this.authRecovery.clear()
     this.emitNotification({ method: 'codexapp/runtime/stopped', params: {} })
 
@@ -6673,7 +6798,7 @@ export class BackendQueueProcessor {
       options.features ?? (async () => (await catalog.snapshot()).features),
     )
     this.deliveries = new DeliveryService(this.store, {
-      accountBusy: () => this.providerChanging || getAccountAuthCoordinator().isAccountOperationInProgress(),
+      accountBusy: () => this.providerChanging || this.appServer.taskAccountBusy() || getAccountAuthCoordinator().isAccountOperationInProgress(),
       submissionBlocked: () => this.providerChanging || getAccountAuthCoordinator().blocksNewSubmissions(),
       context: options.context ?? (() => this.deliveryContext()),
       canStart: threadId => this.canStartQueuedTurn(threadId),
@@ -7008,6 +7133,7 @@ type CodexBridgeMiddleware = ((req: IncomingMessage, res: ServerResponse, next: 
 }
 
 type SharedBridgeState = {
+  quotaResume: ThreadQuotaResume
   disposed: boolean
   owners: number
   disposal: Promise<void> | null
@@ -7024,7 +7150,7 @@ type SharedBridgeState = {
 }
 
 const SHARED_BRIDGE_KEY = '__codexRemoteSharedBridge__'
-const SHARED_BRIDGE_VERSION = 'shared-runtime-0209-v1'
+const SHARED_BRIDGE_VERSION = 'shared-runtime-0211-account-policy-v2'
 
 function disposeSharedBridgeState(state: SharedBridgeState): Promise<void> {
   if (state.disposal) return state.disposal
@@ -7034,8 +7160,9 @@ function disposeSharedBridgeState(state: SharedBridgeState): Promise<void> {
     state.telegramBridge.stop()
     state.terminalManager.dispose()
     const deliveryDisposal = state.backendQueueProcessor.dispose()
+    state.appServer.stopTaskRouting?.()
     state.appServer.dispose()
-    await Promise.all([automationDisposal, deliveryDisposal, state.processActivity.flush()])
+    await Promise.all([automationDisposal, deliveryDisposal, state.processActivity.flush(), state.quotaResume?.close()])
   })()
   return state.disposal
 }
@@ -7062,11 +7189,54 @@ function getSharedBridgeState(): SharedBridgeState {
     return threadsWithBackgroundTerminals((method, params) => appServer.rpc(method, params))
   }
   const backendQueueProcessor = new BackendQueueProcessor(appServer, { features: async () => (await methodCatalog.snapshot()).features, previousRuntimeStopped })
+  const quotaResume = new ThreadQuotaResume(getCodexHomeDir(), {
+    inspect: async threadId => {
+      const response = asRecord((await backendQueueProcessor.history.page(threadId, { limit: 50 })).result)
+      const thread = asRecord(response?.thread)
+      const turns = Array.isArray(thread?.turns) ? thread.turns : []
+      const last = asRecord(turns.at(-1))
+      const active = appServer.taskAccountBusy() || Boolean((await backendQueueProcessor.readState())[threadId]?.length)
+        || ['active', 'running', 'inProgress'].includes(readNonEmptyString(asRecord(thread?.status)?.type) || String(thread?.status))
+        || appServer.listPendingServerRequests().some(request => asRecord(request.params)?.threadId === threadId)
+      return { active, turnId: readNonEmptyString(last?.id) || null, status: readNonEmptyString(last?.status), error: JSON.stringify(last?.error || '') }
+    },
+    available: async () => {
+      const coordinator = getAccountAuthCoordinator()
+      if (appServer.taskAccountBusy() || coordinator.isAccountOperationInProgress()) return false
+      const state = await coordinator.store.readState()
+      const account = state.accounts.find(row => row.storageId === state.activeStorageId)
+      if (!account || account.quotaStatus !== 'ready' || !account.quotaSnapshot || !account.quotaUpdatedAtIso || Date.now() - Date.parse(account.quotaUpdatedAtIso) > 5 * 60_000) return false
+      const windows = [account.quotaSnapshot.primary, account.quotaSnapshot.secondary].filter(Boolean)
+      if (!windows.length || windows.some(window => window!.usedPercent >= 100)) return false
+      try { await coordinator.assertSubmissionAllowed(undefined); return true } catch { return false }
+    },
+    submit: async (threadId, id) => {
+      const message = { id, text: '额度已恢复，请继续之前尚未完成的工作。先核对现有进度，避免重复执行已完成的操作；如果工作已全部完成，请直接报告结果。', imageUrls: [], skills: [], fileAttachments: [], collaborationMode: 'default' as const }
+      const params = await backendQueueProcessor.buildQueuedTurnParams({ threadId, message })
+      const result = await backendQueueProcessor.submit({ protocol: 2, threadId, message, params, expectedContextId: await backendQueueProcessor.deliveryContext() })
+      if (result.status === 'failed') {
+        const row = await backendQueueProcessor.deliveries.result(id)
+        if (row && 'message' in row && /额度|限额/.test(row.error || '')) {
+          await backendQueueProcessor.store.remove(id, row.revision)
+          throw Object.assign(new Error('额度仍受限'), { retryableQuota: true })
+        }
+        throw new Error('续跑准备失败，请核对会话')
+      }
+    },
+    cancel: async id => {
+      const row = await backendQueueProcessor.deliveries.result(id)
+      if (row && 'message' in row && row.status === 'queued') await backendQueueProcessor.store.remove(id, row.revision)
+    },
+    changed: () => appServer.notifyQuotaResumeChanged(),
+  })
+  appServer.quotaBlocked = (threadId, turnId) => quotaResume.blocked(threadId, turnId)
   const threadGoalReader = new ThreadGoalReader((method, params) => appServer.rpc(method, params))
   const threadCompactionGate = new ThreadCompactionGate((method, params) => appServer.rpc(method, params),
     async threadId => backendQueueProcessor.isIdentityChanging() || Boolean((await backendQueueProcessor.readState())[threadId]?.length))
   const automationEngine = new AutomationEngine(getCodexHomeDir(), createAutomationRuntime({
-    rpc: (method, params) => appServer.rpc(method, params),
+    rpc: (method, params) => appServer.automationRpc(method, params),
+    acquireAccount: (runId, settings) => appServer.acquireTaskAccount(runId, settings),
+    releaseAccount: runId => appServer.releaseTaskAccount(runId),
     accountBusy: () => getAccountAuthCoordinator().isAccountOperationInProgress(),
     hasQueuedMessages: async (id) => Boolean((await backendQueueProcessor.readState())[id]?.length),
     pendingRequests: () => appServer.listPendingServerRequests(),
@@ -7077,12 +7247,15 @@ function getSharedBridgeState(): SharedBridgeState {
   }), Date.now, true, previousRuntimeStopped)
   appServer.automationActivity = () => automationEngine.activity()
   appServer.onNotification((notification) => {
+    quotaResume.observe(notification)
+    if (notification.method === 'account/rateLimits/updated') void appServer.observeAccountQuota(notification.params).catch(() => undefined)
     automationEngine.notification(notification)
     threadGoalReader.observe(notification)
     threadCompactionGate.observe(notification)
     processActivity.observe(notification)
   })
   const created: SharedBridgeState = {
+    quotaResume,
     disposed: false,
     owners: 0,
     disposal: null,
@@ -7108,7 +7281,7 @@ function getSharedBridgeState(): SharedBridgeState {
 export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
   const sharedState = getSharedBridgeState()
   sharedState.owners++
-  const { appServer, terminalManager, methodCatalog, telegramBridge, backendQueueProcessor, automationEngine, threadGoalReader, threadCompactionGate } = sharedState
+  const { appServer, terminalManager, methodCatalog, telegramBridge, backendQueueProcessor, automationEngine, threadGoalReader, threadCompactionGate, quotaResume } = sharedState
   const directoryMcps = new DirectoryMcpReader((method, params) => appServer.rpc(method, params))
   const backgroundTerminals = new BackgroundTerminalReader((method, params) => appServer.rpc(method, params), () => backendQueueProcessor.isIdentityChanging())
   const history = new ThreadHistory(
@@ -9215,6 +9388,18 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         void automationEngine.tick()
         return
       }
+      if (url.pathname === '/codex-api/thread-quota-resume' && ['GET', 'POST'].includes(req.method || '')) {
+        if (req.method === 'POST') {
+          const input = asRecord(await readJsonBody(req))
+          if (typeof input?.threadId !== 'string' || typeof input.enabled !== 'boolean') {
+            setJson(res, 400, { error: '续跑标记参数无效' })
+            return
+          }
+          await quotaResume.set(input.threadId, input.enabled)
+        }
+        setJson(res, 200, { data: await quotaResume.snapshot() })
+        return
+      }
       if (req.method === 'POST' && url.pathname === '/codex-api/thread-goals') {
         const payload = asRecord(await readJsonBody(req))
         if (!Array.isArray(payload?.threadIds) || payload.threadIds.length > 100 || payload.threadIds.some(id => typeof id !== 'string' || !id || id.length > 100)) {
@@ -9335,7 +9520,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         if (!automationEngine.snapshot().ready) throw new Error(automationEngine.snapshot().error ?? '调度器尚未就绪')
         const timezone = validateAutomationTimezone(typeof payload?.timezone === 'string' ? payload.timezone : automationEngine.snapshot().definitions.find((row) => row.id === id)?.timezone ?? automationEngine.timezone)
         createAutomationSchedule(rrule, timezone, Date.now())
-        const automation = await writeThreadHeartbeatAutomation({ threadId, id, name, prompt, rrule, status, model: payload?.model, reasoningEffort: payload?.reasoningEffort, serviceTier: payload?.serviceTier, timezone })
+        const automation = await writeThreadHeartbeatAutomation({ threadId, id, name, prompt, rrule, status, model: payload?.model, reasoningEffort: payload?.reasoningEffort, serviceTier: payload?.serviceTier, accountStorageId: payload?.accountStorageId, protected: payload?.protected, timezone })
         await automationEngine.refresh(automation.id, timezone)
         setJson(res, 200, { data: toAutomationApiRecord(automationEngine.decorate(automation)) })
         return
@@ -9361,7 +9546,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         if (!automationEngine.snapshot().ready) throw new Error(automationEngine.snapshot().error ?? '调度器尚未就绪')
         const timezone = validateAutomationTimezone(typeof payload?.timezone === 'string' ? payload.timezone : automationEngine.snapshot().definitions.find((row) => row.id === id)?.timezone ?? automationEngine.timezone)
         createAutomationSchedule(rrule, timezone, Date.now())
-        const automation = await writeProjectCronAutomation({ projectName, id, name, prompt, rrule, status, model: payload?.model, reasoningEffort: payload?.reasoningEffort, serviceTier: payload?.serviceTier, timezone })
+        const automation = await writeProjectCronAutomation({ projectName, id, name, prompt, rrule, status, model: payload?.model, reasoningEffort: payload?.reasoningEffort, serviceTier: payload?.serviceTier, accountStorageId: payload?.accountStorageId, protected: payload?.protected, timezone })
         await automationEngine.refresh(automation.id, timezone)
         setJson(res, 200, { data: toAutomationApiRecord(automationEngine.decorate(automation)) })
         return

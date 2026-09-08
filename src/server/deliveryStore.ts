@@ -230,6 +230,13 @@ export class DeliveryStore {
     })
   }
 
+  async rejectedBeforeSend(id: string, error: string): Promise<void> {
+    await this.serial(async state => {
+      const row = this.pending(state, id)
+      if (row.status === 'sending') this.update(row, { status: 'failed', error: error.slice(0, 2000) })
+    })
+  }
+
   async confirm(id: string, turnId: string): Promise<DeliveryReceipt> {
     if (!turnId.trim()) throw new Error('缺少回合 ID，无法确认送达')
     return this.serial(async state => {

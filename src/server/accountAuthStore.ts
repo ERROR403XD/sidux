@@ -1,3 +1,4 @@
+import { normalizeResetCredits, type ResetCredits } from '../accountResetCredits.js'
 import { createHash, randomUUID } from 'node:crypto'
 import { chmod, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
@@ -51,6 +52,8 @@ export type StoredAccountEntry = {
   lastRefreshedAtIso: string
   lastVerifiedAtIso: string | null
   lastActivatedAtIso: string | null
+  protectionPercent?: number
+  resetCredits?: ResetCredits | null
   quotaSnapshot: StoredRateLimitSnapshot | null
   quotaUpdatedAtIso: string | null
   quotaStatus: AccountQuotaStatus
@@ -271,6 +274,8 @@ function normalizeEntry(value: unknown): StoredAccountEntry | null {
     lastVerifiedAtIso: readString(record?.lastVerifiedAtIso),
     lastActivatedAtIso: readString(record?.lastActivatedAtIso),
     quotaSnapshot: normalizeRateLimitSnapshot(record?.quotaSnapshot),
+    resetCredits: normalizeResetCredits(record?.resetCredits),
+    protectionPercent: Math.max(0, Math.min(100, readNumber(record?.protectionPercent) ?? 0)),
     quotaUpdatedAtIso: readString(record?.quotaUpdatedAtIso),
     quotaStatus,
     quotaError: readString(record?.quotaError),
@@ -449,6 +454,8 @@ export class AccountAuthStore {
           lastVerifiedAtIso: existing?.lastVerifiedAtIso ?? null,
           lastActivatedAtIso: existing?.lastActivatedAtIso ?? null,
           quotaSnapshot: existing?.quotaSnapshot ?? null,
+          resetCredits: existing?.resetCredits ?? null,
+          protectionPercent: existing?.protectionPercent ?? 0,
           quotaUpdatedAtIso: existing?.quotaUpdatedAtIso ?? null,
           quotaStatus: existing?.quotaStatus ?? 'idle',
           quotaError: existing?.quotaError ?? null,
@@ -583,6 +590,8 @@ export class AccountAuthStore {
         lastVerifiedAtIso: existing?.lastVerifiedAtIso ?? null,
         lastActivatedAtIso: existing?.lastActivatedAtIso ?? null,
         quotaSnapshot: existing?.quotaSnapshot ?? null,
+        resetCredits: existing?.resetCredits ?? null,
+        protectionPercent: existing?.protectionPercent ?? 0,
         quotaUpdatedAtIso: existing?.quotaUpdatedAtIso ?? null,
         quotaStatus: existing?.quotaStatus ?? 'idle',
         quotaError: null,

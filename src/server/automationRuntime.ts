@@ -6,6 +6,8 @@ const record = (value: unknown) => value && typeof value === 'object' ? value as
 
 export function createAutomationRuntime(options: {
   rpc: Rpc
+  acquireAccount?: AutomationRuntime['acquireAccount']
+  releaseAccount?: AutomationRuntime['releaseAccount']
   accountBusy: () => boolean
   hasQueuedMessages: (id: string) => Promise<boolean>
   pendingRequests: () => unknown[]
@@ -14,6 +16,8 @@ export function createAutomationRuntime(options: {
 }): AutomationRuntime {
   const rpc = options.rpc
   return {
+    acquireAccount: options.acquireAccount,
+    releaseAccount: options.releaseAccount,
     accountBusy: options.accountBusy,
     async canStart(threadId) {
       if (await options.hasQueuedMessages(threadId)) return false

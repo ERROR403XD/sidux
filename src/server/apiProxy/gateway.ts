@@ -1,3 +1,5 @@
+import { AccountNotificationService } from '../accountNotificationService.js'
+import { assertQuotaAvailable } from './quotaProtection.js'
 import { createAccountActivationRuntime } from '../accountActivationRuntime.js'
 import type { AccountActivationScheduler } from '../accountActivationScheduler.js'
 import { randomUUID } from 'node:crypto'
@@ -49,14 +51,66 @@ async function body(req: IncomingMessage, limit = MAX_BODY): Promise<Record<stri
   } catch { throw new ProxyError('invalid_json', '请求体必须是 JSON 对象。') }
 }
 export class ApiProxyGateway {
+  private readonly accountComponents = new Map<string, ProxyComponent>()
+  private readonly generationComponents = new WeakMap<ComponentGeneration, ProxyComponent>()
+  private async stopComponents(): Promise<void> {
+    await this.component.stop()
+    for (const component of this.accountComponents.values()) await component.stop()
+    this.accountComponents.clear()
+  }
+  private owner(generation: ComponentGeneration): ProxyComponent { return this.generationComponents.get(generation) || this.component }
+  private async resolveAccount(keyId?: string): Promise<string> {
+    const state = await this.coordinator.store.readState()
+    const id = (keyId ? this.store.findKey(keyId)?.accountStorageId : null) || this.store.settings.accountStorageId || state.activeStorageId
+    if (!id || !state.accounts.some(account => account.storageId === id)) throw new ProxyError('account_not_found', '所选账号不存在。', 503)
+    return id
+  }
+  private async checkProtection(id: string, keyId?: string): Promise<void> {
+    await this.store.ready
+    const state = await this.coordinator.store.readState()
+    const percent = state.accounts.find(account => account.storageId === id)?.protectionPercent || 0
+    if (!percent || (keyId && this.store.findKey(keyId)?.protected && this.store.isKeyUsable(keyId))) return
+    let account = state.accounts.find(account => account.storageId === id)
+    if (!account) throw new ProxyError('account_not_found', '账号不存在。', 503)
+    if (!account.quotaUpdatedAtIso || !Number.isFinite(Date.parse(account.quotaUpdatedAtIso)) || Date.now() - Date.parse(account.quotaUpdatedAtIso) > 30_000) account = await this.coordinator.refreshAccount(id)
+    assertQuotaAvailable(account, percent, false)
+  }
+  private async enforceObservedProtection(account: import('../accountAuthStore.js').StoredAccountEntry): Promise<void> {
+    try { assertQuotaAvailable(account, account.protectionPercent || 0, false) }
+    catch {
+      for (const entry of this.activity.entries.values()) {
+        if (entry.storageId === account.storageId && !this.store.findKey(entry.keyId)?.protected) entry.abort()
+      }
+      await this.coordinator.interruptProtectedUsage(account.storageId).catch(() => undefined)
+    }
+  }
+  private async prepareAccount(id: string, fixed: boolean): Promise<ComponentGeneration> {
+    let component = this.component
+    if (fixed) {
+      component = this.accountComponents.get(id)!
+      if (!component) {
+        if (this.accountComponents.size >= 8) {
+          const idle = [...this.accountComponents.keys()].find(accountId => !this.accountHasConnections(accountId))
+          if (!idle) throw new ProxyError('account_capacity', '并行账号数已达8个，请等待连接结束。', 503)
+          await this.accountComponents.get(idle)!.stop()
+          this.accountComponents.delete(idle)
+        }
+        component = new ProxyComponent(join(this.store.directory, 'accounts', id), this.coordinator)
+        this.accountComponents.set(id, component)
+      }
+    }
+    const generation = await component.prepare(id)
+    this.generationComponents.set(generation, component)
+    return generation
+  }
+  readonly notifications: AccountNotificationService
   readonly activation: AccountActivationScheduler
   private readonly accountEpochs = new Map<string, number>()
   accountActivityEpoch(id: string): number { return this.accountEpochs.get(id) || 0 }
   accountHasConnections(id: string): boolean {
-    return this.activity.entries.size > 0 && (this.store.settings.accountStorageId === id || this.component.status().selectedStorageId === id)
+    return [...this.activity.entries.values()].some(entry => entry.storageId === id || (!entry.storageId && (this.store.settings.accountStorageId === id || this.component.status().selectedStorageId === id)))
   }
-  private recordAccountActivity(): void {
-    const id = this.store.settings.accountStorageId || this.component.status().selectedStorageId
+  private recordAccountActivity(id: string): void {
     if (id) this.accountEpochs.set(id, this.accountActivityEpoch(id) + 1)
   }
   readonly store: ProxyStore
@@ -73,18 +127,35 @@ export class ApiProxyGateway {
     this.usage = new ProxyUsageStore(this.store.directory)
     this.component = new ProxyComponent(this.store.directory, coordinator)
     this.activation = createAccountActivationRuntime(coordinator, this)
+    this.notifications = new AccountNotificationService(coordinator, fetch, true, async () => [
+      ...await coordinator.activeUsageAccounts(),
+      ...[...this.activity.entries.values()].map(entry => entry.storageId).filter((id): id is string => !!id),
+    ])
+    coordinator.setQuotaObserver(async account => {
+      await this.enforceObservedProtection(account)
+      await this.notifications.observe(account)
+    })
+    coordinator.setSubmissionGuard(async (isChatGPT, policy) => {
+      await this.store.ready
+      const state = await coordinator.store.readState()
+      const storageId = policy?.storageId || state.activeStorageId
+      if (!storageId || policy?.protected || !state.accounts.find(account => account.storageId === storageId)?.protectionPercent) return
+      if (isChatGPT && !await isChatGPT()) return
+      await this.checkProtection(storageId)
+    })
     void this.store.ready.catch(() => undefined)
     this.unregisterLifecycle = coordinator.setApiLifecycle({
-      isIdle: () => !!this.store.settings.accountStorageId || this.activity.entries.size === 0,
+      isIdle: () => [...this.activity.entries.values()].every(entry => !!(this.store.findKey(entry.keyId)?.accountStorageId || this.store.settings.accountStorageId)),
       beforeMutation: async (kind, storageId) => {
         await this.store.ready
-        const fixedAccount = this.store.settings.accountStorageId
-        if (fixedAccount && (kind === 'switch' || storageId !== fixedAccount)) return () => undefined
+        const fixedGlobal = this.store.settings.accountStorageId
+        if (kind === 'switch' && (fixedGlobal || (this.activity.entries.size > 0 && [...this.activity.entries.values()].every(entry => !!this.store.findKey(entry.keyId)?.accountStorageId)))) return () => undefined
+        if (kind === 'remove' && fixedGlobal && fixedGlobal !== storageId && !this.accountComponents.has(storageId || '')) return () => undefined
         if (this.mutation) throw new ProxyError('proxy_busy', 'API 出口设置正在变更。', 409)
         this.mutation = true
         try {
           await this.activity.drain(this.store.settings.drainTimeoutSeconds * 1000)
-          await this.component.stop()
+          await this.stopComponents()
           this.epoch = randomUUID()
           this.responseOwners.clear()
         } catch (error) {
@@ -152,15 +223,20 @@ export class ApiProxyGateway {
       const url = new URL(req.url || '/', 'http://localhost')
       settle = this.usage.begin(keyId, url.pathname === '/v1/models')
       if (!allowedRoutes.has(`${req.method} ${url.pathname}`)) throw new ProxyError('unsupported_endpoint', '此 API 路径未开放。', 404)
+      const accountId = await this.resolveAccount(keyId)
+      if (req.method === 'POST') await this.checkProtection(accountId, keyId)
       entry = this.activity.admit(keyId, 'http', this.store.settings)
-      this.recordAccountActivity()
+      entry.storageId = accountId
+      this.recordAccountActivity(accountId)
       entry.abort = () => res.destroy()
       const input = req.method === 'POST' ? this.adapt(await body(req), keyId) : undefined
       if (res.destroyed) { settle('interrupted'); this.activity.finish(entry.id, 'interrupted'); return }
       entry.model = typeof input?.model === 'string' ? input.model : null
-      const generation = await this.component.prepare(this.store.settings.accountStorageId)
+      const generation = await this.prepareAccount(accountId, !!this.store.findKey(keyId)?.accountStorageId)
       if (res.destroyed) { settle('interrupted'); this.activity.finish(entry.id, 'interrupted'); return }
-      release = this.component.hold(generation)
+      if (!this.store.isKeyUsable(keyId) || await this.resolveAccount(keyId) !== accountId) throw new ProxyError('key_changed', 'Key账号设置已变化，请重试。', 409)
+      if (req.method === 'POST') await this.checkProtection(accountId, keyId)
+      release = this.owner(generation).hold(generation)
       const headers = this.headers(req, generation, keyId)
       this.store.touch(keyId)
       if (url.pathname === '/v1/responses/compact') {
@@ -197,7 +273,7 @@ export class ApiProxyGateway {
         chunks.push(chunk)
       }
       const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'))
-      this.component.recordResult(generation, response.status, response.headers.get('retry-after') || undefined)
+      this.owner(generation).recordResult(generation, response.status, response.headers.get('retry-after') || undefined)
       if (!response.ok) { settle('failed', extractUsage(parsed)); json(res, response.status, parsed); return }
       const output = Array.isArray(parsed.output) ? parsed.output.filter((item: any) => item.type === 'compaction' && typeof item.encrypted_content === 'string') : []
       if (parsed.status !== 'completed' || output.length !== 1) throw new ProxyError('invalid_compaction', '上游未返回完整的加密压缩结果。', 502)
@@ -230,7 +306,7 @@ export class ApiProxyGateway {
     const upstream = httpRequest(target, { method: req.method, headers }, response => {
       upstreamResponse = response
       res.statusCode = response.statusCode || 502
-      if (res.statusCode >= 400) this.component.recordResult(generation, res.statusCode, String(response.headers['retry-after'] || ''))
+      if (res.statusCode >= 400) this.owner(generation).recordResult(generation, res.statusCode, String(response.headers['retry-after'] || ''))
       for (const name of ['content-type', 'retry-after', 'x-request-id', 'x-codex-turn-state', 'openai-processing-ms']) {
         const value = response.headers[name]
         if (value) res.setHeader(name, value)
@@ -264,7 +340,7 @@ export class ApiProxyGateway {
                 if (event.type === 'response.completed') completed = true
                 if (['response.failed', 'response.incomplete', 'error'].includes(event.type)) {
                   entry.status = 'failed'
-                  this.component.recordResult(generation, typeof event.status === 'number' ? event.status : 502)
+                  this.owner(generation).recordResult(generation, typeof event.status === 'number' ? event.status : 502)
                 }
               } catch { /* Comments and [DONE] need no JSON interpretation. */ }
             }
@@ -301,7 +377,7 @@ export class ApiProxyGateway {
           } catch { /* Forwarding remains independent of optional usage. */ }
         }
         completed ||= !streaming || url.pathname === '/v1/chat/completions'
-        if (res.statusCode < 400 && entry.status !== 'failed' && completed) this.component.recordResult(generation, res.statusCode)
+        if (res.statusCode < 400 && entry.status !== 'failed' && completed) this.owner(generation).recordResult(generation, res.statusCode)
       })
       response.once('aborted', () => res.destroy())
       response.once('error', () => res.destroy())
@@ -311,7 +387,7 @@ export class ApiProxyGateway {
     entry.abort = () => { upstream.destroy(); upstreamResponse?.destroy(); res.destroy() }
     res.once('close', () => { if (!res.writableEnded) { upstream.destroy(); upstreamResponse?.destroy() } })
     upstream.once('error', () => {
-      this.component.recordResult(generation, 502, undefined, true)
+      this.owner(generation).recordResult(generation, 502, undefined, true)
       finalize('failed')
       errorResponse(res, new ProxyError('upstream_unavailable', '反代组件连接失败，将为后续请求重新准备组件。', 502))
     })
@@ -334,12 +410,15 @@ export class ApiProxyGateway {
       await this.usage.ready
       const url = new URL(req.url || '/', 'http://localhost')
       if (url.pathname !== '/v1/responses') throw new ProxyError('unsupported_endpoint', '此 WebSocket 路径未开放。', 404)
+      const accountId = await this.resolveAccount(keyId)
+      await this.checkProtection(accountId, keyId)
       entry = this.activity.admit(keyId, 'ws', this.store.settings)
-      this.recordAccountActivity()
+      entry.storageId = accountId
+      this.recordAccountActivity(accountId)
       entry.abort = () => socket.destroy()
-      const generation = await this.component.prepare(this.store.settings.accountStorageId)
+      const generation = await this.prepareAccount(accountId, !!this.store.findKey(keyId)?.accountStorageId)
       if (socket.destroyed) { this.activity.finish(entry.id, 'interrupted'); return }
-      release = this.component.hold(generation)
+      release = this.owner(generation).hold(generation)
       upstream = new WebSocket(generation.url.replace('http:', 'ws:') + url.pathname + url.search, {
         headers: this.headers(req, generation, keyId), maxPayload: MAX_BODY, perMessageDeflate: false, handshakeTimeout: 15_000,
       })
@@ -391,7 +470,7 @@ export class ApiProxyGateway {
             if (['response.completed', 'response.failed', 'response.incomplete', 'error'].includes(event.type)) {
               settle?.(event.type === 'response.completed' ? 'completed' : 'failed', extractUsage(event))
               settle = null
-              this.component.recordResult(generation, event.type === 'response.completed' ? 200 : typeof event.status === 'number' ? event.status : 502)
+              this.owner(generation).recordResult(generation, event.type === 'response.completed' ? 200 : typeof event.status === 'number' ? event.status : 502)
               record.busy = false
               record.status = event.type === 'response.completed' ? 'idle' : 'failed'
               processing = false
@@ -413,7 +492,9 @@ export class ApiProxyGateway {
             this.activity.begin(record, this.store.settings)
             settle = pending
             processing = true
-            const current = await this.component.prepare(this.store.settings.accountStorageId)
+            if (await this.resolveAccount(keyId) !== accountId) throw new ProxyError('account_changed', '账号选择已变化，请重新连接。', 409)
+            await this.checkProtection(accountId, keyId)
+            const current = await this.prepareAccount(accountId, !!this.store.findKey(keyId)?.accountStorageId)
             if (closed) return
             if (current.id !== generation.id) throw new ProxyError('credential_updated', '访问凭据已更新，请重连并发送完整上下文。', 503)
             record.model = typeof input.model === 'string' ? input.model : record.model
@@ -441,6 +522,10 @@ export class ApiProxyGateway {
       await this.store.ready
       const url = new URL(req.url || '/', 'http://localhost')
       const path = url.pathname.slice('/codex-api/api-proxy'.length)
+      if (req.method === 'GET' && path === '/notifications') {
+        json(res, 200, { data: await this.notifications.snapshot() })
+        return
+      }
       if (req.method === 'GET' && path === '/activation') {
         json(res, 200, { data: await this.activation.snapshot() })
         return
@@ -463,19 +548,42 @@ export class ApiProxyGateway {
       if (req.method !== 'POST') throw new ProxyError('unsupported_endpoint', '管理接口不存在。', 404)
       if (req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) throw new ProxyError('cross_origin', '不接受跨站管理操作。', 403)
       const input = await body(req, 64 * 1024)
+      if (path === '/notifications') {
+        try {
+          const next = await this.notifications.save(input as any)
+          if (input.accountId) {
+            const account = (await this.coordinator.store.readState()).accounts.find(account => account.storageId === input.accountId)
+            if (account) await this.enforceObservedProtection(account)
+          }
+          json(res, 200, { data: next })
+        }
+        catch { throw new ProxyError('invalid_notifications', '通知配置无效，请检查URL、JSON请求体、占位符和时段。') }
+        return
+      }
       if (path === '/activation') {
-        try { json(res, 200, { data: await this.activation.configure(input) }) }
+        try {
+          const next = await this.activation.configure(input)
+          await this.notifications.setTimezone(next.settings.timezone)
+          json(res, 200, { data: next })
+        }
         catch (cause) { throw new ProxyError('invalid_activation_settings', cause instanceof Error ? cause.message : '激活计划保存失败') }
         return
       }
+      if (path === '/keys' || path.startsWith('/keys/')) {
+        this.store.validateKeyPolicy(input)
+        if (input.accountStorageId) {
+          const state = await this.coordinator.store.readState()
+          if (!state.accounts.some(account => account.storageId === input.accountStorageId)) throw new ProxyError('account_not_found', '所选账号不存在。')
+        }
+      }
       if (path === '/keys') {
-        json(res, 201, { data: await this.store.createKey(String(input.name || ''), typeof input.expiresAt === 'string' ? input.expiresAt : null) })
+        json(res, 201, { data: await this.store.createKey(String(input.name || ''), typeof input.expiresAt === 'string' ? input.expiresAt : null, input) })
         return
       }
       if (path.startsWith('/keys/')) {
         const id = path.slice('/keys/'.length)
         await this.store.updateKey(id, input as Parameters<ProxyStore['updateKey']>[1])
-        if (input.interrupt === true) this.activity.abortKey(id)
+        if (input.interrupt === true || input.accountStorageId !== undefined || input.protected !== undefined) this.activity.abortKey(id)
         json(res, 200, { ok: true })
         return
       }
@@ -504,14 +612,14 @@ export class ApiProxyGateway {
           }
           await this.activity.drain(previous.drainTimeoutSeconds * 1000, input.force === true)
           drained = true
-          await this.component.stop()
+          await this.stopComponents()
           if (settings.enabled) await this.component.prepare(settings.accountStorageId)
           await this.store.saveSettings(settings)
           this.epoch = randomUUID()
           this.responseOwners.clear()
         } catch (error) {
           if (drained) {
-            await this.component.stop()
+            await this.stopComponents()
             if (previous.enabled) await this.component.prepare(previous.accountStorageId).catch(() => undefined)
           }
           throw error
@@ -527,11 +635,14 @@ export class ApiProxyGateway {
   }
   async close(): Promise<void> {
     await this.activation.dispose()
+    await this.notifications.close()
+    this.coordinator.setQuotaObserver(null)
     await this.activity.drain(5000, true)
-    await this.component.stop()
+    await this.stopComponents()
     await this.store.close()
     await this.usage.close()
     this.sockets.close()
     this.unregisterLifecycle?.()
+    this.coordinator.setSubmissionGuard(null)
   }
 }

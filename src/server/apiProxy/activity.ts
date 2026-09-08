@@ -3,6 +3,7 @@ import { ProxyError } from './store.js'
 
 export type Activity = {
   id: string
+  storageId?: string
   keyId: string
   transport: 'http' | 'sse' | 'ws'
   busy: boolean

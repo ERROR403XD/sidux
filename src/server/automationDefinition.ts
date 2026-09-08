@@ -21,7 +21,7 @@ export type ThreadAutomationRecord = AutomationModelSettings & {
   timezone?: string
 }
 
-const knownKeys = new Set(['version', 'id', 'kind', 'name', 'prompt', 'rrule', 'status', 'target_thread_id', 'cwds', 'created_at', 'updated_at', 'model', 'model_reasoning_effort', 'service_tier', 'timezone'])
+const knownKeys = new Set(['version', 'id', 'kind', 'name', 'prompt', 'rrule', 'status', 'target_thread_id', 'cwds', 'created_at', 'updated_at', 'model', 'model_reasoning_effort', 'service_tier', 'timezone', 'account_storage_id', 'protected'])
 
 export function parseAutomationToml(raw: string): ThreadAutomationRecord | null {
   try {
@@ -33,7 +33,7 @@ export function parseAutomationToml(raw: string): ThreadAutomationRecord | null 
     if (status !== 'ACTIVE' && status !== 'PAUSED') return null
     if (value.cwds !== undefined && (!Array.isArray(value.cwds) || !value.cwds.every((cwd) => typeof cwd === 'string'))) return null
     return {
-      ...normalizeAutomationModelSettings({ model: value.model, reasoningEffort: value.model_reasoning_effort, serviceTier: value.service_tier }),
+      ...normalizeAutomationModelSettings({ model: value.model, reasoningEffort: value.model_reasoning_effort, serviceTier: value.service_tier, accountStorageId: value.account_storage_id, protected: value.protected }),
       timezone: typeof value.timezone === 'string' ? value.timezone : undefined,
       id: String(value.id), kind, name: String(value.name), prompt: String(value.prompt), rrule: String(value.rrule), status,
       targetThreadId: typeof value.target_thread_id === 'string' ? value.target_thread_id : null,
@@ -51,6 +51,8 @@ export function serializeAutomationToml(record: ThreadAutomationRecord): string 
   return stringify({
     ...extra, version: 1, id: record.id, kind: record.kind, name: record.name, prompt: record.prompt,
     status: record.status, rrule: record.rrule,
+    ...(record.accountStorageId ? { account_storage_id: record.accountStorageId } : {}),
+    ...(record.protected !== undefined ? { protected: record.protected } : {}),
     ...(record.model ? { model: record.model } : {}),
     ...(record.serviceTier ? { service_tier: record.serviceTier } : {}),
     ...(record.reasoningEffort ? { model_reasoning_effort: record.reasoningEffort } : {}),

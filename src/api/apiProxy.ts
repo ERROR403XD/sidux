@@ -1,4 +1,5 @@
 export type ApiProxyKey = {
+  accountStorageId?: string | null; protected?: boolean
   id: string; name: string; suffix: string; enabled: boolean; expiresAt: string | null; revokedAt: string | null; lastUsedAt: string | null
 }
 export type ApiProxySettings = {

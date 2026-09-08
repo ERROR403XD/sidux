@@ -15,6 +15,8 @@ export type ProxySettings = {
   drainTimeoutSeconds: number
 }
 export type ProxyKey = {
+  accountStorageId?: string | null
+  protected?: boolean
   id: string
   name: string
   suffix: string
@@ -71,6 +73,9 @@ export class ProxyStore {
         throw new ProxyError('invalid_state', 'API key 状态文件无效。', 503)
       }
     }
+    for (const key of state.keys) {
+      this.validateKeyPolicy(key)
+    }
     this.state = state
   }
   get settings(): ProxySettings { return { ...this.state.settings } }
@@ -98,6 +103,10 @@ export class ProxyStore {
       if (!Number.isInteger(value) || value < 1 || value > max) throw new ProxyError('invalid_settings', `${name} 必须在 1–${max} 之间。`)
     }
   }
+  validateKeyPolicy(input: { accountStorageId?: unknown; protected?: unknown }): void {
+    if (input.accountStorageId !== undefined && input.accountStorageId !== null && (typeof input.accountStorageId !== 'string' || !/^[a-f0-9]{64}$/.test(input.accountStorageId))) throw new ProxyError('invalid_account', '账号选择无效。')
+    if (input.protected !== undefined && typeof input.protected !== 'boolean') throw new ProxyError('invalid_protection', '保护开关无效。')
+  }
   private mutate<T>(operation: (next: State) => T): Promise<T> {
     const next = this.serial.then(async () => {
       await this.ready
@@ -114,14 +123,15 @@ export class ProxyStore {
     this.validateSettings(settings)
     await this.mutate(next => { next.settings = { ...settings } })
   }
-  async createKey(name: string, expiresAt: string | null): Promise<{ key: Omit<ProxyKey, 'hash'>; secret: string }> {
+  async createKey(name: string, expiresAt: string | null, policy: Pick<ProxyKey, 'accountStorageId' | 'protected'> = {}): Promise<{ key: Omit<ProxyKey, 'hash'>; secret: string }> {
+    this.validateKeyPolicy(policy)
     if (!name.trim() || name.length > 80) throw new ProxyError('invalid_key_name', '名称须为 1–80 个字符。')
     if (expiresAt && (!Number.isFinite(Date.parse(expiresAt)) || Date.parse(expiresAt) <= Date.now())) {
       throw new ProxyError('invalid_expiry', '到期时间必须晚于现在。')
     }
     const id = randomBytes(8).toString('hex')
     const secret = `cax_${id}_${randomBytes(32).toString('base64url')}`
-    const key: ProxyKey = { id, name: name.trim(), suffix: secret.slice(-4), hash: hashSecret(secret), enabled: true,
+    const key: ProxyKey = { accountStorageId: policy.accountStorageId ?? null, protected: policy.protected ?? false, id, name: name.trim(), suffix: secret.slice(-4), hash: hashSecret(secret), enabled: true,
       createdAt: new Date().toISOString(), expiresAt, revokedAt: null, lastUsedAt: null }
     await this.mutate(next => {
       if (next.keys.length >= 256) throw new ProxyError('key_limit', '最多保留 256 把 key。')
@@ -130,10 +140,13 @@ export class ProxyStore {
     const { hash: _hash, ...publicKey } = key
     return { key: publicKey, secret }
   }
-  async updateKey(id: string, input: { name?: string; enabled?: boolean; revoke?: boolean; expiresAt?: string | null }): Promise<void> {
+  async updateKey(id: string, input: { name?: string; enabled?: boolean; revoke?: boolean; expiresAt?: string | null; accountStorageId?: string | null; protected?: boolean }): Promise<void> {
     await this.mutate(next => {
       const key = next.keys.find(item => item.id === id)
       if (!key) throw new ProxyError('key_not_found', 'API key 不存在。', 404)
+      this.validateKeyPolicy(input)
+      if (input.accountStorageId !== undefined) key.accountStorageId = input.accountStorageId
+      if (input.protected !== undefined) key.protected = input.protected
       if (input.name !== undefined) {
         if (typeof input.name !== 'string' || !input.name.trim() || input.name.length > 80) throw new ProxyError('invalid_key_name', '名称须为 1–80 个字符。')
         key.name = input.name.trim()

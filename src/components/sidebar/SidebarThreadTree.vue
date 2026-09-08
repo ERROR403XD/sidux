@@ -1,5 +1,6 @@
 <template>
   <section class="thread-tree-root" :class="{ 'chats-first': showChatsFirst }">
+    <p v-if="quotaResumeError" class="account-panel-error" role="alert">{{ quotaResumeError }}</p>
     <section v-if="pinnedThreads.length > 0" class="pinned-section">
       <SidebarMenuRow
         as="button"
@@ -63,6 +64,7 @@
                     </span>
                   </span>
                   <span v-if="goals?.[thread.id]" class="thread-row-automation-chip thread-row-goal-chip" :title="`持续目标 · ${goalStatusLabels[goals[thread.id]!.status]}`" aria-label="持续目标"><IconTablerTarget class="thread-row-automation-icon" /></span>
+                  <span v-if="quotaResumeMarks?.[thread.id]" class="thread-row-automation-chip" :title="quotaResumeTitle(thread.id)" aria-label="额度恢复后继续"><IconTablerPlayerPlayRepeat class="thread-row-automation-icon" /></span>
                   <span
                     v-if="thread.pendingRequestState"
                     class="thread-row-request-chip"
@@ -232,6 +234,7 @@
                   </span>
                 </span>
                 <span v-if="goals?.[thread.id]" class="thread-row-automation-chip thread-row-goal-chip" :title="`持续目标 · ${goalStatusLabels[goals[thread.id]!.status]}`" aria-label="持续目标"><IconTablerTarget class="thread-row-automation-icon" /></span>
+                  <span v-if="quotaResumeMarks?.[thread.id]" class="thread-row-automation-chip" :title="quotaResumeTitle(thread.id)" aria-label="额度恢复后继续"><IconTablerPlayerPlayRepeat class="thread-row-automation-icon" /></span>
                 <span
                   v-if="thread.pendingRequestState"
                   class="thread-row-request-chip"
@@ -438,6 +441,7 @@
                         </span>
                       </span>
                       <span v-if="goals?.[thread.id]" class="thread-row-automation-chip thread-row-goal-chip" :title="`持续目标 · ${goalStatusLabels[goals[thread.id]!.status]}`" aria-label="持续目标"><IconTablerTarget class="thread-row-automation-icon" /></span>
+                  <span v-if="quotaResumeMarks?.[thread.id]" class="thread-row-automation-chip" :title="quotaResumeTitle(thread.id)" aria-label="额度恢复后继续"><IconTablerPlayerPlayRepeat class="thread-row-automation-icon" /></span>
                       <span
                         v-if="thread.pendingRequestState"
                         class="thread-row-request-chip"
@@ -568,6 +572,7 @@
                     </span>
                   </span>
                   <span v-if="goals?.[thread.id]" class="thread-row-automation-chip thread-row-goal-chip" :title="`持续目标 · ${goalStatusLabels[goals[thread.id]!.status]}`" aria-label="持续目标"><IconTablerTarget class="thread-row-automation-icon" /></span>
+                  <span v-if="quotaResumeMarks?.[thread.id]" class="thread-row-automation-chip" :title="quotaResumeTitle(thread.id)" aria-label="额度恢复后继续"><IconTablerPlayerPlayRepeat class="thread-row-automation-icon" /></span>
                   <span
                     v-if="thread.pendingRequestState"
                     class="thread-row-request-chip"
@@ -616,6 +621,7 @@
         :data-open-direction="getThreadMenuDirection(openThreadMenuThread.id)"
         @click.stop
       >
+        <button class="thread-menu-item" type="button" @click="emit('toggle-quota-resume', openThreadMenuThread.id)">{{ quotaResumeMarks?.[openThreadMenuThread.id] ? '取消额度恢复续跑' : '额度恢复后继续' }}</button>
         <button class="thread-menu-item" type="button" @click="openAutomationDialog(openThreadMenuThread.id)">
           {{ threadHasAutomation(openThreadMenuThread.id) ? t('Manage automations…') : t('Add automation…') }}
         </button>
@@ -692,6 +698,8 @@
 
     <AppDialog :open="automationDialogVisible" :title="automationDialogMode === 'edit' ? t('Edit automation') : t('Add automation')" :busy="isSavingAutomation || isRunningAutomation" panel-class="automation-thread-panel" @close="closeAutomationDialog">
           <p class="rename-thread-subtitle">{{ t(automationDialogSubtitle) }}</p>
+          <div class="automation-thread-field"><span class="automation-thread-label">使用账号</span><AppSelect v-model="automationDraft.accountStorageId" :options="automationAccountOptions" enable-search :disabled="isSavingAutomation || isRunningAutomation" /></div>
+          <label class="notification-check"><input v-model="automationDraft.protected" type="checkbox" :disabled="isSavingAutomation || isRunningAutomation" />受保护任务</label>
 
           <div v-if="automationTargetPickerVisible && automationDialogMode === 'create'" class="automation-target-picker">
             <span class="automation-thread-label">{{ t('Target') }}</span>
@@ -907,6 +915,8 @@ import IconTablerFolder from '../icons/IconTablerFolder.vue'
 import IconTablerFolderOpen from '../icons/IconTablerFolderOpen.vue'
 import IconTablerGitFork from '../icons/IconTablerGitFork.vue'
 import IconTablerBolt from '../icons/IconTablerBolt.vue'
+import IconTablerPlayerPlayRepeat from '../icons/IconTablerPlayerPlayRepeat.vue'
+import type { QuotaResumeMark } from '../../server/threadQuotaResume'
 import IconTablerTarget from '../icons/IconTablerTarget.vue'
 import { goalStatusLabels, type ThreadGoal } from '../../api/threadCommands'
 import IconTablerTrash from '../icons/IconTablerTrash.vue'
@@ -920,9 +930,12 @@ import { reconcilePinnedThreadIds } from './pinnedThreadUtils'
 
 const props = defineProps<{
   groups: UiProjectGroup[]
+  accounts?: { storageId: string; email: string | null; accountId: string }[]
   models?: string[]
   modelCapabilities?: ModelCapability[]
   goals?: Record<string, ThreadGoal | null>
+  quotaResumeMarks?: Record<string, QuotaResumeMark>
+  quotaResumeError?: string
   projectDisplayNameById: Record<string, string>
   projectGitRepoByName: Record<string, boolean>
   projectCwdByName: Record<string, string>
@@ -933,10 +946,15 @@ const props = defineProps<{
   searchMatchedThreadIds: string[] | null
 }>()
 
+function quotaResumeTitle(threadId: string): string {
+  const status = props.quotaResumeMarks?.[threadId]?.status
+  return '额度恢复后继续 · ' + ({ armed: '已启用', waiting: '等待额度', submitted: '已提交续跑', unknown: '提交结果待核对，请查看会话' }[status || 'armed'])
+}
 const { t } = useUiLanguage()
 const { recordVisibleFailure } = useFeedbackDiagnostics()
 
 const emit = defineEmits<{
+  'toggle-quota-resume': [threadId: string]
   select: [threadId: string]
   archive: [threadId: string]
   'start-new-thread': [projectName: string]
@@ -1057,13 +1075,16 @@ const automationDraft = ref<{
   status: UiThreadAutomationStatus
   model: string
   serviceTier: string
+  accountStorageId: string
+  protected: boolean
   reasoningEffort: string
 }>({
   name: '',
   prompt: '',
   rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0',
-  status: 'ACTIVE', model: '', reasoningEffort: '', serviceTier: '',
+  status: 'ACTIVE', model: '', reasoningEffort: '', serviceTier: '', accountStorageId: '', protected: false,
 })
+const automationAccountOptions = computed(() => [{ value: '', label: '跟随全局账号' }, ...(props.accounts || []).map(account => ({ value: account.storageId, label: account.email || account.accountId }))])
 const automationModelOptions = computed(() => [{ value: '', label: '跟随运行时默认模型' }, ...Array.from(new Set([...(props.models ?? []), automationDraft.value.model].filter(Boolean))).map(value => ({ value, label: value }))])
 const automationModelCapability = computed(() => props.modelCapabilities?.find(model => model.id === automationDraft.value.model))
 const automationTierOptions = computed(() => tierOptions(automationModelCapability.value, automationDraft.value.serviceTier))
@@ -2002,7 +2023,7 @@ function startNewAutomationDraft(): void {
     name: automationDialogScope.value === 'project' ? 'Project automation' : 'Thread automation',
     prompt: '',
     rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0',
-    status: 'ACTIVE', model: '', reasoningEffort: '', serviceTier: '',
+    status: 'ACTIVE', model: '', reasoningEffort: '', serviceTier: '', accountStorageId: '', protected: false,
   }
   automationScheduleDraft.value = createScheduleDraftFromRrule(automationDraft.value.rrule)
 }
@@ -2020,7 +2041,7 @@ function selectAutomationForEditing(automationId: string): void {
     prompt: existing.prompt,
     rrule: existing.rrule,
     status: existing.status,
-    model: existing.model ?? '', reasoningEffort: existing.reasoningEffort ?? '', serviceTier: existing.serviceTier ?? '',
+    model: existing.model ?? '', reasoningEffort: existing.reasoningEffort ?? '', serviceTier: existing.serviceTier ?? '', accountStorageId: existing.accountStorageId || '', protected: existing.protected === true,
   }
   automationScheduleDraft.value = createScheduleDraftFromRrule(existing.rrule)
 }
@@ -2129,6 +2150,7 @@ async function submitAutomationDialog(): Promise<void> {
       rrule: automationDraft.value.rrule,
       timezone: automationTimezone.value || undefined,
       status: automationDraft.value.status,
+      accountStorageId: automationDraft.value.accountStorageId || null, protected: automationDraft.value.protected,
       model: automationDraft.value.model || null, reasoningEffort: automationDraft.value.reasoningEffort || null, serviceTier: automationDraft.value.serviceTier || null,
     }
     const saved = automationDialogScope.value === 'project'
