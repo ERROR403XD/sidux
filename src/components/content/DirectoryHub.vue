@@ -32,6 +32,11 @@
           <div class="directory-card-tags"><span v-for="capability in plugin.capabilities" :key="capability" class="directory-chip">{{ capability }}</span></div>
         </button>
       </div>
+      <div v-if="filteredPlugins.length > 60" class="directory-pagination">
+        <AppButton :disabled="pluginPage <= 1" @click="pluginPage -= 1">上一页</AppButton>
+        <span>{{ pluginPage }} / {{ pluginPageCount }} · {{ filteredPlugins.length }} 个插件</span>
+        <AppButton :disabled="pluginPage >= pluginPageCount" @click="pluginPage += 1">下一页</AppButton>
+      </div>
     </section>
     <section v-else class="directory-section">
       <SkillsHub
@@ -152,7 +157,11 @@ const detailError = ref('')
 const authApps = ref<DirectoryPluginAppSummary[]>([])
 const supportsPlugins = computed(() => ['plugin/list', 'plugin/read', 'plugin/install', 'plugin/uninstall'].every(method => methods.value.has(method)))
 const unavailable = computed(() => selectedPlugin.value?.installPolicy === 'NOT_AVAILABLE' || selectedPlugin.value?.availability === 'DISABLED_BY_ADMIN')
-const visiblePlugins = computed(() => plugins.value.filter(plugin => `${plugin.displayName} ${plugin.description}`.toLowerCase().includes(search.value.toLowerCase())).sort((a, b) => Number(b.installed) - Number(a.installed) || a.displayName.localeCompare(b.displayName)))
+const pluginPage = ref(1)
+const filteredPlugins = computed(() => plugins.value.filter(plugin => `${plugin.displayName} ${plugin.description}`.toLowerCase().includes(search.value.toLowerCase())).sort((a, b) => Number(b.installed) - Number(a.installed) || a.displayName.localeCompare(b.displayName)))
+const pluginPageCount = computed(() => Math.max(1, Math.ceil(filteredPlugins.value.length / 60)))
+const visiblePlugins = computed(() => filteredPlugins.value.slice((pluginPage.value - 1) * 60, pluginPage.value * 60))
+watch([search, plugins], () => { pluginPage.value = 1 })
 const connectionApps = computed(() => [...new Map([...(detail.value?.apps || []), ...authApps.value].map(app => [app.id, app])).values()])
 const skillsHubRef = ref<InstanceType<typeof SkillsHub> | null>(null)
 const mcpServers = ref<DirectoryMcpServerStatus[]>([])
@@ -352,6 +361,7 @@ onBeforeUnmount(() => {
 })
 </script>
 <style scoped>
+.directory-pagination { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 20px 0; color: var(--ui-text-muted); font-size: 12px; }
 @reference "tailwindcss";
 
 .directory-hub {
