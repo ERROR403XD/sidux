@@ -7,7 +7,7 @@ This page documents the current Directory Hub behavior under `#/skills`, especia
 - `#/skills` opens the Directory Hub with the `Skills` tab selected by default.
 - The active tab is URL-addressable with `?tab=plugins`, `?tab=apps`, `?tab=composio`, or `?tab=skills`.
 - The Directory route name remains `Skills`; the inner surface title remains `Skills & Apps`.
-- The first-launch Plugins card explicitly opens `?tab=plugins`.
+- In 0.2.13, Settings > Integrations opens the directory. The home promotion card is removed. MCP startup status notifications are deduplicated and background refresh preserves the existing list. See [current source](../../raw/features/settings-model-routing-0213.md).
 
 ## Skills Tab
 

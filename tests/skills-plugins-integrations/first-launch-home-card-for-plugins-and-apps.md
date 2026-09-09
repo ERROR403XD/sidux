@@ -1,30 +1,11 @@
-### First-launch home card for Plugins and Apps
+### 0.2.13 技能管理入口收纳
 
-#### Feature/Change Name
-The home route shows a dismissible first-launch card that introduces Plugins and Apps and opens the existing Skills & Apps directory on the Plugins tab.
+前置：4173 或 59001，浅/深主题，1440×900、768×1024、375×812；使用独立浏览器状态。
 
-#### Prerequisites/Setup
-1. Dev server running at `http://127.0.0.1:4173`
-2. Codex global-state preference `first-launch-plugins-card-dismissed` removed or set to `false` before the first check
-3. App loaded on the home/new-thread route
+1. 打开首页，检查侧栏和首次启动区域没有技能管理入口或插件推广卡。
+2. 打开设置，在“集成”点击“技能、应用与 MCP”。
+3. 确认进入原有 `#/skills` 路由，技能、插件、应用与 MCP 可访问。
+4. 返回首页并刷新，入口仍仅在设置；聊天输入框的技能选择保留。
 
-#### Steps
-1. Open the app on the home route with the local storage key removed
-2. Verify the home screen shows a card with the heading `Plugins are here`
-3. Verify the body copy mentions app examples such as Gmail and Calendar
-4. Click `Explore Plugins & Apps`
-5. Verify the app navigates to the `#/skills` route and the `Plugins` tab is active
-6. Return to the home route and verify the card does not reappear
-7. Remove the local storage key again, reload the home route, and click `Dismiss`
-8. Reload the home route once more
-
-#### Expected Results
-- The card appears only when the server-backed dismissal preference is unset or `false`
-- The primary CTA hides the card and opens the Skills & Apps directory
-- The directory opens with `Plugins` selected by default
-- Dismissing the card hides it immediately and keeps it hidden after reload
-
-#### Rollback/Cleanup
-- Remove or set `first-launch-plugins-card-dismissed` to `false` in Codex global state if you want to see the card again
-
----
+预期：各主题和尺寸无溢出；旧推广卡偏好不再触发首页网络请求。
+清理：关闭测试浏览器，无须修改服务器偏好。
