@@ -2506,3 +2506,11 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
   :root .directory-hub, :root .automations-panel, :root .api-proxy-panel, :root .settings-page { padding: 12px; }
   .api-proxy-key-copy { flex-basis: auto; width: 100%; }
 }
+
+.api-proxy-key-heading { flex-wrap: wrap; }
+.api-proxy-key-toolbar { flex-wrap: nowrap; }
+.api-proxy-key-toolbar .app-button { white-space: nowrap; }
+@media (max-width: 640px) {
+  .api-proxy-key-toolbar { width: 100%; gap: 6px; }
+  .api-proxy-key-toolbar .app-button { padding: 6px 8px; font-size: 12px; }
+}

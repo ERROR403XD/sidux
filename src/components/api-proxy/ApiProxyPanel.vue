@@ -26,11 +26,17 @@
         </div>
       </section>
       <section class="api-proxy-card">
-        <div class="api-proxy-heading"><h2>API key</h2><div class="api-proxy-actions"><AppButton :busy="busy" @click="savePolicies">保存配置</AppButton><AppButton :disabled="busy" @click="openCreate()">创建 key</AppButton></div></div>
+        <div class="api-proxy-heading api-proxy-key-heading">
+          <h2>API key</h2>
+          <div class="api-proxy-actions api-proxy-key-toolbar">
+            <AppButton :disabled="busy" @click="openCreate()">创建 key</AppButton>
+            <AppButton @click="showInvalid = !showInvalid">{{ showInvalid ? '返回生效 API Key' : '查看已失效API Key' }}</AppButton>
+            <AppButton :busy="busy" @click="savePolicies">保存配置</AppButton>
+          </div>
+        </div>
         <p v-if="!status.keys.length">尚未创建 API key。</p>
         <p v-if="status.usage?.error" role="alert" class="api-proxy-error">{{ status.usage.error }}</p>
         <div v-if="Object.values(expandedUsage).some(Boolean)" class="api-proxy-fields"><label>用量范围<AppSelect v-model="usageWindow" :options="usageWindows" /></label></div>
-        <AppButton @click="showInvalid = !showInvalid">{{ showInvalid ? '返回生效 API Key' : '查看已失效API Key' }}</AppButton>
         <div v-for="key in visibleKeys" :key="key.id" class="api-proxy-key-row">
           <div class="api-proxy-key-copy"><div class="api-proxy-key-title"><strong>{{ key.name }}</strong><span>••••{{ key.suffix }}</span><small>到期：{{ key.expiresAt ? date(key.expiresAt) : '无限' }}</small><span v-if="showInvalid">{{ keyLabel(key) }}</span></div>
             <small>最近使用：{{ date(key.lastUsedAt) }}</small>
