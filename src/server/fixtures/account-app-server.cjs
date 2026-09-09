@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Deterministic IPC fixture. It never contacts an upstream model service.
 const { createInterface } = require('node:readline')
-const { readFileSync, writeFileSync } = require('node:fs')
+const { readFileSync, writeFileSync, readdirSync } = require('node:fs')
 const { randomUUID } = require('node:crypto')
 if (!process.argv.includes('app-server')) process.exit(0)
 let account = 'none'
@@ -26,7 +26,7 @@ createInterface({ input: process.stdin }).on('line', line => {
     save(thread)
     result = { thread, model: 'fixture' }
   }
-  if (method === 'thread/list') result = { data: [...threads.values()], nextCursor: null }
+  if (method === 'thread/list') result = { data: readdirSync(process.env.CODEX_HOME).filter(name => /^fixture-thread-.*\.json$/.test(name)).map(name => JSON.parse(readFileSync(process.env.CODEX_HOME + '/' + name, 'utf8'))), nextCursor: null }
   if (method === 'thread/loaded/list') result = { data: [...loaded], nextCursor: null }
   if (method === 'thread/backgroundTerminals/list') result = { data: [], nextCursor: null }
   if (method === 'thread/unsubscribe') result = { status: loaded.has(p.threadId) ? 'unsubscribed' : 'notLoaded' }

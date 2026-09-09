@@ -20,6 +20,8 @@ it('executes B through an actual isolated IPC process while A stalls, then remov
     const primary = await app.rpc('thread/start', { cwd: home }) as any
     await app.rpc('turn/start', { threadId: primary.thread.id, input: [{ type: 'text', text: 'STALL' }] })
     expect((await app.getAccountSwitchSnapshot()).idle).toBe(false)
+    const inventory = await app.rpc('thread/list', {}) as any
+    expect(inventory.data.find((thread: any) => thread.id === primary.thread.id).status.type).toBe('active')
     const idleThread = await app.rpc('thread/start', { cwd: home }) as any
     await app.rpc('turn/start', { threadId: idleThread.thread.id, input: [{ type: 'text', text: 'COMPLETE' }] })
     await vi.waitFor(async () => {

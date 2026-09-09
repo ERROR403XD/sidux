@@ -6382,6 +6382,20 @@ export class AppServerProcess {
       this.ownedThreadIds.add(threadId)
     }
     const result = await this.call(method, params)
+    if (!this.runtimeOptions.isolatedTask && method === 'thread/list') {
+      const response = asRecord(result)
+      if (Array.isArray(response?.data)) {
+        return { ...response, data: response.data.map(value => {
+          const thread = asRecord(value)
+          const id = readNonEmptyString(thread?.id)
+          const owner = this.threadWorker(id)
+          if (!owner?.process || !owner.ownedThreadIds.has(id)) return value
+          // The catalog process sees other processes' threads as notLoaded.
+          // Surface the actual owner so UI and deployment checks see live work.
+          return { ...thread, status: owner.activeTurnThreadIds.has(id) ? { type: 'active', activeFlags: [] } : { type: 'idle' } }
+        }) }
+      }
+    }
     if (['thread/start', 'thread/resume', 'thread/fork'].includes(method)) {
       const id = readNonEmptyString(asRecord(asRecord(result)?.thread)?.id) || threadId
       if (id) this.ownedThreadIds.add(id)
