@@ -1464,6 +1464,7 @@ export function useDesktopState() {
   const reportedModelByThreadId = ref<Record<string, string>>({})
   const reportedModel = computed(() => reportedModelByThreadId.value[selectedThreadId.value] || '')
   let modelRefreshGeneration = 0
+  let modelRetryTimer: ReturnType<typeof setTimeout> | null = null
   let rateLimitUpdateRevision = 0
   let recentRateLimitsAt = 0
   const availableCollaborationModes = ref<CollaborationModeOption[]>([
@@ -1991,7 +1992,9 @@ export function useDesktopState() {
     return [`Mode: ${modeLabel}`, `Model: ${modelLabel}`, `Thinking: ${effortLabel}`, `Speed: ${speedLabel}`]
   }
 
-  async function refreshModelPreferences(options?: { providerChanged?: boolean; includeProviderModels?: boolean }): Promise<void> {
+  async function refreshModelPreferences(options?: { providerChanged?: boolean; includeProviderModels?: boolean; retry?: boolean }): Promise<void> {
+    if (modelRetryTimer) clearTimeout(modelRetryTimer)
+    modelRetryTimer = null
     const generation = ++modelRefreshGeneration
     const threadContext = selectedThreadId.value
     if (options?.providerChanged) invalidateModelCatalog()
@@ -2083,6 +2086,14 @@ export function useDesktopState() {
         codexCliMissingError.value = ''
       }
       if (generation === modelRefreshGeneration) modelCatalogError.value = '模型目录暂时不可用，保留当前选择；能力尚未确认。'
+      if (!options?.retry && generation === modelRefreshGeneration) {
+        modelRetryTimer = setTimeout(() => {
+          modelRetryTimer = null
+          if (generation === modelRefreshGeneration && threadContext === selectedThreadId.value) {
+            void refreshModelPreferences({ ...options, retry: true })
+          }
+        }, 3000)
+      }
       // Keep chat UI usable even if model metadata is temporarily unavailable.
     }
   }
@@ -5633,6 +5644,8 @@ export function useDesktopState() {
   }
 
   function stopPolling(): void {
+    if (modelRetryTimer) clearTimeout(modelRetryTimer)
+    modelRetryTimer = null
     pendingSnapshot = null
     modelRefreshGeneration++
     authRecoveryByThreadId.value = {}

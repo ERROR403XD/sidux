@@ -922,6 +922,7 @@ let mcpReadId = 0
 let pluginDetailReadId = 0
 let refreshTimer: ReturnType<typeof setTimeout> | null = null
 let lastAppsNotification = ''
+const mcpStartupSignatures = new Map<string, string>()
 let pluginLoad: Promise<void> | null = null
 let appLoad: Promise<void> | null = null
 let mcpLoad: Promise<void> | null = null
@@ -951,7 +952,7 @@ function onDirectorySkillsChanged(): void {
   scheduleDirectoryRefresh()
 }
 function scheduleDirectoryRefresh(): void {
-  if (refreshTimer) clearTimeout(refreshTimer)
+  if (refreshTimer) return
   refreshTimer = setTimeout(() => {
     refreshTimer = null
     if (!disposed) {
@@ -1500,7 +1501,7 @@ async function loadMcps(full = false, force = false): Promise<void> {
     if ((!full && !force) || disposed) return
   }
   const id = ++mcpReadId
-  isLoadingMcps.value = !full
+  isLoadingMcps.value = !full && mcpServers.value.length === 0
   if (full) mcpDetailError.value = ''
   else mcpError.value = ''
   mcpLoad = (async () => {
@@ -1511,7 +1512,6 @@ async function loadMcps(full = false, force = false): Promise<void> {
       if (!disposed && id === mcpReadId) {
         if (full) mcpDetailError.value = error instanceof Error ? error.message : 'MCP 详情读取失败'
         else {
-          mcpServers.value = []
           mcpError.value = directoryReadError(error, 'MCP 状态读取失败')
         }
       }
@@ -1828,6 +1828,18 @@ watch(composioSearchQuery, () => {
 const stopNotifications = subscribeTaskNotifications(event => {
   const params = event.params as { threadId?: string } | null
   if (params?.threadId && params.threadId !== props.threadId) return
+  if (event.method === 'mcpServer/startupStatus/updated') {
+    const update = event.params as { name?: string; serverName?: string; status?: unknown } | null
+    const name = update?.name || update?.serverName
+    if (!name || update?.status === 'starting') return
+    const signature = JSON.stringify(update?.status)
+    if (mcpStartupSignatures.get(name) === signature) return
+    if (mcpStartupSignatures.size >= 256) mcpStartupSignatures.delete(mcpStartupSignatures.keys().next().value!)
+    mcpStartupSignatures.set(name, signature)
+    if (activeTab.value === 'skills') void loadMcps()
+    return
+  }
+  if (event.method === 'codexapp/reconnected') mcpStartupSignatures.clear()
   if (event.method === 'app/list/updated') {
     const data = (event.params as { data?: Array<{ id: string; isEnabled?: boolean; isAccessible?: boolean }> })?.data
     const signature = JSON.stringify(data?.map(app => [app.id, app.isEnabled, app.isAccessible])) || ''
