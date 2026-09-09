@@ -53,3 +53,9 @@ it('recognizes a real 5-hour window in either position and ignores other short w
   snapshot.secondary!.windowMinutes = 1440
   expect(() => assertQuotaAvailable(candidate, 10, false)).not.toThrow()
 })
+
+it.each([0.1, 0.2, 0.4, 1.2])('includes decimal equality at a %s percent reserve without rounding nearby quota', percent => {
+  expect(() => assertQuotaAvailable(account(percent, 100), percent, false)).toThrow('已保留')
+  expect(() => assertQuotaAvailable(account(100, percent * 2), percent, false)).toThrow('已保留')
+  expect(() => assertQuotaAvailable(account(percent + 0.001, percent * 2 + 0.001), percent, false)).not.toThrow()
+})
