@@ -39,3 +39,5 @@ Return to the [manual test index](../../tests.md).
 - [0.2.11 设置与账号 UI](settings-0211.md)
 
 - [0.2.12 设置、API Key 与账号界面](settings-0212.md)
+
+- [0.2.14 模型选择器与自动化配色](ui-0214-model-automation.md)
