@@ -1,6 +1,6 @@
-export type AccountNoticeRule = { fiveHour: boolean; weekly: boolean; fiveHourMessage: string; weeklyMessage: string }
+export type AccountNoticeRule = { resetExpiry?: boolean; resetExpiryLeadTimes?: string; resetExpiryMessage?: string; fiveHour: boolean; weekly: boolean; fiveHourMessage: string; weeklyMessage: string }
 export type NotificationSettings = { enabled: boolean; url: string; body: string; timezone: string; quietEnabled: boolean; quietStart: string; quietEnd: string }
-export const defaultNoticeRule: AccountNoticeRule = { fiveHour: false, weekly: false, fiveHourMessage: '{{account}} 的5小时额度已恢复，剩余 {{remaining}}%，下次重置 {{reset_at}}', weeklyMessage: '{{account}} 的主额度已恢复，剩余 {{remaining}}%，下次重置 {{reset_at}}' }
+export const defaultNoticeRule: AccountNoticeRule = { resetExpiry: false, resetExpiryLeadTimes: '7d, 3d, 12h', resetExpiryMessage: '{{account}} 的重置机会将于 {{expires_at}} 到期，剩余 {{remaining}}（提醒档位 {{lead_time}}）。', fiveHour: false, weekly: false, fiveHourMessage: '{{account}} 的5小时额度已恢复，剩余 {{remaining}}%，下次重置 {{reset_at}}', weeklyMessage: '{{account}} 的主额度已恢复，剩余 {{remaining}}%，下次重置 {{reset_at}}' }
 export const defaultNotificationSettings: NotificationSettings = { enabled: false, url: '', body: '{"message":"{{message}}"}', timezone: 'Asia/Shanghai', quietEnabled: false, quietStart: '22:00', quietEnd: '08:00' }
 export function renderNotice(template: string, values: Record<string, string>): string {
   return template.replace(/\{\{([a-z_]+)\}\}/g, (match, key) => values[key] ?? match)
@@ -31,5 +31,29 @@ export function mainQuotaWording(text: string): string {
   return text.replaceAll('周剩余额度', '主额度剩余').replaceAll('周额度', '主额度').replaceAll('周限额', '主额度').replaceAll('周保护', '主额度保护')
 }
 export function normalizeNoticeRule(rule: AccountNoticeRule): AccountNoticeRule {
-  return { ...rule, fiveHourMessage: mainQuotaWording(rule.fiveHourMessage), weeklyMessage: mainQuotaWording(rule.weeklyMessage).replaceAll('{{window}}额度', '{{window}}') }
+  const leads = parseResetExpiryLeadTimes(rule.resetExpiryLeadTimes ?? defaultNoticeRule.resetExpiryLeadTimes!)
+  if (rule.resetExpiry !== undefined && typeof rule.resetExpiry !== 'boolean') throw new Error('重置到期提醒选项无效')
+  if (rule.resetExpiryMessage !== undefined && typeof rule.resetExpiryMessage !== 'string') throw new Error('重置到期提醒内容无效')
+  return { ...defaultNoticeRule, ...rule, resetExpiryLeadTimes: leads.text, fiveHourMessage: mainQuotaWording(rule.fiveHourMessage), weeklyMessage: mainQuotaWording(rule.weeklyMessage).replaceAll('{{window}}额度', '{{window}}') }
+}
+
+export function parseResetExpiryLeadTimes(value: string): { text: string; hours: number[] } {
+  if (typeof value !== 'string' || value.length > 512) throw new Error('提前时间格式无效')
+  const tokens = value.trim().split(/[,，\s]+/u).filter(Boolean)
+  if (!tokens.length || tokens.length > 16) throw new Error('请填写1至16个提前时间，例如7d, 3d, 12h')
+  const hours: number[] = []
+  for (const token of tokens) {
+    const match = /^(?:(\d+)d)?(?:(\d+)h)?$/i.exec(token)
+    if (!match || (!match[1] && !match[2])) throw new Error('提前时间请使用天d或小时h，例如1d12h')
+    const total = Number(match[1] || 0) * 24 + Number(match[2] || 0)
+    if (!Number.isSafeInteger(total) || total < 1 || total > 365 * 24) throw new Error('提前时间须为1小时至365天')
+    if (!hours.includes(total)) hours.push(total)
+  }
+  hours.sort((a, b) => b - a)
+  return { text: hours.map(formatReminderHours).join(', '), hours }
+}
+export function formatReminderHours(hours: number): string {
+  const days = Math.floor(hours / 24)
+  const rest = hours % 24
+  return `${days ? `${days}d` : ''}${rest ? `${rest}h` : ''}`
 }

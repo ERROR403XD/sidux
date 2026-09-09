@@ -1,17 +1,17 @@
 import { mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { defaultNotificationSettings, defaultNoticeRule, normalizeNoticeRule, mainQuotaWording, inQuietHours, renderNotice, renderNoticeBody, validateNotificationSettings, type NotificationSettings, type AccountNoticeRule } from '../accountNotifications.js'
+import { defaultNotificationSettings, defaultNoticeRule, normalizeNoticeRule, mainQuotaWording, parseResetExpiryLeadTimes, formatReminderHours, inQuietHours, renderNotice, renderNoticeBody, validateNotificationSettings, type NotificationSettings, type AccountNoticeRule } from '../accountNotifications.js'
 import type { AccountAuthCoordinator } from './accountAuthCoordinator.js'
 import type { StoredAccountEntry } from './accountAuthStore.js'
 import { quotaRefreshInterval } from '../quotaRefresh.js'
 import { privateJson } from './apiProxy/store.js'
 
 type WindowState = { reset: number; used: number }
-type PendingNotice = { id: string; accountId: string; kind: 'fiveHour' | 'weekly'; message: string; createdAt: number }
-type State = { version: 1; settings: NotificationSettings; accounts: Record<string, AccountNoticeRule>; windows: Record<string, WindowState>; pending: PendingNotice[]; lastResult: string | null }
+type PendingNotice = { id: string; accountId: string; kind: 'fiveHour' | 'weekly' | 'resetExpiry'; message: string; createdAt: number; expiresAt?: number; creditId?: string; values?: Record<string, string> }
+type State = { expiryNotices: Record<string, number>; version: 1; settings: NotificationSettings; accounts: Record<string, AccountNoticeRule>; windows: Record<string, WindowState>; pending: PendingNotice[]; lastResult: string | null }
 export class AccountNotificationService {
-  private state: State = { version: 1, settings: { ...defaultNotificationSettings }, accounts: {}, windows: {}, pending: [], lastResult: null }
+  private state: State = { expiryNotices: {}, version: 1, settings: { ...defaultNotificationSettings }, accounts: {}, windows: {}, pending: [], lastResult: null }
   readonly ready: Promise<void>
   private serial: Promise<unknown> = Promise.resolve()
   private ticking: Promise<void> | null = null
@@ -65,6 +65,7 @@ export class AccountNotificationService {
       const rule = input.rule
       if (!rule || typeof rule.fiveHour !== 'boolean' || typeof rule.weekly !== 'boolean' || typeof rule.fiveHourMessage !== 'string' || typeof rule.weeklyMessage !== 'string') throw new Error('账号通知规则无效。')
     }
+    if (input.rule) normalizeNoticeRule(input.rule)
     if (input.protectionPercent !== undefined) {
       if (!input.accountId || !Number.isFinite(input.protectionPercent) || input.protectionPercent < 0 || input.protectionPercent > 100) throw new Error('账号保护值须为0–100。')
       await this.coordinator.store.updateState(state => ({ state: { ...state, accounts: state.accounts.map(account => account.storageId === input.accountId ? { ...account, protectionPercent: input.protectionPercent } : account) }, result: undefined }))
@@ -110,19 +111,58 @@ export class AccountNotificationService {
       state.pending = state.pending.filter(item => Date.now() - item.createdAt < 7 * 86400_000).slice(-256)
     })
   }
+  async checkExpiries(accounts: StoredAccountEntry[], now = Date.now()): Promise<void> {
+    await this.ready
+    if (!this.state.settings.enabled) return
+    const candidates = accounts.flatMap(account => {
+      const rule = this.state.accounts[account.storageId]
+      if (!rule?.resetExpiry) return []
+      const hours = parseResetExpiryLeadTimes(rule.resetExpiryLeadTimes!).hours
+      return (account.resetCredits?.credits || []).flatMap(credit => {
+        if (credit.status !== 'available' || !credit.expiresAt || credit.expiresAt * 1000 <= now) return []
+        const expiresAt = credit.expiresAt * 1000
+        const due = hours.filter(lead => now >= expiresAt - lead * 3600_000)
+        return due.length ? [{ account, credit, expiresAt, due, rule }] : []
+      })
+    })
+    const keyFor = (id: string, credit: string, expiry: number, lead: number) => JSON.stringify([id, credit, expiry, lead])
+    const valid = (notice: PendingNotice) => notice.kind !== 'resetExpiry' || !!accounts.find(account => account.storageId === notice.accountId)?.resetCredits?.credits?.some(credit => credit.id === notice.creditId && credit.status === 'available' && credit.expiresAt! * 1000 === notice.expiresAt && notice.expiresAt! > now)
+    const needed = candidates.some(row => row.due.some(lead => !this.state.expiryNotices[keyFor(row.account.storageId, row.credit.id, row.expiresAt, lead)]))
+      || Object.values(this.state.expiryNotices).some(expiry => expiry <= now) || this.state.pending.some(notice => !valid(notice))
+    if (!needed) return
+    await this.mutate(state => {
+      state.expiryNotices = Object.fromEntries(Object.entries(state.expiryNotices).filter(([, expiry]) => expiry > now))
+      state.pending = state.pending.filter(valid)
+      let ledgerSize = Object.keys(state.expiryNotices).length
+      for (const row of candidates) {
+        const fresh = row.due.filter(lead => !state.expiryNotices[keyFor(row.account.storageId, row.credit.id, row.expiresAt, lead)])
+        if (!fresh.length || ledgerSize + fresh.length > 10000) continue
+        // Catch up only the nearest crossed threshold after downtime or enabling.
+        ledgerSize += fresh.length
+        const lead = Math.min(...fresh)
+        for (const value of fresh) state.expiryNotices[keyFor(row.account.storageId, row.credit.id, row.expiresAt, value)] = row.expiresAt
+        const values = { account: row.account.email || row.account.accountId, account_id: row.account.storageId, credit_id: row.credit.id,
+          expires_at: new Intl.DateTimeFormat('zh-CN', { timeZone: state.settings.timezone, dateStyle: 'short', timeStyle: 'short' }).format(row.expiresAt),
+          remaining: formatReminderHours(Math.max(1, Math.ceil((row.expiresAt - now) / 3600_000))), lead_time: formatReminderHours(lead) }
+        state.pending.push({ id: randomUUID(), accountId: row.account.storageId, kind: 'resetExpiry', creditId: row.credit.id, expiresAt: row.expiresAt,
+          message: renderNotice(row.rule.resetExpiryMessage!, values), values, createdAt: now })
+      }
+      state.pending = state.pending.slice(-256)
+    })
+  }
   async flush(now = Date.now()): Promise<void> {
     await this.ready
     if (!this.state.settings.enabled || !this.state.pending.length || inQuietHours(this.state.settings, now)) return
     // Remove durably before POST: an ambiguous delivery must not send duplicates after restart.
     const notices = await this.mutate(state => {
       if (!state.settings.enabled || inQuietHours(state.settings, now)) return []
-      state.pending = state.pending.filter(item => now - item.createdAt < 7 * 86400_000)
+      state.pending = state.pending.filter(item => now - item.createdAt < 7 * 86400_000 && (!item.expiresAt || item.expiresAt > now))
       return state.pending.splice(0, 16).map(item => ({ ...item, settings: { ...state.settings } }))
     })
     for (const item of notices) {
       let result = '发送结果未确认，不自动重试'
       try {
-        const response = await this.fetchImpl(item.settings.url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CodexApp-Notification-Id': item.id }, body: renderNoticeBody(item.settings.body, { message: item.message, account_id: item.accountId }), redirect: 'error', signal: AbortSignal.timeout(10_000) })
+        const response = await this.fetchImpl(item.settings.url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CodexApp-Notification-Id': item.id }, body: renderNoticeBody(item.settings.body, { ...item.values, message: item.message, account_id: item.accountId }), redirect: 'error', signal: AbortSignal.timeout(10_000) })
         await response.body?.cancel()
         result = response.ok ? '通知已发送' : `通知失败：HTTP ${response.status}`
       } catch { /* Do not retain URL, body, credentials, or remote error text. */ }
@@ -145,6 +185,7 @@ export class AccountNotificationService {
         const updatedAt = account.lastVerifiedAtIso || account.quotaUpdatedAtIso
         if (!updatedAt || !Number.isFinite(Date.parse(updatedAt)) || Date.now() - Date.parse(updatedAt) >= maxAge) await this.coordinator.refreshAccount(account.storageId).catch(() => undefined)
       }
+      await this.checkExpiries((await this.coordinator.store.readState()).accounts)
       await this.flush()
     })().finally(() => { this.ticking = null })
     return this.ticking

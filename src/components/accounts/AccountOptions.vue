@@ -10,6 +10,13 @@
       <textarea v-if="rule.fiveHour" v-model="rule.fiveHourMessage" class="app-input" rows="3" aria-label="5小时恢复通知内容" :disabled="busy" />
       <label class="notification-check"><input v-model="rule.weekly" type="checkbox" :disabled="busy" />主额度恢复通知</label>
       <textarea v-if="rule.weekly" v-model="rule.weeklyMessage" class="app-input" rows="3" aria-label="主额度恢复通知内容" :disabled="busy" />
+      <label class="notification-check"><input v-model="rule.resetExpiry" type="checkbox" :disabled="busy" />重置机会到期提醒</label>
+      <template v-if="rule.resetExpiry">
+        <label>提前时间<input v-model="rule.resetExpiryLeadTimes" class="app-input" aria-label="重置提醒提前时间" placeholder="7d, 3d, 12h" :disabled="busy" /></label>
+        <small>支持英文逗号、中文逗号或空格分隔；1d12h表示1天12小时。</small>
+        <label>提醒内容<textarea v-model="rule.resetExpiryMessage" class="app-input" rows="3" aria-label="重置到期提醒内容" :disabled="busy" /></label>
+        <small v-pre>占位符：{{account}}、{{credit_id}}、{{expires_at}}、{{remaining}}、{{lead_time}}。同样可用于POST请求体。</small>
+      </template>
       <small v-pre>可用占位符：{{account}}、{{account_id}}、{{window}}、{{remaining}}、{{reset_at}}。通过设置中的POST通知发送。</small>
     </div>
     <template #footer><AppButton :disabled="busy" @click="visible = false">取消</AppButton><AppButton :disabled="!loaded" :busy="busy" @click="save">保存账号设置</AppButton></template>
