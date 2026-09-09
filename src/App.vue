@@ -125,7 +125,7 @@
             </button>
           </div>
           <AppPopover :open="isSettingsOpen" :anchor="settingsAreaRef" :width="400" direction="up" panel-class="account-popover" @close="isSettingsOpen = false">
-            <AccountPanel :accounts="accounts" :busy="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
+            <AccountPanel :accounts="accounts" :busy="isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
   @reload="loadAccountsState()" @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount">
               <template #footer><div class="account-versions"><span>Codex {{ runtimeCapabilities?.cliVersion || '检测中…' }}</span><span>CodexApp {{ runtimeCapabilities?.appVersion || appVersion }}</span></div><AppButton @click="openSettings">全局设置 →</AppButton></template>
             </AccountPanel>
@@ -231,7 +231,7 @@
           </template>
           <template v-else-if="isApiProxyRoute"><ApiProxyPanel /></template>
           <template v-else-if="isSettingsRoute"><SettingsPanel>
-<template #accounts><AccountPanel :accounts="accounts" :busy="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
+<template #accounts><AccountPanel :accounts="accounts" :busy="isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
   @reload="loadAccountsState()" @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount" />
 <AccountActivation :key="displayTimeZonePreference" :accounts="accounts" />
 <details class="settings-optional-provider" :open="selectedProvider !== 'codex'"><summary>其他连接（可选）<span v-if="selectedProvider !== 'codex'"> · {{ selectedProvider }}</span></summary>              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the API provider for the Codex backend')">
@@ -1831,12 +1831,6 @@ function onDirectoryScopeChange(cwd: string): void {
 }
 const isSelectedThreadInProgress = computed(() => !isHomeRoute.value && selectedThread.value?.inProgress === true)
 const showThreadContextBadge = computed(() => !isHomeRoute.value && !isSkillsRoute.value && !isAutomationsRoute.value && !isApiProxyRoute.value && selectedThreadId.value.trim().length > 0)
-const isAccountSwitchBlocked = computed(() =>
-  isSendingMessage.value ||
-  isInterruptingTurn.value ||
-  isSelectedThreadInProgress.value ||
-  selectedThreadServerRequests.value.length > 0,
-)
 const activeAccountStorageId = computed(() => accounts.value.find((account) => account.isActive)?.storageId ?? null)
 const loginTargetAccount = computed(() => accounts.value.find((account) => account.storageId === loginTargetStorageId.value) ?? null)
 
@@ -2509,9 +2503,8 @@ function isAccountUnavailable(account: UiAccountEntry): boolean {
     || isPaymentRequiredErrorMessage(account.quotaError)
 }
 
-function isAccountActionDisabled(account: UiAccountEntry): boolean {
-  return isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || refreshingAccountId.value.length > 0 || removingAccountId.value.length > 0
-    || (account.isActive && removingAccountId.value !== account.storageId && isAccountSwitchBlocked.value)
+function isAccountActionDisabled(_account: UiAccountEntry): boolean {
+  return isSwitchingAccounts.value || isStartingCodexLogin.value
 }
 
 function formatAccountStatus(account: UiAccountEntry): string {
@@ -2632,9 +2625,10 @@ function buildAccountTitle(account: UiAccountEntry): string {
   ].filter(Boolean).join('\n')
 }
 
+const removedAccountIds = new Set<string>()
 function applyAccountsSnapshot(next: UiAccountEntry[]): void {
   const current = new Map(accounts.value.map(account => [account.storageId, account]))
-  accounts.value = next.map(account => {
+  accounts.value = next.filter(account => !removedAccountIds.has(account.storageId)).map(account => {
     const previous = current.get(account.storageId)
     if (!previous || !Number.isFinite(Date.parse(previous.quotaUpdatedAtIso || '')) || Date.parse(previous.quotaUpdatedAtIso || '') <= Date.parse(account.quotaUpdatedAtIso || '')) return account
     return { ...account, quotaSnapshot: previous.quotaSnapshot, quotaUpdatedAtIso: previous.quotaUpdatedAtIso, quotaStatus: previous.quotaStatus, quotaError: previous.quotaError, resetCredits: previous.resetCredits, planType: previous.planType }
@@ -2695,11 +2689,7 @@ async function onRefreshAccountQuota(storageId: string): Promise<void> {
 }
 
 async function onSwitchAccount(storageId: string): Promise<void> {
-  if (isSwitchingAccounts.value || isRefreshingAccounts.value || isStartingCodexLogin.value) return
-  if (isAccountSwitchBlocked.value) {
-    accountActionError.value = t('Finish the current turn and pending requests before switching accounts.')
-    return
-  }
+  if (isSwitchingAccounts.value || isStartingCodexLogin.value) return
   accountActionError.value = ''
   accountActionNotice.value = ''
   hoveredAccountId.value = ''
@@ -2728,7 +2718,7 @@ async function onSwitchAccount(storageId: string): Promise<void> {
 }
 
 function onStartCodexLogin(intent: 'add' | 'reauth', targetStorageId = ''): void {
-  if (isRefreshingAccounts.value || isSwitchingAccounts.value) return
+  if (isSwitchingAccounts.value) return
   accountActionError.value = ''
   accountActionNotice.value = ''
   loginIntent.value = intent
@@ -2743,6 +2733,7 @@ function resumeAccountLogin(intent: 'add' | 'reauth', targetStorageId: string): 
 }
 
 function onAccountLoginCompleted(result: AccountLoginCompleteResult): void {
+  removedAccountIds.delete(result.account.storageId)
   applyAccountsSnapshot(result.accounts)
   isCodexLoginModalOpen.value = false
   loginTargetStorageId.value = ''
@@ -2754,24 +2745,21 @@ function onAccountLoginCompleted(result: AccountLoginCompleteResult): void {
 }
 
 async function onRemoveAccount(storageId: string): Promise<void> {
-  if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || removingAccountId.value.length > 0) return
+  if (removingAccountId.value === storageId) return
   const targetAccount = accounts.value.find((account) => account.storageId === storageId) ?? null
   if (!targetAccount) return
   if (confirmingRemoveAccountId.value !== storageId) {
     confirmingRemoveAccountId.value = storageId
     return
   }
-  if (targetAccount.isActive && isAccountSwitchBlocked.value) {
-    accountActionError.value = t('Finish the current turn and pending requests before removing the active account.')
-    return
-  }
-
   const removedWasActive = targetAccount.isActive
   accountActionError.value = ''
   confirmingRemoveAccountId.value = ''
   removingAccountId.value = storageId
   try {
     const result = await removeAccount(storageId)
+    removedAccountIds.add(storageId)
+    accountActionNotice.value = '账号已移除，关联连接已关闭；可重新添加账号。'
     applyAccountsSnapshot(result.accounts)
     stopPolling()
     startPolling()

@@ -36,6 +36,7 @@ export class ProxyComponent {
   private checkedAt = 0
   private retryAfter = 0
   private failures = 0
+  private lifecycleRevision = 0
   lastError: string | null = null
   readonly binary = process.env.CODEXAPP_API_PROXY_BINARY || '/opt/codexapp-api-proxy/cli-proxy-api'
   constructor(private directory: string, private coordinator: AccountAuthCoordinator, private options: { allowRefresh?: boolean } = {}) {}
@@ -47,20 +48,29 @@ export class ProxyComponent {
       componentVersion: manifest.version, selectedStorageId: current?.storageId ?? null,
       credentialRevision: current?.revision ?? null, lastError: this.lastError }
   }
-  async prepare(storageId: string | null): Promise<ComponentGeneration> {
-    if (this.flight) return await this.flight
-    if (Date.now() < this.retryAfter) throw new ProxyError('component_backoff', '出口暂时不可用，正在等待重试窗口。', 503)
+  async prepare(storageId: string | null, options: { catalog?: boolean } = {}): Promise<ComponentGeneration> {
+    if (this.flight) {
+      const prepared = await this.flight
+      if (!storageId || prepared.storageId === storageId) return prepared
+      return this.prepare(storageId, options)
+    }
+    if (!options.catalog && Date.now() < this.retryAfter) throw new ProxyError('component_backoff', '出口暂时不可用，正在等待重试窗口。', 503)
     const current = this.current
     if (this.coordinator.blocksApiAccount(storageId)) throw new ProxyError('account_busy', '所选账号正在变更，请稍后重试。', 503)
     if (current && (!storageId || current.storageId === storageId) && current.process.exitCode === null && current.process.signalCode === null
       && Date.now() - this.checkedAt < 10_000 && Date.parse(current.expiresAt) > Date.now() + 300_000) return current
     const flight = this.prepareNext(storageId)
     this.flight = flight
-    try { return await flight } finally { this.flight = null }
+    try { return await flight } finally { if (this.flight === flight) this.flight = null }
   }
   private async prepareNext(storageId: string | null): Promise<ComponentGeneration> {
+    const revision = this.lifecycleRevision
+    const assertCurrent = () => {
+      if (revision !== this.lifecycleRevision) throw new ProxyError('component_stopped', '所选账号连接已关闭。', 503)
+    }
     try {
       const credential = await this.coordinator.getApiCredential(storageId, this.options)
+      assertCurrent()
       const current = this.current
       if (current && current.storageId === credential.storageId && current.revision === credential.revision
         && current.process.exitCode === null && current.process.signalCode === null) {
@@ -96,6 +106,10 @@ export class ProxyComponent {
         streaming: { 'bootstrap-retries': 0 }, codex: { 'stream-bootstrap-buffering': false, 'optimize-multi-agent-v2': false },
       })
       const env: NodeJS.ProcessEnv = { PATH: process.env.PATH, HOME: directory }
+      if (revision !== this.lifecycleRevision) {
+        await rm(directory, { recursive: true, force: true })
+        assertCurrent()
+      }
       for (const name of ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY']) if (process.env[name]) env[name] = process.env[name]
       const child = spawn(this.binary, ['-local-model', '-config', join(directory, 'config.yaml')], { cwd: directory, env, stdio: 'ignore' })
       const generation: ComponentGeneration = { id, url: `http://127.0.0.1:${port}`, key, storageId: credential.storageId,
@@ -116,6 +130,10 @@ export class ProxyComponent {
       if (!ready) {
         await this.stopGeneration(generation)
         throw new ProxyError('component_start_failed', '反代组件未能就绪。', 503)
+      }
+      if (revision !== this.lifecycleRevision) {
+        await this.stopGeneration(generation)
+        assertCurrent()
       }
       this.current = generation
       this.checkedAt = Date.now()
@@ -177,7 +195,8 @@ export class ProxyComponent {
     await rm(generation.directory, { recursive: true, force: true })
   }
   async stop(): Promise<void> {
-    if (this.flight) await this.flight.catch(() => undefined)
+    this.lifecycleRevision++
+    this.flight = null
     for (const generation of this.generations) await this.stopGeneration(generation)
     this.current = null
     this.checkedAt = 0

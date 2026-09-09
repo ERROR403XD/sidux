@@ -1,3 +1,5 @@
+import { AccountResourcePool } from '../accountResourcePool.js'
+import { AccountExecutionError, resolveAccountSelection } from '../accountExecution.js'
 import { AccountNotificationService } from '../accountNotificationService.js'
 import { assertQuotaAvailable } from './quotaProtection.js'
 import { createAccountActivationRuntime } from '../accountActivationRuntime.js'
@@ -28,9 +30,9 @@ function json(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body))
 }
 function errorResponse(res: ServerResponse, error: unknown): void {
-  const known = error instanceof ProxyError || error instanceof AccountCoordinatorError
+  const known = error instanceof ProxyError || error instanceof AccountCoordinatorError || error instanceof AccountExecutionError
   const code = known ? error.code : 'proxy_unavailable'
-  const status = error instanceof ProxyError ? error.status : error instanceof AccountCoordinatorError ? error.statusCode : 503
+  const status = error instanceof ProxyError ? error.status : error instanceof AccountCoordinatorError || error instanceof AccountExecutionError ? error.statusCode : 503
   if (status === 503 && !res.headersSent) res.setHeader('Retry-After', '3')
   json(res, status, { error: { type: status === 401 ? 'authentication_error' : 'api_error', code,
     message: known ? error.message : 'API 出口暂时不可用，请在管理页面检查账号和组件状态。' } })
@@ -51,19 +53,21 @@ async function body(req: IncomingMessage, limit = MAX_BODY): Promise<Record<stri
   } catch { throw new ProxyError('invalid_json', '请求体必须是 JSON 对象。') }
 }
 export class ApiProxyGateway {
-  private readonly accountComponents = new Map<string, ProxyComponent>()
+  private readonly accountComponents = new AccountResourcePool<ProxyComponent>({
+    capacity: 8,
+    idle: (_component, id) => !this.accountHasConnections(id),
+    dispose: component => component.stop(),
+  })
   private readonly generationComponents = new WeakMap<ComponentGeneration, ProxyComponent>()
   private async stopComponents(): Promise<void> {
     await this.component.stop()
-    for (const component of this.accountComponents.values()) await component.stop()
+    for (const component of new Set(this.accountComponents.values())) if (component !== this.component) await component.stop()
     this.accountComponents.clear()
   }
   private owner(generation: ComponentGeneration): ProxyComponent { return this.generationComponents.get(generation) || this.component }
   private async resolveAccount(keyId?: string): Promise<string> {
     const state = await this.coordinator.store.readState()
-    const id = (keyId ? this.store.findKey(keyId)?.accountStorageId : null) || this.store.settings.accountStorageId || state.activeStorageId
-    if (!id || !state.accounts.some(account => account.storageId === id)) throw new ProxyError('account_not_found', '所选账号不存在。', 503)
-    return id
+    return resolveAccountSelection(state, { accountStorageId: keyId ? this.store.findKey(keyId)?.accountStorageId : null, defaultStorageId: this.store.settings.accountStorageId }).storageId
   }
   private async checkProtection(id: string, keyId?: string): Promise<void> {
     await this.store.ready
@@ -84,24 +88,22 @@ export class ApiProxyGateway {
       await this.coordinator.interruptProtectedUsage(account.storageId).catch(() => undefined)
     }
   }
-  private async prepareAccount(id: string, fixed: boolean): Promise<ComponentGeneration> {
-    let component = this.component
-    if (fixed) {
-      component = this.accountComponents.get(id)!
-      if (!component) {
-        if (this.accountComponents.size >= 8) {
-          const idle = [...this.accountComponents.keys()].find(accountId => !this.accountHasConnections(accountId))
-          if (!idle) throw new ProxyError('account_capacity', '并行账号数已达8个，请等待连接结束。', 503)
-          await this.accountComponents.get(idle)!.stop()
-          this.accountComponents.delete(idle)
-        }
-        component = new ProxyComponent(join(this.store.directory, 'accounts', id), this.coordinator)
-        this.accountComponents.set(id, component)
-      }
-    }
-    const generation = await component.prepare(id)
+  private async prepareAccount(id: string, catalog = false): Promise<ComponentGeneration> {
+    const component = await this.accountComponents.getOrCreate(id, () => this.accountComponents.size === 0 && !this.component.status().selectedStorageId
+      ? this.component
+      : new ProxyComponent(join(this.store.directory, 'accounts', id), this.coordinator))
+    if (!component) throw new ProxyError('account_capacity', '并行账号数已达8个，请等待连接结束。', 503)
+    const generation = await component.prepare(id, { catalog })
     this.generationComponents.set(generation, component)
     return generation
+  }
+  private invalidateKeys(matches: (keyId: string) => boolean): void {
+    for (const key of this.store.listKeys()) {
+      if (matches(key.id)) this.activity.abortKey(key.id)
+    }
+    for (const [id, owner] of this.responseOwners) {
+      if (matches(owner.keyId)) this.responseOwners.delete(id)
+    }
   }
   readonly notifications: AccountNotificationService
   readonly activation: AccountActivationScheduler
@@ -145,27 +147,27 @@ export class ApiProxyGateway {
     })
     void this.store.ready.catch(() => undefined)
     this.unregisterLifecycle = coordinator.setApiLifecycle({
-      isIdle: () => [...this.activity.entries.values()].every(entry => !!(this.store.findKey(entry.keyId)?.accountStorageId || this.store.settings.accountStorageId)),
+      isIdle: () => true,
       beforeMutation: async (kind, storageId) => {
         await this.store.ready
-        if (this.mutation) throw new ProxyError('proxy_busy', 'API 出口设置正在变更。', 409)
+        if (kind !== 'remove' && this.mutation) throw new ProxyError('proxy_busy', 'API 出口设置正在变更。', 409)
         const affectedKey = (keyId: string) => {
           const fixed = this.store.findKey(keyId)?.accountStorageId || this.store.settings.accountStorageId
           return kind === 'switch' ? !fixed : fixed === storageId
         }
-        await this.activity.drainMatching(entry => kind === 'remove'
-          ? entry.storageId === storageId || affectedKey(entry.keyId)
-          : affectedKey(entry.keyId), this.store.settings.drainTimeoutSeconds * 1000)
-        if (kind === 'switch' && !this.store.settings.accountStorageId
-          || kind === 'remove' && (this.store.settings.accountStorageId === storageId || this.component.status().selectedStorageId === storageId)) {
-          await this.component.stop()
-        }
-        if (kind === 'remove' && storageId) {
-          await this.accountComponents.get(storageId)?.stop()
-          this.accountComponents.delete(storageId)
-        }
-        for (const [id, owner] of this.responseOwners) {
-          if (affectedKey(owner.keyId)) this.responseOwners.delete(id)
+        if (kind === 'switch') {
+          this.invalidateKeys(affectedKey)
+        } else {
+          for (const entry of this.activity.entries.values()) {
+            if (entry.storageId === storageId || affectedKey(entry.keyId)) entry.abort()
+          }
+          if (storageId) {
+            const component = this.accountComponents.get(storageId)
+            if (component) await component.stop()
+            else if (this.store.settings.accountStorageId === storageId) await this.component.stop()
+            this.accountComponents.delete(storageId)
+          }
+          this.invalidateKeys(affectedKey)
         }
         return () => undefined
       },
@@ -233,10 +235,14 @@ export class ApiProxyGateway {
       entry.storageId = accountId
       this.recordAccountActivity(accountId)
       entry.abort = () => res.destroy()
+      const record = entry
+      const lease = this.coordinator.executions.register({ storageId: accountId, kind: 'api', ownerId: keyId, protected: this.store.findKey(keyId)?.protected, disconnect: () => record.abort() })
+      res.once('close', () => lease.release())
+      res.once('finish', () => lease.release())
       const input = req.method === 'POST' ? this.adapt(await body(req), keyId) : undefined
       if (res.destroyed) { settle('interrupted'); this.activity.finish(entry.id, 'interrupted'); return }
       entry.model = typeof input?.model === 'string' ? input.model : null
-      const generation = await this.prepareAccount(accountId, !!this.store.findKey(keyId)?.accountStorageId)
+      const generation = await this.prepareAccount(accountId, req.method === 'GET')
       if (res.destroyed) { settle('interrupted'); this.activity.finish(entry.id, 'interrupted'); return }
       if (!this.store.isKeyUsable(keyId) || await this.resolveAccount(keyId) !== accountId) throw new ProxyError('key_changed', 'Key账号设置已变化，请重试。', 409)
       if (req.method === 'POST') await this.checkProtection(accountId, keyId)
@@ -420,7 +426,10 @@ export class ApiProxyGateway {
       entry.storageId = accountId
       this.recordAccountActivity(accountId)
       entry.abort = () => socket.destroy()
-      const generation = await this.prepareAccount(accountId, !!this.store.findKey(keyId)?.accountStorageId)
+      const admitted = entry
+      const accountLease = this.coordinator.executions.register({ storageId: accountId, kind: 'api', ownerId: keyId, protected: this.store.findKey(keyId)?.protected, disconnect: () => admitted.abort() })
+      socket.once('close', () => accountLease.release())
+      const generation = await this.prepareAccount(accountId)
       if (socket.destroyed) { this.activity.finish(entry.id, 'interrupted'); return }
       release = this.owner(generation).hold(generation)
       upstream = new WebSocket(generation.url.replace('http:', 'ws:') + url.pathname + url.search, {
@@ -476,6 +485,7 @@ export class ApiProxyGateway {
               settle = null
               this.owner(generation).recordResult(generation, event.type === 'response.completed' ? 200 : typeof event.status === 'number' ? event.status : 502)
               record.busy = false
+              accountLease.setBusy(false)
               record.status = event.type === 'response.completed' ? 'idle' : 'failed'
               processing = false
             }
@@ -493,12 +503,14 @@ export class ApiProxyGateway {
             const input = JSON.parse(bytes.toString())
             if (!['response.create', 'response.append'].includes(input.type)) throw new ProxyError('unsupported_frame', '不支持此 WebSocket 事件。')
             const adapted = this.adapt(input, keyId, true)
+            accountLease.assertCurrent()
             this.activity.begin(record, this.store.settings)
+            accountLease.setBusy(true)
             settle = pending
             processing = true
             if (await this.resolveAccount(keyId) !== accountId) throw new ProxyError('account_changed', '账号选择已变化，请重新连接。', 409)
             await this.checkProtection(accountId, keyId)
-            const current = await this.prepareAccount(accountId, !!this.store.findKey(keyId)?.accountStorageId)
+            const current = await this.prepareAccount(accountId)
             if (closed) return
             if (current.id !== generation.id) throw new ProxyError('credential_updated', '访问凭据已更新，请重连并发送完整上下文。', 503)
             record.model = typeof input.model === 'string' ? input.model : record.model
@@ -536,7 +548,9 @@ export class ApiProxyGateway {
       }
       if (req.method === 'GET' && path === '/status') {
         await this.usage.ready
-        json(res, 200, { data: { settings: this.store.settings, ...this.component.status(), installed: await this.component.available(),
+        const selectedId = await this.resolveAccount().catch(() => null)
+        const selectedComponent = selectedId ? this.accountComponents.get(selectedId) : null
+        json(res, 200, { data: { settings: this.store.settings, ...(selectedComponent || this.component).status(), selectedStorageId: selectedId, installed: await this.component.available(),
           usage: this.usage.summary(url.searchParams.get('timeZone') || 'UTC'),
           activity: this.activity.snapshot(), keys: this.store.listKeys(), manifest: { name: proxyManifest.name, version: proxyManifest.version },
           accounts: await this.coordinator.listAccounts({ scheduleRefresh: false }) } })
@@ -544,7 +558,10 @@ export class ApiProxyGateway {
       }
       if (req.method === 'GET' && path === '/models') {
         if (!this.store.settings.enabled) throw new ProxyError('proxy_disabled', '请先启用出口。', 503)
-        const generation = await this.component.prepare(this.store.settings.accountStorageId)
+        const keyId = url.searchParams.get('keyId') || undefined
+        if (keyId && !this.store.findKey(keyId)) throw new ProxyError('key_not_found', 'Key不存在。', 404)
+        const selectedId = url.searchParams.get('accountStorageId') || await this.resolveAccount(keyId)
+        const generation = await this.prepareAccount(selectedId, true)
         const response = await fetch(`${generation.url}/v1/models`, { headers: { Authorization: `Bearer ${generation.key}` }, signal: AbortSignal.timeout(5000) })
         json(res, response.status, await response.json())
         return
@@ -607,7 +624,7 @@ export class ApiProxyGateway {
         return
       }
       if (path === '/settings' || path === '/stop') {
-        if (this.mutation || this.coordinator.isAccountOperationInProgress()) throw new ProxyError('proxy_busy', '有另一项变更正在进行。', 409)
+        if (this.mutation) throw new ProxyError('proxy_busy', '出口设置正在变更。', 409)
         this.mutation = true
         const previous = this.store.settings
         let drained = false
@@ -618,19 +635,20 @@ export class ApiProxyGateway {
             const state = await this.coordinator.listAccounts({ scheduleRefresh: false })
             if (!state.accounts.some(account => account.storageId === settings.accountStorageId)) throw new ProxyError('account_not_found', '所选账号不存在。')
           }
-          await this.activity.drain(previous.drainTimeoutSeconds * 1000, input.force === true)
-          drained = true
-          await this.stopComponents()
-          if (settings.enabled) await this.component.prepare(settings.accountStorageId)
+          if (!settings.enabled) {
+            await this.activity.drain(previous.drainTimeoutSeconds * 1000, input.force === true)
+            drained = true
+          }
+          // Save the route even when the old account is exhausted or logged out.
+          // Credentials and component readiness are checked on actual requests.
           await this.store.saveSettings(settings)
-          this.epoch = randomUUID()
-          this.responseOwners.clear()
-        } catch (error) {
           if (drained) {
             await this.stopComponents()
-            if (previous.enabled) await this.component.prepare(previous.accountStorageId).catch(() => undefined)
+            this.epoch = randomUUID()
+            this.responseOwners.clear()
+          } else if (previous.accountStorageId !== settings.accountStorageId) {
+            this.invalidateKeys(keyId => !this.store.findKey(keyId)?.accountStorageId)
           }
-          throw error
         } finally {
           this.mutation = false
           this.activity.draining = false

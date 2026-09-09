@@ -28,13 +28,13 @@
           <AppButton v-if="account.actionRequired === 'reauthenticate'" :disabled="disabled(account)" @click="$emit('reauth', account.storageId)">{{ t('Re-authenticate') }}</AppButton>
           <span class="account-card-spacer" />
           <div :ref="element => setAnchor(account.storageId, element)" class="account-more-anchor">
-            <AppButton :disabled="busy" aria-label="账号更多操作" :aria-expanded="menuId === account.storageId" @click="menuId = menuId === account.storageId ? '' : account.storageId">⋯</AppButton>
+            <AppButton aria-label="账号更多操作" :aria-expanded="menuId === account.storageId" @click="menuId = menuId === account.storageId ? '' : account.storageId">⋯</AppButton>
           </div>
           <AppPopover :open="menuId === account.storageId" :anchor="anchors[account.storageId] || null" direction="up" align="end" panel-class="account-actions-menu" @close="menuId = ''">
             <p class="account-card-meta" :title="account.accountId">Workspace {{ account.accountId }}</p>
             <AppButton :disabled="disabled(account)" @click="run('quota', account.storageId)">{{ t('Refresh quota') }}</AppButton>
             <AppButton :disabled="disabled(account)" @click="run('reauth', account.storageId)">{{ t('Re-authenticate') }}</AppButton>
-            <AppButton variant="danger" :disabled="disabled(account) || account.isActive" @click="$emit('remove', account.storageId)">{{ confirmingRemoveId === account.storageId ? t('Confirm remove') : t('Remove') }}</AppButton>
+            <AppButton variant="danger" @click="$emit('remove', account.storageId)">{{ confirmingRemoveId === account.storageId ? '确认移除并中断' : t('Remove') }}</AppButton>
           </AppPopover>
         </footer>
       </article>

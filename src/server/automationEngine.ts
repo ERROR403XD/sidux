@@ -16,17 +16,19 @@ export interface AutomationRuntime {
   releaseAccount?(runId: string): void
   accountBusy(): boolean
   canStart(threadId: string): Promise<boolean>
-  createThread(cwd: string, name: string, settings?: AutomationModelSettings): Promise<{ threadId: string; model?: string }>
+  createThread(cwd: string, name: string, settings?: AutomationModelSettings, runId?: string): Promise<{ threadId: string; model?: string }>
   prepare(threadId: string, text: string, runId: string, settings?: AutomationModelSettings): Promise<unknown>
   start(params: unknown): Promise<{ turnId: string }>
   inspect(run: AutomationRun): Promise<AutomationInspection>
   interrupt(run: AutomationRun): Promise<void>
 }
+const isCancelledRun = (run: AutomationRun): boolean => run.status === 'cancelled'
 type Definition = { record: ThreadAutomationRecord | null; error: string | null; signature: string }
 
 export function automationError(error: unknown): { errorCode: string; error: string } {
   const text = error instanceof Error ? error.message : String(error)
   // Do not retain upstream responses, prompts or auth material in the run journal.
+  if (/quota|rate.?limit|usage.?limit|429|额度|限额/iu.test(text)) return { errorCode: 'QUOTA_EXHAUSTED', error: '本次运行因所选账号额度不足结束；可改选账号后重试' }
   if (/auth|401|403|token|credential|bearer/iu.test(text)) return { errorCode: 'AUTH_REQUIRED', error: '认证失败；请检查当前账号，然后手动重试' }
   if (/model.*(not|invalid|unavailable|support)|模型/iu.test(text)) return { errorCode: 'MODEL_UNAVAILABLE', error: '模型不可用；请检查模型配置后重试' }
   if (/ENOENT|ENOTDIR|cwd|目录/iu.test(text)) return { errorCode: 'CWD_UNAVAILABLE', error: '工作目录不存在或不可访问' }
@@ -47,6 +49,8 @@ export class AutomationEngine {
   private definitions = new Map<string, Definition>()
   private store: AutomationStore
   private chain: Promise<unknown> = Promise.resolve()
+  private saving: Promise<unknown> = Promise.resolve()
+  private readonly dispatches = new Map<string, Promise<void>>()
   private timer: ReturnType<typeof setInterval> | null = null
   private pendingTick = false
   private stopped = false
@@ -98,7 +102,12 @@ export class AutomationEngine {
     return next
   }
   subscribe(listener: () => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
-  private async persist() {
+  private persist(): Promise<void> {
+    const next = this.saving.then(() => this.persistNow())
+    this.saving = next.catch(() => undefined)
+    return next
+  }
+  private async persistNow() {
     const hot = pruneAutomationRuns(this.state.runs, this.now())
     const retained = new Set(hot.map(run => run.runId))
     await this.store.assertOwnership()
@@ -153,7 +162,7 @@ export class AutomationEngine {
         if (record.kind === 'heartbeat' ? !record.targetThreadId : !record.cwds.length || record.cwds.some((cwd) => !isAbsolute(cwd))) throw new Error('缺少有效的执行目标')
         const previous = this.state.definitions[id]
         const timezone = this.timezone
-        const revision = createHash('sha256').update(JSON.stringify([record.rrule, record.prompt, record.status, record.targetThreadId, record.cwds, timezone, record.model, record.reasoningEffort, record.serviceTier])).digest('hex').slice(0, 16)
+        const revision = createHash('sha256').update(JSON.stringify([record.rrule, record.prompt, record.status, record.targetThreadId, record.cwds, timezone, record.model, record.reasoningEffort, record.serviceTier, record.accountStorageId, record.protected])).digest('hex').slice(0, 16)
         const anchor = previous?.revision === revision ? previous.anchor : this.now()
         const schedule = createAutomationSchedule(record.rrule, timezone, anchor)
         if (previous?.revision !== revision) {
@@ -193,6 +202,17 @@ export class AutomationEngine {
       await this.scan(); await this.persist()
     })
   }
+  cancelAccount(storageId: string, primary: boolean, runIds: string[]): Promise<void> {
+    return this.serial(async () => {
+      for (const run of this.state.runs.filter(isPendingAutomationRun)) {
+        const settings = this.definitions.get(run.automationId)?.record
+        if (runIds.includes(run.runId) || settings?.accountStorageId === storageId || (primary && !settings?.accountStorageId)) {
+          this.finish(run, 'cancelled', '执行账号已移除，关联连接已关闭', 'ACCOUNT_REMOVED')
+        }
+      }
+      await this.persist()
+    })
+  }
   private assertReady() { if (!this.ready || this.stopped || this.error) throw new Error(this.error ?? '调度器尚未就绪') }
   drain(value = true) {
     return this.serial(async () => { this.assertReady(); this.drained = value; await this.persist(); return this.snapshot() })
@@ -230,6 +250,7 @@ export class AutomationEngine {
   tick(): Promise<void> {
     if (this.pendingTick || !this.ready || this.stopped || this.error) return Promise.resolve()
     this.pendingTick = true
+    const started: Promise<void>[] = []
     return this.serial(async () => {
       if (this.stopped) return
       const now = this.now()
@@ -261,46 +282,62 @@ export class AutomationEngine {
         if (changed) await this.persist()
         if (now - this.lastInspect >= 30000) {
           this.lastInspect = now
-          for (const run of this.state.runs.filter(isActiveAutomationRun)) { await this.reconcile(run); await this.persist() }
+          for (const run of this.state.runs.filter(isActiveAutomationRun)) { if (!this.dispatches.has(run.runId)) { await this.reconcile(run); await this.persist() } }
         }
-        if (!this.runtime.accountBusy() && !this.state.runs.some(isActiveAutomationRun)) {
+        if (!this.runtime.accountBusy()) {
           for (const run of this.state.runs.filter((row) => row.status === 'queued' && (!row.retryAfter || row.retryAfter <= now))) {
-            if (run.kind === 'heartbeat') {
-              try { if (!await bounded(this.runtime.canStart(run.target))) continue }
-              catch (error) { const info = automationError(error); this.finish(run, 'failed', info.error, info.errorCode); await this.persist(); continue }
-            }
+            if (this.state.runs.filter(isActiveAutomationRun).length >= 4) break
+            if (this.state.runs.some(other => isActiveAutomationRun(other) && other.automationId === run.automationId && other.target === run.target)) continue
             if (this.runtime.accountBusy() || this.stopped) break
-            await this.dispatch(run); break
+            run.status = 'starting'
+            await this.persist()
+            const flight = this.dispatch(run).catch(() => { this.error = '运行记录保存失败，调度已暂停'; this.ready = false })
+              .finally(() => { this.dispatches.delete(run.runId) })
+            this.dispatches.set(run.runId, flight)
+            started.push(flight)
           }
         }
       } catch (error) { this.error = error instanceof Error ? error.message : '调度器停止'; this.ready = false }
-    }).finally(() => { this.pendingTick = false })
+    }).finally(() => { this.pendingTick = false }).then(async () => { await Promise.all(started) })
   }
   private async dispatch(run: AutomationRun) {
     const record = this.definitions.get(run.automationId)?.record
     if (!record || this.state.definitions[record.id]?.revision !== run.revision) { this.finish(run, 'cancelled', '任务已修改'); await this.persist(); return }
+    if (run.kind === 'heartbeat') {
+      try {
+        if (!await bounded(this.runtime.canStart(run.target))) { if (isCancelledRun(run)) return; run.status = 'queued'; await this.persist(); return }
+      } catch (error) {
+        const info = automationError(error)
+        this.finish(run, 'failed', info.error, info.errorCode)
+        await this.persist()
+        return
+      }
+    }
     if (this.runtime.acquireAccount) {
       try {
         if (!await this.runtime.acquireAccount(run.runId, record)) {
+          if (isCancelledRun(run)) return
+          run.status = 'queued'
           run.retryAfter = this.now() + 30_000
-          run.error = '等待账号额度或当前任务到达可切换边界'
+          run.error = '等待所选账号额度或该账号的自动化运行结束'
           run.errorCode = 'WAITING_ACCOUNT'
           await this.persist()
           return
         }
       } catch (error) {
+        if (isCancelledRun(run)) return
         this.finish(run, 'failed', automationError(error).error, 'ACCOUNT_UNAVAILABLE')
         await this.persist()
         return
       }
     }
-    // Claim synchronously before any await, so account switching sees this run.
+    if (isCancelledRun(run)) { this.runtime.releaseAccount?.(run.runId); return }
     run.status = 'starting'; run.startedAt = this.now(); run.error = null; run.errorCode = null
     await this.persist()
     try {
       if (!run.threadId) {
         if (!(await stat(run.target)).isDirectory()) throw new Error('cwd 不是目录')
-        const thread = await bounded(this.runtime.createThread(run.target, `${record.name} · ${formatAutomationTime(run.scheduledAt, run.timezone)}`, record))
+        const thread = await bounded(this.runtime.createThread(run.target, `${record.name} · ${formatAutomationTime(run.scheduledAt, run.timezone)}`, record, run.runId))
         run.threadId = thread.threadId; run.model = thread.model ?? null
         await this.persist()
       }
@@ -314,17 +351,21 @@ export class AutomationEngine {
       if (model) run.model = model
       run.serviceTier = execution.serviceTier ?? null
       run.reasoningEffort = execution.collaborationMode?.settings?.reasoning_effort ?? execution.effort ?? null
+      if (isCancelledRun(run)) { this.runtime.releaseAccount?.(run.runId); return }
       if (this.stopped) { this.finish(run, 'interrupted', '服务已停止，尚未提交', 'SERVICE_STOPPED'); await this.persist(); return }
       // Write intent before RPC. Any error after this point requires reconciliation, never an automatic replay.
       run.submittedAt = this.now()
       await this.persist()
       const result = await bounded(this.runtime.start(params))
-      run.turnId = result.turnId; run.status = 'running'
+      run.turnId = result.turnId
+      if (isActiveAutomationRun(run)) run.status = 'running'
     } catch (error) {
+      if (isCancelledRun(run)) { this.runtime.releaseAccount?.(run.runId); return }
       const info = automationError(error)
       if ((error as { rpcRejected?: boolean })?.rpcRejected) this.finish(run, 'failed', info.error, info.errorCode)
       else if (run.submittedAt) { run.status = 'starting'; run.error = '提交结果待核对；不会自动重复提交'; run.errorCode = 'SUBMISSION_UNKNOWN' }
       else if (['CONNECTION_ERROR', 'TIMEOUT'].includes(info.errorCode) && run.attempt < 3) {
+        this.runtime.releaseAccount?.(run.runId)
         run.status = 'queued'; run.retryAfter = this.now() + 5000 * 2 ** (run.attempt - 1); run.attempt += 1
         Object.assign(run, info)
       } else this.finish(run, 'failed', info.error, info.errorCode)
@@ -377,6 +418,6 @@ export class AutomationEngine {
   dispose(): Promise<void> {
     this.stopped = true; this.ready = false
     if (this.timer) clearInterval(this.timer)
-    return this.serial(async () => { this.listeners.clear(); await this.store.release() })
+    return this.serial(async () => { await Promise.all(this.dispatches.values()); await this.saving; this.listeners.clear(); await this.store.release() })
   }
 }

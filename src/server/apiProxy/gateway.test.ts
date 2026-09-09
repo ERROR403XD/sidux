@@ -1,3 +1,4 @@
+import { AccountExecutionRegistry } from '../accountExecution.js'
 import { createServer, type Server } from 'node:http'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -13,7 +14,7 @@ import { ProxyComponent, type ComponentGeneration } from './component.js'
 
 const cleanups: (() => Promise<void>)[] = []
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-afterEach(async () => { while (cleanups.length) await cleanups.pop()!() })
+afterEach(async () => { while (cleanups.length) await cleanups.pop()!(); vi.restoreAllMocks() })
 async function home() {
   const directory = await mkdtemp(join(tmpdir(), 'codexapp-api-test-'))
   cleanups.push(() => rm(directory, { recursive: true, force: true }))
@@ -56,13 +57,14 @@ async function fixture() {
   let lifecycle: any
   let guard: (() => Promise<void>) | null = null
   let accountState: any = { activeStorageId: 'account', accounts: [{ storageId: 'account' }, { storageId: 'fixed' }] }
-  const coordinator = { store: { codexHome: directory, readState: async () => accountState }, setSubmissionGuard: (value: any) => { guard = value }, setQuotaObserver: vi.fn(), blocksApiAccount: (id: string | null) => AccountAuthCoordinator.prototype.blocksApiAccount.call({ operation } as any, id), isAccountOperationInProgress: () => !!operation,
+  const executions = new AccountExecutionRegistry()
+  const coordinator = { executions, store: { codexHome: directory, readState: async () => accountState }, setSubmissionGuard: (value: any) => { guard = value }, setQuotaObserver: vi.fn(), blocksApiAccount: (id: string | null) => AccountAuthCoordinator.prototype.blocksApiAccount.call({ operation, executions, removals: new Map() } as any, id), isAccountOperationInProgress: () => !!operation,
     setApiLifecycle: (value: any) => { lifecycle = value }, listAccounts: async () => ({ activeStorageId: 'account', accounts: [{ storageId: 'account' }] }) } as unknown as AccountAuthCoordinator
   const gateway = new ApiProxyGateway(coordinator)
   await gateway.store.ready
   await gateway.store.saveSettings({ ...gateway.store.settings, enabled: true, drainTimeoutSeconds: 1 })
   const generation = { id: 'fixture-generation', url, key: 'internal-fixture-key', storageId: 'account', revision: 1 } as ComponentGeneration
-  vi.spyOn(gateway.component, 'prepare').mockResolvedValue(generation)
+  vi.spyOn(ProxyComponent.prototype, 'prepare').mockImplementation(async id => ({ ...generation, storageId: id || 'account', references: 0 }))
   vi.spyOn(gateway.component, 'hold').mockReturnValue(() => undefined)
   const stop = vi.spyOn(gateway.component, 'stop').mockResolvedValue()
   vi.spyOn(gateway.component, 'available').mockResolvedValue(true)
@@ -335,4 +337,43 @@ it('rebinds a key away from a stalled account without aborting another key strea
     controller.abort()
     prepare.mockRestore()
   }
+})
+
+it('rebinds the default outlet during a stalled stream and primary refresh while preserving a fixed-key stream', async () => {
+  const f = await fixture()
+  const a = 'a'.repeat(64), b = 'b'.repeat(64)
+  f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+  ;(f.gateway as any).coordinator.listAccounts = async () => ({ accounts: [{ storageId: a }, { storageId: b }] })
+  const fixed = await f.gateway.store.createKey('independent', null, { accountStorageId: b })
+  const ctrl = new AbortController()
+  try {
+    expect((await f.post('/v1/responses', { model: 'slow', stream: true })).status).toBe(200)
+    expect((await fetch(f.base + '/v1/responses', { method: 'POST', headers: f.headers(fixed.secret), body: JSON.stringify({ model: 'slow', stream: true }), signal: ctrl.signal })).status).toBe(200)
+    f.setOperation({ kind: 'refresh', storageId: a })
+    expect((await f.post('/codex-api/api-proxy/settings', { settings: { accountStorageId: b } })).status).toBe(200)
+    await vi.waitFor(() => expect([...f.gateway.activity.entries.values()].filter(entry => entry.keyId === f.first.key.id)).toHaveLength(0))
+    expect([...f.gateway.activity.entries.values()].some(entry => entry.keyId === fixed.key.id && entry.busy)).toBe(true)
+    for (const path of ['/v1/responses', '/v1/chat/completions', '/v1/responses/compact']) {
+      expect((await f.post(path, { model: 'fixture', input: [{ role: 'user', content: 'fixture' }], messages: [] })).status).toBe(200)
+    }
+    expect((await fetch(f.base + '/v1/models', { headers: f.headers() })).status).toBe(200)
+    expect((await fetch(f.base + '/codex-api/api-proxy/models?keyId=' + fixed.key.id)).status).toBe(200)
+  } finally { ctrl.abort(); f.setOperation(null) }
+})
+
+it('force-removes only connections belonging to the selected account without waiting for their streams', async () => {
+  const f = await fixture()
+  const a = 'a'.repeat(64), b = 'b'.repeat(64)
+  f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+  const keyB = await f.gateway.store.createKey('keep', null, { accountStorageId: b })
+  const ctrl = new AbortController()
+  try {
+    await f.post('/v1/responses', { model: 'slow', stream: true })
+    await fetch(f.base + '/v1/responses', { method: 'POST', headers: f.headers(keyB.secret), body: JSON.stringify({ model: 'slow', stream: true }), signal: ctrl.signal })
+    const started = Date.now()
+    await f.lifecycle().beforeMutation('remove', a)
+    expect(Date.now() - started).toBeLessThan(500)
+    await vi.waitFor(() => expect([...f.gateway.activity.entries.values()].every(entry => entry.storageId === b)).toBe(true))
+    expect(f.gateway.activity.entries.size).toBe(1)
+  } finally { ctrl.abort() }
 })

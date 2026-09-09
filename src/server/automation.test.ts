@@ -240,3 +240,26 @@ it('recomputes existing schedules when the global timezone changes and ignores l
   expect(f.engine.snapshot().definitions[0]?.timezone).toBe('Asia/Shanghai')
   expect(f.engine.snapshot().definitions[0]?.nextRunAtMs).not.toBe(before)
 })
+
+it('dispatches another account while the first account is still acquiring, and removal cancels only the selected work', async () => {
+  const f = await fixture()
+  const second = parseAutomationToml(await readFile(f.path, 'utf8'))!
+  second.id = 'second'
+  second.accountStorageId = 'b'.repeat(64)
+  await mkdir(join(f.home, 'automations', 'second'))
+  await writeFile(join(f.home, 'automations', 'second', 'automation.toml'), serializeAutomationToml(second))
+  let finishAcquire!: (ready: boolean) => void
+  const held = new Promise<boolean>(done => { finishAcquire = done })
+  f.runtime.acquireAccount = vi.fn(async (_id, settings) => settings.accountStorageId ? true : held)
+  const first = await f.engine.manual('test', f.home, 'held-account')
+  const other = await f.engine.manual('second', f.home, 'other-account')
+  const tick = f.engine.tick()
+  await vi.waitFor(() => expect(f.runtime.start).toHaveBeenCalledOnce())
+  await f.engine.cancelAccount('a'.repeat(64), true, [first.runId])
+  expect(f.engine.runs('test').data[0]?.status).toBe('cancelled')
+  expect(f.engine.runs('second').data.find(run => run.runId === other.runId)?.status).toBe('running')
+  finishAcquire(true)
+  await tick
+  expect(f.runtime.start).toHaveBeenCalledOnce()
+  expect(f.engine.runs('test').data[0]?.status).toBe('cancelled')
+})

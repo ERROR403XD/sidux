@@ -34,7 +34,7 @@ describe('automation execution settings and local reference time', () => {
     const rpc = vi.fn(async (method: string) => method === 'thread/start' ? { thread: { id: 'new-thread' }, model: 'chosen-model' } : {})
     const runtime = createAutomationRuntime({ rpc, accountBusy: () => false, hasQueuedMessages: async () => false, pendingRequests: () => [], readHistory: async () => ({}), buildParams: async () => ({ collaborationMode: { mode: 'default', settings: { model: 'default-model', reasoning_effort: 'medium', developer_instructions: null } } }) })
     await runtime.createThread('/tmp', 'fixture', { model: 'chosen-model' })
-    expect(rpc).toHaveBeenCalledWith('thread/start', { cwd: '/tmp', model: 'chosen-model' })
+    expect(rpc).toHaveBeenCalledWith('thread/start', { cwd: '/tmp', model: 'chosen-model' }, undefined)
     const params = await runtime.prepare('existing-thread', 'fixture', 'run', { model: 'chosen-model', reasoningEffort: 'high' })
     expect(params).toMatchObject({ model: 'chosen-model', effort: 'high', collaborationMode: { settings: { model: 'chosen-model', reasoning_effort: 'high' } } })
     expect(await runtime.prepare('existing-thread', 'fixture', 'run')).toMatchObject({ collaborationMode: { settings: { model: 'default-model', reasoning_effort: 'medium' } } })

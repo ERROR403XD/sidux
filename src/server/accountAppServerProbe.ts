@@ -116,12 +116,13 @@ export class AccountAppServerProbe {
     expectedAccountId: string
     persistRefreshedCredential: (raw: string) => Promise<void>
     beforeReset?: () => Promise<void>
+    refreshTokens?: (params: unknown) => Promise<ChatgptAuthTokensRefreshResponse>
     command?: string
     externalTokens?: { accessToken: string; chatgptAccountId: string; chatgptPlanType?: string }
     spawnImpl?: typeof spawn
   }) {}
 
-  async inspect(reset?: { creditId: string; idempotencyKey: string }, includeModels = false): Promise<AccountProbeInspection> {
+  async inspect(reset?: { creditId: string; idempotencyKey: string }, includeModels = false, quotaOptional = false): Promise<AccountProbeInspection> {
     const client = this.start()
     try {
       await client.call('initialize', {
@@ -157,7 +158,10 @@ export class AccountAppServerProbe {
         }
       }
       // Model discovery must not depend on an unrelated quota endpoint.
-      const rateLimits = includeModels ? null : await client.call('account/rateLimits/read', null)
+      const rateLimits = includeModels ? null : await client.call('account/rateLimits/read', null).catch(error => {
+        if (!quotaOptional || /401|402|403|token_revoked|invalid_grant|unauthorized/i.test(String(error))) throw error
+        return null
+      })
       return {
         accountId: runtimeAccountId,
         email: readString(account?.email),
@@ -203,6 +207,7 @@ export class AccountAppServerProbe {
     const client = new AccountProbeRpcClient(
       (message) => proc.stdin.write(`${JSON.stringify(message)}\n`),
       async (params) => {
+        if (this.options.refreshTokens) return this.options.refreshTokens(params)
         if (this.options.externalTokens) throw new Error('定时激活不刷新凭据')
         const request = asRecord(params)
         const raw = await readFile(join(this.options.profileDir, 'auth.json'), 'utf8')

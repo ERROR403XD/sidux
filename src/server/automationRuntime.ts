@@ -1,7 +1,7 @@
 import type { AutomationRuntime, AutomationInspection } from './automationEngine.js'
 import type { AutomationRun } from './automationStore.js'
 
-type Rpc = (method: string, params: unknown) => Promise<unknown>
+type Rpc = (method: string, params: unknown, runId?: string) => Promise<unknown>
 const record = (value: unknown) => value && typeof value === 'object' ? value as Record<string, unknown> : {}
 
 export function createAutomationRuntime(options: {
@@ -27,18 +27,18 @@ export function createAutomationRuntime(options: {
       return !['active', 'running', 'inProgress'].includes(String(status))
         && !options.pendingRequests().some((request) => record(record(request).params).threadId === threadId)
     },
-    async createThread(cwd, name, settings = {}) {
-      const response = record(await rpc('thread/start', { cwd, ...(settings.model ? { model: settings.model } : {}) }))
+    async createThread(cwd, name, settings = {}, runId) {
+      const response = record(await rpc('thread/start', { cwd, ...(settings.model ? { model: settings.model } : {}) }, runId))
       const thread = record(response.thread)
       if (typeof thread.id !== 'string') throw new Error('未返回 threadId')
       // Failure to set a display name must not orphan an otherwise valid thread.
-      await rpc('thread/name/set', { threadId: thread.id, name }).catch(() => {})
+      await rpc('thread/name/set', { threadId: thread.id, name }, runId).catch(() => {})
       return { threadId: thread.id, model: typeof response.model === 'string' ? response.model : undefined }
     },
     async prepare(threadId, text, runId, settings = {}) {
-      const current = record(record(await rpc('thread/read', { threadId, includeTurns: false })).thread)
+      const current = record(record(await rpc('thread/read', { threadId, includeTurns: false }, runId)).thread)
       if ((record(current.status).type ?? current.status) === 'notLoaded') {
-        await rpc('thread/resume', { threadId, excludeTurns: true, ...(settings.model ? { model: settings.model } : {}) })
+        await rpc('thread/resume', { threadId, excludeTurns: true, ...(settings.model ? { model: settings.model } : {}) }, runId)
       }
       const params = await options.buildParams(threadId, text, runId)
       if (settings.model) params.model = settings.model
@@ -52,7 +52,7 @@ export function createAutomationRuntime(options: {
       return { ...params, clientUserMessageId: runId }
     },
     async start(params) {
-      const response = record(await rpc('turn/start', params))
+      const response = record(await rpc('turn/start', params, String(record(params).clientUserMessageId || '')))
       const turnId = record(response.turn).id
       if (typeof turnId !== 'string') throw new Error('未返回 turnId')
       return { turnId }

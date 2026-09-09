@@ -70,6 +70,11 @@ export async function handleAccountRoutes(
 ): Promise<boolean> {
   const coordinator = getAccountAuthCoordinator()
 
+  if (req.method === 'GET' && url.pathname === '/codex-api/accounts/executions') {
+    setJson(res, 200, { data: coordinator.executions.snapshot() })
+    return true
+  }
+
   if (req.method === 'GET' && url.pathname === '/codex-api/accounts/models') {
     try { setJson(res, 200, { data: await coordinator.readAccountModels(url.searchParams.get('storageId') || undefined) }) }
     catch (error) { sendError(res, error, '账号模型目录读取失败。') }
@@ -202,7 +207,7 @@ export async function handleAccountRoutes(
       const body = await readJsonBody(req)
       const storageId = readString(body.storageId)
       if (!storageId) throw new AccountCoordinatorError('account_not_found', 'Choose an account to remove.', 400)
-      setJson(res, 200, { ok: true, data: await coordinator.removeAccount(storageId) })
+      setJson(res, 200, { ok: true, data: await coordinator.removeAccount(storageId, context.appServer) })
     } catch (error) {
       sendError(res, error, 'Failed to remove account.')
     }

@@ -532,3 +532,66 @@ it('rejects a busy primary switch before invoking API drain', async () => {
   expect(beforeMutation).not.toHaveBeenCalled()
   expect(coordinator.blocksApiAccount(null)).toBe(false)
 })
+
+it('removes an active expired account immediately and rejects a late token refresh without resurrection', async () => {
+  const authStore = await store()
+  const a = await authStore.upsertCredential(credential('account-a', 'user-a'), { activate: true })
+  const b = await authStore.upsertCredential(credential('account-b', 'user-b'))
+  let resolve!: (response: Response) => void
+  const fetchImpl = vi.fn(() => new Promise<Response>(done => { resolve = done }))
+  const coordinator = new AccountAuthCoordinator(authStore, { fetchImpl })
+  const refresh = coordinator.refreshTokensForStorage(a.account.storageId, {})
+  await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledOnce())
+  const busy = { ...runtime({ idle: false }), disconnectAccount: vi.fn(async () => {}) }
+  const result = await coordinator.removeAccount(a.account.storageId, busy)
+  expect(result.activeStorageId).toBeNull()
+  expect(result.accounts.map(row => row.storageId)).toEqual([b.account.storageId])
+  expect(busy.disconnectAccount).toHaveBeenCalledWith(a.account.storageId, true)
+  expect(await authStore.readActiveCredential()).toBeNull()
+  expect(await authStore.credentialExists(a.account.storageId)).toBe(false)
+  const rejected = expect(refresh).rejects.toThrow()
+  resolve(new Response(JSON.stringify({ access_token: jwt('account-a', 'user-a'), refresh_token: 'rotated-fixture' }), { status: 200 }))
+  await rejected
+  expect((await authStore.readState()).accounts.map(row => row.storageId)).toEqual([b.account.storageId])
+  expect(await authStore.credentialExists(a.account.storageId)).toBe(false)
+  expect((await coordinator.removeAccount(a.account.storageId, busy)).accounts).toHaveLength(1)
+})
+
+it('accepts active reauthentication while the old runtime is busy and reloads auth without disposing sessions', async () => {
+  const authStore = await store()
+  const active = await authStore.upsertCredential(credential('account-a', 'user-a'), { activate: true })
+  let pendingHome = ''
+  const coordinator = new AccountAuthCoordinator(authStore, {
+    spawnImpl: loginSpawn(home => { pendingHome = home }) as any,
+    fetchImpl: async () => {
+      await writeFile(join(pendingHome, 'auth.json'), credential('account-a', 'user-a', 'fresh-fixture'))
+      return new Response('', { status: 302 })
+    },
+    createProbe: probeFactory(),
+  })
+  const busy = { ...runtime({ idle: false }), reloadAccount: vi.fn(async () => {}) }
+  const login = await coordinator.startLogin({ intent: 'reauth', targetStorageId: active.account.storageId }, busy)
+  const result = await coordinator.completeLogin({ loginSessionId: login.loginSessionId, callbackUrl: 'http://localhost:1455/auth/callback?code=fixture' }, busy)
+  expect(result.account.isActive).toBe(true)
+  expect(busy.reloadAccount).toHaveBeenCalledWith(active.account.storageId)
+  expect(busy.disposeCount).toBe(0)
+})
+
+it('switches while an unrelated quota probe is pending and does not let its stale active snapshot change the selection', async () => {
+  const authStore = await store()
+  const a = await authStore.upsertCredential(credential('account-a', 'user-a'), { activate: true })
+  const b = await authStore.upsertCredential(credential('account-b', 'user-b'))
+  const c = await authStore.upsertCredential(credential('account-c', 'user-c'))
+  let resolve!: (value: AccountProbeInspection) => void
+  const held = new Promise<AccountProbeInspection>(done => { resolve = done })
+  const createProbe = vi.fn((options: any) => ({ inspect: async () => options.expectedAccountId === 'account-c' ? held : inspection(), dispose: vi.fn() }) as any)
+  const coordinator = new AccountAuthCoordinator(authStore, { createProbe })
+  const refresh = coordinator.refreshAccount(c.account.storageId)
+  await vi.waitFor(() => expect(createProbe).toHaveBeenCalled())
+  expect((await coordinator.switchAccount({ storageId: b.account.storageId }, runtime())).activeStorageId).toBe(b.account.storageId)
+  resolve(inspection())
+  await refresh
+  await authStore.upsertCredential(credential('account-a', 'user-a', 'late-fixture'), { expectedStorageId: a.account.storageId, materializeIfActive: true })
+  expect((await authStore.readState()).activeStorageId).toBe(b.account.storageId)
+  expect((await authStore.readActiveCredential())?.identity.storageId).toBe(b.account.storageId)
+})

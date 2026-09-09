@@ -1,3 +1,4 @@
+import { AccountExecutionRegistry } from './accountExecution.js'
 import { normalizeResetCredits } from '../accountResetCredits.js'
 import { mergeQuotaUpdate, quotaRetryDelay } from '../quotaRefresh.js'
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
@@ -36,6 +37,9 @@ export type RuntimeQuiescenceSnapshot = {
 export type AccountRuntime = {
   rpc(method: string, params: unknown): Promise<unknown>
   dispose(): void
+  reloadAccount?(storageId: string): Promise<void>
+  disconnectAccount?(storageId: string, wasActive?: boolean): Promise<void>
+  getAccountSwitchSnapshot?(): Promise<RuntimeQuiescenceSnapshot>
   listPendingServerRequests(): unknown[]
   getRuntimeQuiescenceSnapshot?(): Promise<RuntimeQuiescenceSnapshot>
 }
@@ -66,6 +70,7 @@ type LoginSession = {
   timer?: ReturnType<typeof setTimeout>
   completing?: Promise<Awaited<ReturnType<AccountAuthCoordinator['completeLogin']>>>
   completionStarted?: boolean
+  removalRevision: number
 }
 
 type CoordinatorOperation = {
@@ -234,13 +239,19 @@ export class AccountAuthCoordinator {
     return this.refreshOperations.has(`probe:${storageId}`) || this.refreshOperations.has(`token:${storageId}`)
   }
   blocksApiAccount(storageId: string | null): boolean {
+    if (storageId ? this.executions.isRemoved(storageId) || this.removals.has(storageId) : this.removingPrimary) return true
     const operation = this.operation
     if (!operation || operation.kind === 'refresh') return false
     if (operation.kind === 'switch') return storageId === null
     if (operation.kind === 'login') return storageId === null ? this.primaryCredentialMutation : this.credentialMutationStorageId === storageId
     return storageId !== null && operation.storageId === storageId
   }
-  blocksNewSubmissions(): boolean { return this.operation?.kind === 'switch' || this.primaryCredentialMutation }
+  blocksNewSubmissions(): boolean { return this.removingPrimary || this.operation?.kind === 'switch' || this.primaryCredentialMutation }
+  readonly executions = new AccountExecutionRegistry()
+  private readonly removals = new Map<string, Promise<unknown>>()
+  private removingPrimary = false
+  private drainingAccountRefreshes = false
+  private mutationAccounts = new Set<string>()
   private operation: CoordinatorOperation | null = null
   private loginSession: LoginSession | null = null
   private lastLogin: AccountLoginStatus | null = null
@@ -321,7 +332,7 @@ export class AccountAuthCoordinator {
   }
 
   async startLogin(input: { intent: LoginIntent; targetStorageId?: string | null; method?: LoginMethod }, runtime?: AccountRuntime): Promise<{ loginSessionId: string; loginUrl: string; method: LoginMethod; userCode: string | null; expiresAt: string }> {
-    if (this.isAccountOperationInProgress() || this.loginSession) {
+    if (this.operation || this.loginSession) {
       throw new AccountCoordinatorError('account_operation_in_progress', 'Another account operation is already in progress.')
     }
     if (input.intent === 'reauth' && !input.targetStorageId) {
@@ -361,6 +372,7 @@ export class AccountAuthCoordinator {
     proc.stdin.end()
     const session: LoginSession = {
       id: pending.loginSessionId,
+      removalRevision: this.executions.generation(),
       intent: input.intent,
       targetStorageId: input.targetStorageId ?? null,
       home: pending.home,
@@ -455,7 +467,7 @@ export class AccountAuthCoordinator {
           raw = nextRaw
         },
       })
-      const inspection = await this.withTimeout(probe.inspect(), ACCOUNT_INSPECTION_TIMEOUT_MS, () => probe.dispose())
+      const inspection = await this.withTimeout(probe.inspect(undefined, false, true), ACCOUNT_INSPECTION_TIMEOUT_MS, () => probe.dispose())
       raw = await readFile(`${session.home}/auth.json`, 'utf8')
       const beforeState = await this.store.readState()
       const wasActive = beforeState.activeStorageId === parsed.identity.storageId
@@ -465,15 +477,15 @@ export class AccountAuthCoordinator {
         this.refreshOperations.get(`probe:${parsed.identity.storageId}`),
         this.refreshOperations.get(`token:${parsed.identity.storageId}`),
       ].map(pending => pending?.catch(() => undefined)))
-      if (wasActive && runtime) await this.assertRuntimeIdle(runtime)
+      if (this.executions.removedAfter(parsed.identity.storageId, session.removalRevision) || this.loginSession !== session) throw new AccountCoordinatorError('login_cancelled', '账号已移除，本次登录已取消。')
+      this.executions.reopen(parsed.identity.storageId)
       const saved = await this.store.upsertCredential(raw, {
         expectedStorageId: session.targetStorageId,
-        activate: wasActive,
+        materializeIfActive: true,
       })
       await this.applyInspection(saved.account.storageId, inspection, wasActive ? 'ready' : undefined)
       if (wasActive && runtime) {
-        runtime.dispose()
-        await runtime.rpc('account/read', { refreshToken: false })
+        await this.reloadRuntime(runtime, saved.account.storageId)
       }
       const state = await this.store.readState()
       const account = state.accounts.find((entry) => entry.storageId === saved.account.storageId) ?? saved.account
@@ -541,7 +553,7 @@ export class AccountAuthCoordinator {
         profileDir: `${this.store.accountsRoot}/${entry.storageId}`,
         expectedAccountId: entry.accountId,
         persistRefreshedCredential: async raw => {
-          const saved = await this.store.upsertCredential(raw, { expectedStorageId: entry.storageId, expectedRevision: revision, activate: state.activeStorageId === entry.storageId })
+          const saved = await this.store.upsertCredential(raw, { expectedStorageId: entry.storageId, expectedRevision: revision, materializeIfActive: true })
           revision = saved.account.credentialRevision
         },
       })
@@ -565,7 +577,7 @@ export class AccountAuthCoordinator {
         expectedAccountId: entry.accountId,
         beforeReset: async () => { await this.patchAccount(storageId, { lastResetUsedAtIso: new Date().toISOString() }) },
         persistRefreshedCredential: async raw => {
-          const saved = await this.store.upsertCredential(raw, { expectedStorageId: storageId, expectedRevision: revision, activate: state.activeStorageId === storageId })
+          const saved = await this.store.upsertCredential(raw, { expectedStorageId: storageId, expectedRevision: revision, materializeIfActive: true })
           revision = saved.account.credentialRevision
         },
       })
@@ -602,7 +614,7 @@ export class AccountAuthCoordinator {
         profileDir: `${this.store.accountsRoot}/${storageId}`,
         expectedAccountId: entry.accountId,
         persistRefreshedCredential: async (raw) => {
-          const saved = await this.store.upsertCredential(raw, { expectedStorageId: storageId, expectedRevision: revision, activate: state.activeStorageId === storageId })
+          const saved = await this.store.upsertCredential(raw, { expectedStorageId: storageId, expectedRevision: revision, materializeIfActive: true })
           revision = saved.account.credentialRevision
         },
       })
@@ -653,7 +665,7 @@ export class AccountAuthCoordinator {
         const saved = await this.store.upsertCredential(refreshed.raw, {
           expectedStorageId: storageId,
           expectedRevision: entry.credentialRevision,
-          activate: state.activeStorageId === storageId,
+          materializeIfActive: true,
         })
         await this.patchAccount(storageId, {
           authStatus: 'ready',
@@ -728,10 +740,10 @@ export class AccountAuthCoordinator {
       let materialized = false
       try {
         const materializeStartedAt = Date.now()
+        if (this.executions.isRemoved(target.storageId)) throw new AccountCoordinatorError('account_not_found', '目标账号已移除。', 404)
         await this.store.materializeActive(target.storageId)
         materialized = true
-        runtime.dispose()
-        await runtime.rpc('account/read', { refreshToken: false })
+        await this.reloadRuntime(runtime, target.storageId)
         const materializeRestartMs = Date.now() - materializeStartedAt
         const continuityStartedAt = Date.now()
         let afterThread: ReturnType<typeof threadContinuity> | null = null
@@ -747,6 +759,7 @@ export class AccountAuthCoordinator {
         const continuityMs = Date.now() - continuityStartedAt
         const commitStartedAt = Date.now()
         const next = await this.store.updateState((state) => {
+          if (this.executions.isRemoved(target.storageId) || !state.accounts.some(account => account.storageId === target.storageId)) throw new AccountCoordinatorError('account_not_found', '目标账号已移除。', 404)
           const now = new Date().toISOString()
           const accounts = state.accounts.map((entry) => entry.storageId === target.storageId
             ? { ...entry, authStatus: 'ready' as const, lastActivatedAtIso: now }
@@ -778,9 +791,9 @@ export class AccountAuthCoordinator {
         if (materialized) {
           let rollbackSucceeded = false
           try {
-            await this.store.restoreActive(previousRaw)
-            runtime.dispose()
-            await runtime.rpc('account/read', { refreshToken: false })
+            await this.store.restoreActive(previousStorageId && this.executions.isRemoved(previousStorageId) ? null : previousRaw)
+            if (previousStorageId && !this.executions.isRemoved(previousStorageId)) await this.reloadRuntime(runtime, previousStorageId)
+            else runtime.dispose()
             if (input.resumeThreadId && beforeThread) {
               const restored = threadContinuity(await runtime.rpc('thread/read', { threadId: input.resumeThreadId, includeTurns: true }))
               rollbackSucceeded = sameContinuity(beforeThread, restored)
@@ -805,26 +818,58 @@ export class AccountAuthCoordinator {
     }, () => this.assertRuntimeIdle(runtime))
   }
 
-  async removeAccount(storageId: string): Promise<ReturnType<AccountAuthCoordinator['listAccounts']> extends Promise<infer T> ? T : never> {
-    return await this.withOperation('remove', storageId, async () => {
+  async removeAccount(storageId: string, runtime?: AccountRuntime): Promise<Awaited<ReturnType<AccountAuthCoordinator['listAccounts']>>> {
+    const existing = this.removals.get(storageId)
+    if (existing) return existing as Promise<Awaited<ReturnType<AccountAuthCoordinator['listAccounts']>>>
+    if (!/^[a-f0-9]{64}$/.test(storageId)) throw new AccountCoordinatorError('invalid_account', '账号标识无效。', 400)
+    this.executions.revoke(storageId)
+    const removal = (async () => {
       const state = await this.store.readState()
-      if (state.activeStorageId === storageId) {
-        throw new AccountCoordinatorError('active_account_remove_requires_switch', 'Switch to another account before removing the active account.', 409)
+      const primary = state.activeStorageId === storageId
+      if (primary) this.removingPrimary = true
+      try {
+        for (const probe of this.probes.get(storageId) || []) void probe.dispose().catch(() => undefined)
+        const login = this.loginSession
+        if (login && (login.targetStorageId === storageId || this.credentialMutationStorageId === storageId)) {
+          void this.finishLoginSession(login).catch(() => undefined)
+        }
+        // Revoke the durable credential first. Late refreshes use revision checks
+        // and cannot recreate a removed account. Do not wait for quota/network RPC.
+        await this.store.deleteAccount(storageId)
+        await Promise.all([
+          runtime?.disconnectAccount?.(storageId, primary),
+          this.apiLifecycle?.beforeMutation('remove', storageId),
+        ])
+        this.modelCatalogs.clear()
+        this.quotaBackoff.delete(storageId)
+        this.quotaRevisions.delete(storageId)
+        return await this.listAccounts({ scheduleRefresh: false })
+      } finally {
+        if (primary) this.removingPrimary = false
       }
-      if (!state.accounts.some((entry) => entry.storageId === storageId)) {
-        throw new AccountCoordinatorError('account_not_found', 'The selected account was not found.', 404)
-      }
-      await this.store.removeCredential(storageId)
-      await this.store.updateState((current) => ({
-        state: { ...current, accounts: current.accounts.filter((entry) => entry.storageId !== storageId) },
-        result: undefined,
-      }))
-      return await this.listAccounts({ scheduleRefresh: true })
-    })
+    })()
+    this.removals.set(storageId, removal)
+    try { return await removal }
+    finally { this.removals.delete(storageId) }
   }
 
+  private readonly probes = new Map<string, Set<AccountAppServerProbe>>()
   private createProbe(options: ConstructorParameters<typeof AccountAppServerProbe>[0]): AccountAppServerProbe {
-    return this.dependencies.createProbe?.(options) ?? new AccountAppServerProbe(options)
+    const storageId = options.profileDir.startsWith(this.store.accountsRoot + '/') ? options.profileDir.slice(this.store.accountsRoot.length + 1) : ''
+    const savedAccount = /^[a-f0-9]{64}$/.test(storageId)
+    const probeOptions = savedAccount ? { ...options, refreshTokens: (params: unknown) => this.refreshTokensForStorage(storageId, asRecord(params) || {}) } : options
+    const probe = this.dependencies.createProbe?.(probeOptions) ?? new AccountAppServerProbe(probeOptions)
+    if (savedAccount) {
+      const probes = this.probes.get(storageId) || new Set<AccountAppServerProbe>()
+      probes.add(probe)
+      this.probes.set(storageId, probes)
+      const dispose = probe.dispose.bind(probe)
+      probe.dispose = async () => {
+        try { await dispose() }
+        finally { probes.delete(probe); if (!probes.size) this.probes.delete(storageId) }
+      }
+    }
+    return probe
   }
 
   private async applyInspection(storageId: string, inspection: AccountProbeInspection, authStatus?: AccountAuthStatus, revision?: number): Promise<StoredAccountEntry> {
@@ -868,14 +913,14 @@ export class AccountAuthCoordinator {
       profileDir: `${this.store.accountsRoot}/${storageId}`,
       expectedAccountId: entry.accountId,
       persistRefreshedCredential: async (raw) => {
-        const saved = await this.store.upsertCredential(raw, { expectedStorageId: storageId, expectedRevision: revision, activate: state.activeStorageId === storageId })
+        const saved = await this.store.upsertCredential(raw, { expectedStorageId: storageId, expectedRevision: revision, materializeIfActive: true })
         revision = saved.account.credentialRevision
       },
     })
     try {
       return await this.applyInspection(
         storageId,
-        await this.withTimeout(probe.inspect(), ACCOUNT_INSPECTION_TIMEOUT_MS, () => probe.dispose()),
+        await this.withTimeout(probe.inspect(undefined, false, true), ACCOUNT_INSPECTION_TIMEOUT_MS, () => probe.dispose()),
         'ready',
       )
     } catch (error) {
@@ -903,8 +948,19 @@ export class AccountAuthCoordinator {
     })().finally(() => { this.backgroundRefresh = null })
   }
 
+  private async reloadRuntime(runtime: AccountRuntime, storageId: string): Promise<void> {
+    if (runtime.reloadAccount) {
+      await runtime.reloadAccount(storageId)
+      return
+    }
+    runtime.dispose()
+    await runtime.rpc('account/read', { refreshToken: false })
+  }
+
   private async assertRuntimeIdle(runtime: AccountRuntime): Promise<void> {
-    const snapshot = runtime.getRuntimeQuiescenceSnapshot
+    const snapshot = runtime.getAccountSwitchSnapshot
+      ? await runtime.getAccountSwitchSnapshot()
+      : runtime.getRuntimeQuiescenceSnapshot
       ? await runtime.getRuntimeQuiescenceSnapshot()
       : {
           idle: runtime.listPendingServerRequests().length === 0,
@@ -913,7 +969,7 @@ export class AccountAuthCoordinator {
           pendingServerRequestCount: runtime.listPendingServerRequests().length,
           pendingTurnMutationCount: 0,
         }
-    if (!snapshot.idle || (this.apiLifecycle && !this.apiLifecycle.isIdle())) {
+    if (!snapshot.idle) {
       const message = snapshot.backgroundThreadIds?.length
         ? '请先处理 Codex 后台终端，再切换账号。'
         : 'Finish active turns, queued messages, and pending requests before switching accounts.'
@@ -923,8 +979,9 @@ export class AccountAuthCoordinator {
 
   private async withRefreshOperation<T>(key: string, run: () => Promise<T>): Promise<T> {
     const accountId = key.slice(key.indexOf(':') + 1)
-    if (this.operation && (this.operation.kind !== 'login' || accountId === 'active' || this.credentialMutationStorageId === accountId)) {
-      throw new AccountCoordinatorError('account_operation_in_progress', 'Another account operation is already in progress.')
+    if (this.executions.isRemoved(accountId)) throw new AccountCoordinatorError('account_not_found', '账号已移除。', 404)
+    if (this.operation && (accountId === 'active' || (this.mutationAccounts.has(accountId) && !(this.drainingAccountRefreshes && key.startsWith('token:'))) || this.credentialMutationStorageId === accountId)) {
+      throw new AccountCoordinatorError('account_operation_in_progress', '所选账号正在变更，请稍后重试。')
     }
     const previous = this.refreshOperations.get(key)
     const pending = (async () => {
@@ -941,12 +998,17 @@ export class AccountAuthCoordinator {
 
   private async withOperation<T>(kind: CoordinatorOperation['kind'], storageId: string | null, run: () => Promise<T>, preflight?: () => Promise<void>): Promise<T> {
     if (kind === 'refresh') return this.withRefreshOperation(`probe:${storageId || 'active'}`, run)
-    if (this.isAccountOperationInProgress()) throw new AccountCoordinatorError('account_operation_in_progress', 'Another account operation is already in progress.')
+    if (this.operation) throw new AccountCoordinatorError('account_operation_in_progress', '另一项账号变更正在进行。')
     this.operation = { kind, storageId, startedAt: Date.now() }
     const shortId = storageId?.slice(0, 8) ?? 'active'
     const startedAt = Date.now()
     let releaseApi: (() => void) | undefined
     try {
+      const state = await this.store.readState()
+      this.mutationAccounts = new Set([storageId, ...(kind === 'switch' ? [state.activeStorageId] : [])].filter((id): id is string => !!id))
+      this.drainingAccountRefreshes = true
+      await Promise.all([...this.refreshOperations].filter(([key]) => this.mutationAccounts.has(key.slice(key.indexOf(':') + 1))).map(([, pending]) => pending.catch(() => undefined)))
+      this.drainingAccountRefreshes = false
       await preflight?.()
       if (kind === 'switch' || kind === 'remove') releaseApi = await this.apiLifecycle?.beforeMutation(kind, storageId)
       const result = await run()
@@ -958,6 +1020,8 @@ export class AccountAuthCoordinator {
       throw error
     } finally {
       this.operation = null
+      this.mutationAccounts.clear()
+      this.drainingAccountRefreshes = false
       releaseApi?.()
     }
   }

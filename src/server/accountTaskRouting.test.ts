@@ -25,22 +25,25 @@ async function fixture() {
   const app = new AppServerProcess()
   vi.spyOn(app, 'dispose').mockImplementation(() => { (app as any).initialized = false; (app as any).quotaReadCache = null })
   vi.spyOn(app, 'getRuntimeQuiescenceSnapshot').mockResolvedValue({ idle: true, activeTurnThreadIds: [], queuedThreadIds: [], automationRunIds: [], backgroundThreadIds: [], pendingServerRequestCount: 0, pendingTurnMutationCount: 0 })
-  const call = vi.spyOn(app as any, 'call').mockImplementation(async (method: unknown) => method === 'config/read' ? { config: { model_provider: 'openai' } } : {})
-  vi.spyOn(app as any, 'sendLine').mockImplementation(() => {})
+  const call = vi.spyOn(AppServerProcess.prototype as any, 'call').mockImplementation(async (method: unknown) => method === 'config/read' ? { config: { model_provider: 'openai' } } : method === 'thread/start' ? { thread: { id: 'automation' } } : {})
+  vi.spyOn(AppServerProcess.prototype as any, 'sendLine').mockImplementation(() => {})
   return { home, coordinator, a, b, guard, app, call }
 }
-it('binds automation authentication without changing global auth and blocks ordinary turn injection', async () => {
+it('runs a selected automation account beside a busy primary without changing global auth', async () => {
   const { home, coordinator, a, b, guard, app, call } = await fixture()
   const authBefore = await readFile(home + '/auth.json', 'utf8')
   expect(await app.acquireTaskAccount('run-a', { accountStorageId: b.account.storageId, protected: true })).toBe(true)
-  await expect(app.rpc('turn/start', { threadId: 'ordinary' })).rejects.toThrow('等待')
-  await app.automationRpc('turn/start', { threadId: 'automation' })
+  await app.rpc('turn/start', { threadId: 'ordinary' })
+  await app.automationRpc('thread/start', { cwd: '/tmp' }, 'run-a')
+  await expect(app.rpc('turn/start', { threadId: 'automation' })).rejects.toThrow('等待')
+  await app.automationRpc('turn/start', { threadId: 'automation' }, 'run-a')
   expect(call).toHaveBeenCalledWith('account/login/start', expect.objectContaining({ type: 'chatgptAuthTokens', chatgptAccountId: 'b' }))
   expect(guard).toHaveBeenLastCalledWith(expect.any(Function), { storageId: b.account.storageId, protected: true })
   expect((await coordinator.store.readState()).activeStorageId).toBe(a.account.storageId)
   expect(await readFile(home + '/auth.json', 'utf8')).toBe(authBefore)
   app.releaseTaskAccount('run-a')
-  await vi.waitFor(() => expect(app.taskAccountBusy()).toBe(false))
+  expect(app.taskAccountBusy()).toBe(false)
+  app.stopTaskRouting()
 })
 it('coalesces simultaneous runtime quota reads and invalidates the short cache on a rolling update', async () => {
   const { app, call } = await fixture()
@@ -58,10 +61,11 @@ it('coalesces simultaneous runtime quota reads and invalidates the short cache o
   await app.rpc('account/rateLimits/read', null)
   expect(call.mock.calls.filter(([method]) => method === 'account/rateLimits/read')).toHaveLength(2)
 })
-it('waits for task boundaries and interrupts unprotected in-flight turns at the reserve', async () => {
+it('ignores unrelated primary work and interrupts only the unprotected account at the reserve', async () => {
   const { coordinator, a, app, call } = await fixture()
   vi.mocked(app.getRuntimeQuiescenceSnapshot).mockResolvedValueOnce({ idle: false } as any)
-  expect(await app.acquireTaskAccount('run-a', {})).toBe(false)
+  expect(await app.acquireTaskAccount('run-a', {})).toBe(true)
+  app.releaseTaskAccount('run-a')
   await app.rpc('account/read', {})
   ;(app as any).activeTurnThreadIds.add('main-thread')
   ;(app as any).activeTurnIds.set('main-thread', 'turn-a')
@@ -70,4 +74,48 @@ it('waits for task boundaries and interrupts unprotected in-flight turns at the 
   await coordinator.interruptProtectedUsage(a.account.storageId)
   expect(call).toHaveBeenCalledWith('turn/interrupt', { threadId: 'main-thread', turnId: 'turn-a' })
   expect(blocked).toHaveBeenCalledWith('main-thread', 'turn-a')
+  app.stopTaskRouting()
+})
+
+it('routes colliding native approval IDs to the correct isolated account while the primary remains independent', async () => {
+  const { app, a, b } = await fixture()
+  await app.acquireTaskAccount('a-run', { accountStorageId: a.account.storageId })
+  await app.acquireTaskAccount('b-run', { accountStorageId: b.account.storageId })
+  const workers = (app as any).taskWorkers as Map<string, AppServerProcess>
+  const first = workers.get(a.account.storageId)!, second = workers.get(b.account.storageId)!
+  ;(first as any).handleServerRequest(1, 'item/commandExecution/requestApproval', { threadId: 'thread-a' })
+  ;(second as any).handleServerRequest(1, 'item/commandExecution/requestApproval', { threadId: 'thread-b' })
+  const requests = app.listPendingServerRequests()
+  expect(new Set(requests.map(request => request.id)).size).toBe(2)
+  const replyA = vi.spyOn(first as any, 'sendServerRequestReply')
+  const replyB = vi.spyOn(second as any, 'sendServerRequestReply')
+  await app.respondToServerRequest({ id: requests.find(request => (request.params as any).threadId === 'thread-b')!.id, result: { decision: 'decline' } })
+  expect(replyA).not.toHaveBeenCalled()
+  expect(replyB).toHaveBeenCalledWith(1, { result: { decision: 'decline' } })
+  app.stopTaskRouting()
+})
+
+it('keeps unrelated task runtimes after removing an account and admits a later run after quota failure', async () => {
+  const { app, coordinator, a, b } = await fixture()
+  await app.acquireTaskAccount('a-run', { accountStorageId: a.account.storageId })
+  await app.acquireTaskAccount('b-run', { accountStorageId: b.account.storageId })
+  const workers = (app as any).taskWorkers as Map<string, AppServerProcess>
+  const second = workers.get(b.account.storageId)!
+  const stopB = vi.spyOn(second, 'dispose')
+  await coordinator.removeAccount(a.account.storageId, app)
+  expect(workers.has(a.account.storageId)).toBe(false)
+  expect(workers.get(b.account.storageId)).toBe(second)
+  expect(stopB).not.toHaveBeenCalled()
+  app.releaseTaskAccount('b-run')
+  expect(await app.acquireTaskAccount('b-next', { accountStorageId: b.account.storageId })).toBe(true)
+  expect(workers.get(b.account.storageId)).toBe(second)
+  app.stopTaskRouting()
+})
+
+it('interrupts quota retry loops once and leaves unrelated turns running', async () => {
+  const { app, call } = await fixture()
+  ;(app as any).emitNotification({ method: 'turn/started', params: { threadId: 'limited', turn: { id: 'turn-limited' } } })
+  ;(app as any).emitNotification({ method: 'turn/started', params: { threadId: 'other', turn: { id: 'turn-other' } } })
+  for (let i = 0; i < 2; i++) (app as any).emitNotification({ method: 'error', params: { threadId: 'limited', turnId: 'turn-limited', willRetry: true, error: { message: 'Usage limit reached', codexErrorInfo: 'usageLimitExceeded' } } })
+  expect(call.mock.calls.filter(([method]) => method === 'turn/interrupt')).toEqual([['turn/interrupt', { threadId: 'limited', turnId: 'turn-limited' }]])
 })

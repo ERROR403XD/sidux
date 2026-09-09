@@ -380,9 +380,12 @@ export class AccountAuthStore {
   }
 
   async materializeActive(storageId: string): Promise<ParsedAccountCredential> {
-    const parsed = await this.readCredential(storageId)
-    await this.atomicWrite(this.activeAuthPath, parsed.raw)
-    return parsed
+    return this.updateState(async state => {
+      if (!state.accounts.some(account => account.storageId === storageId)) throw new AccountStoreError('account_not_found', '账号已移除。')
+      const parsed = await this.readCredential(storageId)
+      await this.atomicWrite(this.activeAuthPath, parsed.raw)
+      return { state, result: parsed }
+    })
   }
 
   async restoreActive(raw: string | null): Promise<void> {
@@ -567,6 +570,7 @@ export class AccountAuthStore {
     expectedStorageId?: string | null
     expectedRevision?: number | null
     activate?: boolean
+    materializeIfActive?: boolean
     authStatus?: AccountAuthStatus
   } = {}): Promise<{ account: StoredAccountEntry; outcome: 'added' | 'reauthenticated'; state: StoredAccountsState }> {
     const parsed = parseAccountCredential(raw)
@@ -611,7 +615,9 @@ export class AccountAuthStore {
           : state.activeAccountId,
         accounts,
       }
-      if (options.activate) await this.atomicWrite(this.activeAuthPath, parsed.raw)
+      if (options.activate || (options.materializeIfActive && state.activeStorageId === account.storageId)) {
+        await this.atomicWrite(this.activeAuthPath, parsed.raw)
+      }
       return {
         state: nextState,
         result: { account, outcome: existing ? 'reauthenticated' as const : 'added' as const, state: nextState },
@@ -621,6 +627,20 @@ export class AccountAuthStore {
 
   async removeCredential(storageId: string): Promise<void> {
     await rm(join(this.accountsRoot, storageId), { recursive: true, force: true })
+  }
+
+  async deleteAccount(storageId: string): Promise<void> {
+    if (!/^[a-f0-9]{64}$/.test(storageId)) throw new AccountStoreError('storage_id_conflict', '账号标识无效。')
+    await this.updateState(async state => {
+      const active = await this.readActiveCredential()
+      if (state.activeStorageId === storageId || active?.identity.storageId === storageId) await this.restoreActive(null)
+      await this.removeCredential(storageId)
+      return { state: { ...state, operationEpoch: state.operationEpoch + 1,
+        activeStorageId: state.activeStorageId === storageId ? null : state.activeStorageId,
+        activeAccountId: state.activeStorageId === storageId ? null : state.activeAccountId,
+        accounts: state.accounts.filter(account => account.storageId !== storageId),
+      }, result: undefined }
+    })
   }
 
   async listCredentialStorageIds(): Promise<string[]> {

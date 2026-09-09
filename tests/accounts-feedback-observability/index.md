@@ -28,3 +28,5 @@ Return to the [manual test index](../../tests.md).
 - [0.2.11 账号定时激活](account-activation-0211.md)
 
 - [账号预留、重置与通知](account-reserve-reset-notifications.md)
+
+- [0.2.14 统一账号执行与移除](accounts-0214-unified-execution.md)
