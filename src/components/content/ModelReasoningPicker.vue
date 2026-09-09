@@ -61,7 +61,11 @@ const levels = computed(() => {
 })
 const effectiveEffort = computed(() => props.selectedEffort || props.defaultEffort || '')
 const selectedIndex = computed(() => Math.max(0, levels.value.findIndex(level => level.value === effectiveEffort.value)))
-const effortLabel = computed(() => levels.value[selectedIndex.value]?.label || '模型默认')
+const effortNames: Record<string, string> = { none: '无', minimal: '极低', low: '低', medium: '中', high: '高', xhigh: '极高', max: '最大', ultra: '超高' }
+const effortLabel = computed(() => {
+  const level = levels.value[selectedIndex.value]
+  return level ? effortNames[level.value] || level.label : '模型默认'
+})
 const progress = computed(() => levels.value.length > 1 ? selectedIndex.value / (levels.value.length - 1) * 100 : 0)
 function selectEffort(event: Event): void {
   const index = Number((event.target as HTMLInputElement).value)
@@ -73,7 +77,7 @@ const shortModelLabel = computed(() => {
   const family = label.match(/\b(astra|sol|terra|luna)\b/i)?.[1]
   return family ? family[0].toUpperCase() + family.slice(1).toLowerCase() : label.replace(/^gpt-/i, 'GPT ')
 })
-const shortEffortLabel = computed(() => ({ minimal: '极低', low: '低', medium: '中', high: '高', xhigh: '极高', max: '最大', ultra: '超高' } as Record<string, string>)[effectiveEffort.value] || (effectiveEffort.value ? effortLabel.value : '默认'))
+const shortEffortLabel = computed(() => effortNames[effectiveEffort.value] || (effectiveEffort.value ? effortLabel.value : '默认'))
 const filteredModels = computed(() => props.models.filter(model => model.label.toLowerCase().includes(search.value.toLowerCase())))
 function open(): void {
   if (props.disabled) return
