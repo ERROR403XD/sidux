@@ -124,6 +124,7 @@
 </template>
 
 <script setup lang="ts">
+import { accountDisplayName } from '../../accountDisplay'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppButton from '../common/AppButton.vue'
 import AppDialog from '../common/AppDialog.vue'
@@ -191,7 +192,7 @@ let timer: ReturnType<typeof setInterval> | undefined
 let refreshing = false
 let disposed = false
 const selectedAccount = computed({ get: () => settings.value.accountStorageId || 'follow', set: value => { settings.value.accountStorageId = value === 'follow' ? null : value } })
-const accountOptions = computed(() => [{ value: 'follow', label: '跟随 WebUI 当前账号' }, ...(status.value?.accounts.accounts || []).map(account => ({ value: account.storageId, label: `${account.email || account.accountId} · ${accountStatusLabel(account.authStatus)}` }))])
+const accountOptions = computed(() => [{ value: 'follow', label: '跟随 WebUI 当前账号' }, ...(status.value?.accounts.accounts || []).map(account => ({ value: account.storageId, label: `${accountDisplayName(account)} · ${accountStatusLabel(account.authStatus)}` }))])
 const modelOptions = computed(() => [...new Set([model.value, ...models.value])].map(value => ({ value, label: value })))
 const baseUrl = `${window.location.origin}/v1`
 const stateLabel = computed(() => !status.value?.installed ? '组件未安装' : status.value.activity.draining ? '等待活动请求结束' : !status.value.settings.enabled ? '未启用' : status.value.retryAt ? '等待恢复' : status.value.ready ? '可用' : status.value.lastError ? '异常' : '已启用')
@@ -199,7 +200,7 @@ const keyActivityCount = computed(() => status.value?.activity.entries.filter(en
 const clientConfig = computed(() => `model_provider = "codexapp_gateway"\nmodel = "${model.value}"\n\n[model_providers.codexapp_gateway]\nname = "CodexApp API"\nbase_url = "${baseUrl}"\nenv_key = "CODEXAPP_API_KEY"\nwire_api = "responses"\nrequires_openai_auth = false\nsupports_websockets = true`)
 function accountStatusLabel(value: string): string { return ({ ready: '可用', stale: '待确认', refreshing: '刷新中', reauth_required: '需重新登录', payment_required: '需处理额度', transient_error: '暂时异常', materialization_dirty: '需修复认证' } as Record<string, string>)[value] || value }
 function date(value: string | null): string { return value ? formatLocalDateTime(value, { second: '2-digit' }) : '—' }
-function accountName(id: string | null): string { const account = status.value?.accounts.accounts.find(row => row.storageId === id); return account?.email || account?.accountId || '未选择' }
+function accountName(id: string | null): string { const account = status.value?.accounts.accounts.find(row => row.storageId === id); return account ? accountDisplayName(account) : '未选择' }
 function keyName(id: string): string { return status.value?.keys.find(key => key.id === id)?.name || id.slice(0, 8) }
 function keyLabel(key: ApiProxyKey): string { return key.revokedAt ? '已撤销' : key.expiresAt && Date.parse(key.expiresAt) <= Date.now() ? '已到期' : key.enabled ? '可用' : '已停用' }
 async function refresh(reset = false): Promise<void> {

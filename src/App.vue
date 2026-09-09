@@ -117,7 +117,7 @@
           </div>
           <div ref="settingsAreaRef">
             <button ref="settingsButtonRef" class="account-usage-button" type="button" :aria-expanded="isSettingsOpen" aria-label="账号与用量" @click="isSettingsOpen = !isSettingsOpen">
-              <span class="account-usage-heading"><strong>{{ activeAccount?.email || '添加 GPT 账号' }}</strong><span aria-hidden="true">⌃</span></span>
+              <span class="account-usage-heading"><strong>{{ activeAccount ? accountDisplayName(activeAccount) : '添加 GPT 账号' }}</strong><span aria-hidden="true">⌃</span></span>
               <small v-if="activeAccount?.quotaUpdatedAtIso">更新于 {{ formatLocalDateTime(activeAccount.quotaUpdatedAtIso, { year: undefined, month: undefined, day: undefined, second: '2-digit' }, 'zh-CN') }}</small>
               <small v-if="activeAccount && (activeAccount.authStatus !== 'ready' || activeAccount.quotaStatus === 'error')" class="account-panel-error">{{ activeAccount.quotaError || formatAccountStatus(activeAccount) }}</small>
               <AccountQuota v-if="activeAccount?.quotaSnapshot" :snapshot="activeAccount.quotaSnapshot" compact />
@@ -1008,7 +1008,7 @@
       </div>
     </div>
   </div>
-  <AccountLoginDialog :open="isCodexLoginModalOpen" :intent="loginIntent" :target-storage-id="loginTargetStorageId" :target-label="loginTargetAccount?.email || ''" @close="isCodexLoginModalOpen = false" @completed="onAccountLoginCompleted" @resume="resumeAccountLogin" />
+  <AccountLoginDialog :open="isCodexLoginModalOpen" :intent="loginIntent" :target-storage-id="loginTargetStorageId" :target-label="loginTargetAccount ? accountDisplayName(loginTargetAccount) : ''" @close="isCodexLoginModalOpen = false" @completed="onAccountLoginCompleted" @resume="resumeAccountLogin" />
   <AppDialog :open="Boolean(replaceQueueDraftId)" title="替换当前草稿？" size="compact" @close="replaceQueueDraftId = ''">
     <p>用这条队列消息替换输入框中的草稿。</p>
     <template #footer>
@@ -1019,6 +1019,7 @@
 </template>
 
 <script setup lang="ts">
+import { accountDisplayName } from './accountDisplay'
 import AppDialog from './components/common/AppDialog.vue'
 import NotificationSettings from './components/settings/NotificationSettings.vue'
 import AccountActivation from './components/settings/AccountActivation.vue'
@@ -2617,7 +2618,7 @@ function formatAccountQuota(account: UiAccountEntry): string {
 
 function buildAccountTitle(account: UiAccountEntry): string {
   return [
-    account.email || t('Account'),
+    accountDisplayName(account),
     formatAccountMeta(account),
     isAccountUnavailable(account) ? t('Unavailable account') : null,
     formatAccountQuota(account),

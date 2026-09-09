@@ -1,34 +1,53 @@
 <template>
   <AppButton :disabled="disabled" @click="open">账号设置</AppButton>
-  <AppDialog :open="visible" title="账号保护与通知" :busy="busy" size="compact" @close="visible = false">
+  <AppDialog :open="visible" title="账号设置" :busy="busy" size="compact" @close="visible = false">
     <p>{{ account.email || account.accountId }}</p>
     <p v-if="error" class="account-panel-error" role="alert">{{ error }}</p>
-    <div v-if="loaded" class="notification-settings">
+    <div v-if="loaded" class="notification-settings account-options">
+      <label>账号别名<input v-model="alias" class="app-input" maxlength="80" placeholder="例如：日常使用、自动化专用" :disabled="busy" /></label>
+      <small>仅在此应用本地显示，留空恢复原名称；不改变账号身份、认证信息或用量出口。</small>
       <label>保护值（%）<input v-model.number="percent" class="app-input" type="number" min="0" max="100" step="0.1" :disabled="busy" /></label>
-      <small v-if="account.quotaSnapshot?.primary?.windowMinutes === 300 || account.quotaSnapshot?.secondary?.windowMinutes === 300">5小时额度保护值：{{ Math.min(100, Number(percent) * 2) }}%。预留给使用此账号的受保护任务；0为关闭。</small>
-      <label class="notification-check"><input v-model="rule.fiveHour" type="checkbox" :disabled="busy" />5小时额度恢复通知</label>
-      <textarea v-if="rule.fiveHour" v-model="rule.fiveHourMessage" class="app-input" rows="3" aria-label="5小时恢复通知内容" :disabled="busy" />
-      <label class="notification-check"><input v-model="rule.weekly" type="checkbox" :disabled="busy" />主额度恢复通知</label>
-      <textarea v-if="rule.weekly" v-model="rule.weeklyMessage" class="app-input" rows="3" aria-label="主额度恢复通知内容" :disabled="busy" />
-      <label class="notification-check"><input v-model="rule.resetIncrease" type="checkbox" :disabled="busy" />重置次数增加提醒（Banked reset）</label>
-      <template v-if="rule.resetIncrease">
-        <label>提醒内容<textarea v-model="rule.resetIncreaseMessage" class="app-input" rows="3" aria-label="重置次数增加提醒内容" :disabled="busy" /></label>
-        <small v-pre>首次读取仅记录次数；增加时通知。占位符：{{account}}、{{account_id}}、{{increase}}、{{remaining}}、{{previous}}。同样可用于POST请求体。</small>
-      </template>
-      <label class="notification-check"><input v-model="rule.resetExpiry" type="checkbox" :disabled="busy" />重置机会到期提醒</label>
-      <template v-if="rule.resetExpiry">
-        <label>提前时间<input v-model="rule.resetExpiryLeadTimes" class="app-input" aria-label="重置提醒提前时间" placeholder="7d, 3d, 12h" :disabled="busy" /></label>
-        <small>支持英文逗号、中文逗号或空格分隔；1d12h表示1天12小时。</small>
-        <label>提醒内容<textarea v-model="rule.resetExpiryMessage" class="app-input" rows="3" aria-label="重置到期提醒内容" :disabled="busy" /></label>
-        <small v-pre>占位符：{{account}}、{{credit_id}}、{{expires_at}}、{{remaining}}、{{lead_time}}。同样可用于POST请求体。</small>
-      </template>
-      <small v-pre>可用占位符：{{account}}、{{account_id}}、{{window}}、{{remaining}}、{{reset_at}}。通过设置中的POST通知发送。</small>
+      <small>主额度（周或月）剩余不高于保护值时，仅允许受保护任务使用；0 为关闭。</small>
+      <small v-if="hasFiveHourQuota">5 小时额度保护值：{{ Math.min(100, Number(percent) * 2) }}%。只作用于此账号实际存在的 5 小时窗口。</small>
+      <small v-else>当前未检测到 5 小时额度窗口，不应用 5 小时保护值。</small>
+      <section class="account-notice-rule">
+        <label class="notification-check"><input v-model="rule.fiveHour" type="checkbox" :disabled="busy" />5小时额度恢复通知</label>
+        <template v-if="rule.fiveHour">
+          <textarea v-model="rule.fiveHourMessage" class="app-input" rows="3" aria-label="5小时恢复通知内容" :disabled="busy" />
+          <small v-pre>占位符：{{account}} 账号、{{account_id}} 账号标识、{{window}} 额度窗口、{{remaining}} 剩余百分比、{{reset_at}} 重置时间。</small>
+        </template>
+      </section>
+      <section class="account-notice-rule">
+        <label class="notification-check"><input v-model="rule.weekly" type="checkbox" :disabled="busy" />主额度恢复通知</label>
+        <template v-if="rule.weekly">
+          <textarea v-model="rule.weeklyMessage" class="app-input" rows="3" aria-label="主额度恢复通知内容" :disabled="busy" />
+          <small v-pre>占位符：{{account}} 账号、{{account_id}} 账号标识、{{window}} 额度窗口、{{remaining}} 剩余百分比、{{reset_at}} 重置时间。</small>
+        </template>
+      </section>
+      <section class="account-notice-rule">
+        <label class="notification-check"><input v-model="rule.resetIncrease" type="checkbox" :disabled="busy" />重置机会增加提醒</label>
+        <template v-if="rule.resetIncrease">
+          <textarea v-model="rule.resetIncreaseMessage" class="app-input" rows="3" aria-label="重置机会增加提醒内容" :disabled="busy" />
+          <small>首次读取仅记录次数，之后增加时通知。</small>
+          <small v-pre>占位符：{{account}} 账号、{{account_id}} 账号标识、{{increase}} 增加次数、{{remaining}} 当前次数、{{previous}} 之前次数。</small>
+        </template>
+      </section>
+      <section class="account-notice-rule">
+        <label class="notification-check"><input v-model="rule.resetExpiry" type="checkbox" :disabled="busy" />重置机会到期提醒</label>
+        <template v-if="rule.resetExpiry">
+          <label>提前时间<input v-model="rule.resetExpiryLeadTimes" class="app-input" aria-label="重置提醒提前时间" placeholder="7d, 3d, 12h" :disabled="busy" /></label>
+          <small>支持英文逗号、中文逗号或空格分隔；1d12h 表示 1 天 12 小时。</small>
+          <textarea v-model="rule.resetExpiryMessage" class="app-input" rows="3" aria-label="重置机会到期提醒内容" :disabled="busy" />
+          <small v-pre>占位符：{{account}} 账号、{{account_id}} 账号标识、{{credit_id}} 机会标识、{{expires_at}} 到期时间、{{remaining}} 剩余时长、{{lead_time}} 提前时长。</small>
+        </template>
+      </section>
+      <small>通知通过设置中的 POST 渠道发送。已开启通知的占位符也可用于请求体；通知中的账号名称使用原始账号信息。</small>
     </div>
     <template #footer><AppButton :disabled="busy" @click="visible = false">取消</AppButton><AppButton :disabled="!loaded" :busy="busy" @click="save">保存账号设置</AppButton></template>
   </AppDialog>
 </template>
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import AppButton from '../common/AppButton.vue'
 import AppDialog from '../common/AppDialog.vue'
 import type { UiAccountEntry } from '../../types/codex'
@@ -41,12 +60,15 @@ const busy = ref(false)
 const loaded = ref(false)
 const error = ref('')
 const percent = ref(0)
+const alias = ref('')
+const hasFiveHourQuota = computed(() => [props.account.quotaSnapshot?.primary, props.account.quotaSnapshot?.secondary].some(window => window?.windowMinutes === 300))
 const rule = ref<AccountNoticeRule>({ ...defaultNoticeRule })
 async function open(): Promise<void> {
   visible.value = true
   loaded.value = false
   error.value = ''
   percent.value = props.account.protectionPercent || 0
+  alias.value = props.account.alias || ''
   try {
     const result = await apiProxyRequest<{ accounts: Record<string, AccountNoticeRule> }>('/notifications')
     rule.value = { ...defaultNoticeRule, ...result.accounts[props.account.storageId] }
@@ -58,10 +80,16 @@ async function save(): Promise<void> {
   busy.value = true
   error.value = ''
   try {
-    await apiProxyRequest('/notifications', { accountId: props.account.storageId, rule: rule.value, protectionPercent: percent.value })
+    await apiProxyRequest('/notifications', { accountId: props.account.storageId, rule: rule.value, protectionPercent: percent.value, alias: alias.value })
     visible.value = false
     emit('changed')
   } catch (cause) { error.value = cause instanceof Error ? cause.message : '保存失败。' }
   finally { busy.value = false }
 }
 </script>
+
+<style scoped>
+.account-options .account-notice-rule { display: grid; gap: 8px; padding-top: 14px; border-top: 1px solid var(--ui-divider); }
+.account-options .account-notice-rule label { display: grid; gap: 6px; font-size: 13px; }
+.account-options .account-notice-rule .notification-check { display: flex; }
+</style>

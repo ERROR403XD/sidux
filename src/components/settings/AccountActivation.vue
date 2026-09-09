@@ -5,7 +5,7 @@
     <template v-if="snapshot">
       <button class="sidebar-settings-row" type="button" role="switch" :aria-checked="settings.enabled" :disabled="saving" @click="settings.enabled = !settings.enabled"><span>启用账号定时激活</span><span class="sidebar-settings-toggle" :class="{ 'is-on': settings.enabled }" /></button>
       <fieldset class="activation-accounts"><legend>生效账号</legend>
-        <label v-for="account in accounts" :key="account.storageId"><input v-model="settings.accountIds" type="checkbox" :value="account.storageId" :disabled="saving" /><span :title="account.email || account.accountId">{{ account.email || account.accountId }}</span></label>
+        <label v-for="account in accounts" :key="account.storageId"><input v-model="settings.accountIds" type="checkbox" :value="account.storageId" :disabled="saving" /><span :title="account.email || account.accountId">{{ accountDisplayName(account) }}</span></label>
         <p v-if="!accounts.length" class="account-card-meta">请先添加 GPT 账号。</p>
       </fieldset>
       <div class="activation-times"><span>每日激活时间</span>
@@ -19,6 +19,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import { accountDisplayName } from '../../accountDisplay'
 import { computed, onMounted, ref } from 'vue'
 import AppButton from '../common/AppButton.vue'
 import type { UiAccountEntry } from '../../types/codex'
@@ -42,7 +43,7 @@ function setTimePart(index: number, part: number, event: Event): void {
   settings.value.times[index] = pieces.join(':')
   saved.value = false
 }
-function accountName(id: string): string { const account = props.accounts.find(row => row.storageId === id); return account?.email || (account ? 'GPT 账号' : '已移除的账号') }
+function accountName(id: string): string { const account = props.accounts.find(row => row.storageId === id); return account ? accountDisplayName(account) : '已移除的账号' }
 async function request(init?: RequestInit): Promise<ActivationSnapshot> {
   const response = await fetch('/codex-api/api-proxy/activation', init)
   const payload = await response.json()

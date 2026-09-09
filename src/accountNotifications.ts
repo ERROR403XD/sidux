@@ -31,11 +31,11 @@ export function mainQuotaWording(text: string): string {
   return text.replaceAll('周剩余额度', '主额度剩余').replaceAll('周额度', '主额度').replaceAll('周限额', '主额度').replaceAll('周保护', '主额度保护')
 }
 export function normalizeNoticeRule(rule: AccountNoticeRule): AccountNoticeRule {
-  if (rule.resetIncrease !== undefined && typeof rule.resetIncrease !== 'boolean') throw new Error('重置次数增加提醒选项无效')
-  if (rule.resetIncreaseMessage !== undefined && typeof rule.resetIncreaseMessage !== 'string') throw new Error('重置次数增加提醒内容无效')
+  if (rule.resetIncrease !== undefined && typeof rule.resetIncrease !== 'boolean') throw new Error('重置机会增加提醒选项无效')
+  if (rule.resetIncreaseMessage !== undefined && typeof rule.resetIncreaseMessage !== 'string') throw new Error('重置机会增加提醒内容无效')
   const leads = parseResetExpiryLeadTimes(rule.resetExpiryLeadTimes ?? defaultNoticeRule.resetExpiryLeadTimes!)
-  if (rule.resetExpiry !== undefined && typeof rule.resetExpiry !== 'boolean') throw new Error('重置到期提醒选项无效')
-  if (rule.resetExpiryMessage !== undefined && typeof rule.resetExpiryMessage !== 'string') throw new Error('重置到期提醒内容无效')
+  if (rule.resetExpiry !== undefined && typeof rule.resetExpiry !== 'boolean') throw new Error('重置机会到期提醒选项无效')
+  if (rule.resetExpiryMessage !== undefined && typeof rule.resetExpiryMessage !== 'string') throw new Error('重置机会到期提醒内容无效')
   return { ...defaultNoticeRule, ...rule, resetExpiryLeadTimes: leads.text, fiveHourMessage: mainQuotaWording(rule.fiveHourMessage), weeklyMessage: mainQuotaWording(rule.weeklyMessage).replaceAll('{{window}}额度', '{{window}}') }
 }
 

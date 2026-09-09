@@ -883,6 +883,7 @@
 </template>
 
 <script setup lang="ts">
+import { accountDisplayName } from '../../accountDisplay'
 import { isOverlayEventInside } from '../../composables/overlayEvents'
 import { displayTimeZone, browserTimeZone, formatLocalDateTime } from '../../dateTime'
 import { getAutomationRuntime, runAutomationNow, createAutomationRequestId } from '../../api/automationGateway'
@@ -926,7 +927,7 @@ import { reconcilePinnedThreadIds } from './pinnedThreadUtils'
 
 const props = defineProps<{
   groups: UiProjectGroup[]
-  accounts?: { storageId: string; email: string | null; accountId: string }[]
+  accounts?: { storageId: string; alias?: string; email: string | null; accountId: string }[]
   models?: string[]
   modelCapabilities?: ModelCapability[]
   goals?: Record<string, ThreadGoal | null>
@@ -1080,7 +1081,7 @@ const automationDraft = ref<{
   rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0',
   status: 'ACTIVE', model: '', reasoningEffort: '', serviceTier: '', accountStorageId: '', protected: false,
 })
-const automationAccountOptions = computed(() => [{ value: '', label: '跟随全局账号' }, ...(props.accounts || []).map(account => ({ value: account.storageId, label: account.email || account.accountId }))])
+const automationAccountOptions = computed(() => [{ value: '', label: '跟随全局账号' }, ...(props.accounts || []).map(account => ({ value: account.storageId, label: accountDisplayName(account) }))])
 const accountModels = ref<import('../../modelCapabilities').ModelCapability[]>([])
 const accountModelsLoading = ref(false)
 const accountModelsError = ref('')

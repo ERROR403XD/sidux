@@ -465,6 +465,7 @@ export function normalizeAccountEntry(
   return {
     accountId,
     storageId: storageId ?? accountId,
+    alias: readString(record.alias) ?? '',
     userId: readString(record.userId),
     authMode: readString(record.authMode),
     email: readString(record.email),

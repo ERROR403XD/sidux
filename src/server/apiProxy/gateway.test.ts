@@ -55,7 +55,7 @@ async function fixture() {
   cleanups.push(async () => { for (const ws of backendWs.clients) ws.terminate(); backendWs.close() })
   let operation: any = null
   let lifecycle: any
-  let guard: (() => Promise<void>) | null = null
+  let guard: ((isChatGPT?: () => Promise<boolean>, policy?: { storageId?: string; protected?: boolean }) => Promise<void>) | null = null
   let accountState: any = { activeStorageId: 'account', accounts: [{ storageId: 'account' }, { storageId: 'fixed' }] }
   const executions = new AccountExecutionRegistry()
   const coordinator = { executions, store: { codexHome: directory, readState: async () => accountState }, setSubmissionGuard: (value: any) => { guard = value }, setQuotaObserver: vi.fn(), blocksApiAccount: (id: string | null) => AccountAuthCoordinator.prototype.blocksApiAccount.call({ operation, executions, removals: new Map() } as any, id), isAccountOperationInProgress: () => !!operation,
@@ -81,7 +81,7 @@ async function fixture() {
   async function post(path: string, input: unknown, secret = first.secret) {
     return await fetch(base + path, { method: 'POST', headers: headers(secret), body: JSON.stringify(input) })
   }
-  return { setOperation: (value: any) => { operation = value }, gateway, base, first, second, headers, post, requests, stop, setAccountState: (value: any) => { accountState = value }, guard: () => guard!(), lifecycle: () => lifecycle, upstreamClosed: () => upstreamClosed }
+  return { setOperation: (value: any) => { operation = value }, gateway, base, first, second, headers, post, requests, stop, setAccountState: (value: any) => { accountState = value }, guard: (policy?: { storageId?: string; protected?: boolean }) => guard!(undefined, policy), lifecycle: () => lifecycle, upstreamClosed: () => upstreamClosed }
 }
 
 describe('API outlet state and admission', () => {
@@ -401,4 +401,34 @@ it('keeps an authenticated WebSocket and its previous response context across cr
     expect(prepare).not.toHaveBeenCalled()
     expect(f.requests.filter(row => row.path === 'ws').at(-1)?.body.previous_response_id).toBe(previous)
   } finally { ws.terminate() }
+})
+
+it.each(['free', 'pro'])('uses the same actual-window reserve for %s HTTP, WS and automation admission', async planType => {
+  const f = await fixture()
+  const state = { activeStorageId: 'a'.repeat(64), accounts: [
+    { storageId: 'a'.repeat(64), protectionPercent: 0 },
+    { storageId: 'b'.repeat(64), alias: 'local label', planType, protectionPercent: 10, quotaUpdatedAtIso: new Date().toISOString(), quotaStatus: 'ready', quotaSnapshot: { primary: { windowMinutes: 43200, usedPercent: 85 }, secondary: null } },
+  ] }
+  f.setAccountState(state)
+  const fixed = await f.gateway.store.createKey('no-five-hour', null, { accountStorageId: 'b'.repeat(64) })
+  // 15% remaining passes the 10% main reserve; no implicit 20% 5-hour reserve.
+  for (const path of ['/v1/responses', '/v1/chat/completions']) {
+    expect((await f.post(path, { model: 'fixture', input: [], messages: [{ role: 'user', content: 'fixture' }] }, fixed.secret)).status).toBe(200)
+  }
+  await expect(f.guard({ storageId: 'b'.repeat(64) })).resolves.toBeUndefined()
+  const ws = new WebSocket(f.base.replace('http:', 'ws:') + '/v1/responses', { headers: f.headers(fixed.secret) })
+  await once(ws, 'open')
+  let received = once(ws, 'message')
+  ws.send(JSON.stringify({ type: 'response.create', model: 'fixture', input: [] }))
+  const [success] = await received
+  expect(JSON.parse(String(success)).type).toBe('response.completed')
+  state.accounts[1]!.quotaSnapshot!.primary.usedPercent = 90
+  await expect(f.guard({ storageId: 'b'.repeat(64) })).rejects.toThrow('已保留')
+  await expect(f.guard({ storageId: 'b'.repeat(64), protected: true })).resolves.toBeUndefined()
+  await expect(f.guard()).resolves.toBeUndefined()
+  received = once(ws, 'message')
+  ws.send(JSON.stringify({ type: 'response.create', model: 'fixture', input: [] }))
+  const [rejected] = await received
+  expect(JSON.parse(String(rejected)).error.code).toBe('account_quota_protected')
+  ws.terminate()
 })

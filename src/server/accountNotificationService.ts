@@ -60,7 +60,7 @@ export class AccountNotificationService {
     await this.ready
     return { settings: { ...this.state.settings }, accounts: structuredClone(this.state.accounts), pendingCount: this.state.pending.length, lastResult: this.state.lastResult }
   }
-  async save(input: { settings?: NotificationSettings; accountId?: string; rule?: AccountNoticeRule; protectionPercent?: number }) {
+  async save(input: { settings?: NotificationSettings; accountId?: string; rule?: AccountNoticeRule; protectionPercent?: number; alias?: string }) {
     if (input.settings) validateNotificationSettings(input.settings)
     const accounts = input.accountId || input.settings?.enabled ? (await this.coordinator.store.readState()).accounts : []
     if (input.accountId) {
@@ -71,7 +71,21 @@ export class AccountNotificationService {
     if (input.rule) normalizeNoticeRule(input.rule)
     if (input.protectionPercent !== undefined) {
       if (!input.accountId || !Number.isFinite(input.protectionPercent) || input.protectionPercent < 0 || input.protectionPercent > 100) throw new Error('账号保护值须为0–100。')
-      await this.coordinator.store.updateState(state => ({ state: { ...state, accounts: state.accounts.map(account => account.storageId === input.accountId ? { ...account, protectionPercent: input.protectionPercent } : account) }, result: undefined }))
+    }
+    if (input.alias !== undefined && (!input.accountId || typeof input.alias !== 'string' || input.alias.trim().length > 80)) {
+      throw new Error('账号别名须为不超过80个字符的文本。')
+    }
+    if (input.protectionPercent !== undefined || input.alias !== undefined) {
+      // Metadata shares the store's short write queue, never the login/switch/runtime gate.
+      await this.coordinator.store.updateState(state => {
+        if (!state.accounts.some(account => account.storageId === input.accountId)) throw new Error('账号不存在。')
+        const accounts = state.accounts.map(account => account.storageId === input.accountId ? {
+          ...account,
+          ...(input.protectionPercent !== undefined ? { protectionPercent: input.protectionPercent } : {}),
+          ...(input.alias !== undefined ? { alias: input.alias.trim() } : {}),
+        } : account)
+        return { state: { ...state, accounts }, result: undefined }
+      })
     }
     await this.mutate(state => {
       // Enabling begins from the current known count, not increases that happened while disabled.

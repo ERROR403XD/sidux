@@ -26,3 +26,30 @@ it('reserves the thirty-day quota for free accounts', () => {
   expect(() => assertQuotaAvailable(account, 4, false)).not.toThrow()
   expect(() => assertQuotaAvailable(account, 5, true)).not.toThrow()
 })
+
+// Plan names and primary/secondary position never imply a five-hour window.
+it.each(['free', 'pro'])('only applies the main reserve to %s without a 300-minute window', planType => {
+  for (const windowMinutes of [10080, 43200]) {
+    for (const side of ['primary', 'secondary'] as const) {
+      const candidate = account(15)
+      candidate.planType = planType
+      candidate.quotaSnapshot!.primary = null
+      candidate.quotaSnapshot!.secondary = null
+      candidate.quotaSnapshot![side] = { usedPercent: 85, windowMinutes, resetsAt: null }
+      // 15% is above the 10% main reserve but below the 20% five-hour reserve.
+      expect(() => assertQuotaAvailable(candidate, 10, false)).not.toThrow()
+      candidate.quotaSnapshot![side]!.usedPercent = 90
+      expect(() => assertQuotaAvailable(candidate, 10, false)).toThrow('已保留')
+      expect(() => assertQuotaAvailable(candidate, 10, true)).not.toThrow()
+    }
+  }
+})
+
+it('recognizes a real 5-hour window in either position and ignores other short windows', () => {
+  const candidate = account(50, 19)
+  const snapshot = candidate.quotaSnapshot!
+  ;[snapshot.primary, snapshot.secondary] = [snapshot.secondary, snapshot.primary]
+  expect(() => assertQuotaAvailable(candidate, 10, false)).toThrow('已保留')
+  snapshot.secondary!.windowMinutes = 1440
+  expect(() => assertQuotaAvailable(candidate, 10, false)).not.toThrow()
+})

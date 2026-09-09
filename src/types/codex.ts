@@ -318,6 +318,7 @@ export type UiAccountUnavailableReason = 'payment_required' | 'reauth_required'
 export type UiAccountActionRequired = 'reauthenticate' | 'resolve_payment' | 'repair_active_credential'
 
 export type UiAccountEntry = {
+  alias?: string
   protectionPercent?: number
   resetCredits?: import('../accountResetCredits').ResetCredits | null
   accountId: string

@@ -5,6 +5,7 @@ import {
   completeCodexLogin,
   directoryAppsFromRuntime,
   getAccounts,
+  normalizeAccountEntry,
   getAvailableModelIds,
   getThreadDetail,
   resumeThread,
@@ -401,4 +402,9 @@ describe('native plugin catalog isolation', () => {
     expect((await installDirectoryPlugin(plugins[0])).appsNeedingAuth[0].installUrl).toBe('https://example.com/connect')
     expect(calls).toEqual(['plugin/list', 'plugin/read', 'plugin/install'])
   })
+})
+
+it('retains local display aliases without substituting routing identity during account normalization', () => {
+  const account = normalizeAccountEntry({ accountId: 'identity', storageId: 'storage', email: 'original@example.test', alias: '本地别名', credentialRevision: 7 })
+  expect(account).toMatchObject({ accountId: 'identity', storageId: 'storage', email: 'original@example.test', alias: '本地别名', credentialRevision: 7 })
 })

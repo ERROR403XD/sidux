@@ -1,11 +1,11 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, expect, it, vi } from 'vitest'
 import { AccountNotificationService } from './accountNotificationService'
 import { defaultNoticeRule, defaultNotificationSettings, renderNoticeBody, parseResetExpiryLeadTimes } from '../accountNotifications'
 import type { AccountAuthCoordinator } from './accountAuthCoordinator'
-import type { StoredAccountEntry } from './accountAuthStore'
+import { AccountAuthStore, type StoredAccountEntry } from './accountAuthStore'
 const cleanup: Array<() => Promise<void>> = []
 afterEach(async () => { while (cleanup.length) await cleanup.pop()!() })
 function entry(reset: number, used: number): StoredAccountEntry {
@@ -250,5 +250,43 @@ it('delivers a reset increase through real loopback HTTP exactly once without to
   } finally {
     server.closeAllConnections()
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()))
+  }
+})
+
+// Uses real persisted account metadata and fake credentials, with the auth gate held busy.
+it('saves and clears a local alias while logged out without touching credentials, epochs or revisions', async () => {
+  const codexHome = await mkdtemp(join(tmpdir(), 'account-alias-'))
+  cleanup.push(() => rm(codexHome, { recursive: true, force: true }))
+  const store = new AccountAuthStore(codexHome)
+  const raw = JSON.stringify({ tokens: { account_id: 'alias-fixture', access_token: 'fixture', refresh_token: 'fixture' } })
+  const { account } = await store.upsertCredential(raw, { activate: true, authStatus: 'reauth_required' })
+  const before = await store.readState()
+  const coordinator = { store, isAccountOperationInProgress: () => true, refreshAccount: vi.fn() } as unknown as AccountAuthCoordinator
+  const send = vi.fn()
+  const service = new AccountNotificationService(coordinator, send, false)
+  cleanup.push(() => service.close())
+  await service.save({ accountId: account.storageId, rule: defaultNoticeRule, alias: '  备用账号  ' })
+  const after = await store.readState()
+  expect(after).toEqual({ ...before, accounts: [{ ...before.accounts[0], alias: '备用账号' }] })
+  expect(await readFile(store.activeAuthPath, 'utf8')).toBe(raw)
+  expect(await readFile(store.credentialPath(account.storageId), 'utf8')).toBe(raw)
+  expect((await new AccountAuthStore(codexHome).readState()).accounts[0]?.alias).toBe('备用账号')
+  await expect(service.save({ accountId: account.storageId, rule: defaultNoticeRule, alias: 'x'.repeat(81), protectionPercent: 12 })).rejects.toThrow('80')
+  expect(await store.readState()).toEqual(after)
+  await service.save({ accountId: account.storageId, rule: defaultNoticeRule, alias: '   ' })
+  expect(await store.readState()).toEqual(before)
+  expect(coordinator.refreshAccount).not.toHaveBeenCalled()
+  expect(send).not.toHaveBeenCalled()
+})
+
+it('keeps local aliases out of external notification text', async () => {
+  const { service, send } = await fixture()
+  await service.observe({ ...entry(100, 80), alias: 'local only' })
+  await service.observe({ ...entry(200, 0), alias: 'local only' })
+  await service.flush(Date.parse('2026-09-09T01:00:00Z'))
+  expect(send).toHaveBeenCalledTimes(2)
+  for (const call of send.mock.calls) {
+    expect(String(call[1]?.body)).toContain('example@test')
+    expect(String(call[1]?.body)).not.toContain('local only')
   }
 })

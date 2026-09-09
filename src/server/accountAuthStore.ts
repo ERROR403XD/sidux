@@ -41,6 +41,7 @@ export type StoredRateLimitSnapshot = {
 }
 
 export type StoredAccountEntry = {
+  alias?: string
   accountId: string
   storageId: string
   userId: string | null
@@ -265,6 +266,7 @@ function normalizeEntry(value: unknown): StoredAccountEntry | null {
   return {
     accountId,
     storageId,
+    alias: readString(record?.alias) ?? '',
     userId: readString(record?.userId),
     authMode: readString(record?.authMode),
     email: readString(record?.email),
@@ -452,6 +454,7 @@ export class AccountAuthStore {
           userId: credential.identity.userId,
           authMode: credential.identity.authMode,
           email: credential.identity.email ?? existing?.email ?? null,
+          alias: existing?.alias ?? '',
           planType: existing?.planType ?? credential.identity.planType ?? null,
           credentialRevision: Math.max(1, existing?.credentialRevision ?? 0),
           authStatus: existing?.authStatus ?? 'ready',
@@ -484,6 +487,7 @@ export class AccountAuthStore {
           userId: activeCredential.identity.userId,
           authMode: activeCredential.identity.authMode,
           email: activeCredential.identity.email,
+          alias: '',
           planType: activeCredential.identity.planType,
           credentialRevision: 1,
           authStatus: 'ready',
@@ -590,6 +594,7 @@ export class AccountAuthStore {
         userId: parsed.identity.userId,
         authMode: parsed.identity.authMode,
         email: parsed.identity.email ?? existing?.email ?? null,
+        alias: existing?.alias ?? '',
         planType: parsed.identity.planType ?? existing?.planType ?? null,
         credentialRevision: (existing?.credentialRevision ?? 0) + 1,
         authStatus: options.authStatus ?? 'ready',

@@ -7,7 +7,7 @@
   </div>
   <p v-if="notice" class="account-card-meta" role="status">{{ notice }}</p>
   <AppDialog :open="!!target" title="确认使用重置机会" size="compact" :busy="busy" @close="target = null">
-    <p>账号：{{ account.email || account.accountId }}</p>
+    <p>账号：{{ accountDisplayName(account) }}</p>
     <p v-if="target">{{ expiry(target) }}</p>
     <p>确认后消耗一次重置机会，并重置上游允许的额度窗口。</p>
     <p v-if="error" class="account-panel-error" role="alert">{{ error }}</p>
@@ -15,6 +15,7 @@
   </AppDialog>
 </template>
 <script setup lang="ts">
+import { accountDisplayName } from '../../accountDisplay'
 import { computed, ref } from 'vue'
 import AppButton from '../common/AppButton.vue'
 import AppDialog from '../common/AppDialog.vue'

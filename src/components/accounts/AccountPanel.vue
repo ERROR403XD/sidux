@@ -11,7 +11,7 @@
       <p v-if="!accounts.length" class="account-panel-empty">{{ t('No accounts yet. Add one from this panel.') }}</p>
       <article v-for="account in accounts" :key="account.storageId" class="account-card" :class="{ 'is-active': account.isActive }" :data-account-id="account.storageId">
         <div class="account-card-heading">
-          <strong :title="account.email || account.accountId">{{ account.email || t('Account') }}</strong>
+          <strong :title="account.email || account.accountId">{{ accountDisplayName(account) }}</strong>
           <span class="account-plan-badge">{{ account.planType || t('unknown') }}</span>
         </div>
         <p v-if="account.authStatus !== 'ready'" class="account-card-meta">{{ status(account) }}</p>
@@ -22,7 +22,7 @@
         <p v-if="account.quotaError" class="account-panel-error">{{ account.quotaError }}</p>
         <AccountResetCredits :account="account" :disabled="busy" @changed="$emit('reload')" />
         <footer class="account-card-actions">
-          <AccountOptions :account="account" :disabled="busy" @changed="$emit('reload')" />
+          <AccountOptions :account="account" @changed="$emit('reload')" />
           <AppButton v-if="account.isActive" class="account-current-button" disabled>当前使用</AppButton>
           <AppButton v-else :disabled="disabled(account) || !account.canSwitch" @click="$emit('switch', account.storageId)">切换至此账号</AppButton>
           <AppButton v-if="account.actionRequired === 'reauthenticate'" :disabled="disabled(account)" @click="$emit('reauth', account.storageId)">{{ t('Re-authenticate') }}</AppButton>
@@ -44,6 +44,7 @@
 </template>
 
 <script setup lang="ts">
+import { accountDisplayName } from '../../accountDisplay'
 import { ref, type ComponentPublicInstance } from 'vue'
 import type { UiAccountEntry } from '../../types/codex'
 import { useUiLanguage } from '../../composables/useUiLanguage'

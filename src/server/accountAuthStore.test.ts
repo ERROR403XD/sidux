@@ -48,6 +48,7 @@ describe('AccountAuthStore', () => {
     const state = await store.readState()
     state.activeStorageId = state.accounts[1]!.storageId
     state.operationEpoch = 9
+    state.accounts[0]!.alias = '日常使用'
     state.accounts[0]!.authStatus = 'reauth_required'
     state.accounts[0]!.unavailableReason = 'reauth_required'
     state.accounts[2]!.credentialRevision = 7
@@ -66,6 +67,22 @@ describe('AccountAuthStore', () => {
     expect(loaded.activeStorageId).toBe(state.activeStorageId)
     expect(loaded.operationEpoch).toBe(9)
     expect(await Promise.all(paths.map(path => readFile(path, 'utf8')))).toEqual(before)
+  })
+
+  it('preserves the local alias through credential rotation and reauthentication without changing identity', async () => {
+    const store = await createStore()
+    const { account } = await store.upsertCredential(credential('account-a'), { activate: true })
+    await store.updateState(state => ({
+      state: { ...state, accounts: state.accounts.map(entry => ({ ...entry, alias: '自动化专用' })) }, result: undefined,
+    }))
+    const refreshed = await store.upsertCredential(credential('account-a', 'user-1', 'rotated'), {
+      expectedStorageId: account.storageId, expectedRevision: account.credentialRevision, materializeIfActive: true,
+    })
+    expect(refreshed.account).toMatchObject({ alias: '自动化专用', storageId: account.storageId, email: account.email, credentialRevision: account.credentialRevision + 1 })
+    expect((await store.readActiveCredential())?.identity).not.toHaveProperty('alias')
+    const relogged = await store.upsertCredential(credential('account-a', 'user-1', 'relogin'))
+    expect(relogged.account.alias).toBe('自动化专用')
+    expect((await new AccountAuthStore(store.codexHome).readState()).accounts[0]?.alias).toBe('自动化专用')
   })
 
   it('extracts a stable identity from account and user identity', () => {
