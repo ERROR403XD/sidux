@@ -16,7 +16,7 @@ import {
   type StoredAccountEntry,
   type StoredAccountsState,
 } from './accountAuthStore.js'
-import { classifyAccountAuthError, refreshChatgptAccountCredential, type ChatgptAuthTokensRefreshParams, type ChatgptAuthTokensRefreshResponse } from './accountTokenRefresh.js'
+import { accessTokenExpiresAt, classifyAccountAuthError, refreshChatgptAccountCredential, type ChatgptAuthTokensRefreshParams, type ChatgptAuthTokensRefreshResponse } from './accountTokenRefresh.js'
 
 const LOGIN_URL_TIMEOUT_MS = 15_000
 const LOGIN_CALLBACK_TIMEOUT_MS = 20_000
@@ -257,6 +257,7 @@ export class AccountAuthCoordinator {
   private lastLogin: AccountLoginStatus | null = null
   private readonly refreshFlights = new Map<string, Promise<StoredAccountEntry>>()
   private backgroundRefresh: Promise<void> | null = null
+  private readonly tokenRefreshFailures = new Map<string, { revision: number; until: number; error: unknown }>()
   private readonly tokenRefreshFlights = new Map<string, Promise<ChatgptAuthTokensRefreshResponse>>()
   private apiLifecycle: { beforeMutation(kind: 'switch' | 'remove', storageId: string | null): Promise<() => void>; isIdle(): boolean } | null = null
 
@@ -273,17 +274,8 @@ export class AccountAuthCoordinator {
     const storageId = selectedStorageId ?? state.activeStorageId
     let entry = state.accounts.find(item => item.storageId === storageId)
     if (!storageId || !entry) throw new AccountCoordinatorError('account_not_found', '请选择已登录的 Codex 账号。', 503)
-    if (['reauth_required', 'payment_required', 'materialization_dirty'].includes(entry.authStatus)) {
-      throw new AccountCoordinatorError('account_unavailable', '所选账号需要处理认证或额度问题。', 503)
-    }
     let credential = await this.store.readCredential(storageId)
-    const expiry = (token: string): number => {
-      try {
-        const payload = JSON.parse(Buffer.from(token.split('.')[1] ?? '', 'base64url').toString('utf8'))
-        return typeof payload.exp === 'number' ? payload.exp * 1000 : 0
-      } catch { return 0 }
-    }
-    if (expiry(credential.auth.tokens?.access_token ?? '') < Date.now() + 300_000) {
+    if (accessTokenExpiresAt(credential.auth.tokens?.access_token ?? '') < Date.now() + 300_000) {
       if (options.allowRefresh === false) throw new AccountCoordinatorError('background_refresh_skipped', '凭据需要刷新，跳过本次激活。', 503)
       await this.refreshTokensForStorage(storageId, { reason: 'api_proxy_expiry', previousAccountId: entry.accountId })
       state = await this.store.readState()
@@ -291,8 +283,11 @@ export class AccountAuthCoordinator {
       if (!entry) throw new AccountCoordinatorError('account_not_found', '账号已移除。', 503)
       credential = await this.store.readCredential(storageId)
     }
+    if (['reauth_required', 'payment_required', 'materialization_dirty'].includes(entry.authStatus)) {
+      throw new AccountCoordinatorError('account_unavailable', '所选账号需要处理认证或额度问题。', 503)
+    }
     const accessToken = credential.auth.tokens?.access_token ?? ''
-    const expires = expiry(accessToken)
+    const expires = accessTokenExpiresAt(accessToken)
     if (expires <= Date.now()) throw new AccountCoordinatorError('invalid_access_token', '未获得有效的访问令牌。', 503)
     return { storageId, revision: entry.credentialRevision, accessToken, accountId: entry.accountId, expiresAt: new Date(expires).toISOString() }
   }
@@ -649,19 +644,23 @@ export class AccountAuthCoordinator {
     return await this.refreshTokensForStorage(state.activeStorageId, params)
   }
 
-  async refreshTokensForStorage(storageId: string, params: ChatgptAuthTokensRefreshParams): Promise<ChatgptAuthTokensRefreshResponse> {
+  async refreshTokensForStorage(storageId: string, params: ChatgptAuthTokensRefreshParams, mutationOwner?: CoordinatorOperation | null): Promise<ChatgptAuthTokensRefreshResponse> {
     const existing = this.tokenRefreshFlights.get(storageId)
     if (existing) return await existing
+    const generation = this.executions.generation()
     const flight = this.withRefreshOperation(`token:${storageId}`, async () => {
       const state = await this.store.readState()
       const entry = storageId ? state.accounts.find((item) => item.storageId === storageId) ?? null : null
       if (!storageId || !entry) throw new AccountCoordinatorError('account_not_found', 'No active account credential is available.', 404)
+      const failure = this.tokenRefreshFailures.get(storageId)
+      if (failure && failure.revision === entry.credentialRevision && failure.until > Date.now()) throw failure.error
       const credential = await this.store.readCredential(storageId, { requireRefreshToken: true })
       try {
         const refreshed = await refreshChatgptAccountCredential(credential.raw, params, {
           fetchImpl: this.dependencies.fetchImpl,
           expectedAccountId: entry.accountId,
         })
+        if (this.executions.removedAfter(storageId, generation)) throw new AccountCoordinatorError('account_disconnected', '旧账号连接已撤销。', 409)
         const saved = await this.store.upsertCredential(refreshed.raw, {
           expectedStorageId: storageId,
           expectedRevision: entry.credentialRevision,
@@ -672,16 +671,19 @@ export class AccountAuthCoordinator {
           credentialRevision: saved.account.credentialRevision,
           lastVerifiedAtIso: new Date().toISOString(),
         })
+        this.tokenRefreshFailures.delete(storageId)
         return refreshed.response
       } catch (error) {
+        if (this.executions.removedAfter(storageId, generation)) throw error
         const classified = classifyAccountAuthError(error)
+        this.tokenRefreshFailures.set(storageId, { revision: entry.credentialRevision, until: classified.authStatus === 'reauth_required' ? Infinity : Date.now() + 30_000, error })
         await this.patchAccount(storageId, {
           authStatus: classified.authStatus,
           unavailableReason: classified.unavailableReason,
         })
         throw error
       }
-    })
+    }, mutationOwner)
     this.tokenRefreshFlights.set(storageId, flight)
     try {
       return await flight
@@ -842,6 +844,7 @@ export class AccountAuthCoordinator {
         ])
         this.modelCatalogs.clear()
         this.quotaBackoff.delete(storageId)
+        this.tokenRefreshFailures.delete(storageId)
         this.quotaRevisions.delete(storageId)
         return await this.listAccounts({ scheduleRefresh: false })
       } finally {
@@ -857,7 +860,24 @@ export class AccountAuthCoordinator {
   private createProbe(options: ConstructorParameters<typeof AccountAppServerProbe>[0]): AccountAppServerProbe {
     const storageId = options.profileDir.startsWith(this.store.accountsRoot + '/') ? options.profileDir.slice(this.store.accountsRoot.length + 1) : ''
     const savedAccount = /^[a-f0-9]{64}$/.test(storageId)
-    const probeOptions = savedAccount ? { ...options, refreshTokens: (params: unknown) => this.refreshTokensForStorage(storageId, asRecord(params) || {}) } : options
+    const generation = this.executions.generation()
+    const mutationOwner = this.operation
+    const refreshTokens = (params: unknown) => this.refreshTokensForStorage(storageId, asRecord(params) || {}, mutationOwner)
+    const probeOptions = savedAccount ? {
+      ...options,
+      refreshTokens,
+      prepareExternalTokens: async () => {
+        let credential = await this.store.readCredential(storageId)
+        const expires = accessTokenExpiresAt(credential.auth.tokens?.access_token || '')
+        if (expires && expires < Date.now() + 300_000) {
+          await refreshTokens({ reason: 'account_probe_expiry', previousAccountId: credential.identity.accountId })
+          credential = await this.store.readCredential(storageId)
+        }
+        this.executions.assertAvailable(storageId)
+        if (this.executions.removedAfter(storageId, generation)) throw new AccountCoordinatorError('account_disconnected', '旧账号探针已撤销。', 409)
+        return { accessToken: credential.auth.tokens?.access_token || '', chatgptAccountId: credential.identity.accountId, chatgptPlanType: credential.identity.planType || undefined }
+      },
+    } : options
     const probe = this.dependencies.createProbe?.(probeOptions) ?? new AccountAppServerProbe(probeOptions)
     if (savedAccount) {
       const probes = this.probes.get(storageId) || new Set<AccountAppServerProbe>()
@@ -977,10 +997,11 @@ export class AccountAuthCoordinator {
     }
   }
 
-  private async withRefreshOperation<T>(key: string, run: () => Promise<T>): Promise<T> {
+  private async withRefreshOperation<T>(key: string, run: () => Promise<T>, mutationOwner?: CoordinatorOperation | null): Promise<T> {
     const accountId = key.slice(key.indexOf(':') + 1)
     if (this.executions.isRemoved(accountId)) throw new AccountCoordinatorError('account_not_found', '账号已移除。', 404)
-    if (this.operation && (accountId === 'active' || (this.mutationAccounts.has(accountId) && !(this.drainingAccountRefreshes && key.startsWith('token:'))) || this.credentialMutationStorageId === accountId)) {
+    const ownedTokenRefresh = key.startsWith('token:') && (this.operation?.kind === 'switch' || (!!mutationOwner && mutationOwner === this.operation))
+    if (this.operation && !ownedTokenRefresh && (accountId === 'active' || (this.mutationAccounts.has(accountId) && !(this.drainingAccountRefreshes && key.startsWith('token:'))) || this.credentialMutationStorageId === accountId)) {
       throw new AccountCoordinatorError('account_operation_in_progress', '所选账号正在变更，请稍后重试。')
     }
     const previous = this.refreshOperations.get(key)

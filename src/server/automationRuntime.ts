@@ -8,6 +8,7 @@ export function createAutomationRuntime(options: {
   rpc: Rpc
   acquireAccount?: AutomationRuntime['acquireAccount']
   releaseAccount?: AutomationRuntime['releaseAccount']
+  accountStorageId?: AutomationRuntime['accountStorageId']
   accountBusy: () => boolean
   hasQueuedMessages: (id: string) => Promise<boolean>
   pendingRequests: () => unknown[]
@@ -18,6 +19,7 @@ export function createAutomationRuntime(options: {
   return {
     acquireAccount: options.acquireAccount,
     releaseAccount: options.releaseAccount,
+    accountStorageId: options.accountStorageId,
     accountBusy: options.accountBusy,
     async canStart(threadId) {
       if (await options.hasQueuedMessages(threadId)) return false
@@ -36,10 +38,10 @@ export function createAutomationRuntime(options: {
       return { threadId: thread.id, model: typeof response.model === 'string' ? response.model : undefined }
     },
     async prepare(threadId, text, runId, settings = {}) {
-      const current = record(record(await rpc('thread/read', { threadId, includeTurns: false }, runId)).thread)
-      if ((record(current.status).type ?? current.status) === 'notLoaded') {
-        await rpc('thread/resume', { threadId, excludeTurns: true, ...(settings.model ? { model: settings.model } : {}) }, runId)
-      }
+      // The selected account process may not have loaded this thread at all.
+      // Resume establishes native ownership; reading first can fail before the
+      // primary process has relinquished its writer.
+      await rpc('thread/resume', { threadId, excludeTurns: true, ...(settings.model ? { model: settings.model } : {}) }, runId)
       const params = await options.buildParams(threadId, text, runId)
       if (settings.model) params.model = settings.model
       if (settings.reasoningEffort) params.effort = settings.reasoningEffort

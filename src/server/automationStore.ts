@@ -13,6 +13,7 @@ export type AutomationRun = {
   threadId: string | null; turnId: string | null; model: string | null
   serviceTier?: string | null
   reasoningEffort?: string | null
+  executionAccountStorageId?: string | null
   errorCode: string | null; error: string | null; submittedAt?: number
 }
 export type AutomationMetadata = { revision: string; timezone: string; anchor: number; cursor: number; nextRunAtMs: number | null }

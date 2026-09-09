@@ -5548,14 +5548,24 @@ export class AppServerProcess {
     this.nextId = runtimeOptions.requestIdOffset || 1
   }
   private runtimeStorageId: string | null = null
+  private assignedStorageId: string | null = null
+  private sessionOperations = 0
+  private closingSession: Promise<void> | null = null
   private executionLease: AccountExecutionLease | null = null
   private taskLease: { runId: string; storageId: string | null; protected: boolean } | null = null
   private readonly acquiringAccounts = new Set<string>()
-  private readonly taskWorkers = new AccountResourcePool<AppServerProcess>({
-    capacity: 4,
-    idle: async worker => !worker.currentTaskRun && !worker.activeTurnThreadIds.size && !worker.pendingServerRequests.size
-      && !(await threadsWithBackgroundTerminals((method, params) => worker.rpc(method, params))).length,
-    dispose: worker => worker.dispose(),
+  // Native unsubscribe retains a writer for 30 minutes. A session therefore
+  // keeps one process across chat and automation; credentials change only at
+  // that session's boundary. Idle eviction closes the process and awaits exit.
+  private readonly sessionWorkers = new AccountResourcePool<AppServerProcess>({
+    capacity: 16,
+    idle: async worker => {
+      if (worker.currentTaskRun || worker.sessionOperations || worker.activeTurnThreadIds.size || worker.pendingServerRequests.size || worker.pending.size) return false
+      if (!worker.process) return true
+      const terminals = await threadsWithBackgroundTerminals((method, params) => worker.rpc(method, params))
+      return !terminals.length && !worker.currentTaskRun && !worker.sessionOperations && !worker.activeTurnThreadIds.size && !worker.pendingServerRequests.size && !worker.pending.size
+    },
+    dispose: worker => worker.closeSession(),
   })
   private readonly taskRuns = new Map<string, AppServerProcess>()
   private readonly ownedThreadIds = new Set<string>()
@@ -5565,24 +5575,80 @@ export class AppServerProcess {
   private currentTaskRun: string | null = null
 
   private threadWorker(threadId: string): AppServerProcess | undefined {
-    return [...this.taskWorkers.values()].find(worker => worker.ownedThreadIds.has(threadId))
+    if (!threadId) return undefined
+    return [...this.sessionWorkers.values()].find(worker => worker.ownedThreadIds.has(threadId)) || this.sessionWorkers.get(threadId)
   }
   private runtimeAccountId(): Promise<string | null> {
-    if (this.runtimeOptions.isolatedTask) return Promise.resolve(this.taskLease?.storageId || null)
+    if (this.runtimeOptions.isolatedTask) return Promise.resolve(this.assignedStorageId)
     if (this.runtimeStorageId) return Promise.resolve(this.runtimeStorageId)
     return getAccountAuthCoordinator().store.readState().then(state => state.activeStorageId)
   }
+  private async closeSession(): Promise<void> {
+    this.dispose()
+    await this.closingSession
+  }
+  private async sessionWorker(key: string): Promise<AppServerProcess | null> {
+    const owned = this.threadWorker(key)
+    if (owned) {
+      // Touch the pool so an asynchronous idle check cannot evict this use.
+      const entry = [...this.sessionWorkers].find(([, worker]) => worker === owned)!
+      return this.sessionWorkers.getOrCreate(entry[0], () => owned)
+    }
+    return this.sessionWorkers.getOrCreate(key, () => {
+      const worker = new AppServerProcess({ isolatedTask: true, requestIdOffset: this.nextWorkerId++ * 1_000_000 })
+      worker.queueStateReader = async () => ({})
+      worker.quotaBlocked = (threadId, turnId) => this.quotaBlocked(threadId, turnId)
+      worker.onNotification(notification => {
+        if (notification.method === 'account/rateLimits/updated') void worker.observeAccountQuota(notification.params).catch(() => undefined)
+        if (/^(account\/|codexapp\/runtime\/)/.test(notification.method)) return
+        this.activityRevision++
+        this.forwardTaskNotification(this.remapTaskRequest(worker, notification))
+      })
+      return worker
+    })
+  }
+  private async configureSession(storageId: string | null, kind: 'primary' | 'automation', ownerId: string): Promise<void> {
+    if (this.assignedStorageId !== storageId && (this.activeTurnThreadIds.size || this.pendingServerRequests.size)) {
+      throw Object.assign(new Error('此会话仍在执行，请等当前回合结束后更换账号。其他会话不受影响。'), { rpcRejected: true, submissionNotSent: true })
+    }
+    const coordinator = getAccountAuthCoordinator()
+    const changed = this.assignedStorageId !== storageId
+    const initialized = this.initialized
+    this.assignedStorageId = storageId
+    this.executionLease?.release()
+    this.executionLease = storageId ? coordinator.executions.register({ storageId, kind, ownerId, protected: this.taskLease?.protected, busy: !!this.currentTaskRun || !!this.activeTurnThreadIds.size, disconnect: () => this.dispose() }) : null
+    const lease = this.executionLease
+    try {
+      await this.ensureInitialized()
+      if (initialized && changed) {
+        if (storageId) {
+          const credential = await coordinator.getApiCredential(storageId)
+          await this.call('account/login/start', { type: 'chatgptAuthTokens', accessToken: credential.accessToken, chatgptAccountId: credential.accountId })
+        } else {
+          await this.closeSession()
+          await this.ensureInitialized()
+        }
+        this.quotaReadCache = null
+      }
+      lease?.assertCurrent()
+    } catch (error) {
+      this.dispose()
+      throw error
+    }
+  }
   stopTaskRouting(): void {
-    for (const worker of this.taskWorkers.values()) worker.dispose()
-    this.taskWorkers.clear()
+    for (const worker of this.sessionWorkers.values()) worker.dispose()
+    this.sessionWorkers.clear()
     this.taskRuns.clear()
     this.forwardedRequests.clear()
   }
-  taskAccountBusy(): boolean { return !!this.runtimeOptions.isolatedTask && !!this.currentTaskRun }
+  taskAccountBusy(): boolean { return !!this.currentTaskRun }
 
-  async acquireTaskAccount(runId: string, settings: import('../automationOptions.js').AutomationModelSettings): Promise<boolean> {
+  async acquireTaskAccount(runId: string, settings: import('../automationOptions.js').AutomationModelSettings & { targetThreadId?: string | null }): Promise<boolean> {
     if (this.taskRuns.has(runId)) return true
-    let acquiringKey: string | null = null
+    if (this.taskRuns.size + this.acquiringAccounts.size >= 4 || this.acquiringAccounts.has(runId)) return false
+    this.acquiringAccounts.add(runId)
+    let worker: AppServerProcess | null = null
     try {
       const coordinator = getAccountAuthCoordinator()
       const state = await coordinator.store.readState()
@@ -5590,13 +5656,7 @@ export class AppServerProcess {
       const followsOtherProvider = !settings.accountStorageId && !settings.protected && config?.model_provider && config.model_provider !== 'openai'
       const storageId = followsOtherProvider ? null : resolveAccountSelection(state, settings).storageId
       if (coordinator.blocksApiAccount(settings.accountStorageId || null)) return false
-      acquiringKey = storageId || 'configured-provider'
-      if (this.acquiringAccounts.has(acquiringKey)) { acquiringKey = null; return false }
-      this.acquiringAccounts.add(acquiringKey)
-      if (settings.accountStorageId && !state.accounts.some(account => account.storageId === storageId)) throw new Error('所选账号已不存在')
       if (storageId) {
-        // Credential readiness belongs to this account; a failed quota read is not
-        // proof that it cannot execute. The upstream still enforces hard limits.
         await coordinator.getApiCredential(storageId)
         const account = await coordinator.refreshAccount(storageId)
         const fresh = account.quotaUpdatedAtIso && Date.now() - Date.parse(account.quotaUpdatedAtIso) < 30000
@@ -5604,39 +5664,34 @@ export class AppServerProcess {
         if (fresh && windows.some(window => window!.usedPercent >= 100)) return false
         try { await coordinator.assertSubmissionAllowed(undefined, { storageId, protected: settings.protected }) }
         catch { return false }
-      } else if (settings.protected) return false
-      const key = storageId || 'configured-provider'
-      const worker = await this.taskWorkers.getOrCreate(key, () => {
-        const created = new AppServerProcess({ isolatedTask: true, requestIdOffset: this.nextWorkerId++ * 1_000_000 })
-        created.queueStateReader = async () => ({})
-        created.onNotification(notification => {
-          if (notification.method === 'account/rateLimits/updated') void created.observeAccountQuota(notification.params).catch(() => undefined)
-          if (/^(account\/|codexapp\/runtime\/)/.test(notification.method)) return
-          this.forwardTaskNotification(this.remapTaskRequest(created, notification))
-        })
-        return created
-      })
-      if (!worker || worker.currentTaskRun) return false
-      if ((worker.activeTurnThreadIds.size || worker.pendingServerRequests.size) && !(await worker.getAccountSwitchSnapshot()).idle) return false
-      worker.ownedThreadIds.clear()
+      }
+      worker = await this.sessionWorker(settings.targetThreadId || `run:${runId}`)
+      if (!worker || worker.currentTaskRun || worker.sessionOperations || worker.activeTurnThreadIds.size || worker.pendingServerRequests.size) return false
       worker.taskLease = { runId, storageId, protected: settings.protected === true }
       worker.currentTaskRun = runId
-      worker.executionLease?.release()
-      worker.executionLease = storageId ? coordinator.executions.register({ storageId, kind: 'automation', ownerId: runId, protected: settings.protected, disconnect: () => worker!.dispose() }) : null
       this.taskRuns.set(runId, worker)
+      await worker.configureSession(storageId, 'automation', runId)
       return true
-    } finally { if (acquiringKey) this.acquiringAccounts.delete(acquiringKey) }
+    } catch (error) {
+      this.releaseTaskAccount(runId)
+      throw error
+    } finally {
+      this.acquiringAccounts.delete(runId)
+    }
   }
-
+  taskAccountStorageId(runId: string): string | null | undefined {
+    return this.taskRuns.get(runId)?.assignedStorageId
+  }
   releaseTaskAccount(runId: string): void {
     const worker = this.taskRuns.get(runId)
     if (!worker) return
     worker.currentTaskRun = null
-    worker.executionLease?.setBusy(false)
+    worker.taskLease = null
+    worker.executionLease?.setBusy(!!worker.activeTurnThreadIds.size)
     this.taskRuns.delete(runId)
   }
 
-  automationRpc(method: string, params: unknown, runId?: string): Promise<unknown> {
+  async automationRpc(method: string, params: unknown, runId?: string): Promise<unknown> {
     const worker = runId ? this.taskRuns.get(runId) : this.threadWorker(readNonEmptyString(asRecord(params)?.threadId))
     if (!worker && runId) throw Object.assign(new Error('自动化账号连接已释放，本次操作未发送'), { rpcRejected: true, submissionNotSent: true })
     if (!worker) return this.rpc(method, params)
@@ -5668,14 +5723,15 @@ export class AppServerProcess {
 
   accountDisconnected: (storageId: string, primary: boolean, runIds: string[]) => void = () => {}
   async disconnectAccount(storageId: string, wasActive = false): Promise<void> {
-    const worker = this.taskWorkers.get(storageId)
-    const runIds = [...this.taskRuns].filter(([, runtime]) => runtime === worker).map(([id]) => id)
-    if (worker) {
+    const affected = [...this.sessionWorkers].filter(([, worker]) => worker.assignedStorageId === storageId)
+    const runIds = [...this.taskRuns].filter(([, runtime]) => affected.some(([, worker]) => worker === runtime)).map(([id]) => id)
+    for (const [key, worker] of affected) {
       worker.dispose()
-      this.taskWorkers.delete(storageId)
+      this.sessionWorkers.delete(key)
       for (const [id, request] of this.forwardedRequests) if (request.worker === worker) this.forwardedRequests.delete(id)
-      for (const id of runIds) this.taskRuns.delete(id)
     }
+    for (const id of runIds) this.taskRuns.delete(id)
+    await Promise.all(affected.map(([, worker]) => worker.closeSession()))
     if (wasActive || this.runtimeStorageId === storageId) {
       this.dispose()
       this.runtimeStorageId = null
@@ -5730,7 +5786,7 @@ export class AppServerProcess {
 
   private buildAppServerConfig(): { args: string[]; env: Record<string, string> } {
     const args = buildAppServerArgs()
-    if (this.taskLease?.storageId) {
+    if (this.runtimeOptions.isolatedTask && this.assignedStorageId) {
       args.push('-c', 'model_provider="openai"')
       return { args, env: {} }
     }
@@ -5838,7 +5894,7 @@ export class AppServerProcess {
       return
     }
 
-    if (typeof message.id === 'number' && this.pending.has(message.id)) {
+    if (typeof message.id === 'number' && !message.method && this.pending.has(message.id)) {
       const pendingRequest = this.pending.get(message.id)
       this.pending.delete(message.id)
 
@@ -5892,6 +5948,7 @@ export class AppServerProcess {
       }
     }
     const notificationThreadId = this.extractThreadIdFromParams(notification.params)
+    if (notificationThreadId && this.runtimeOptions.isolatedTask && notification.method === 'thread/started') this.ownedThreadIds.add(notificationThreadId)
     if (notificationThreadId && notification.method === 'turn/started') {
       this.executionLease?.setBusy(true)
       this.activeTurnThreadIds.add(notificationThreadId)
@@ -6109,8 +6166,9 @@ export class AppServerProcess {
   }
 
   private async refreshChatgptAuthTokens(params: ChatgptAuthTokensRefreshParams): Promise<ChatgptAuthTokensRefreshResponse> {
-    if (this.taskLease?.storageId) {
-      const credential = await getAccountAuthCoordinator().refreshTokensForStorage(this.taskLease.storageId, params)
+    const storageId = await this.runtimeAccountId()
+    if (storageId) {
+      const credential = await getAccountAuthCoordinator().refreshTokensForStorage(storageId, params)
       return credential
     }
     if (!this.chatgptAuthRefreshPromise) {
@@ -6124,11 +6182,14 @@ export class AppServerProcess {
   private async handleChatgptAuthTokensRefreshRequest(requestId: number, params: unknown): Promise<void> {
     const requestParams = asRecord(params)
     const previousAccountId = readNonEmptyString(requestParams?.previousAccountId ?? requestParams?.previous_account_id)
+    const process = this.process
+    const storageId = await this.runtimeAccountId()
     try {
       const result = await this.refreshChatgptAuthTokens({
         reason: readNonEmptyString(requestParams?.reason) || undefined,
         previousAccountId: previousAccountId || undefined,
       })
+      if (this.process !== process || await this.runtimeAccountId() !== storageId) throw new Error('账号连接已变更，请重新核对认证')
       this.sendServerRequestReply(requestId, { result })
       this.emitNotification({
         method: 'server/request/resolved',
@@ -6186,6 +6247,7 @@ export class AppServerProcess {
   }
 
   private async ensureInitialized(): Promise<void> {
+    if (this.closingSession) await this.closingSession
     if (this.initialized) return
     if (this.initializePromise) {
       await this.initializePromise
@@ -6205,14 +6267,21 @@ export class AppServerProcess {
         jsonrpc: '2.0',
         method: 'initialized',
       })
-      if (this.taskLease?.storageId) {
-        const credential = await getAccountAuthCoordinator().getApiCredential(this.taskLease.storageId)
+      if (this.runtimeOptions.isolatedTask && this.assignedStorageId) {
+        const credential = await getAccountAuthCoordinator().getApiCredential(this.assignedStorageId)
         await this.call('account/login/start', { type: 'chatgptAuthTokens', accessToken: credential.accessToken, chatgptAccountId: credential.accountId })
+      }
+      if (this.runtimeOptions.isolatedTask && this.assignedStorageId && !this.executionLease) {
+        this.executionLease = getAccountAuthCoordinator().executions.register({ storageId: this.assignedStorageId, kind: this.currentTaskRun ? 'automation' : 'primary', ownerId: this.currentTaskRun || [...this.ownedThreadIds][0] || 'session', busy: !!this.currentTaskRun, disconnect: () => this.dispose() })
       }
       if (!this.runtimeOptions.isolatedTask) {
         const storageId = await this.runtimeAccountId()
         if (storageId) {
           this.runtimeStorageId = storageId
+          const credential = await getAccountAuthCoordinator().store.readCredential(storageId)
+          // All ChatGPT runtimes delegate token rotation to the same coordinator.
+          // Local token login does not wait for quota or a remote refresh.
+          await this.call('account/login/start', { type: 'chatgptAuthTokens', accessToken: credential.auth.tokens!.access_token, chatgptAccountId: credential.identity.accountId })
           this.executionLease?.release()
           this.executionLease = getAccountAuthCoordinator().executions.register({ storageId, kind: 'primary', ownerId: 'primary', busy: false, disconnect: () => this.dispose() })
         }
@@ -6233,26 +6302,24 @@ export class AppServerProcess {
   async rpc(method: string, params: unknown, taskId?: string): Promise<unknown> {
     const coordinator = getAccountAuthCoordinator()
     const threadId = readNonEmptyString(asRecord(params)?.threadId)
-    const worker = this.threadWorker(threadId)
-    if (worker && (worker.currentTaskRun || method.startsWith('thread/backgroundTerminals/'))) return worker.rpc(method, params, taskId)
     const mutatingTurn = ['turn/start', 'turn/steer', 'thread/compact/start', 'thread/goal/set'].includes(method)
     if (mutatingTurn && this.taskAccountBusy() && taskId !== this.taskLease?.runId) {
       throw Object.assign(new Error('该会话正在执行自动化，请等待本次运行结束'), { rpcRejected: true, submissionNotSent: true })
     }
     if (!this.runtimeOptions.isolatedTask) {
       coordinator.runtimeQuotaReader = async storageId => {
-        const candidates = [this, ...this.taskWorkers.values()]
+        const candidates = [this, ...this.sessionWorkers.values()]
         for (const candidate of candidates) {
           if (candidate.initialized && await candidate.runtimeAccountId() === storageId) return (await candidate.readRuntimeQuota(storageId)).account
         }
         return null
       }
       coordinator.activeUsageAccounts = async () => {
-        const ids = await Promise.all([this, ...this.taskWorkers.values()].filter(candidate => candidate.activeTurnThreadIds.size).map(candidate => candidate.runtimeAccountId()))
+        const ids = await Promise.all([this, ...this.sessionWorkers.values()].filter(candidate => candidate.activeTurnThreadIds.size).map(candidate => candidate.runtimeAccountId()))
         return [...new Set(ids.filter((id): id is string => !!id))]
       }
       coordinator.setProtectionInterrupt(async storageId => {
-        for (const candidate of [this, ...this.taskWorkers.values()]) {
+        for (const candidate of [this, ...this.sessionWorkers.values()]) {
           if (await candidate.runtimeAccountId() !== storageId || candidate.taskLease?.protected || !candidate.activeTurnThreadIds.size) continue
           const config = asRecord(asRecord(await candidate.call('config/read', {}))?.config)
           if (config?.model_provider && config.model_provider !== 'openai') continue
@@ -6262,6 +6329,38 @@ export class AppServerProcess {
           }
         }
       })
+    }
+    if (!this.runtimeOptions.isolatedTask) {
+      if (method === 'thread/loaded/list') {
+        const ids = new Set<string>()
+        for (const worker of this.sessionWorkers.values()) {
+          if (!worker.process) continue
+          const loaded = asRecord(await worker.rpc(method, params))
+          for (const id of Array.isArray(loaded?.data) ? loaded.data : []) if (typeof id === 'string') ids.add(id)
+        }
+        return { data: [...ids], nextCursor: null }
+      }
+      const owner = this.threadWorker(threadId)
+      if (owner || (mutatingTurn && threadId) || ['thread/start', 'thread/resume', 'thread/fork'].includes(method)) {
+        const worker = await this.sessionWorker(method === 'thread/start' || method === 'thread/fork' ? `chat:${randomUUID()}` : threadId)
+        if (!worker) throw Object.assign(new Error('会话运行资源已满，请先结束一个活动会话后重试'), { rpcRejected: true, submissionNotSent: true })
+        const selectsAccount = mutatingTurn || ['thread/start', 'thread/resume', 'thread/fork'].includes(method)
+        if (selectsAccount) worker.sessionOperations++
+        try {
+          if (!worker.currentTaskRun && selectsAccount) {
+            const state = await coordinator.store.readState()
+            const config = asRecord(asRecord(await this.rpc('config/read', {}))?.config)
+            const storageId = config?.model_provider && config.model_provider !== 'openai' ? null : state.activeStorageId
+            await worker.configureSession(storageId, 'primary', threadId || 'new-thread')
+          }
+          const input = worker.currentTaskRun && method === 'thread/resume'
+            ? { threadId, excludeTurns: asRecord(params)?.excludeTurns === true }
+            : params
+          return await worker.rpc(method, input, taskId)
+        } finally {
+          if (selectsAccount) worker.sessionOperations--
+        }
+      }
     }
     this.disposeIfConfigChanged()
     await this.ensureInitialized()
@@ -6274,15 +6373,20 @@ export class AppServerProcess {
         const result = asRecord(await this.call('config/read', {}))
         const config = asRecord(result?.config)
         return !config?.model_provider || config.model_provider === 'openai'
-      }, this.taskLease ? { storageId: this.taskLease.storageId || undefined, protected: !!taskId && this.taskLease.protected } : undefined).catch(error => {
+      }, this.runtimeOptions.isolatedTask ? { storageId: this.assignedStorageId || undefined, protected: !!taskId && this.taskLease?.protected === true } : undefined).catch(error => {
         throw Object.assign(error instanceof Error ? error : new Error('额度校验失败'), { rpcRejected: true, submissionNotSent: true })
       })
     }
+    if (this.runtimeOptions.isolatedTask && mutatingTurn && threadId && !this.ownedThreadIds.has(threadId)) {
+      await this.call('thread/resume', { threadId, excludeTurns: true })
+      this.ownedThreadIds.add(threadId)
+    }
     const result = await this.call(method, params)
-    if (this.runtimeOptions.isolatedTask && ['thread/start', 'thread/resume'].includes(method)) {
+    if (['thread/start', 'thread/resume', 'thread/fork'].includes(method)) {
       const id = readNonEmptyString(asRecord(asRecord(result)?.thread)?.id) || threadId
       if (id) this.ownedThreadIds.add(id)
     }
+    if (method === 'thread/archive' || (method === 'thread/unsubscribe' && asRecord(result)?.status === 'notLoaded')) this.ownedThreadIds.delete(threadId)
     return result
   }
 
@@ -6341,48 +6445,67 @@ export class AppServerProcess {
 
   async getRuntimeQuiescenceSnapshot(ignoreTaskAcquisition = false, accountSwitch = false): Promise<RuntimeQuiescenceSnapshot> {
     const activityRevision = this.activityRevision
-    const activeTurnThreadIds = new Set(this.activeTurnThreadIds)
-    let cursor: string | null = null
-    let pageCount = 0
-    const cursors = new Set<string>()
-    do {
-      const response = asRecord(await this.rpc('thread/list', {
-        archived: false,
-        limit: 100,
-        sortKey: 'updated_at',
-        modelProviders: [],
-        cursor,
-      }))
-      if (!Array.isArray(response?.data)) throw new Error('无法核对当前会话状态，请稍后重试')
-      const threads = response.data
-      for (const value of threads) {
-        const thread = asRecord(value)
-        const threadId = readNonEmptyString(thread?.id)
-        const status = asRecord(thread?.status)
-        const statusType = readNonEmptyString(status?.type) || readNonEmptyString(thread?.status)
-        if (!threadId || !['idle', 'notLoaded', 'systemError', 'completed', 'interrupted', 'failed', 'inProgress', 'running', 'active'].includes(statusType)) {
-          throw new Error('会话运行状态未知，暂不能切换账号')
-        }
-        if (accountSwitch && this.threadWorker(threadId)) continue
-        if (threadId && !['active', 'running', 'inProgress'].includes(statusType)) {
-          activeTurnThreadIds.delete(threadId)
-        }
-        if (threadId && (statusType === 'inProgress' || statusType === 'running' || statusType === 'active')) {
-          activeTurnThreadIds.add(threadId)
+    const runtimes = [this, ...this.sessionWorkers.values()].filter(worker => !accountSwitch || !worker.currentTaskRun)
+    const activeTurnThreadIds = new Set(runtimes.flatMap(worker => [...worker.activeTurnThreadIds]))
+    if (accountSwitch) {
+      // Account switching depends on live session owners, not the number of
+      // historical threads or archived/incomplete records in the catalog.
+      for (const runtime of runtimes) {
+        for (const threadId of [...runtime.activeTurnThreadIds]) {
+          const response = asRecord(await runtime.rpc('thread/read', { threadId, includeTurns: false }))
+          const thread = asRecord(response?.thread)
+          const status = readNonEmptyString(asRecord(thread?.status)?.type) || readNonEmptyString(thread?.status)
+          if (['idle', 'notLoaded', 'systemError', 'completed', 'interrupted', 'failed'].includes(status)) {
+            runtime.activeTurnThreadIds.delete(threadId)
+            runtime.activeTurnIds.delete(threadId)
+            activeTurnThreadIds.delete(threadId)
+          }
         }
       }
-      cursor = readNonEmptyString(response?.nextCursor) || null
-      if (cursor && cursors.has(cursor)) throw new Error('会话分页未前进，暂不能切换账号')
-      if (cursor) cursors.add(cursor)
-      pageCount += 1
-    } while (cursor && pageCount < 10)
-    if (cursor) activeTurnThreadIds.add('__thread_inventory_truncated__')
+    } else {
+      let cursor: string | null = null
+      let pageCount = 0
+      const cursors = new Set<string>()
+      do {
+        const response = asRecord(await this.rpc('thread/list', {
+          archived: false,
+          limit: 100,
+          sortKey: 'updated_at',
+          modelProviders: [],
+          cursor,
+        }))
+        if (!Array.isArray(response?.data)) throw new Error('无法核对当前会话状态，请稍后重试')
+        const threads = response.data
+        for (const value of threads) {
+          const thread = asRecord(value)
+          const threadId = readNonEmptyString(thread?.id)
+          const status = asRecord(thread?.status)
+          const owner = this.threadWorker(threadId)
+          const statusType = owner?.activeTurnThreadIds.has(threadId) ? 'active' : readNonEmptyString(status?.type) || readNonEmptyString(thread?.status)
+          if (!threadId || !['idle', 'notLoaded', 'systemError', 'completed', 'interrupted', 'failed', 'inProgress', 'running', 'active'].includes(statusType)) {
+            throw new Error('会话运行状态未知，暂不能切换账号')
+          }
+          if (accountSwitch && owner?.currentTaskRun) continue
+          if (threadId && !['active', 'running', 'inProgress'].includes(statusType)) {
+            activeTurnThreadIds.delete(threadId)
+          }
+          if (threadId && (statusType === 'inProgress' || statusType === 'running' || statusType === 'active')) {
+            activeTurnThreadIds.add(threadId)
+          }
+        }
+        cursor = readNonEmptyString(response?.nextCursor) || null
+        if (cursor && cursors.has(cursor)) throw new Error('会话分页未前进，暂不能切换账号')
+        if (cursor) cursors.add(cursor)
+        pageCount += 1
+      } while (cursor && pageCount < 10)
+      if (cursor) activeTurnThreadIds.add('__thread_inventory_truncated__')
+    }
 
     const queuedState = await this.queueStateReader()
     const queuedThreadIds = Object.entries(queuedState)
       .filter(([, messages]) => messages.some(message => !accountSwitch || ['sending', 'unknown'].includes(message.delivery?.status || 'queued')))
       .map(([threadId]) => threadId)
-    const pendingTurnMutationCount = Array.from(this.pending.values()).filter((request) => (
+    const pendingTurnMutationCount = runtimes.flatMap(worker => [...worker.pending.values()]).filter((request) => (
       request.method === 'turn/start'
       || request.method === 'turn/interrupt'
       || request.method === 'turn/steer'
@@ -6391,8 +6514,8 @@ export class AppServerProcess {
       || request.method === 'thread/goal/set'
       || request.method === 'thread/settings/update'
       || request.method === 'thread/backgroundTerminals/terminate'
-    )).length
-    const pendingServerRequestCount = this.pendingServerRequests.size
+    )).length + runtimes.reduce((count, worker) => count + worker.sessionOperations, 0)
+    const pendingServerRequestCount = runtimes.reduce((count, worker) => count + worker.pendingServerRequests.size, 0)
     const automationRunIds = accountSwitch ? [] : this.automationActivity()
     if (!ignoreTaskAcquisition && this.taskAccountBusy()) automationRunIds.push('__account_task_lease__')
     const backgroundThreadIds = accountSwitch || activeTurnThreadIds.size || queuedThreadIds.length || automationRunIds.length
@@ -6415,12 +6538,16 @@ export class AppServerProcess {
   }
 
   dispose(): void {
+    this.ownedThreadIds.clear()
     this.executionLease?.release()
     this.executionLease = null
     this.quotaReadCache = null
     if (!this.process) return
 
     const proc = this.process
+    const closing = proc.exitCode === null && proc.signalCode === null ? once(proc, 'exit').then(() => undefined).catch(() => undefined) : Promise.resolve()
+    this.closingSession = closing
+    void closing.then(() => { if (this.closingSession === closing) this.closingSession = null })
     this.stopping = true
     this.process = null
     this.initialized = false
@@ -6975,6 +7102,7 @@ function getSharedBridgeState(): SharedBridgeState {
     rpc: (method, params, runId) => appServer.automationRpc(method, params, runId),
     acquireAccount: (runId, settings) => appServer.acquireTaskAccount(runId, settings),
     releaseAccount: runId => appServer.releaseTaskAccount(runId),
+    accountStorageId: runId => appServer.taskAccountStorageId(runId),
     accountBusy: () => false,
     hasQueuedMessages: async (id) => Boolean((await backendQueueProcessor.readState())[id]?.length),
     pendingRequests: () => appServer.listPendingServerRequests(),

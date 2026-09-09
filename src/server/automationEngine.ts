@@ -14,6 +14,7 @@ export type AutomationInspection = { status: 'running' | 'waiting_input' | 'comp
 export interface AutomationRuntime {
   acquireAccount?(runId: string, settings: AutomationModelSettings): Promise<boolean>
   releaseAccount?(runId: string): void
+  accountStorageId?(runId: string): string | null | undefined
   accountBusy(): boolean
   canStart(threadId: string): Promise<boolean>
   createThread(cwd: string, name: string, settings?: AutomationModelSettings, runId?: string): Promise<{ threadId: string; model?: string }>
@@ -206,7 +207,11 @@ export class AutomationEngine {
     return this.serial(async () => {
       for (const run of this.state.runs.filter(isPendingAutomationRun)) {
         const settings = this.definitions.get(run.automationId)?.record
-        if (runIds.includes(run.runId) || settings?.accountStorageId === storageId || (primary && !settings?.accountStorageId)) {
+        const selected = run.executionAccountStorageId
+        const matches = selected !== undefined
+          ? selected === storageId
+          : settings?.accountStorageId === storageId || (primary && !settings?.accountStorageId && !run.submittedAt)
+        if (runIds.includes(run.runId) || matches) {
           this.finish(run, 'cancelled', '执行账号已移除，关联连接已关闭', 'ACCOUNT_REMOVED')
         }
       }
@@ -332,6 +337,7 @@ export class AutomationEngine {
       }
     }
     if (isCancelledRun(run)) { this.runtime.releaseAccount?.(run.runId); return }
+    run.executionAccountStorageId = this.runtime.accountStorageId?.(run.runId)
     run.status = 'starting'; run.startedAt = this.now(); run.error = null; run.errorCode = null
     await this.persist()
     try {

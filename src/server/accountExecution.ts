@@ -31,11 +31,12 @@ export class AccountExecutionRegistry {
   private nextId = 1
   private revision = 0
   private readonly removed = new Map<string, number>()
+  private readonly reopened = new Set<string>()
   private readonly entries = new Map<number, Entry>()
   generation(): number { return this.revision }
   removedAfter(storageId: string, revision: number): boolean { return (this.removed.get(storageId) || 0) > revision }
-  isRemoved(storageId: string): boolean { return this.removed.has(storageId) }
-  reopen(storageId: string): void { this.removed.delete(storageId) }
+  isRemoved(storageId: string): boolean { return this.removed.has(storageId) && !this.reopened.has(storageId) }
+  reopen(storageId: string): void { this.reopened.add(storageId) }
   assertAvailable(storageId: string): void {
     if (this.isRemoved(storageId)) throw new AccountExecutionError('account_removed', '账号已移除，关联连接已关闭。')
   }
@@ -57,12 +58,14 @@ export class AccountExecutionRegistry {
   }
   revoke(storageId: string): void {
     this.removed.set(storageId, ++this.revision)
+    this.reopened.delete(storageId)
     for (const [id, entry] of this.entries) {
       if (entry.storageId !== storageId) continue
       this.entries.delete(id)
       entry.controller.abort()
       // Disconnect adapters only close their owned transport; no network wait.
-      entry.disconnect()
+      try { entry.disconnect() }
+      catch { /* One failed transport cleanup must not preserve other connections. */ }
     }
   }
   busyAccounts(): string[] { return [...new Set([...this.entries.values()].filter(entry => entry.busy).map(entry => entry.storageId))] }

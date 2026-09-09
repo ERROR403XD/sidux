@@ -36,6 +36,8 @@ describe('automation execution settings and local reference time', () => {
     await runtime.createThread('/tmp', 'fixture', { model: 'chosen-model' })
     expect(rpc).toHaveBeenCalledWith('thread/start', { cwd: '/tmp', model: 'chosen-model' }, undefined)
     const params = await runtime.prepare('existing-thread', 'fixture', 'run', { model: 'chosen-model', reasoningEffort: 'high' })
+    expect(rpc).toHaveBeenCalledWith('thread/resume', { threadId: 'existing-thread', excludeTurns: true, model: 'chosen-model' }, 'run')
+    expect(rpc.mock.calls.some(([method]) => method === 'thread/read')).toBe(false)
     expect(params).toMatchObject({ model: 'chosen-model', effort: 'high', collaborationMode: { settings: { model: 'chosen-model', reasoning_effort: 'high' } } })
     expect(await runtime.prepare('existing-thread', 'fixture', 'run')).toMatchObject({ collaborationMode: { settings: { model: 'default-model', reasoning_effort: 'medium' } } })
   })

@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { expect, it, vi } from 'vitest'
 import { AppServerProcess, createCodexBridgeMiddleware } from './codexAppServerBridge'
 
-vi.mock('./skillsRoutes.js', () => ({ initializeSkillsSyncOnStartup: vi.fn(), handleSkillsRoutes: vi.fn() }))
+vi.mock('./skillsRoutes.js', () => ({ handleSkillsRoutes: vi.fn() }))
 
 it('keeps the new middleware usable when Vite closes the old server, and releases the last owner once', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'bridge-lifecycle-'))
@@ -83,7 +83,7 @@ it('refuses an idle snapshot when native activity changes during the background 
 
 it('allows in-place account reload with failed queues and terminals while retaining the stricter deployment gate', async () => {
   const runtime = new AppServerProcess()
-  vi.spyOn(runtime, 'rpc').mockResolvedValue({ data: [{ id: 'ended', status: { type: 'idle' } }], nextCursor: null })
+  vi.spyOn(runtime, 'rpc').mockImplementation(async method => method === 'thread/read' ? { thread: { id: 'ended', status: { type: 'idle' } } } : { data: [{ id: 'ended', status: { type: 'idle' } }], nextCursor: null })
   ;(runtime as any).activeTurnThreadIds.add('ended')
   runtime.queueStateReader = async () => ({ ended: [{ id: 'failed', delivery: { status: 'failed' } }] as any })
   runtime.backgroundActivity = async () => ['ended']
@@ -92,4 +92,17 @@ it('allows in-place account reload with failed queues and terminals while retain
   expect((await runtime.getRuntimeQuiescenceSnapshot()).idle).toBe(false)
   runtime.queueStateReader = async () => ({ ended: [{ id: 'unknown', delivery: { status: 'unknown' } }] as any })
   expect((await runtime.getAccountSwitchSnapshot()).idle).toBe(false)
+})
+
+it('keeps server approval IDs separate from simultaneous client RPC response IDs', () => {
+  const runtime = new AppServerProcess()
+  const resolve = vi.fn()
+  const pending = (runtime as any).pending as Map<number, unknown>
+  pending.set(7, { method: 'thread/read', resolve, reject: vi.fn() })
+  ;(runtime as any).handleLine(JSON.stringify({ id: 7, method: 'item/commandExecution/requestApproval', params: { threadId: 't' } }))
+  expect(resolve).not.toHaveBeenCalled()
+  expect(runtime.listPendingServerRequests()).toMatchObject([{ id: 7, method: 'item/commandExecution/requestApproval' }])
+  ;(runtime as any).handleLine(JSON.stringify({ id: 7, result: { thread: { id: 't' } } }))
+  expect(resolve).toHaveBeenCalledWith({ thread: { id: 't' } })
+  expect(runtime.listPendingServerRequests()).toHaveLength(1)
 })

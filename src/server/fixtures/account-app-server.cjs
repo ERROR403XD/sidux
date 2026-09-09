@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 // Deterministic IPC fixture. It never contacts an upstream model service.
 const { createInterface } = require('node:readline')
-const { readFileSync } = require('node:fs')
+const { readFileSync, writeFileSync } = require('node:fs')
 const { randomUUID } = require('node:crypto')
 if (!process.argv.includes('app-server')) process.exit(0)
-let account = JSON.parse(readFileSync(process.env.CODEX_HOME + '/auth.json', 'utf8')).tokens.account_id
+let account = 'none'
+try { account = JSON.parse(readFileSync(process.env.CODEX_HOME + '/auth.json', 'utf8')).tokens.account_id } catch {}
 const threads = new Map()
+const loaded = new Set()
+const save = thread => writeFileSync(process.env.CODEX_HOME + '/fixture-thread-' + thread.id + '.json', JSON.stringify(thread))
 const send = value => process.stdout.write(JSON.stringify(value) + '\n')
 const notify = (method, params) => send({ method, params })
 createInterface({ input: process.stdin }).on('line', line => {
@@ -19,12 +22,24 @@ createInterface({ input: process.stdin }).on('line', line => {
   if (method === 'thread/start') {
     const thread = { id: randomUUID(), cwd: p.cwd, status: { type: 'idle' }, turns: [] }
     threads.set(thread.id, thread)
+    loaded.add(thread.id)
+    save(thread)
     result = { thread, model: 'fixture' }
   }
   if (method === 'thread/list') result = { data: [...threads.values()], nextCursor: null }
-  if (method === 'thread/loaded/list') result = { data: [...threads.keys()], nextCursor: null }
-  if (method === 'thread/backgroundTerminals/list') result = { terminals: [] }
-  if (method === 'thread/read' || method === 'thread/resume') result = { thread: threads.get(p.threadId) }
+  if (method === 'thread/loaded/list') result = { data: [...loaded], nextCursor: null }
+  if (method === 'thread/backgroundTerminals/list') result = { data: [], nextCursor: null }
+  if (method === 'thread/unsubscribe') result = { status: loaded.has(p.threadId) ? 'unsubscribed' : 'notLoaded' }
+  if (method === 'thread/resume') {
+    const thread = JSON.parse(readFileSync(process.env.CODEX_HOME + '/fixture-thread-' + p.threadId + '.json', 'utf8'))
+    threads.set(thread.id, thread)
+    loaded.add(thread.id)
+    result = { thread }
+  }
+  if (method === 'thread/read') {
+    if (!loaded.has(p.threadId)) { send({ id, error: { message: 'thread not loaded: ' + p.threadId } }); return }
+    result = { thread: threads.get(p.threadId) }
+  }
   if (method === 'turn/start') {
     const thread = threads.get(p.threadId)
     if (!thread) { send({ id, error: { message: 'wrong_runtime' } }); return }
@@ -37,6 +52,7 @@ createInterface({ input: process.stdin }).on('line', line => {
       turn.status = 'completed'
       turn.items.push({ id: randomUUID(), type: 'agentMessage', text: 'OUTPUT:' + account })
       thread.status.type = 'idle'
+      save(thread)
       notify('turn/completed', { threadId: thread.id, turn })
     }, 10)
   }

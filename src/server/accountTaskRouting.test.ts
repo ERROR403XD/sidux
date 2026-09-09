@@ -81,8 +81,8 @@ it('routes colliding native approval IDs to the correct isolated account while t
   const { app, a, b } = await fixture()
   await app.acquireTaskAccount('a-run', { accountStorageId: a.account.storageId })
   await app.acquireTaskAccount('b-run', { accountStorageId: b.account.storageId })
-  const workers = (app as any).taskWorkers as Map<string, AppServerProcess>
-  const first = workers.get(a.account.storageId)!, second = workers.get(b.account.storageId)!
+  const workers = (app as any).taskRuns as Map<string, AppServerProcess>
+  const first = workers.get('a-run')!, second = workers.get('b-run')!
   ;(first as any).handleServerRequest(1, 'item/commandExecution/requestApproval', { threadId: 'thread-a' })
   ;(second as any).handleServerRequest(1, 'item/commandExecution/requestApproval', { threadId: 'thread-b' })
   const requests = app.listPendingServerRequests()
@@ -99,16 +99,17 @@ it('keeps unrelated task runtimes after removing an account and admits a later r
   const { app, coordinator, a, b } = await fixture()
   await app.acquireTaskAccount('a-run', { accountStorageId: a.account.storageId })
   await app.acquireTaskAccount('b-run', { accountStorageId: b.account.storageId })
-  const workers = (app as any).taskWorkers as Map<string, AppServerProcess>
-  const second = workers.get(b.account.storageId)!
+  const workers = (app as any).taskRuns as Map<string, AppServerProcess>
+  const second = workers.get('b-run')!
   const stopB = vi.spyOn(second, 'dispose')
   await coordinator.removeAccount(a.account.storageId, app)
-  expect(workers.has(a.account.storageId)).toBe(false)
-  expect(workers.get(b.account.storageId)).toBe(second)
+  expect(workers.has('a-run')).toBe(false)
+  expect(workers.get('b-run')).toBe(second)
   expect(stopB).not.toHaveBeenCalled()
+  await app.automationRpc('thread/start', { cwd: '/tmp' }, 'b-run')
   app.releaseTaskAccount('b-run')
-  expect(await app.acquireTaskAccount('b-next', { accountStorageId: b.account.storageId })).toBe(true)
-  expect(workers.get(b.account.storageId)).toBe(second)
+  expect(await app.acquireTaskAccount('b-next', { accountStorageId: b.account.storageId, targetThreadId: 'automation' })).toBe(true)
+  expect(workers.get('b-next')).toBe(second)
   app.stopTaskRouting()
 })
 
@@ -118,4 +119,11 @@ it('interrupts quota retry loops once and leaves unrelated turns running', async
   ;(app as any).emitNotification({ method: 'turn/started', params: { threadId: 'other', turn: { id: 'turn-other' } } })
   for (let i = 0; i < 2; i++) (app as any).emitNotification({ method: 'error', params: { threadId: 'limited', turnId: 'turn-limited', willRetry: true, error: { message: 'Usage limit reached', codexErrorInfo: 'usageLimitExceeded' } } })
   expect(call.mock.calls.filter(([method]) => method === 'turn/interrupt')).toEqual([['turn/interrupt', { threadId: 'limited', turnId: 'turn-limited' }]])
+})
+
+it('does not scan historical threads to decide whether the primary account can switch', async () => {
+  const { app, call } = await fixture()
+  const snapshot = await AppServerProcess.prototype.getRuntimeQuiescenceSnapshot.call(app, false, true)
+  expect(snapshot.idle).toBe(true)
+  expect(call.mock.calls.some(([method]) => method === 'thread/list')).toBe(false)
 })

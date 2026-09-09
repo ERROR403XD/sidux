@@ -437,6 +437,26 @@ describe('API outlet credential ownership', () => {
     expect(active?.auth.tokens?.refresh_token).toBe('rotated-once')
     expect((await accounts.readState()).activeStorageId).toBe(saved.account.storageId)
   })
+  it('recovers an expired access token after a quota probe marked it as requiring login', async () => {
+    const accounts = await store()
+    const saved = await accounts.upsertCredential(expiredCredential('a', 'user-a'), { activate: true })
+    await accounts.updateState(state => ({ state: { ...state, accounts: state.accounts.map(account => ({ ...account, authStatus: 'reauth_required', unavailableReason: 'reauth_required' })) }, result: undefined }))
+    const token = accessToken('a', 'user-a', Math.floor(Date.now() / 1000) + 3600)
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ access_token: token, refresh_token: 'recovered' }), { status: 200 }))
+    const coordinator = new AccountAuthCoordinator(accounts, { fetchImpl: fetchImpl as typeof fetch })
+    expect((await coordinator.getApiCredential(saved.account.storageId)).accessToken).toBe(token)
+    expect(fetchImpl).toHaveBeenCalledOnce()
+  })
+  it('does not repeatedly refresh a revoked credential from API and quota probes', async () => {
+    const accounts = await store()
+    const saved = await accounts.upsertCredential(expiredCredential('a', 'user-a'), { activate: true })
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ error: 'invalid_grant' }), { status: 401 }))
+    const coordinator = new AccountAuthCoordinator(accounts, { fetchImpl: fetchImpl as typeof fetch })
+    await expect(coordinator.getApiCredential(saved.account.storageId)).rejects.toThrow()
+    await expect(coordinator.getApiCredential(saved.account.storageId)).rejects.toThrow()
+    await expect(coordinator.refreshTokensForStorage(saved.account.storageId, {})).rejects.toThrow()
+    expect(fetchImpl).toHaveBeenCalledOnce()
+  })
   it('refreshes a fixed API account without changing WebUI active credentials', async () => {
     const accounts = await store()
     const active = await accounts.upsertCredential(credential('a', 'user-a'), { activate: true })
@@ -594,4 +614,24 @@ it('switches while an unrelated quota probe is pending and does not let its stal
   await authStore.upsertCredential(credential('account-a', 'user-a', 'late-fixture'), { expectedStorageId: a.account.storageId, materializeIfActive: true })
   expect((await authStore.readState()).activeStorageId).toBe(b.account.storageId)
   expect((await authStore.readActiveCredential())?.identity.storageId).toBe(b.account.storageId)
+})
+
+it('rejects an old refresh even after the removed identity has logged in again', async () => {
+  const accounts = await store()
+  const saved = await accounts.upsertCredential(credential('a', 'user-a'), { activate: true })
+  let finish!: (response: Response) => void
+  const fetchImpl = vi.fn(() => new Promise<Response>(resolve => { finish = resolve }))
+  const coordinator = new AccountAuthCoordinator(accounts, { fetchImpl: fetchImpl as typeof fetch })
+  const old = coordinator.refreshTokensForStorage(saved.account.storageId, {})
+  const rejected = expect(old).rejects.toMatchObject({ code: 'account_disconnected' })
+  await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledOnce())
+  await coordinator.removeAccount(saved.account.storageId)
+  const raw = JSON.parse(credential('a', 'user-a'))
+  raw.tokens.refresh_token = 'new-login-refresh'
+  await accounts.upsertCredential(JSON.stringify(raw), { activate: true })
+  coordinator.executions.reopen(saved.account.storageId)
+  finish(new Response(JSON.stringify({ access_token: jwt('a', 'user-a'), refresh_token: 'stale-rotation' }), { status: 200 }))
+  await rejected
+  expect((await accounts.readCredential(saved.account.storageId)).auth.tokens?.refresh_token).toBe('new-login-refresh')
+  expect((await accounts.readState()).accounts[0].authStatus).toBe('ready')
 })

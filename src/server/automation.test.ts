@@ -263,3 +263,16 @@ it('dispatches another account while the first account is still acquiring, and r
   expect(f.runtime.start).toHaveBeenCalledOnce()
   expect(f.engine.runs('test').data[0]?.status).toBe('cancelled')
 })
+
+it('keeps the acquired default account fixed when a different primary is removed', async () => {
+  const f = await fixture()
+  const selected = 'b'.repeat(64)
+  f.runtime.acquireAccount = async () => true
+  f.runtime.accountStorageId = () => selected
+  const run = await f.engine.manual('test', f.home, 'fixed-execution-account')
+  await f.engine.tick()
+  await f.engine.cancelAccount('a'.repeat(64), true, [])
+  expect(f.engine.runs('test').data.find(row => row.runId === run.runId)).toMatchObject({ status: 'running', executionAccountStorageId: selected })
+  await f.engine.cancelAccount(selected, false, [run.runId])
+  expect(f.engine.runs('test').data.find(row => row.runId === run.runId)?.status).toBe('cancelled')
+})

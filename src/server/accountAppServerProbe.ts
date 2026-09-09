@@ -118,19 +118,21 @@ export class AccountAppServerProbe {
     beforeReset?: () => Promise<void>
     refreshTokens?: (params: unknown) => Promise<ChatgptAuthTokensRefreshResponse>
     command?: string
+    prepareExternalTokens?: () => Promise<{ accessToken: string; chatgptAccountId: string; chatgptPlanType?: string }>
     externalTokens?: { accessToken: string; chatgptAccountId: string; chatgptPlanType?: string }
     spawnImpl?: typeof spawn
   }) {}
 
   async inspect(reset?: { creditId: string; idempotencyKey: string }, includeModels = false, quotaOptional = false): Promise<AccountProbeInspection> {
-    const client = this.start()
     try {
+      const externalTokens = await this.options.prepareExternalTokens?.() || this.options.externalTokens
+      const client = this.start()
       await client.call('initialize', {
         clientInfo: { name: 'codexapp-account-probe', version: '1.0.0' },
         capabilities: { experimentalApi: true },
       })
       client.notify('initialized')
-      if (this.options.externalTokens) await client.call('account/login/start', { type: 'chatgptAuthTokens', ...this.options.externalTokens })
+      if (externalTokens) await client.call('account/login/start', { type: 'chatgptAuthTokens', ...externalTokens })
       const accountPayload = asRecord(await client.call('account/read', { refreshToken: false }))
       const account = asRecord(accountPayload?.account)
       const runtimeAccountId = readString(account?.id ?? account?.accountId ?? account?.account_id)
@@ -181,7 +183,7 @@ export class AccountAppServerProbe {
     this.client?.rejectAll(new Error('Account probe stopped.'))
     this.client = null
     if (!proc) return
-    const exited = this.options.externalTokens ? once(proc, 'exit').catch(() => undefined) : null
+    const exited = once(proc, 'exit').catch(() => undefined)
     try { proc.stdin.end() } catch {}
     try { proc.kill('SIGTERM') } catch {}
     if (exited && proc.exitCode === null && proc.signalCode === null) {

@@ -38,3 +38,27 @@ it('coalesces resource allocation and keeps capacity bounded during concurrent n
   expect(pool.size).toBe(2)
   expect(pool.has('b')).toBe(true)
 })
+
+it('continues revocation after one adapter throws during disconnect', () => {
+  const registry = new AccountExecutionRegistry()
+  registry.register({ storageId: 'a', kind: 'primary', ownerId: 'broken', disconnect: () => { throw new Error('closed transport') } })
+  const close = vi.fn()
+  const lease = registry.register({ storageId: 'a', kind: 'api', ownerId: 'api', disconnect: close })
+  expect(() => registry.revoke('a')).not.toThrow()
+  expect(close).toHaveBeenCalledOnce()
+  expect(lease.signal.aborted).toBe(true)
+  expect(registry.snapshot()).toEqual([])
+})
+
+it('does not evict a resource reused while its idle check was pending', async () => {
+  let resolveIdle!: (value: boolean) => void
+  const dispose = vi.fn()
+  const pool = new AccountResourcePool({ capacity: 1, idle: () => new Promise<boolean>(resolve => { resolveIdle = resolve }), dispose })
+  const a = await pool.getOrCreate('a', () => ({}))
+  const pending = pool.getOrCreate('b', () => ({}))
+  await Promise.resolve()
+  expect(await pool.getOrCreate('a', () => ({}))).toBe(a)
+  resolveIdle(true)
+  expect(await pending).toBeNull()
+  expect(dispose).not.toHaveBeenCalled()
+})

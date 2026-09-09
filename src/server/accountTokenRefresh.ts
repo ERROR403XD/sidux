@@ -41,6 +41,11 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
+export function accessTokenExpiresAt(token: string): number {
+  const payload = decodeJwtPayload(token)
+  return typeof payload?.exp === 'number' ? payload.exp * 1000 : 0
+}
+
 function errorMessage(payload: Record<string, unknown> | null, fallback: string): string {
   const nested = asRecord(payload?.error)
   return readString(payload?.message)
