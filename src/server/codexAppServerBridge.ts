@@ -7221,7 +7221,16 @@ function getSharedBridgeState(): SharedBridgeState {
   const previousRuntimeStopped = existing ? disposeSharedBridgeState(existing) : undefined
 
   const appServer = new AppServerProcess()
-  const unsubscribeQuota = getAccountAuthCoordinator().subscribeQuotaUpdates(account => appServer.notifyAccountQuota(account))
+  let wakeQuotaResume = () => {}
+  const lastQuotaUsage = new Map<string, number[]>()
+  const unsubscribeQuota = getAccountAuthCoordinator().subscribeQuotaUpdates(account => {
+    appServer.notifyAccountQuota(account)
+    const usage = [account.quotaSnapshot?.primary?.usedPercent, account.quotaSnapshot?.secondary?.usedPercent]
+      .filter((value): value is number => typeof value === 'number')
+    const previous = lastQuotaUsage.get(account.storageId)
+    lastQuotaUsage.set(account.storageId, usage)
+    if (!previous || usage.some((value, index) => value < (previous[index] ?? Infinity))) wakeQuotaResume()
+  })
   const processActivity = existing?.processActivity ?? new ProcessActivityStore(join(getCodexHomeDir(), 'codexapp-hook-observations.json'))
   const terminalManager = new ThreadTerminalManager()
   const methodCatalog = new MethodCatalog()
@@ -7234,7 +7243,7 @@ function getSharedBridgeState(): SharedBridgeState {
   const backendQueueProcessor = new BackendQueueProcessor(appServer, { features: async () => (await methodCatalog.snapshot()).features, previousRuntimeStopped })
   const quotaResume = new ThreadQuotaResume(getCodexHomeDir(), {
     inspect: async threadId => {
-      const response = asRecord((await backendQueueProcessor.history.page(threadId, { limit: 50 })).result)
+      const response = asRecord((await backendQueueProcessor.history.page(threadId, { limit: 1 })).result)
       const thread = asRecord(response?.thread)
       const turns = Array.isArray(thread?.turns) ? thread.turns : []
       const last = asRecord(turns.at(-1))
@@ -7245,7 +7254,7 @@ function getSharedBridgeState(): SharedBridgeState {
     },
     available: async () => {
       const coordinator = getAccountAuthCoordinator()
-      if (appServer.taskAccountBusy() || coordinator.isAccountOperationInProgress()) return false
+      if (appServer.taskAccountBusy() || coordinator.blocksNewSubmissions()) return false
       const state = await coordinator.store.readState()
       const account = state.accounts.find(row => row.storageId === state.activeStorageId)
       if (!account || account.quotaStatus !== 'ready' || !account.quotaSnapshot || !account.quotaUpdatedAtIso || Date.now() - Date.parse(account.quotaUpdatedAtIso) > 5 * 60_000) return false
@@ -7254,7 +7263,7 @@ function getSharedBridgeState(): SharedBridgeState {
       try { await coordinator.assertSubmissionAllowed(undefined); return true } catch { return false }
     },
     submit: async (threadId, id) => {
-      const message = { id, text: '继续刚才做到一半的工作。额度已恢复。先核对现有进度，避免重复执行已完成的操作；如果工作已全部完成，请直接报告结果。', imageUrls: [], skills: [], fileAttachments: [], collaborationMode: 'default' as const }
+      const message = { id, text: '继续之前的工作', imageUrls: [], skills: [], fileAttachments: [], collaborationMode: 'default' as const }
       let params: Record<string, unknown>
       try { params = await backendQueueProcessor.buildQueuedTurnParams({ threadId, message }) }
       catch { throw Object.assign(new Error('续跑参数准备未完成，稍后重试'), { retryableQuota: true }) }
@@ -7289,6 +7298,7 @@ function getSharedBridgeState(): SharedBridgeState {
     },
     changed: () => appServer.notifyQuotaResumeChanged(),
   })
+  wakeQuotaResume = () => { void quotaResume.tick().catch(() => undefined) }
   appServer.quotaBlocked = (threadId, turnId) => quotaResume.blocked(threadId, turnId)
   const threadGoalReader = new ThreadGoalReader((method, params) => appServer.rpc(method, params))
   const threadCompactionGate = new ThreadCompactionGate((method, params) => appServer.rpc(method, params),

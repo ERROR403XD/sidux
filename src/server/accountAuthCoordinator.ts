@@ -227,14 +227,20 @@ export class AccountAuthCoordinator {
     finally { if (this.rollingUpdates.get(storageId) === update) this.rollingUpdates.delete(storageId) }
   }
   private readonly refreshOperations = new Map<string, Promise<unknown>>()
+  private credentialMutationStorageId: string | null = null
+  private primaryCredentialMutation = false
   isAccountOperationInProgress(): boolean { return this.operation !== null || this.refreshOperations.size > 0 }
+  isAccountRefreshInProgress(storageId: string): boolean {
+    return this.refreshOperations.has(`probe:${storageId}`) || this.refreshOperations.has(`token:${storageId}`)
+  }
   blocksApiAccount(storageId: string | null): boolean {
     const operation = this.operation
     if (!operation || operation.kind === 'refresh') return false
     if (operation.kind === 'switch') return storageId === null
-    return storageId === null || operation.storageId === storageId
+    if (operation.kind === 'login') return storageId === null ? this.primaryCredentialMutation : this.credentialMutationStorageId === storageId
+    return storageId !== null && operation.storageId === storageId
   }
-  blocksNewSubmissions(): boolean { return this.operation !== null && this.operation.kind !== 'refresh' }
+  blocksNewSubmissions(): boolean { return this.operation?.kind === 'switch' || this.primaryCredentialMutation }
   private operation: CoordinatorOperation | null = null
   private loginSession: LoginSession | null = null
   private lastLogin: AccountLoginStatus | null = null
@@ -453,6 +459,12 @@ export class AccountAuthCoordinator {
       raw = await readFile(`${session.home}/auth.json`, 'utf8')
       const beforeState = await this.store.readState()
       const wasActive = beforeState.activeStorageId === parsed.identity.storageId
+      this.credentialMutationStorageId = parsed.identity.storageId
+      this.primaryCredentialMutation = wasActive
+      await Promise.all([
+        this.refreshOperations.get(`probe:${parsed.identity.storageId}`),
+        this.refreshOperations.get(`token:${parsed.identity.storageId}`),
+      ].map(pending => pending?.catch(() => undefined)))
       if (wasActive && runtime) await this.assertRuntimeIdle(runtime)
       const saved = await this.store.upsertCredential(raw, {
         expectedStorageId: session.targetStorageId,
@@ -474,6 +486,8 @@ export class AccountAuthCoordinator {
         accounts: sortAccounts(state).map((entry) => publicAccount(entry, state.activeStorageId)),
       }
     } finally {
+      this.credentialMutationStorageId = null
+      this.primaryCredentialMutation = false
       await this.finishLoginSession(session)
     }
   }
@@ -908,7 +922,10 @@ export class AccountAuthCoordinator {
   }
 
   private async withRefreshOperation<T>(key: string, run: () => Promise<T>): Promise<T> {
-    if (this.operation) throw new AccountCoordinatorError('account_operation_in_progress', 'Another account operation is already in progress.')
+    const accountId = key.slice(key.indexOf(':') + 1)
+    if (this.operation && (this.operation.kind !== 'login' || accountId === 'active' || this.credentialMutationStorageId === accountId)) {
+      throw new AccountCoordinatorError('account_operation_in_progress', 'Another account operation is already in progress.')
+    }
     const previous = this.refreshOperations.get(key)
     const pending = (async () => {
       await previous?.catch(() => undefined)

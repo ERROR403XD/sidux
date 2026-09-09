@@ -9,7 +9,7 @@ import { AccountActivationScheduler } from './accountActivationScheduler.js'
 const ACTIVATION_MODEL = 'gpt-5.6-luna'
 export function createAccountActivationRuntime(coordinator: AccountAuthCoordinator, gateway: ApiProxyGateway) {
   const directory = join(coordinator.store.codexHome, 'account-activation')
-  const busy = (id: string) => coordinator.isAccountOperationInProgress() || gateway.accountHasConnections(id)
+  const busy = (id: string) => coordinator.blocksApiAccount(id) || coordinator.isAccountRefreshInProgress(id) || gateway.accountHasConnections(id)
   return new AccountActivationScheduler(directory, {
     model: ACTIVATION_MODEL,
     accountExists: async id => (await coordinator.store.readState()).accounts.some(row => row.storageId === id),

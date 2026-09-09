@@ -81,3 +81,37 @@ it('reconciles a known pre-submission failure, while preserving ambiguous delive
   expect(runtime.submit).toHaveBeenCalledTimes(2)
   expect((await restarted.snapshot())['thread-a']?.status).toBe('submitted')
 })
+
+it('recovers missed quota completion events and does not replay against the old failed turn', async () => {
+  const { service, runtime } = await fixture()
+  runtime.inspect.mockResolvedValue({ active: true, turnId: 'turn-a', status: 'inProgress', error: '' })
+  await service.set('thread-a', true)
+  runtime.inspect.mockResolvedValue({ active: false, turnId: 'turn-a', status: 'failed', error: 'usageLimitExceeded' })
+  runtime.available.mockResolvedValue(true)
+  await service.tick()
+  await service.tick()
+  expect(runtime.submit).toHaveBeenCalledTimes(1)
+  expect((await service.snapshot())['thread-a']?.status).toBe('submitted')
+})
+
+it('skips an unreadable waiting thread and continues other eligible work', async () => {
+  const { service, runtime } = await fixture()
+  await service.set('thread-a', true)
+  await service.set('thread-b', true)
+  runtime.available.mockResolvedValue(true)
+  runtime.inspect.mockRejectedValueOnce(new Error('unreadable'))
+  await service.tick()
+  expect(runtime.submit).toHaveBeenCalledExactlyOnceWith('thread-b', expect.any(String))
+})
+
+it('records known pre-send failure and retries with an explicit continuation', async () => {
+  const { service, runtime } = await fixture()
+  await service.set('thread-a', true)
+  runtime.available.mockResolvedValue(true)
+  runtime.submit.mockRejectedValueOnce(Object.assign(new Error('续跑参数准备未完成，稍后重试'), { retryableQuota: true }))
+  await service.tick()
+  expect((await service.snapshot())['thread-a']).toMatchObject({ status: 'waiting', lastError: '续跑参数准备未完成，稍后重试' })
+  await service.tick()
+  expect((await service.snapshot())['thread-a']?.lastError).toBeUndefined()
+  expect(runtime.submit).toHaveBeenCalledTimes(2)
+})

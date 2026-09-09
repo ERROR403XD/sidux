@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { privateJson } from './apiProxy/store.js'
 
-export type QuotaResumeMark = { status: 'armed' | 'waiting' | 'submitted' | 'unknown'; blockedTurnId: string | null; attemptId: string | null; attemptedAt?: number }
+export type QuotaResumeMark = { status: 'armed' | 'waiting' | 'submitted' | 'unknown'; blockedTurnId: string | null; attemptId: string | null; attemptedAt?: number; lastError?: string }
 type ThreadState = { active: boolean; turnId: string | null; status: string; error: string }
 type Runtime = {
   inspect(threadId: string): Promise<ThreadState>
@@ -21,6 +21,7 @@ export class ThreadQuotaResume {
   private serial: Promise<unknown> = Promise.resolve()
   private ticking = false
   private stopped = false
+  private inspectionOffset = 0
   private timer: ReturnType<typeof setInterval> | null = null
   private readonly path: string
   readonly ready: Promise<void>
@@ -77,6 +78,7 @@ export class ThreadQuotaResume {
       mark.status = 'waiting'
       mark.blockedTurnId = turnId
       mark.attemptId = null
+      delete mark.lastError
       await this.save()
     })
   }
@@ -101,9 +103,33 @@ export class ThreadQuotaResume {
     this.ticking = true
     try {
       await this.operation(async () => {
+        // Recover missed completion notifications after disconnect/restart.
+        const candidates = Object.entries(this.marks).filter(([, mark]) => ['armed', 'submitted'].includes(mark.status))
+        const count = Math.min(8, candidates.length)
+        for (let index = 0; index < count; index++) {
+          const [threadId, mark] = candidates[(this.inspectionOffset + index) % candidates.length]!
+          try {
+            const state = await this.runtime.inspect(threadId)
+            if (state.active) continue
+            if (['failed', 'interrupted'].includes(state.status) && isQuotaFailure(state.error)
+              && (mark.status === 'armed' || state.turnId !== mark.blockedTurnId)) {
+              mark.status = 'waiting'
+              mark.blockedTurnId = state.turnId
+              mark.attemptId = null
+              await this.save()
+            } else if (mark.status === 'submitted' && state.status === 'completed') {
+              mark.status = 'armed'
+              mark.attemptId = null
+              await this.save()
+            }
+          } catch { /* One unreadable thread must not stop other continuations. */ }
+        }
+        if (candidates.length) this.inspectionOffset = (this.inspectionOffset + count) % candidates.length
         for (const [threadId, mark] of Object.entries(this.marks).filter(([, mark]) => mark.status === 'unknown').slice(0, 8)) {
           if (!mark.attemptId || !this.runtime.reconcile) continue
-          const status = await this.runtime.reconcile(threadId, mark.attemptId, mark.attemptedAt)
+          let status: 'waiting' | 'submitted' | 'unknown'
+          try { status = await this.runtime.reconcile(threadId, mark.attemptId, mark.attemptedAt) }
+          catch { continue }
           if (status !== mark.status) {
             mark.status = status
             if (status === 'waiting') mark.attemptId = null
@@ -114,7 +140,9 @@ export class ThreadQuotaResume {
         if (!waiting.length || !await this.runtime.available()) return
         for (const [threadId, mark] of waiting) {
           if (this.stopped) break
-          const state = await this.runtime.inspect(threadId)
+          let state: ThreadState
+          try { state = await this.runtime.inspect(threadId) }
+          catch { continue }
           if (state.active) continue
           if (state.turnId !== mark.blockedTurnId && state.status === 'completed') {
             mark.status = 'armed'
@@ -124,9 +152,11 @@ export class ThreadQuotaResume {
           mark.status = 'submitted'
           mark.attemptId = randomUUID()
           mark.attemptedAt = Date.now()
+          delete mark.lastError
           await this.save()
           try { await this.runtime.submit(threadId, mark.attemptId) }
           catch (cause) {
+            mark.lastError = cause instanceof Error ? cause.message : '续跑提交失败，结果未确认'
             mark.status = (cause as { retryableQuota?: boolean })?.retryableQuota ? 'waiting' : 'unknown'
             if (mark.status === 'waiting') mark.attemptId = null
             await this.save()
