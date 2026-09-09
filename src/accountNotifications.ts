@@ -1,6 +1,6 @@
-export type AccountNoticeRule = { resetExpiry?: boolean; resetExpiryLeadTimes?: string; resetExpiryMessage?: string; fiveHour: boolean; weekly: boolean; fiveHourMessage: string; weeklyMessage: string }
+export type AccountNoticeRule = { resetIncrease?: boolean; resetIncreaseMessage?: string; resetExpiry?: boolean; resetExpiryLeadTimes?: string; resetExpiryMessage?: string; fiveHour: boolean; weekly: boolean; fiveHourMessage: string; weeklyMessage: string }
 export type NotificationSettings = { enabled: boolean; url: string; body: string; timezone: string; quietEnabled: boolean; quietStart: string; quietEnd: string }
-export const defaultNoticeRule: AccountNoticeRule = { resetExpiry: false, resetExpiryLeadTimes: '7d, 3d, 12h', resetExpiryMessage: '{{account}} 的重置机会将于 {{expires_at}} 到期，剩余 {{remaining}}（提醒档位 {{lead_time}}）。', fiveHour: false, weekly: false, fiveHourMessage: '{{account}} 的5小时额度已恢复，剩余 {{remaining}}%，下次重置 {{reset_at}}', weeklyMessage: '{{account}} 的主额度已恢复，剩余 {{remaining}}%，下次重置 {{reset_at}}' }
+export const defaultNoticeRule: AccountNoticeRule = { resetIncrease: false, resetIncreaseMessage: '{{account}} 的 Banked reset 重置机会增加 {{increase}} 次，当前可用 {{remaining}} 次（原有 {{previous}} 次）。', resetExpiry: false, resetExpiryLeadTimes: '7d, 3d, 12h', resetExpiryMessage: '{{account}} 的重置机会将于 {{expires_at}} 到期，剩余 {{remaining}}（提醒档位 {{lead_time}}）。', fiveHour: false, weekly: false, fiveHourMessage: '{{account}} 的5小时额度已恢复，剩余 {{remaining}}%，下次重置 {{reset_at}}', weeklyMessage: '{{account}} 的主额度已恢复，剩余 {{remaining}}%，下次重置 {{reset_at}}' }
 export const defaultNotificationSettings: NotificationSettings = { enabled: false, url: '', body: '{"message":"{{message}}"}', timezone: 'Asia/Shanghai', quietEnabled: false, quietStart: '22:00', quietEnd: '08:00' }
 export function renderNotice(template: string, values: Record<string, string>): string {
   return template.replace(/\{\{([a-z_]+)\}\}/g, (match, key) => values[key] ?? match)
@@ -31,6 +31,8 @@ export function mainQuotaWording(text: string): string {
   return text.replaceAll('周剩余额度', '主额度剩余').replaceAll('周额度', '主额度').replaceAll('周限额', '主额度').replaceAll('周保护', '主额度保护')
 }
 export function normalizeNoticeRule(rule: AccountNoticeRule): AccountNoticeRule {
+  if (rule.resetIncrease !== undefined && typeof rule.resetIncrease !== 'boolean') throw new Error('重置次数增加提醒选项无效')
+  if (rule.resetIncreaseMessage !== undefined && typeof rule.resetIncreaseMessage !== 'string') throw new Error('重置次数增加提醒内容无效')
   const leads = parseResetExpiryLeadTimes(rule.resetExpiryLeadTimes ?? defaultNoticeRule.resetExpiryLeadTimes!)
   if (rule.resetExpiry !== undefined && typeof rule.resetExpiry !== 'boolean') throw new Error('重置到期提醒选项无效')
   if (rule.resetExpiryMessage !== undefined && typeof rule.resetExpiryMessage !== 'string') throw new Error('重置到期提醒内容无效')

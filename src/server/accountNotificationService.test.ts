@@ -147,3 +147,108 @@ it('drops queued expiry reminders when a reset credit is consumed or its account
   expect((await service.snapshot()).pendingCount).toBe(0)
   expect(send).not.toHaveBeenCalled()
 })
+
+function withCredits(count: number, timestamp = '2026-09-10T00:00:00Z'): StoredAccountEntry {
+  return { ...entry(100, 80), quotaUpdatedAtIso: timestamp, resetCredits: { availableCount: count, credits: null } }
+}
+it('notifies only reset count increases, preserving the baseline and pending notice across restart', async () => {
+  const { service, send, coordinator } = await fixture()
+  await service.save({ accountId: 'account-a', rule: { ...defaultNoticeRule, resetIncrease: true } })
+  await service.observe(withCredits(1))
+  expect((await service.snapshot()).pendingCount).toBe(0)
+  await service.observe(withCredits(3, '2026-09-10T01:00:00Z'))
+  await service.observe(withCredits(3, '2026-09-10T01:00:00Z'))
+  expect((await service.snapshot()).pendingCount).toBe(1)
+  await service.flush(Date.parse('2026-09-10T15:00:00Z'))
+  expect(send).not.toHaveBeenCalled()
+  await service.close()
+  const restarted = new AccountNotificationService(coordinator, send as typeof fetch, false)
+  cleanup.push(() => restarted.close())
+  await restarted.observe(withCredits(3, '2026-09-10T02:00:00Z'))
+  await restarted.flush(Date.parse('2026-09-11T01:00:00Z'))
+  expect(send).toHaveBeenCalledTimes(1)
+  expect(JSON.parse(String(send.mock.calls[0]![1]!.body)).message).toContain('增加 2 次，当前可用 3 次')
+  await restarted.observe(withCredits(2, '2026-09-10T03:00:00Z'))
+  expect((await restarted.snapshot()).pendingCount).toBe(0)
+  await restarted.observe(withCredits(3, '2026-09-10T04:00:00Z'))
+  expect((await restarted.snapshot()).pendingCount).toBe(1)
+})
+it('ignores unknown, failed and stale reset snapshots instead of interpreting them as zero', async () => {
+  const { service } = await fixture()
+  await service.save({ accountId: 'account-a', rule: { ...defaultNoticeRule, resetIncrease: true } })
+  await service.observe(withCredits(3, '2026-09-10T02:00:00Z'))
+  await service.observe({ ...entry(100, 80), resetCredits: null })
+  await service.observe({ ...withCredits(0, '2026-09-10T03:00:00Z'), quotaStatus: 'error' })
+  await service.observe(withCredits(0, '2026-09-10T01:00:00Z'))
+  await service.observe(withCredits(3, '2026-09-10T04:00:00Z'))
+  expect((await service.snapshot()).pendingCount).toBe(0)
+})
+it('tracks reset counts without a quota window and renders count variables in nested POST fields', async () => {
+  const { service, send } = await fixture()
+  await service.save({ settings: { ...defaultNotificationSettings, enabled: true, url: 'http://127.0.0.1/fixture', body: '{"message":"{{message}}","counts":{"added":"{{increase}}","before":"{{previous}}","now":"{{remaining}}"}}' }, accountId: 'account-a', rule: { ...defaultNoticeRule, resetIncrease: true } })
+  await service.observe({ ...withCredits(0), quotaSnapshot: null })
+  await service.observe({ ...withCredits(2), quotaSnapshot: null })
+  await service.flush()
+  expect(send).toHaveBeenCalledTimes(1)
+  expect(JSON.parse(String(send.mock.calls[0]![1]!.body)).counts).toEqual({ added: '2', before: '0', now: '2' })
+})
+it('drops pending reset increases on disable and does not report increases observed while disabled', async () => {
+  const { service } = await fixture()
+  await service.save({ accountId: 'account-a', rule: { ...defaultNoticeRule, resetIncrease: true } })
+  await service.observe(withCredits(0))
+  await service.observe(withCredits(1))
+  expect((await service.snapshot()).pendingCount).toBe(1)
+  await service.save({ accountId: 'account-a', rule: { ...defaultNoticeRule, resetIncrease: false } })
+  expect((await service.snapshot()).pendingCount).toBe(0)
+  await service.observe(withCredits(2))
+  await service.save({ accountId: 'account-a', rule: { ...defaultNoticeRule, resetIncrease: true } })
+  await service.observe(withCredits(2))
+  expect((await service.snapshot()).pendingCount).toBe(0)
+})
+it('validates new rule fields and upgrades saved legacy rules with increase notices disabled', async () => {
+  const { service } = await fixture()
+  await expect(service.save({ accountId: 'account-a', rule: { ...defaultNoticeRule, resetIncrease: 'yes' } as any })).rejects.toThrow('增加提醒选项')
+  await expect(service.save({ accountId: 'account-a', rule: { ...defaultNoticeRule, resetIncreaseMessage: 3 } as any })).rejects.toThrow('增加提醒内容')
+  const { resetIncrease: _enabled, resetIncreaseMessage: _message, ...legacy } = defaultNoticeRule
+  await service.save({ accountId: 'account-a', rule: legacy })
+  expect((await service.snapshot()).accounts['account-a']?.resetIncrease).toBe(false)
+})
+it('separates count baselines by account and makes concurrent identical observations produce one event', async () => {
+  const { service, coordinator } = await fixture()
+  await coordinator.store.updateState((state: any) => ({ state: { ...state, accounts: [...state.accounts, { ...entry(100, 80), storageId: 'account-b' }] }, result: undefined }))
+  for (const accountId of ['account-a', 'account-b']) await service.save({ accountId, rule: { ...defaultNoticeRule, resetIncrease: true } })
+  await service.observe(withCredits(0))
+  await service.observe({ ...withCredits(3), storageId: 'account-b' })
+  await Promise.all([service.observe(withCredits(1)), service.observe(withCredits(1))])
+  expect((await service.snapshot()).pendingCount).toBe(1)
+})
+
+it('delivers a reset increase through real loopback HTTP exactly once without touching reset APIs', async () => {
+  const { createServer } = await import('node:http')
+  const bodies: unknown[] = []
+  const server = createServer(async (req, res) => {
+    let body = ''
+    for await (const chunk of req) body += String(chunk)
+    bodies.push(JSON.parse(body))
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end('{"received":true}')
+  })
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+  try {
+    const { service, send } = await fixture()
+    send.mockImplementation((url, options) => fetch(url, options))
+    const address = server.address() as import('node:net').AddressInfo
+    await service.save({ settings: { ...defaultNotificationSettings, enabled: true, url: `http://127.0.0.1:${address.port}/notice` }, accountId: 'account-a', rule: { ...defaultNoticeRule, resetIncrease: true } })
+    await service.observe(withCredits(0))
+    await service.observe(withCredits(1))
+    await service.observe(withCredits(1))
+    await service.flush()
+    await service.flush()
+    expect(bodies).toHaveLength(1)
+    expect(bodies[0]).toEqual({ message: expect.stringContaining('增加 1 次，当前可用 1 次') })
+    expect((await service.snapshot()).lastResult).toBe('通知已发送')
+  } finally {
+    server.closeAllConnections()
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()))
+  }
+})

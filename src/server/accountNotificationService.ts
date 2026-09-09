@@ -4,14 +4,16 @@ import { randomUUID } from 'node:crypto'
 import { defaultNotificationSettings, defaultNoticeRule, normalizeNoticeRule, mainQuotaWording, parseResetExpiryLeadTimes, formatReminderHours, inQuietHours, renderNotice, renderNoticeBody, validateNotificationSettings, type NotificationSettings, type AccountNoticeRule } from '../accountNotifications.js'
 import type { AccountAuthCoordinator } from './accountAuthCoordinator.js'
 import type { StoredAccountEntry } from './accountAuthStore.js'
+import { normalizeResetCredits } from '../accountResetCredits.js'
 import { quotaRefreshInterval } from '../quotaRefresh.js'
 import { privateJson } from './apiProxy/store.js'
 
 type WindowState = { reset: number; used: number }
-type PendingNotice = { id: string; accountId: string; kind: 'fiveHour' | 'weekly' | 'resetExpiry'; message: string; createdAt: number; expiresAt?: number; creditId?: string; values?: Record<string, string> }
-type State = { expiryNotices: Record<string, number>; version: 1; settings: NotificationSettings; accounts: Record<string, AccountNoticeRule>; windows: Record<string, WindowState>; pending: PendingNotice[]; lastResult: string | null }
+type PendingNotice = { id: string; accountId: string; kind: 'fiveHour' | 'weekly' | 'resetExpiry' | 'resetIncrease'; message: string; createdAt: number; expiresAt?: number; creditId?: string; values?: Record<string, string> }
+type ResetCountState = { count: number; observedAt: number | null }
+type State = { resetCounts: Record<string, ResetCountState>; expiryNotices: Record<string, number>; version: 1; settings: NotificationSettings; accounts: Record<string, AccountNoticeRule>; windows: Record<string, WindowState>; pending: PendingNotice[]; lastResult: string | null }
 export class AccountNotificationService {
-  private state: State = { expiryNotices: {}, version: 1, settings: { ...defaultNotificationSettings }, accounts: {}, windows: {}, pending: [], lastResult: null }
+  private state: State = { resetCounts: {}, expiryNotices: {}, version: 1, settings: { ...defaultNotificationSettings }, accounts: {}, windows: {}, pending: [], lastResult: null }
   readonly ready: Promise<void>
   private serial: Promise<unknown> = Promise.resolve()
   private ticking: Promise<void> | null = null
@@ -27,7 +29,7 @@ export class AccountNotificationService {
       try {
         const data = JSON.parse(await readFile(statePath, 'utf8'))
         if (data.version !== 1) throw new Error('通知状态版本无效')
-        this.state = { ...this.state, ...data, settings: validateNotificationSettings(data.settings) }
+        this.state = { ...this.state, ...data, resetCounts: data.resetCounts || {}, settings: validateNotificationSettings(data.settings) }
         this.state.accounts = Object.fromEntries(Object.entries(this.state.accounts).map(([id, rule]) => [id, normalizeNoticeRule(rule)]))
         this.state.pending = this.state.pending.map(notice => ({ ...notice, message: mainQuotaWording(notice.message) }))
       } catch (cause) { if ((cause as NodeJS.ErrnoException).code !== 'ENOENT') throw cause }
@@ -60,8 +62,9 @@ export class AccountNotificationService {
   }
   async save(input: { settings?: NotificationSettings; accountId?: string; rule?: AccountNoticeRule; protectionPercent?: number }) {
     if (input.settings) validateNotificationSettings(input.settings)
+    const accounts = input.accountId || input.settings?.enabled ? (await this.coordinator.store.readState()).accounts : []
     if (input.accountId) {
-      if (!(await this.coordinator.store.readState()).accounts.some(account => account.storageId === input.accountId)) throw new Error('账号不存在。')
+      if (!accounts.some(account => account.storageId === input.accountId)) throw new Error('账号不存在。')
       const rule = input.rule
       if (!rule || typeof rule.fiveHour !== 'boolean' || typeof rule.weekly !== 'boolean' || typeof rule.fiveHourMessage !== 'string' || typeof rule.weeklyMessage !== 'string') throw new Error('账号通知规则无效。')
     }
@@ -71,6 +74,13 @@ export class AccountNotificationService {
       await this.coordinator.store.updateState(state => ({ state: { ...state, accounts: state.accounts.map(account => account.storageId === input.accountId ? { ...account, protectionPercent: input.protectionPercent } : account) }, result: undefined }))
     }
     await this.mutate(state => {
+      // Enabling begins from the current known count, not increases that happened while disabled.
+      const newlyEnabled = input.settings?.enabled && !state.settings.enabled
+      for (const account of accounts) {
+        const ruleEnabled = input.accountId === account.storageId && input.rule?.resetIncrease && !state.accounts[account.storageId]?.resetIncrease
+        const baseline = this.resetCount(account)
+        if (baseline && (newlyEnabled || ruleEnabled)) state.resetCounts[account.storageId] = baseline
+      }
       if (input.settings) state.settings = { ...input.settings }
       if (input.accountId && input.rule) state.accounts[input.accountId] = normalizeNoticeRule(input.rule)
       state.pending = state.pending.filter(item => state.settings.enabled && state.accounts[item.accountId]?.[item.kind])
@@ -90,10 +100,37 @@ export class AccountNotificationService {
     await this.mutate(state => { state.lastResult = result })
     return { lastResult: result }
   }
+  private resetCount(account: StoredAccountEntry): ResetCountState | null {
+    if (account.quotaStatus !== 'ready') return null
+    const credits = normalizeResetCredits(account.resetCredits)
+    if (!credits) return null
+    const timestamp = Date.parse(account.quotaUpdatedAtIso || account.lastVerifiedAtIso || '')
+    return { count: credits.availableCount, observedAt: Number.isFinite(timestamp) ? timestamp : null }
+  }
   async observe(account: StoredAccountEntry): Promise<void> {
-    if (this.stopped || account.quotaStatus !== 'ready' || !account.quotaSnapshot) return
+    if (this.stopped || account.quotaStatus !== 'ready') return
     await this.mutate(state => {
       const rule = state.accounts[account.storageId] || defaultNoticeRule
+      const current = this.resetCount(account)
+      const previous = state.resetCounts[account.storageId]
+      const stale = current?.observedAt != null && previous?.observedAt != null && current.observedAt < previous.observedAt
+      if (current && !stale) {
+        state.resetCounts[account.storageId] = current
+        if (state.settings.enabled && rule.resetIncrease && previous && current.count > previous.count) {
+          const values = {
+            account: account.email || account.accountId,
+            account_id: account.storageId,
+            increase: String(current.count - previous.count),
+            previous: String(previous.count),
+            remaining: String(current.count),
+          }
+          state.pending.push({
+            id: randomUUID(), accountId: account.storageId, kind: 'resetIncrease',
+            message: renderNotice(rule.resetIncreaseMessage || defaultNoticeRule.resetIncreaseMessage!, values),
+            values, createdAt: Date.now(),
+          })
+        }
+      }
       for (const window of [account.quotaSnapshot?.primary, account.quotaSnapshot?.secondary]) {
         const kind = window?.windowMinutes === 300 ? 'fiveHour' : window && window.windowMinutes !== null && window.windowMinutes >= 10080 ? 'weekly' : null
         if (!kind || !window || !Number.isFinite(window.usedPercent)) continue

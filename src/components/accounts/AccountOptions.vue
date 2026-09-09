@@ -10,6 +10,11 @@
       <textarea v-if="rule.fiveHour" v-model="rule.fiveHourMessage" class="app-input" rows="3" aria-label="5小时恢复通知内容" :disabled="busy" />
       <label class="notification-check"><input v-model="rule.weekly" type="checkbox" :disabled="busy" />主额度恢复通知</label>
       <textarea v-if="rule.weekly" v-model="rule.weeklyMessage" class="app-input" rows="3" aria-label="主额度恢复通知内容" :disabled="busy" />
+      <label class="notification-check"><input v-model="rule.resetIncrease" type="checkbox" :disabled="busy" />重置次数增加提醒（Banked reset）</label>
+      <template v-if="rule.resetIncrease">
+        <label>提醒内容<textarea v-model="rule.resetIncreaseMessage" class="app-input" rows="3" aria-label="重置次数增加提醒内容" :disabled="busy" /></label>
+        <small v-pre>首次读取仅记录次数；增加时通知。占位符：{{account}}、{{account_id}}、{{increase}}、{{remaining}}、{{previous}}。同样可用于POST请求体。</small>
+      </template>
       <label class="notification-check"><input v-model="rule.resetExpiry" type="checkbox" :disabled="busy" />重置机会到期提醒</label>
       <template v-if="rule.resetExpiry">
         <label>提前时间<input v-model="rule.resetExpiryLeadTimes" class="app-input" aria-label="重置提醒提前时间" placeholder="7d, 3d, 12h" :disabled="busy" /></label>
