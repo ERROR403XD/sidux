@@ -50,7 +50,7 @@ Validate `scripts/codexapp-release-switch.sh`: prepare an immutable release whil
 - `activate` refuses to proceed without `--confirm-idle` and an empty server-side turn/queue/approval check.
 - The base unit and `/home/docker/codexapp` stay intact; only `90-release-switch.conf` selects the prepared release.
 - The test container stops before production cutover and its independent `CODEX_HOME` is never copied into production.
-- The code-only activation health check touches `/` only; `auth.json`, `accounts.json`, and `accounts/` match the post-stop snapshot byte-for-byte.
+- The code-only activation health check touches `/` only; root and profile/pending `auth.json` files match the post-stop snapshot byte-for-byte. Account metadata preserves identity, active selection, credential revision and configuration; verification status, quota snapshots and reset-credit observations may update. Account runtime databases, caches and temporary files may change.
 - Failure before activation completes automatically restores the previous drop-in, authentication snapshot, production service, and previously running test container.
 - A later explicit rollback preserves the then-current production authentication state instead of overwriting legitimate refresh-token rotation with an old snapshot.
 
@@ -75,6 +75,14 @@ Validate `scripts/codexapp-release-switch.sh`: prepare an immutable release whil
 预期：同 CODEX_HOME 重启读取保留全部账号、active 身份、凭据版本、状态和配额快照。切换脚本覆盖 `auth.json`、`accounts.json` 及整个 `accounts/`，非 active 或 pending 凭据变化也会被发现。人工回滚保留当时最新凭据。生产账号不被测试池覆盖；测试池保留但不自动导入生产。
 
 清理：自动回归清理自身临时目录；不要删除真实生产/候选账号目录或恢复历史 Token。上线后核对所有账号卡及 active 状态，再做真实请求验收。
+
+### 0.2.12 认证校验误报修复
+
+前提：使用临时虚拟账号，保留完整账号目录快照；不连接真实 systemd 服务。
+
+操作：运行 `bash -n scripts/codexapp-release-switch.sh` 和 `pnpm exec vitest run src/server/releaseAuthPreservation.test.ts src/cli/codexappReleaseSwitch.test.ts`。分别模拟账号目录 SQLite WAL、模型缓存和临时目录更新，以及配额/核验时间更新；再模拟新增/删除/修改凭据、pending 凭据变化、激活账号变化、身份/凭据版本/保护值变化和损坏元数据。
+
+预期：运行时更新通过；认证或配置变化与损坏元数据失败。失败自动回滚和之后手动回滚仍通过原有测试；完整快照保留供回滚，校验不输出凭据内容。清理：测试自行删除临时目录，真实失败事务保留以供排查。
 
 ### 0.1.90 调度器与旧版预检查
 

@@ -240,15 +240,66 @@ auth_state_matches_snapshot() {
     marker="${item//./_}.present"
     if [[ -f "$snapshot/$marker" ]]; then
       [[ -e "$PRODUCTION_HOME/$item" ]] || return 1
-      if [[ -d "$snapshot/$item" ]]; then
-        diff -qr "$snapshot/$item" "$PRODUCTION_HOME/$item" >/dev/null || return 1
-      else
-        cmp -s "$snapshot/$item" "$PRODUCTION_HOME/$item" || return 1
-      fi
     elif [[ -e "$PRODUCTION_HOME/$item" ]]; then
       return 1
     fi
   done
+  # Account homes also contain live SQLite databases, caches and temporary files.
+  # Keep the full rollback snapshot, but compare only authentication invariants.
+  "$NODE_BIN" - "$snapshot" "$PRODUCTION_HOME" <<'NODE'
+const fs = require('node:fs');
+const path = require('node:path');
+const { isDeepStrictEqual } = require('node:util');
+const [snapshot, home] = process.argv.slice(2);
+const volatileAccountFields = new Set([
+  'authStatus', 'lastVerifiedAtIso', 'quotaSnapshot', 'quotaUpdatedAtIso',
+  'quotaStatus', 'quotaError', 'unavailableReason', 'resetCredits',
+]);
+function metadata(root) {
+  const file = path.join(root, 'accounts.json');
+  if (!fs.existsSync(file)) return null;
+  const state = JSON.parse(fs.readFileSync(file, 'utf8'));
+  if (!state || !Array.isArray(state.accounts)) throw new Error('invalid metadata');
+  return {
+    ...state,
+    accounts: state.accounts.map(account => {
+      if (!account || typeof account.storageId !== 'string') throw new Error('invalid account');
+      return Object.fromEntries(Object.entries(account).filter(([key]) => !volatileAccountFields.has(key)));
+    }),
+  };
+}
+function credentials(root) {
+  const files = new Map();
+  function add(relative) {
+    const file = path.join(root, relative);
+    if (fs.existsSync(file)) files.set(relative, fs.readFileSync(file));
+  }
+  add('auth.json');
+  // Only the store's profile and pending-login locations contain credentials.
+  // Do not traverse sessions, databases, caches or tmp under each account home.
+  const accounts = path.join(root, 'accounts');
+  if (fs.existsSync(accounts)) {
+    for (const entry of fs.readdirSync(accounts, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      if (entry.name === '.pending') {
+        for (const login of fs.readdirSync(path.join(accounts, '.pending'), { withFileTypes: true })) {
+          if (login.isDirectory()) add(path.join('accounts', '.pending', login.name, 'auth.json'));
+        }
+      } else {
+        add(path.join('accounts', entry.name, 'auth.json'));
+      }
+    }
+  }
+  return files;
+}
+try {
+  if (!isDeepStrictEqual(metadata(snapshot), metadata(home)) ||
+      !isDeepStrictEqual(credentials(snapshot), credentials(home))) process.exit(1);
+} catch {
+  // Never print parsed metadata or credential contents, including parse errors.
+  process.exit(1);
+}
+NODE
 }
 
 restore_auth_snapshot() {
