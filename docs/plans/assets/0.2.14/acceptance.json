@@ -1,0 +1,261 @@
+{
+  "version": "0.2.14",
+  "runtime": {
+    "version": "0.2.14",
+    "image": "sha256:fa399c32fe68f34acb4e25c47121db7cdc8405cf90ab64e607649e4de291003c",
+    "codexCli": "codex-cli 0.153.4",
+    "candidate": "http://192.168.50.46:59001",
+    "volume": "codexapp-multi-account-dev-home",
+    "cliSha256": "2476c0302ab95f6f8ada5b0c156fd1bb710ba6483fdfeb72896dea55e9b3f5d3",
+    "indexSha256": "ad11ba633f1eeed6502228ce66b6ef9841523f3e5b598fde844aa89300353d66",
+    "packageSha256": "7dfa264a89d7ca560f06d48f44931454fd1a472cf5104ec28a8b954e9694d33c",
+    "matchesBuiltArtifact": true,
+    "productionPidUnchanged": true,
+    "runtime": {
+      "ready": true,
+      "active": 0,
+      "queued": 0
+    },
+    "accountExecutions": 2,
+    "checkedAt": "2026-09-09T18:12:38.046Z"
+  },
+  "unit": {
+    "files": 81,
+    "tests": 558,
+    "passed": true
+  },
+  "routing": [
+    {
+      "step": "ws-before-switch",
+      "markers": [
+        "CODEXAPP_0214_WS_ONE"
+      ]
+    },
+    {
+      "step": "default-route-to-expired-account",
+      "elapsedMs": 4,
+      "wsStillOpen": true,
+      "markers": []
+    },
+    {
+      "step": "primary-switch-with-fixed-ws",
+      "elapsedMs": 2557,
+      "wsStillOpen": true,
+      "markers": []
+    },
+    {
+      "step": "ws-after-switch",
+      "markers": [
+        "CODEXAPP_0214_WS_TWO"
+      ]
+    },
+    {
+      "step": "compact",
+      "status": 200,
+      "opaqueOutput": true,
+      "outputCount": 2,
+      "markers": []
+    }
+  ],
+  "crossAccountAutomation": [
+    {
+      "step": "automation",
+      "round": 1,
+      "status": "completed",
+      "elapsedMs": 22082,
+      "markers": [
+        "CODEXAPP_0214_AUTOMATION_OK",
+        "CODEXAPP_0214_MCP_OK"
+      ]
+    },
+    {
+      "step": "automation",
+      "round": 2,
+      "status": "completed",
+      "elapsedMs": 24073,
+      "markers": [
+        "CODEXAPP_0214_AUTOMATION_OK",
+        "CODEXAPP_0214_MCP_OK"
+      ]
+    },
+    {
+      "step": "artifact",
+      "markers": []
+    }
+  ],
+  "sessionHandoff": [
+    {
+      "step": "chat",
+      "markers": [
+        "CODEXAPP_0214_PRIMARY_BEFORE"
+      ]
+    },
+    {
+      "step": "heartbeat",
+      "round": 1,
+      "elapsedMs": 3084,
+      "markers": [
+        "CODEXAPP_0214_HEARTBEAT_OK"
+      ]
+    },
+    {
+      "step": "chat",
+      "markers": [
+        "CODEXAPP_0214_PRIMARY_AFTER_1"
+      ]
+    },
+    {
+      "step": "heartbeat",
+      "round": 2,
+      "elapsedMs": 4092,
+      "markers": [
+        "CODEXAPP_0214_HEARTBEAT_OK"
+      ]
+    },
+    {
+      "step": "chat",
+      "markers": [
+        "CODEXAPP_0214_PRIMARY_AFTER_2"
+      ]
+    },
+    {
+      "step": "archive",
+      "success": true,
+      "markers": []
+    }
+  ],
+  "idleGate": [
+    {
+      "step": "active-turn-gate",
+      "blocked": "idle-check|liveExecutions=1|activeTurns=0|queued=0|pendingApprovals=0|apiConnections=0|apiActiveRequests=0|backgroundThreads=skipped-busy|loadedThreads=0|pages=1",
+      "markers": []
+    },
+    {
+      "step": "chat",
+      "markers": [
+        "CODEXAPP_0214_IDLE_GATE_OK"
+      ]
+    },
+    {
+      "step": "completed-turn-gate",
+      "idle": "idle-check|liveExecutions=0|activeTurns=0|queued=0|pendingApprovals=0|apiConnections=0|apiActiveRequests=0|backgroundThreads=0|loadedThreads=0|pages=1",
+      "markers": []
+    }
+  ],
+  "remove": {
+    "port": 59052,
+    "removedLoggedOutPrimary": true,
+    "accountsRemaining": 0,
+    "authFileAbsent": true,
+    "elapsedMs": 78,
+    "newLoginStarted": true,
+    "newLoginCancelled": true
+  },
+  "uiFixtureCombinations": 6,
+  "candidateUi": [
+    {
+      "baseUrl": "http://127.0.0.1:59001",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "light",
+      "renderedPluginCount": 60,
+      "paginationPassed": true,
+      "errors": [],
+      "retired": [],
+      "bg": "rgb(255, 251, 235)",
+      "sidebarBg": "rgb(254, 243, 199)",
+      "pluginScreenshot": "output/playwright/0214-candidate-plugins-light.png",
+      "automationScreenshot": "output/playwright/0214-candidate-automation-light.png"
+    },
+    {
+      "baseUrl": "http://127.0.0.1:59001",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "dark",
+      "renderedPluginCount": 60,
+      "paginationPassed": true,
+      "errors": [],
+      "retired": [],
+      "bg": "rgb(36, 33, 22)",
+      "sidebarBg": "rgb(66, 55, 17)",
+      "pluginScreenshot": "output/playwright/0214-candidate-plugins-dark.png",
+      "automationScreenshot": "output/playwright/0214-candidate-automation-dark.png"
+    }
+  ],
+  "authMatrix": [
+    {
+      "kind": "noauth",
+      "port": 59051,
+      "name": "codexapp-0214-noauth",
+      "hasCodexAuth": false,
+      "enabled": true,
+      "provider": "opencode-zen",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "invalid",
+      "port": 59052,
+      "name": "codexapp-0214-invalid",
+      "hasCodexAuth": true,
+      "enabled": false,
+      "provider": "openrouter",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "malformed",
+      "port": 59053,
+      "name": "codexapp-0214-malformed",
+      "hasCodexAuth": false,
+      "enabled": true,
+      "provider": "opencode-zen",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "provider",
+      "port": 59054,
+      "name": "codexapp-0214-provider",
+      "hasCodexAuth": false,
+      "enabled": true,
+      "provider": "opencode-zen",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "provider-after",
+      "provider": "openrouter",
+      "enabled": true
+    }
+  ],
+  "pty": {
+    "version": "0.2.14",
+    "pty": "CODEXAPP_0214_PTY_OK",
+    "composioPresent": false,
+    "firebasePresent": false
+  },
+  "performance": {
+    "homeApiKB": 14.8,
+    "warnings": [],
+    "snapshot": {
+      "BlockIO": "13.5MB / 79.4MB",
+      "CPUPerc": "0.01%",
+      "Container": "codexapp-multi-account-dev",
+      "ID": "a8be01a632c5",
+      "MemPerc": "0.53%",
+      "MemUsage": "126.9MiB / 23.43GiB",
+      "Name": "codexapp-multi-account-dev",
+      "NetIO": "37.5MB / 1.25MB",
+      "PIDs": "86"
+    }
+  }
+}
