@@ -1,7 +1,7 @@
 <template>
   <div class="account-panel">
     <header class="account-panel-header">
-      <h3>OpenAI账户 <small>{{ accounts.length }}</small></h3>
+      <h3>OpenAI账号 <small>{{ accounts.length }}</small></h3>
       <AppButton :disabled="busy" title="刷新账号列表" aria-label="刷新账号列表" @click="$emit('refresh')">↻</AppButton>
       <AppButton :disabled="busy" @click="$emit('add')">{{ t('Add account') }}</AppButton>
     </header>

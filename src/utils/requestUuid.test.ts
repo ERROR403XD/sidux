@@ -10,6 +10,6 @@ it('creates valid distinct UUIDs on HTTP without randomUUID', () => {
 })
 
 it('uses the native UUID API when available', () => {
-  const cryptoApi = { randomUUID: () => '12345678-1234-4234-8234-123456789abc' } as Crypto
+  const cryptoApi = { randomUUID: () => '12345678-1234-4234-8234-123456789abc' } as unknown as Crypto
   expect(requestUuid(cryptoApi)).toBe('12345678-1234-4234-8234-123456789abc')
 })

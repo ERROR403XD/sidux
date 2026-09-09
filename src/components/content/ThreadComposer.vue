@@ -229,18 +229,18 @@
 
         <span v-if="modelSettingsWarning || modelCatalogError" class="model-capability-warning" role="status">{{ modelSettingsWarning || modelCatalogError }}</span>
         <template v-if="!isDictationRecording">
-          <ComposerDropdown
+          <ModelReasoningPicker
             ref="commandModelRef"
-            @open-change="onCommandSubmenuChange('model', $event)"
             class="thread-composer-control"
-            :model-value="selectedModel"
-            :options="modelOptions"
-            :placeholder="t('Model')"
-            open-direction="up"
-            :disabled="isComposerConfigDisabled || models.length === 0"
-            enable-search
-            :search-placeholder="t('Search models...')"
-            @update:model-value="onModelSelect"
+            :selected-model="selectedModel"
+            :selected-effort="selectedReasoningEffort"
+            :default-effort="modelCapability?.defaultEffort"
+            :models="modelOptions"
+            :efforts="reasoningOptions"
+            :disabled="isComposerConfigDisabled"
+            @open-change="onCommandSubmenuChange('model', $event)"
+            @model="onModelSelect"
+            @effort="onReasoningEffortSelect"
           />
 
           <ComposerSearchDropdown
@@ -261,16 +261,7 @@
             @remove="onRemovePrompt"
           />
 
-          <AppSelect
-            class="thread-composer-control model-effort-picker"
-            :model-value="selectedReasoningEffort"
-            :options="reasoningOptions"
-            :title="modelSettingsWarning || modelCapabilityDescription"
-            :placeholder="t('Thinking')"
-            open-direction="up"
-            :disabled="isComposerConfigDisabled"
-            @update:model-value="onReasoningEffortSelect"
-          />
+
         </template>
 
         <button
@@ -413,7 +404,7 @@ import IconTablerMaximize from '../icons/IconTablerMaximize.vue'
 import IconTablerMicrophone from '../icons/IconTablerMicrophone.vue'
 import IconTablerMinimize from '../icons/IconTablerMinimize.vue'
 import IconTablerPlayerStopFilled from '../icons/IconTablerPlayerStopFilled.vue'
-import ComposerDropdown from './ComposerDropdown.vue'
+import ModelReasoningPicker from './ModelReasoningPicker.vue'
 import ComposerSearchDropdown from './ComposerSearchDropdown.vue'
 
 type SkillSourceBadge = {
@@ -581,7 +572,7 @@ const DRAFT_STORAGE_PREFIX = 'codex-web-local.thread-draft.v1.'
 let lastActiveThreadId = ''
 
 const modelCapability = computed(() => props.modelCapabilities?.find(model => model.id === props.selectedModel))
-const reasoningOptions = computed(() => effortOptions(modelCapability.value, props.selectedReasoningEffort))
+const reasoningOptions = computed(() => effortOptions(modelCapability.value))
 const serviceTierOptions = computed(() => tierOptions(modelCapability.value, props.selectedSpeedMode))
 const fastTier = computed(() => modelCapability.value?.serviceTiers?.find(tier => tier.value === 'priority' || /^fast$/i.test(tier.label)))
 const isFastSelected = computed(() => !!fastTier.value && (props.selectedSpeedMode || modelCapability.value?.defaultServiceTier) === fastTier.value.value)

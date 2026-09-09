@@ -53,21 +53,7 @@
 
           <p v-if="!isSidebarCollapsed && isSidebarSearchVisible && sidebarSearchQuery.trim()" class="sidebar-search-status" :title="threadSearchScope" role="status">{{ threadSearchStatus }}</p>
 
-          <button
-            v-if="!isSidebarCollapsed"
-            class="sidebar-skills-link"
-            :class="{ 'is-active': isSkillsRoute }"
-            type="button"
-            @click="openDirectory()"
-          >
-            <span class="sidebar-skills-link-icon" aria-hidden="true">
-              <IconTablerBolt />
-            </span>
-            <span class="sidebar-skills-link-copy">
-              <span class="sidebar-skills-link-title">{{ t('Skills') }}</span>
-              <span class="sidebar-skills-link-subtitle">{{ t('Plugins, apps, MCPs') }}</span>
-            </span>
-          </button>
+
 
           <button
             v-if="!isSidebarCollapsed"
@@ -141,7 +127,7 @@
           <AppPopover :open="isSettingsOpen" :anchor="settingsAreaRef" :width="400" direction="up" panel-class="account-popover" @close="isSettingsOpen = false">
             <AccountPanel :accounts="accounts" :busy="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
   @reload="loadAccountsState()" @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount">
-              <template #footer><div class="account-versions"><span>Codex {{ runtimeCapabilities?.cliVersion || '检测中…' }}</span><span>CodexApp {{ runtimeCapabilities?.appVersion || appVersion }}</span></div><AppButton @click="openSettings">账号设置 →</AppButton></template>
+              <template #footer><div class="account-versions"><span>Codex {{ runtimeCapabilities?.cliVersion || '检测中…' }}</span><span>CodexApp {{ runtimeCapabilities?.appVersion || appVersion }}</span></div><AppButton @click="openSettings">全局设置 →</AppButton></template>
             </AccountPanel>
           </AppPopover>
         </div>
@@ -462,7 +448,8 @@
                 />
               </div>
 </template>
-<template #integrations><NotificationSettings :key="displayTimeZonePreference" />              <button class="sidebar-settings-row" type="button" aria-live="polite" @click="isTelegramConfigOpen = !isTelegramConfigOpen">
+<template #integrations>
+<AppButton @click="openDirectory()">技能、应用与 MCP</AppButton><NotificationSettings :key="displayTimeZonePreference" />              <button class="sidebar-settings-row" type="button" aria-live="polite" @click="isTelegramConfigOpen = !isTelegramConfigOpen">
                 <span class="sidebar-settings-label">{{ t('Telegram') }}</span>
                 <span class="sidebar-settings-value">{{ telegramStatusText }}</span>
               </button>
@@ -556,35 +543,7 @@
                     @change="onDirectProjectImportFileChange"
                   />
                 </div>
-                <section v-if="showFirstLaunchPluginsCard" class="new-thread-launch-card" :aria-label="t('Plugins and Apps announcement')">
-                  <div class="new-thread-launch-card-copy">
-                    <div class="new-thread-launch-card-topline">
-                      <span class="new-thread-launch-card-badge" aria-hidden="true">
-                        <IconTablerBolt />
-                      </span>
-                      <p class="new-thread-launch-card-eyebrow">{{ t('New in Codex') }}</p>
-                    </div>
-                    <h2 class="new-thread-launch-card-title">{{ t('Plugins are here') }}</h2>
-                    <p class="new-thread-launch-card-text">
-                      {{ t('Hook Codex up to Gmail, Calendar, GitHub, Slack, Browser Use, and more so it can actually help with real work right away.') }}
-                    </p>
-                    <div class="new-thread-launch-card-pills" :aria-label="t('Example integrations')">
-                      <span class="new-thread-launch-card-pill">Gmail</span>
-                      <span class="new-thread-launch-card-pill">Calendar</span>
-                      <span class="new-thread-launch-card-pill">GitHub</span>
-                      <span class="new-thread-launch-card-pill">Slack</span>
-                      <span class="new-thread-launch-card-pill">Browser Use</span>
-                    </div>
-                  </div>
-                  <div class="new-thread-launch-card-actions">
-                    <button class="new-thread-launch-card-button new-thread-launch-card-button-primary" type="button" @click="onOpenPluginsHomeCard">
-                      {{ t('Explore Plugins & Apps') }}
-                    </button>
-                    <button class="new-thread-launch-card-button" type="button" @click="dismissFirstLaunchPluginsCard">
-                      {{ t('Dismiss') }}
-                    </button>
-                  </div>
-                </section>
+
                 <Teleport to="body">
                   <div v-if="isExistingFolderPickerOpen" class="new-thread-open-folder-overlay" v-modal-backdrop="() => { if (!isCreatingFolder && !isOpeningExistingFolder) onCloseExistingFolderPanel() }">
                     <div class="new-thread-open-folder" role="dialog" aria-modal="true" :aria-label="t('Select folder')" @keydown.esc.prevent="onCloseExistingFolderPanel">
@@ -1133,7 +1092,6 @@ import {
   getWorktreeBranchOptions,
   getAccounts,
   createLocalDirectory,
-  getFirstLaunchPluginsCardPreference,
   getHomeDirectory,
   getTelegramConfig,
   getProjectRootSuggestion,
@@ -1144,7 +1102,6 @@ import {
   importProjectZip,
   listLocalDirectories,
   openProjectRoot,
-  persistFirstLaunchPluginsCardPreference,
   removeAccount,
   refreshAccountsFromAuth,
   refreshAccountQuota,
@@ -1668,7 +1625,6 @@ const projectZipProgressWidth = computed(() => {
   if (!total || total <= 0) return loaded > 0 ? '55%' : '20%'
   return `${Math.min(100, Math.max(5, Math.round((loaded / total) * 100)))}%`
 })
-const showFirstLaunchPluginsCard = ref(false)
 const freeModeEnabled = ref(false)
 const freeModeLoading = ref(false)
 const freeModeCustomKey = ref('')
@@ -1910,17 +1866,6 @@ function buildThreadContextTooltip(usage: UiThreadTokenUsage | null): string {
   }
 
   return lines.join('\n')
-}
-
-function dismissFirstLaunchPluginsCard(): void {
-  if (!showFirstLaunchPluginsCard.value) return
-  showFirstLaunchPluginsCard.value = false
-  void persistFirstLaunchPluginsCardPreference(true)
-}
-
-function onOpenPluginsHomeCard(): void {
-  dismissFirstLaunchPluginsCard()
-  void openDirectory('plugins')
 }
 
 const threadContextBadgeState = computed(() => {
@@ -2212,7 +2157,6 @@ onMounted(() => {
   darkModeMediaQuery?.addEventListener('change', applyDarkMode)
   void initialize()
   void loadHomeDirectory()
-  void loadFirstLaunchPluginsCardPreference()
   void loadWorkspaceRootOptionsState()
   void refreshDefaultProjectName()
   void refreshTelegramConfig()
@@ -2383,11 +2327,6 @@ async function refreshTelegramConfig(): Promise<void> {
   } catch (error) {
     telegramConfigError.value = error instanceof Error ? error.message : 'Failed to load Telegram configuration'
   }
-}
-
-async function loadFirstLaunchPluginsCardPreference(): Promise<void> {
-  const preference = await getFirstLaunchPluginsCardPreference()
-  showFirstLaunchPluginsCard.value = preference.dismissed !== true
 }
 
 function parseTelegramAllowedUserIdsInput(value: string): Array<number | '*'> {
@@ -5487,90 +5426,6 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
 
 .new-thread-project-import-input {
   display: none;
-}
-
-.new-thread-launch-card {
-  @apply mt-4 w-full max-w-3xl rounded-[28px] border border-emerald-200 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.2),_transparent_42%),linear-gradient(135deg,_#f4fff8,_#ffffff_58%)] px-5 py-5 text-left shadow-[0_18px_50px_-28px_rgba(5,150,105,0.45)];
-}
-
-.new-thread-launch-card-copy {
-  @apply flex flex-col gap-2;
-}
-
-.new-thread-launch-card-topline {
-  @apply flex items-center gap-2;
-}
-
-.new-thread-launch-card-badge {
-  @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl bg-emerald-700 text-white shadow-[0_12px_28px_-18px_rgba(5,150,105,0.9)];
-}
-
-.new-thread-launch-card-badge :deep(svg) {
-  @apply h-4 w-4;
-}
-
-.new-thread-launch-card-eyebrow {
-  @apply m-0 text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-700;
-}
-
-.new-thread-launch-card-title {
-  @apply m-0 text-xl font-semibold leading-tight text-zinc-950 sm:text-2xl;
-}
-
-.new-thread-launch-card-text {
-  @apply m-0 max-w-2xl text-sm leading-6 text-zinc-700 sm:text-[15px];
-}
-
-.new-thread-launch-card-actions {
-  @apply mt-4 flex flex-wrap items-center gap-2;
-}
-
-.new-thread-launch-card-pills {
-  @apply mt-1 flex flex-wrap gap-2;
-}
-
-.new-thread-launch-card-pill {
-  @apply inline-flex items-center rounded-full border border-emerald-100 bg-white/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700;
-}
-
-.new-thread-launch-card-button {
-  @apply inline-flex h-10 items-center justify-center rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50;
-}
-
-.new-thread-launch-card-button-primary {
-  @apply border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-600;
-}
-
-:global(:root.dark) .new-thread-launch-card {
-  @apply border-emerald-900/80 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.2),_transparent_38%),linear-gradient(135deg,_rgba(6,78,59,0.32),_rgba(24,24,27,0.96)_58%)] shadow-[0_24px_64px_-34px_rgba(16,185,129,0.35)];
-}
-
-:global(:root.dark) .new-thread-launch-card-eyebrow {
-  @apply text-emerald-300;
-}
-
-:global(:root.dark) .new-thread-launch-card-badge {
-  @apply bg-emerald-500 text-white;
-}
-
-:global(:root.dark) .new-thread-launch-card-title {
-  @apply text-zinc-50;
-}
-
-:global(:root.dark) .new-thread-launch-card-text {
-  @apply text-zinc-300;
-}
-
-:global(:root.dark) .new-thread-launch-card-pill {
-  @apply border-emerald-900 bg-zinc-900/70 text-emerald-300;
-}
-
-:global(:root.dark) .new-thread-launch-card-button {
-  @apply border-zinc-700 bg-zinc-900 text-zinc-100 hover:bg-zinc-800;
-}
-
-:global(:root.dark) .new-thread-launch-card-button-primary {
-  @apply border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-500;
 }
 
 .new-thread-folder-action {

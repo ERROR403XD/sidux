@@ -2535,3 +2535,26 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 }
 
 .conversation-defaults-note { color: var(--ui-text); opacity: .7; font-size: 12px; line-height: 1.5; }
+
+/* Unified model and reasoning selector, shared across composer surfaces. */
+.model-reasoning-trigger { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 100px; max-width: 180px; padding: 3px 10px; border: 0; border-radius: var(--ui-radius-control, 8px); background: transparent; color: var(--ui-text); font-size: 12px; }
+.model-reasoning-trigger small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .65; font-size: 11px; }
+.model-reasoning-trigger:disabled { opacity: .5; }
+.model-reasoning-popover { padding: 12px; background: var(--ui-surface); color: var(--ui-text); }
+.model-reasoning-heading { display: flex; align-items: center; }
+.model-reasoning-summary { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: transparent; color: inherit; }
+.model-reasoning-summary strong { color: #3b96ff; font-size: 13px; }
+.model-reasoning-summary small { opacity: .65; font-size: 12px; }
+.model-reasoning-reset, .model-reasoning-back { border: 0; background: transparent; color: inherit; padding: 5px; }
+.model-reasoning-reset { font-size: 21px; }
+.model-reasoning-range { width: 100%; margin: 15px 0 8px; accent-color: #3b96ff; }
+.model-reasoning-levels { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; }
+.model-reasoning-levels button { padding: 3px 5px; border: 0; border-radius: 5px; background: transparent; color: inherit; font-size: 10px; opacity: .65; }
+.model-reasoning-levels button[aria-pressed="true"] { color: #3b96ff; opacity: 1; background: rgba(59,150,255,.12); }
+.model-reasoning-search { width: 100%; box-sizing: border-box; margin: 8px 0; padding: 7px; border: 1px solid var(--ui-border); border-radius: 7px; color: inherit; background: var(--ui-surface); }
+.model-reasoning-models { max-height: 280px; overflow-y: auto; }
+.model-reasoning-models button { display: flex; justify-content: space-between; width: 100%; text-align: left; border: 0; border-radius: 7px; padding: 8px; background: transparent; color: inherit; font-size: 13px; }
+.model-reasoning-models button[aria-pressed="true"], .model-reasoning-models button:hover { background: rgba(128,128,128,.12); }
+.model-reasoning-empty { font-size: 12px; opacity: .65; }
+:root.dark .model-reasoning-popover, :root.dark .model-reasoning-search { background: var(--ui-surface); color: var(--ui-text); }
+.model-capability-warning { flex-basis: 100%; min-width: 0; overflow-wrap: anywhere; }
