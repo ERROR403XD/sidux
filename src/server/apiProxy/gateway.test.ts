@@ -310,3 +310,29 @@ it('serves responses and chat completions throughout background refresh and isol
   expect((await f.post('/v1/responses', { input: [] })).status).toBe(503)
   f.setOperation(null)
 })
+
+it('rebinds a key away from a stalled account without aborting another key stream', async () => {
+  const f = await fixture()
+  const a = 'a'.repeat(64), b = 'b'.repeat(64)
+  f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+  const generation = await f.gateway.component.prepare(null)
+  const prepare = vi.spyOn(ProxyComponent.prototype, 'prepare').mockImplementation(async id => ({ ...generation, id: id!, storageId: id!, references: 0 }))
+  const controller = new AbortController()
+  try {
+    const moving = await f.gateway.store.createKey('moving', null, { accountStorageId: a })
+    const other = await f.gateway.store.createKey('other', null, { accountStorageId: b })
+    const stalled = await f.post('/v1/responses', { model: 'slow', stream: true }, moving.secret)
+    const unaffected = await fetch(f.base + '/v1/responses', { method: 'POST', headers: f.headers(other.secret), body: JSON.stringify({ model: 'slow', stream: true }), signal: controller.signal })
+    expect(stalled.status).toBe(200)
+    expect(unaffected.status).toBe(200)
+    expect((await f.post('/codex-api/api-proxy/keys/' + moving.key.id, { accountStorageId: b })).status).toBe(200)
+    await vi.waitFor(() => expect([...f.gateway.activity.entries.values()].some(row => row.keyId === moving.key.id)).toBe(false))
+    f.setOperation({ kind: 'refresh', storageId: a })
+    expect((await f.post('/v1/chat/completions', { model: 'fixture', messages: [] }, moving.secret)).status).toBe(200)
+    expect([...f.gateway.activity.entries.values()].some(row => row.keyId === other.key.id && row.busy)).toBe(true)
+    f.setOperation(null)
+  } finally {
+    controller.abort()
+    prepare.mockRestore()
+  }
+})
