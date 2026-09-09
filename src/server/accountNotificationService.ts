@@ -75,16 +75,18 @@ export class AccountNotificationService {
     if (input.alias !== undefined && (!input.accountId || typeof input.alias !== 'string' || input.alias.trim().length > 80)) {
       throw new Error('账号别名须为不超过80个字符的文本。')
     }
+    let protectionChanged = false
     if (input.protectionPercent !== undefined || input.alias !== undefined) {
       // Metadata shares the store's short write queue, never the login/switch/runtime gate.
-      await this.coordinator.store.updateState(state => {
-        if (!state.accounts.some(account => account.storageId === input.accountId)) throw new Error('账号不存在。')
+      protectionChanged = await this.coordinator.store.updateState(state => {
+        const current = state.accounts.find(account => account.storageId === input.accountId)
+        if (!current) throw new Error('账号不存在。')
         const accounts = state.accounts.map(account => account.storageId === input.accountId ? {
           ...account,
           ...(input.protectionPercent !== undefined ? { protectionPercent: input.protectionPercent } : {}),
           ...(input.alias !== undefined ? { alias: input.alias.trim() } : {}),
         } : account)
-        return { state: { ...state, accounts }, result: undefined }
+        return { state: { ...state, accounts }, result: input.protectionPercent !== undefined && input.protectionPercent !== (current.protectionPercent || 0) }
       })
     }
     await this.mutate(state => {
@@ -99,7 +101,7 @@ export class AccountNotificationService {
       if (input.accountId && input.rule) state.accounts[input.accountId] = normalizeNoticeRule(input.rule)
       state.pending = state.pending.filter(item => state.settings.enabled && state.accounts[item.accountId]?.[item.kind])
     })
-    return this.snapshot()
+    return { ...await this.snapshot(), protectionChanged }
   }
   async test(): Promise<{ lastResult: string | null }> {
     await this.ready

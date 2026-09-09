@@ -60,6 +60,7 @@ const busy = ref(false)
 const loaded = ref(false)
 const error = ref('')
 const percent = ref(0)
+const initialPercent = ref(0)
 const alias = ref('')
 const hasFiveHourQuota = computed(() => [props.account.quotaSnapshot?.primary, props.account.quotaSnapshot?.secondary].some(window => window?.windowMinutes === 300))
 const rule = ref<AccountNoticeRule>({ ...defaultNoticeRule })
@@ -67,7 +68,8 @@ async function open(): Promise<void> {
   visible.value = true
   loaded.value = false
   error.value = ''
-  percent.value = props.account.protectionPercent || 0
+  initialPercent.value = props.account.protectionPercent || 0
+  percent.value = initialPercent.value
   alias.value = props.account.alias || ''
   try {
     const result = await apiProxyRequest<{ accounts: Record<string, AccountNoticeRule> }>('/notifications')
@@ -80,7 +82,7 @@ async function save(): Promise<void> {
   busy.value = true
   error.value = ''
   try {
-    await apiProxyRequest('/notifications', { accountId: props.account.storageId, rule: rule.value, protectionPercent: percent.value, alias: alias.value })
+    await apiProxyRequest('/notifications', { accountId: props.account.storageId, rule: rule.value, protectionPercent: percent.value !== initialPercent.value ? percent.value : undefined, alias: alias.value })
     visible.value = false
     emit('changed')
   } catch (cause) { error.value = cause instanceof Error ? cause.message : '保存失败。' }

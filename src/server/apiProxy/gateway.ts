@@ -577,8 +577,8 @@ export class ApiProxyGateway {
       }
       if (path === '/notifications') {
         try {
-          const next = await this.notifications.save(input as any)
-          if (input.accountId) {
+          const { protectionChanged, ...next } = await this.notifications.save(input as any)
+          if (protectionChanged && input.accountId) {
             const account = (await this.coordinator.store.readState()).accounts.find(account => account.storageId === input.accountId)
             if (account) await this.enforceObservedProtection(account)
           }

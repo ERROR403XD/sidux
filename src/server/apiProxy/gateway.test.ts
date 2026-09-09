@@ -432,3 +432,27 @@ it.each(['free', 'pro'])('uses the same actual-window reserve for %s HTTP, WS an
   expect(JSON.parse(String(rejected)).error.code).toBe('account_quota_protected')
   ws.terminate()
 })
+
+it('keeps an active stream open on alias or notice saves and enforces only a changed reserve', async () => {
+  const f = await fixture()
+  const selected = { storageId: 'account', protectionPercent: 1, quotaUpdatedAtIso: new Date().toISOString(), quotaStatus: 'ready', quotaSnapshot: { primary: { windowMinutes: 300, usedPercent: 80 }, secondary: { windowMinutes: 10080, usedPercent: 80 } } }
+  f.setAccountState({ activeStorageId: 'account', accounts: [selected] })
+  const stream = await f.post('/v1/responses', { model: 'slow', input: [] })
+  expect(stream.status).toBe(200)
+  // Metadata saves must not re-enforce an already observed quota snapshot.
+  selected.quotaSnapshot.secondary.usedPercent = 99
+  const save = vi.spyOn(f.gateway.notifications, 'save').mockResolvedValue({ protectionChanged: false } as any)
+  const enforce = vi.spyOn(f.gateway as any, 'enforceObservedProtection').mockImplementation(async () => {
+    for (const entry of f.gateway.activity.entries.values()) entry.abort()
+  })
+  const input = { accountId: 'account', alias: 'local label', protectionPercent: 1 }
+  expect((await f.post('/codex-api/api-proxy/notifications', input)).status).toBe(200)
+  expect(enforce).not.toHaveBeenCalled()
+  expect(f.gateway.activity.entries.size).toBe(1)
+  expect(f.upstreamClosed()).toBe(false)
+  save.mockResolvedValue({ protectionChanged: true } as any)
+  expect((await f.post('/codex-api/api-proxy/notifications', { ...input, protectionPercent: 2 })).status).toBe(200)
+  expect(enforce).toHaveBeenCalledExactlyOnceWith(selected)
+  await vi.waitFor(() => expect(f.upstreamClosed()).toBe(true))
+  await stream.body?.cancel().catch(() => undefined)
+})

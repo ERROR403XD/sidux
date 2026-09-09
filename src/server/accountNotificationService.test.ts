@@ -290,3 +290,13 @@ it('keeps local aliases out of external notification text', async () => {
     expect(String(call[1]?.body)).not.toContain('local only')
   }
 })
+
+it('flags only an actual reserve change for connection enforcement, not alias or notification edits', async () => {
+  const { service } = await fixture()
+  const rule = { ...defaultNoticeRule, resetIncrease: true }
+  expect((await service.save({ accountId: 'account-a', rule, alias: 'local', protectionPercent: 1 })).protectionChanged).toBe(false)
+  expect((await service.save({ accountId: 'account-a', rule, alias: 'renamed' })).protectionChanged).toBe(false)
+  expect((await service.save({ accountId: 'account-a', rule, protectionPercent: 2 })).protectionChanged).toBe(true)
+  expect((await service.save({ accountId: 'account-a', rule, protectionPercent: 2 })).protectionChanged).toBe(false)
+  expect((await service.save({ accountId: 'account-a', rule, protectionPercent: 0 })).protectionChanged).toBe(true)
+})
