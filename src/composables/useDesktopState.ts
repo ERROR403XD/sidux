@@ -1798,10 +1798,11 @@ export function useDesktopState() {
 
   function setSelectedModelIdForThread(threadId: string, modelId: string): void {
     const normalizedModelId = modelId.trim()
-    const session = webPreferences.sessions.value[threadId]
+    const webSessionId = threadId === NEW_THREAD_COLLABORATION_MODE_CONTEXT ? '' : threadId
+    const session = webPreferences.sessions.value[webSessionId]
     if (session) {
-      webPreferences.select(threadId, { model: normalizedModelId, provider: readProviderIdForThread(threadId), effort: '', tier: '' })
-      if (threadId === selectedThreadId.value) selectedModelId.value = normalizedModelId
+      webPreferences.select(webSessionId, { model: normalizedModelId, provider: readProviderIdForThread(threadId), effort: '', tier: '' })
+      if (webSessionId === selectedThreadId.value) selectedModelId.value = normalizedModelId
       return
     }
     if (configuredModelSettings.value.model && selectedModelId.value && selectedModelId.value !== normalizedModelId && !savedModelSettings.value[modelSettingsKey.value]) saveCurrentModelSettings({})

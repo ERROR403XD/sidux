@@ -1532,6 +1532,21 @@ it('initializes saved defaults on explicit composer reentry without overwriting 
   expect(state.selectedReasoningEffort.value).toBe('low')
 })
 
+it('lets the new-thread composer override a saved default model for the pending session', () => {
+  installTestWindow()
+  const state = useDesktopState()
+  const desired = { model: 'gpt-6-astra', provider: 'codex', effort: 'ultra', tier: 'priority' }
+  state.configureWebDefaults(desired, true)
+  state.initializeWebConversation('')
+
+  state.setSelectedModelIdForThread('__new-thread__', 'gpt-5.6-sol')
+
+  expect(state.selectedModelId.value).toBe('gpt-5.6-sol')
+  expect(state.readModelIdForThread('__new-thread__')).toBe('gpt-5.6-sol')
+  expect(state.webPreferenceState.value.defaults).toEqual(desired)
+  expect(state.webPreferenceState.value.threads).toEqual({})
+})
+
 it('restores the preferred model after account catalog changes without rewriting defaults', async () => {
   installTestWindow()
   gatewayMocks.getThreadGroupsPage.mockResolvedValue({ groups: [], nextCursor: null })

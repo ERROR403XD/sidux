@@ -18,6 +18,7 @@
 10. Open the forked thread and confirm the composer model matches thread `B`, not the currently selected thread.
 11. Restart the app-server or otherwise force a model-list refresh that does not include one thread’s persisted model, then switch back to that thread.
 12. Delete one of the test threads you changed, refresh the thread list, and continue switching between the remaining thread and the new-thread screen.
+13. Save model `A` as the default model, return to the new-thread screen, select model `B`, and wait for a model-catalog refresh without sending the message yet.
 
 #### Expected Results
 - Each thread restores its own last selected model when you switch threads.
@@ -27,6 +28,7 @@
 - Forking a nonselected thread from the sidebar uses that source thread’s persisted model.
 - If the selected thread’s persisted model is not returned in the latest model list, the composer still shows that model as the active selection instead of falling back to the placeholder label.
 - Removing a thread prunes its saved per-thread model state, and model selection continues to update normally for the remaining threads without runtime errors.
+- The pending new thread remains on explicitly selected model `B`; the saved default stays `A` and is used again the next time a fresh composer is initialized.
 
 #### Rollback/Cleanup
 - Reset each tested thread back to its original model selection if you changed an existing conversation for the test.
