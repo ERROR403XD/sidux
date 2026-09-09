@@ -2580,3 +2580,8 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 :root.dark .automations-summary span, :root.dark .automation-row.is-selected { background: #493c17; color: #fde68a; }
 :root.dark .automation-row:hover { background: #383020; }
 :root.dark .automations-create { background: #ca8a04; border-color: #eab308; color: #1c1405; }
+
+:root .sidebar-skills-link.sidebar-automations-link { background: linear-gradient(135deg, #fef3c7, #fffdf5); border-color: #f5d67b; }
+:root .sidebar-skills-link.sidebar-automations-link:is(:hover, .is-active) { background: #fef3c7; border-color: #eab308; }
+:root.dark .sidebar-skills-link.sidebar-automations-link { background: linear-gradient(135deg, #423711, #18181b); border-color: #66521a; }
+:root.dark .sidebar-skills-link.sidebar-automations-link:is(:hover, .is-active) { background: #423711; border-color: #a17d19; }

@@ -57,7 +57,7 @@
 
           <button
             v-if="!isSidebarCollapsed"
-            class="sidebar-skills-link"
+            class="sidebar-skills-link sidebar-automations-link"
             :class="{ 'is-active': isAutomationsRoute }"
             type="button"
             @click="router.push({ name: 'automations' }); isMobile && setSidebarCollapsed(true)"
