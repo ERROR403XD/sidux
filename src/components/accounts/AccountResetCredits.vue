@@ -22,6 +22,7 @@ import { availableResetCredits, type ResetCredit } from '../../accountResetCredi
 import type { UiAccountEntry } from '../../types/codex'
 import { formatLocalDateTime } from '../../dateTime'
 import { useQuotaClock } from '../../composables/useQuotaClock'
+import { requestUuid } from '../../utils/requestUuid'
 const props = defineProps<{ account: UiAccountEntry; disabled?: boolean }>()
 const emit = defineEmits<{ changed: [] }>()
 const now = useQuotaClock()
@@ -39,8 +40,8 @@ let attempt = ''
 function expiry(credit: ResetCredit): string { return credit.expiresAt ? `到期：${formatLocalDateTime(credit.expiresAt * 1000)}` : '无到期时间' }
 function choose(credit: ResetCredit | null): void {
   if (!credit) return
+  attempt = requestUuid()
   target.value = credit
-  attempt = crypto.randomUUID()
   error.value = ''
   notice.value = ''
 }
