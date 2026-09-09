@@ -2662,8 +2662,8 @@ function formatAccountQuota(account: UiAccountEntry): string {
     const remainingPercent = Math.max(0, Math.min(100, 100 - Math.round(displayWindow.usedPercent)))
     const refreshDate = formatResetDateCompact(displayWindow.resetsAt)
     return refreshDate
-      ? `${remainingPercent}% ${t('weekly remaining')} · ${refreshDate}`
-      : `${remainingPercent}% ${t('weekly remaining')}`
+      ? `${remainingPercent}% ${t('primary remaining')} · ${refreshDate}`
+      : `${remainingPercent}% ${t('primary remaining')}`
   }
   if (quota?.credits?.unlimited) {
     return t('Unlimited credits')

@@ -1,6 +1,6 @@
 export type AccountNoticeRule = { fiveHour: boolean; weekly: boolean; fiveHourMessage: string; weeklyMessage: string }
 export type NotificationSettings = { enabled: boolean; url: string; body: string; timezone: string; quietEnabled: boolean; quietStart: string; quietEnd: string }
-export const defaultNoticeRule: AccountNoticeRule = { fiveHour: false, weekly: false, fiveHourMessage: '{{account}} 的5小时额度已恢复，剩余 {{remaining}}%，下次重置 {{reset_at}}', weeklyMessage: '{{account}} 的周额度已恢复，剩余 {{remaining}}%，下次重置 {{reset_at}}' }
+export const defaultNoticeRule: AccountNoticeRule = { fiveHour: false, weekly: false, fiveHourMessage: '{{account}} 的5小时额度已恢复，剩余 {{remaining}}%，下次重置 {{reset_at}}', weeklyMessage: '{{account}} 的主额度已恢复，剩余 {{remaining}}%，下次重置 {{reset_at}}' }
 export const defaultNotificationSettings: NotificationSettings = { enabled: false, url: '', body: '{"message":"{{message}}"}', timezone: 'Asia/Shanghai', quietEnabled: false, quietStart: '22:00', quietEnd: '08:00' }
 export function renderNotice(template: string, values: Record<string, string>): string {
   return template.replace(/\{\{([a-z_]+)\}\}/g, (match, key) => values[key] ?? match)
@@ -25,4 +25,11 @@ export function validateNotificationSettings(value: NotificationSettings): Notif
   new Intl.DateTimeFormat('en', { timeZone: value.timezone })
   for (const time of [value.quietStart, value.quietEnd]) if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('免打扰时间请填写HH:mm。')
   return { ...value }
+}
+
+export function mainQuotaWording(text: string): string {
+  return text.replaceAll('周剩余额度', '主额度剩余').replaceAll('周额度', '主额度').replaceAll('周限额', '主额度').replaceAll('周保护', '主额度保护')
+}
+export function normalizeNoticeRule(rule: AccountNoticeRule): AccountNoticeRule {
+  return { ...rule, fiveHourMessage: mainQuotaWording(rule.fiveHourMessage), weeklyMessage: mainQuotaWording(rule.weeklyMessage).replaceAll('{{window}}额度', '{{window}}') }
 }

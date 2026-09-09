@@ -593,7 +593,7 @@ const zhCN: Record<string, string> = {
   'Removing…': '移除中…',
   'Click again to remove': '再次点击以移除',
   '402 Payment Required': '402 需要付费',
-  'weekly remaining': '周剩余额度',
+  'primary remaining': '主额度剩余',
   'Unlimited credits': '无限额度',
   'credits': '额度',
   'Loading quota…': '加载额度中…',

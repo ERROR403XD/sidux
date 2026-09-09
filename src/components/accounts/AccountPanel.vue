@@ -16,7 +16,7 @@
         </div>
         <p class="account-card-meta">{{ account.planType || t('unknown') }}<span v-if="account.authStatus !== 'ready'"> · {{ status(account) }}</span></p>
         <p v-if="account.quotaUpdatedAtIso" class="account-card-meta">更新于 {{ formatLocalDateTime(account.quotaUpdatedAtIso, { second: '2-digit' }) }}</p>
-        <p v-if="account.protectionPercent" class="account-card-meta">周保护 {{ account.protectionPercent }}% · 5h保护 {{ Math.min(100, account.protectionPercent * 2) }}%</p>
+        <p v-if="account.protectionPercent" class="account-card-meta">主额度保护 {{ account.protectionPercent }}%<span v-if="account.quotaSnapshot?.primary?.windowMinutes === 300 || account.quotaSnapshot?.secondary?.windowMinutes === 300"> · 5h保护 {{ Math.min(100, account.protectionPercent * 2) }}%</span></p>
         <AccountQuota v-if="account.quotaSnapshot" :snapshot="account.quotaSnapshot" />
         <p v-else class="account-card-meta">{{ account.quotaStatus === 'loading' ? t('Loading quota…') : t('Quota unavailable') }}</p>
         <p v-if="account.quotaError" class="account-panel-error">{{ account.quotaError }}</p>

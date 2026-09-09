@@ -8,8 +8,8 @@
       <small v-if="account.quotaSnapshot?.primary?.windowMinutes === 300 || account.quotaSnapshot?.secondary?.windowMinutes === 300">5小时额度保护值：{{ Math.min(100, Number(percent) * 2) }}%。预留给使用此账号的受保护任务；0为关闭。</small>
       <label class="notification-check"><input v-model="rule.fiveHour" type="checkbox" :disabled="busy" />5小时额度恢复通知</label>
       <textarea v-if="rule.fiveHour" v-model="rule.fiveHourMessage" class="app-input" rows="3" aria-label="5小时恢复通知内容" :disabled="busy" />
-      <label class="notification-check"><input v-model="rule.weekly" type="checkbox" :disabled="busy" />周额度恢复通知</label>
-      <textarea v-if="rule.weekly" v-model="rule.weeklyMessage" class="app-input" rows="3" aria-label="周恢复通知内容" :disabled="busy" />
+      <label class="notification-check"><input v-model="rule.weekly" type="checkbox" :disabled="busy" />主额度恢复通知</label>
+      <textarea v-if="rule.weekly" v-model="rule.weeklyMessage" class="app-input" rows="3" aria-label="主额度恢复通知内容" :disabled="busy" />
       <small v-pre>可用占位符：{{account}}、{{account_id}}、{{window}}、{{remaining}}、{{reset_at}}。通过设置中的POST通知发送。</small>
     </div>
     <template #footer><AppButton :disabled="busy" @click="visible = false">取消</AppButton><AppButton :disabled="!loaded" :busy="busy" @click="save">保存账号设置</AppButton></template>

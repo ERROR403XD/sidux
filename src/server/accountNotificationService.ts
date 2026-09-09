@@ -1,7 +1,7 @@
 import { mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { defaultNotificationSettings, defaultNoticeRule, inQuietHours, renderNotice, renderNoticeBody, validateNotificationSettings, type NotificationSettings, type AccountNoticeRule } from '../accountNotifications.js'
+import { defaultNotificationSettings, defaultNoticeRule, normalizeNoticeRule, mainQuotaWording, inQuietHours, renderNotice, renderNoticeBody, validateNotificationSettings, type NotificationSettings, type AccountNoticeRule } from '../accountNotifications.js'
 import type { AccountAuthCoordinator } from './accountAuthCoordinator.js'
 import type { StoredAccountEntry } from './accountAuthStore.js'
 import { quotaRefreshInterval } from '../quotaRefresh.js'
@@ -28,6 +28,8 @@ export class AccountNotificationService {
         const data = JSON.parse(await readFile(statePath, 'utf8'))
         if (data.version !== 1) throw new Error('通知状态版本无效')
         this.state = { ...this.state, ...data, settings: validateNotificationSettings(data.settings) }
+        this.state.accounts = Object.fromEntries(Object.entries(this.state.accounts).map(([id, rule]) => [id, normalizeNoticeRule(rule)]))
+        this.state.pending = this.state.pending.map(notice => ({ ...notice, message: mainQuotaWording(notice.message) }))
       } catch (cause) { if ((cause as NodeJS.ErrnoException).code !== 'ENOENT') throw cause }
     })()
     void this.ready.catch(() => undefined)
@@ -64,12 +66,12 @@ export class AccountNotificationService {
       if (!rule || typeof rule.fiveHour !== 'boolean' || typeof rule.weekly !== 'boolean' || typeof rule.fiveHourMessage !== 'string' || typeof rule.weeklyMessage !== 'string') throw new Error('账号通知规则无效。')
     }
     if (input.protectionPercent !== undefined) {
-      if (!input.accountId || !Number.isFinite(input.protectionPercent) || input.protectionPercent < 0 || input.protectionPercent > 100) throw new Error('账号周保护值须为0–100。')
+      if (!input.accountId || !Number.isFinite(input.protectionPercent) || input.protectionPercent < 0 || input.protectionPercent > 100) throw new Error('账号保护值须为0–100。')
       await this.coordinator.store.updateState(state => ({ state: { ...state, accounts: state.accounts.map(account => account.storageId === input.accountId ? { ...account, protectionPercent: input.protectionPercent } : account) }, result: undefined }))
     }
     await this.mutate(state => {
       if (input.settings) state.settings = { ...input.settings }
-      if (input.accountId && input.rule) state.accounts[input.accountId] = { ...input.rule }
+      if (input.accountId && input.rule) state.accounts[input.accountId] = normalizeNoticeRule(input.rule)
       state.pending = state.pending.filter(item => state.settings.enabled && state.accounts[item.accountId]?.[item.kind])
     })
     return this.snapshot()
@@ -98,11 +100,11 @@ export class AccountNotificationService {
         const old = state.windows[key]
         const resetUsedAt = Date.parse(account.lastResetUsedAtIso || '')
         const recentlyUsedReset = Number.isFinite(resetUsedAt) && Date.now() - resetUsedAt < 10 * 60_000
-        const recovered = !!old && old.used > 0 && window.usedPercent === 0 && !recentlyUsedReset
+        const recovered = !!old && old.used - window.usedPercent >= 45 - Number.EPSILON * 100 && !recentlyUsedReset
         state.windows[key] = { reset: window.resetsAt || 0, used: window.usedPercent }
         if (!state.settings.enabled || !rule[kind] || !recovered) continue
         const resetAt = window.resetsAt ? new Intl.DateTimeFormat('zh-CN', { timeZone: state.settings.timezone, dateStyle: 'short', timeStyle: 'short' }).format(window.resetsAt * 1000) : '未知'
-        const values = { account: account.email || account.accountId, account_id: account.storageId, window: kind === 'fiveHour' ? '5小时' : '周', remaining: String(Math.round(100 - window.usedPercent)), reset_at: resetAt }
+        const values = { account: account.email || account.accountId, account_id: account.storageId, window: kind === 'fiveHour' ? '5小时' : '主额度', remaining: String(Math.round(100 - window.usedPercent)), reset_at: resetAt }
         state.pending.push({ id: randomUUID(), accountId: account.storageId, kind, message: renderNotice(kind === 'fiveHour' ? rule.fiveHourMessage : rule.weeklyMessage, values), createdAt: Date.now() })
       }
       state.pending = state.pending.filter(item => Date.now() - item.createdAt < 7 * 86400_000).slice(-256)

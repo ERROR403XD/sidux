@@ -58,16 +58,42 @@ it('substitutes nested message strings without turning message content into body
   expect(JSON.parse(renderNoticeBody('{"token":"literal","nested":{"text":"{{message}}"}}', { message: text }))).toEqual({ token: 'literal', nested: { text } })
 })
 
-it('requires exact full recovery and suppresses actual reset use for ten minutes, independent of credit count', async () => {
+
+it('uses a 45 percentage-point increase rather than full recovery or relative growth', async () => {
+  const { service } = await fixture()
+  await service.observe(entry(100, 80)) // remaining 20%
+  await service.observe(entry(100, 70)) // remaining 30%: relative +50%, absolute +10
+  expect((await service.snapshot()).pendingCount).toBe(0)
+  await service.observe(entry(100, 25.1)) // +44.9 points
+  expect((await service.snapshot()).pendingCount).toBe(0)
+  await service.observe(entry(100, 80))
+  await service.observe(entry(100, 35)) // +45 points, only 65% remaining
+  expect((await service.snapshot()).pendingCount).toBe(2)
+  await service.observe(entry(100, 35))
+  await service.observe(entry(100, 0)) // +35, reaches 100% but is not a recovery event
+  expect((await service.snapshot()).pendingCount).toBe(2)
+})
+it('suppresses actual reset usage for ten minutes without consulting credit count', async () => {
   const { service } = await fixture()
   await service.observe(entry(100, 80))
-  await service.observe(entry(200, 20))
+  await service.observe({ ...entry(100, 20), lastResetUsedAtIso: new Date().toISOString() })
   expect((await service.snapshot()).pendingCount).toBe(0)
-  await service.observe({ ...entry(200, 0), lastResetUsedAtIso: new Date().toISOString() })
-  expect((await service.snapshot()).pendingCount).toBe(0)
-  await service.observe(entry(200, 10))
-  await service.observe({ ...entry(200, 0), lastResetUsedAtIso: new Date(Date.now() - 600_001).toISOString(), resetCredits: { availableCount: 0, credits: [] } })
+  await service.observe(entry(100, 80))
+  await service.observe({ ...entry(100, 35), lastResetUsedAtIso: new Date(Date.now() - 600_001).toISOString(), resetCredits: { availableCount: 0, credits: [] } })
   expect((await service.snapshot()).pendingCount).toBe(2)
-  await service.observe(entry(300, 0))
+})
+it('normalizes legacy generic weekly wording in saved notification templates', async () => {
+  const { service } = await fixture()
+  await service.save({ accountId: 'account-a', rule: { ...defaultNoticeRule, weeklyMessage: '{{account}} 的周额度已恢复' } })
+  expect((await service.snapshot()).accounts['account-a']?.weeklyMessage).toBe('{{account}} 的主额度已恢复')
+})
+
+it('includes the exact decimal 45-point boundary without rounding smaller increases up', async () => {
+  const { service } = await fixture()
+  await service.observe(entry(100, 90.1))
+  await service.observe(entry(100, 45.101))
+  expect((await service.snapshot()).pendingCount).toBe(0)
+  await service.observe(entry(100, 90.1))
+  await service.observe(entry(100, 45.1))
   expect((await service.snapshot()).pendingCount).toBe(2)
 })
