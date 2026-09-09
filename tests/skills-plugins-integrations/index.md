@@ -36,3 +36,5 @@ Return to the [manual test index](../../tests.md).
 | [First-launch home card for Plugins and Apps](first-launch-home-card-for-plugins-and-apps.md) |
 | [Composer prompts inside Skills dropdown](composer-prompts-inside-skills-dropdown.md) |
 | [扩展的项目范围、有效状态与刷新](directory-project-runtime-state.md) |
+
+- [0.2.14 原版插件、技能与 MCP](native-extensions-0214.md)。GitHub 同步与 Composio 旧案例自此版本退役。

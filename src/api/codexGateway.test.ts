@@ -7,7 +7,6 @@ import {
   getAccounts,
   getAvailableModelIds,
   getThreadDetail,
-  listDirectoryComposioConnectors,
   resumeThread,
   startCodexLogin,
   startThreadTurn,
@@ -91,33 +90,6 @@ describe('dynamic execution settings', () => {
     await startThreadTurn('fixture', 'second', [], 'future', 'max', undefined, [], 'plan', null)
     expect(requests[0].params).toMatchObject({ model: 'future', effort: 'ultra', serviceTier: 'priority', collaborationMode: { settings: { reasoning_effort: 'ultra' } } })
     expect(requests[1].params).toMatchObject({ effort: 'max', serviceTier: null, collaborationMode: { settings: { reasoning_effort: 'max' } } })
-  })
-})
-
-describe('listDirectoryComposioConnectors', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
-  it('sends search queries as query params expected by the server', async () => {
-    const requests: string[] = []
-    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
-      requests.push(String(input))
-      return new Response(JSON.stringify({
-        data: [],
-        nextCursor: null,
-        total: 0,
-      }), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-    }))
-
-    await listDirectoryComposioConnectors('instagram', '50', 25)
-
-    expect(requests).toEqual(['/codex-api/composio/connectors?query=instagram&cursor=50&limit=25'])
   })
 })
 
@@ -402,4 +374,31 @@ it('does not acknowledge a queued question answer as delivered and reuses its id
     }
     expect(submitted).toEqual(['question:q:t:0', 'question:q:t:0'])
   } finally { vi.unstubAllGlobals() }
+})
+
+describe('native plugin catalog isolation', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('keeps local plugins visible when a different marketplace fails', async () => {
+    const { listDirectoryPlugins, readDirectoryPlugin, installDirectoryPlugin } = await import('./codexGateway')
+    const calls: string[] = []
+    const summary = { id: 'local@fixture', name: 'local', source: { type: 'local', path: '/fixture/plugin' }, installed: false, enabled: false }
+    vi.stubGlobal('fetch', vi.fn(async (_input: unknown, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body))
+      calls.push(request.method)
+      const result = request.method === 'plugin/list'
+        ? { marketplaces: [{ name: 'fixture', path: '/fixture/.agents/plugins/marketplace.json', plugins: [summary] }], marketplaceLoadErrors: [{ message: 'remote HTTP 403' }] }
+        : request.method === 'plugin/read' ? { plugin: { summary, apps: [{ id: 'connection', name: 'Service', needsAuth: true }], skills: [] } }
+          : { appsNeedingAuth: [{ id: 'connection', name: 'Service', needsAuth: true, installUrl: 'https://example.com/connect' }] }
+      return new Response(JSON.stringify({ result }))
+    }))
+    const warnings: string[] = []
+    const plugins = await listDirectoryPlugins(undefined, false, rows => warnings.push(...rows))
+    expect(plugins).toHaveLength(1)
+    expect(warnings).toEqual(['remote HTTP 403'])
+    const detail = await readDirectoryPlugin(plugins[0])
+    expect(detail.apps[0].needsAuth).toBe(true)
+    expect((await installDirectoryPlugin(plugins[0])).appsNeedingAuth[0].installUrl).toBe('https://example.com/connect')
+    expect(calls).toEqual(['plugin/list', 'plugin/read', 'plugin/install'])
+  })
 })

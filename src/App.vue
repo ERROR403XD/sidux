@@ -449,7 +449,7 @@
               </div>
 </template>
 <template #integrations>
-<AppButton @click="openDirectory()">技能、应用与 MCP</AppButton><NotificationSettings :key="displayTimeZonePreference" />              <button class="sidebar-settings-row" type="button" aria-live="polite" @click="isTelegramConfigOpen = !isTelegramConfigOpen">
+<AppButton @click="openDirectory()">插件 / 技能 / MCP</AppButton><NotificationSettings :key="displayTimeZonePreference" />              <button class="sidebar-settings-row" type="button" aria-live="polite" @click="isTelegramConfigOpen = !isTelegramConfigOpen">
                 <span class="sidebar-settings-label">{{ t('Telegram') }}</span>
                 <span class="sidebar-settings-value">{{ telegramStatusText }}</span>
               </button>
@@ -1742,7 +1742,7 @@ const contentTitle = computed(() => {
   if (isSettingsRoute.value) return t('Settings')
   if (isApiProxyRoute.value) return t('API outlet')
   if (isAutomationsRoute.value) return t('Automations')
-  if (isSkillsRoute.value) return t('Skills')
+  if (isSkillsRoute.value) return '插件 / 技能 / MCP'
   if (isHomeRoute.value) return t('Start new thread')
   return selectedThread.value?.title ?? t('Choose a thread')
 })
