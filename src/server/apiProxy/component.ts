@@ -80,6 +80,9 @@ export class ProxyComponent {
       for (const generation of this.generations) {
         if (generation !== current && generation.references === 0) await this.stopGeneration(generation)
       }
+      // An older stream may remain pinned through several token rotations.
+      // Reclaim an unused current generation before admitting its replacement.
+      if (this.generations.size >= 2 && current?.references === 0) await this.stopGeneration(current)
       if (this.generations.size >= 2) throw new ProxyError('credential_drain_required', '旧凭据连接仍在使用，请等待或关闭旧连接后重试。', 503)
       const binary = await readFile(this.binary).catch(() => { throw new ProxyError('component_missing', '反代组件未安装。', 503) })
       if (createHash('sha256').update(binary).digest('hex') !== manifest.binarySha256) {
@@ -139,7 +142,7 @@ export class ProxyComponent {
       this.checkedAt = Date.now()
       this.failures = 0
       this.lastError = null
-      if (current && current.references === 0) await this.stopGeneration(current)
+      if (current && current.references === 0 && this.generations.has(current)) await this.stopGeneration(current)
       return generation
     } catch (error) {
       this.lastError = error instanceof ProxyError ? error.message : '账号或组件准备失败。'
@@ -192,6 +195,10 @@ export class ProxyComponent {
       if (child.exitCode === null && child.signalCode === null) throw new ProxyError('component_stop_failed', '无法确认反代组件退出。', 503)
     }
     this.generations.delete(generation)
+    if (this.current === generation) {
+      this.current = null
+      this.checkedAt = 0
+    }
     await rm(generation.directory, { recursive: true, force: true })
   }
   async stop(): Promise<void> {

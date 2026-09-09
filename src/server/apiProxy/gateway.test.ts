@@ -377,3 +377,28 @@ it('force-removes only connections belonging to the selected account without wai
     expect(f.gateway.activity.entries.size).toBe(1)
   } finally { ctrl.abort() }
 })
+
+it('keeps an authenticated WebSocket and its previous response context across credential rotation', async () => {
+  const f = await fixture()
+  const fixed = 'f'.repeat(64)
+  f.setAccountState({ activeStorageId: 'account', accounts: [{ storageId: 'account' }, { storageId: fixed }] })
+  const key = await f.gateway.store.createKey('fixed-refresh', null, { accountStorageId: fixed })
+  const ws = new WebSocket(f.base.replace('http:', 'ws:') + '/v1/responses', { headers: f.headers(key.secret) })
+  try {
+    await once(ws, 'open')
+    const first = once(ws, 'message')
+    ws.send(JSON.stringify({ type: 'response.create', model: 'fixture', input: [] }))
+    const previous = JSON.parse((await first)[0].toString()).response.id
+    const old = await f.gateway.component.prepare(fixed)
+    const prepare = vi.spyOn(ProxyComponent.prototype, 'prepare').mockImplementation(async id => ({ ...old, id: 'rotated-generation', revision: 2, storageId: id || fixed, references: 0 }))
+    // A new request uses the new credential generation while the socket stays pinned.
+    expect((await f.post('/v1/responses', { model: 'fixture', input: [] }, key.secret)).status).toBe(200)
+    prepare.mockClear()
+    const next = once(ws, 'message')
+    ws.send(JSON.stringify({ type: 'response.create', model: 'fixture', previous_response_id: previous, input: [] }))
+    expect(JSON.parse((await next)[0].toString()).type).toBe('response.completed')
+    expect(ws.readyState).toBe(WebSocket.OPEN)
+    expect(prepare).not.toHaveBeenCalled()
+    expect(f.requests.filter(row => row.path === 'ws').at(-1)?.body.previous_response_id).toBe(previous)
+  } finally { ws.terminate() }
+})

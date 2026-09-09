@@ -510,9 +510,11 @@ export class ApiProxyGateway {
             processing = true
             if (await this.resolveAccount(keyId) !== accountId) throw new ProxyError('account_changed', '账号选择已变化，请重新连接。', 409)
             await this.checkProtection(accountId, keyId)
-            const current = await this.prepareAccount(accountId)
+            // The authenticated upstream socket owns incremental response context.
+            // Credential rotation prepares new connections; it must not replace a
+            // healthy existing socket between turns. Explicit account/key changes
+            // are still enforced by the lease and account selection above.
             if (closed) return
-            if (current.id !== generation.id) throw new ProxyError('credential_updated', '访问凭据已更新，请重连并发送完整上下文。', 503)
             record.model = typeof input.model === 'string' ? input.model : record.model
             this.store.touch(keyId)
             send(upstreamSocket, downstream, JSON.stringify(adapted))

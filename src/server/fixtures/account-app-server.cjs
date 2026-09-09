@@ -8,11 +8,20 @@ let account = 'none'
 try { account = JSON.parse(readFileSync(process.env.CODEX_HOME + '/auth.json', 'utf8')).tokens.account_id } catch {}
 const threads = new Map()
 const loaded = new Set()
+const refreshReplies = new Map()
+let nextRefreshId = 900000
 const save = thread => writeFileSync(process.env.CODEX_HOME + '/fixture-thread-' + thread.id + '.json', JSON.stringify(thread))
 const send = value => process.stdout.write(JSON.stringify(value) + '\n')
 const notify = (method, params) => send({ method, params })
 createInterface({ input: process.stdin }).on('line', line => {
-  const { id, method, params: p = {} } = JSON.parse(line)
+  const message = JSON.parse(line)
+  const { id, method, params: p = {} } = message
+  if (!method && refreshReplies.has(id)) {
+    const finish = refreshReplies.get(id)
+    refreshReplies.delete(id)
+    finish(message)
+    return
+  }
   if (!method || id === undefined) return
   let result = {}
   if (method === 'account/login/start') account = p.chatgptAccountId
@@ -48,13 +57,23 @@ createInterface({ input: process.stdin }).on('line', line => {
     thread.status.type = 'active'
     result = { turn }
     notify('turn/started', { threadId: thread.id, turn })
-    if (!JSON.stringify(p.input).includes('STALL')) setTimeout(() => {
+    const finish = () => {
       turn.status = 'completed'
       turn.items.push({ id: randomUUID(), type: 'agentMessage', text: 'OUTPUT:' + account })
       thread.status.type = 'idle'
       save(thread)
       notify('turn/completed', { threadId: thread.id, turn })
-    }, 10)
+    }
+    if (JSON.stringify(p.input).includes('REFRESH')) {
+      const requestId = nextRefreshId++
+      refreshReplies.set(requestId, message => {
+        if (message.error || message.result?.chatgptAccountId !== account) {
+          turn.status = 'failed'
+          notify('turn/completed', { threadId: thread.id, turn })
+        } else finish()
+      })
+      send({ id: requestId, method: 'account/chatgptAuthTokens/refresh', params: { previousAccountId: account, reason: 'unauthorized' } })
+    } else if (!JSON.stringify(p.input).includes('STALL')) setTimeout(finish, 10)
   }
   if (method === 'turn/interrupt') {
     const thread = threads.get(p.threadId)

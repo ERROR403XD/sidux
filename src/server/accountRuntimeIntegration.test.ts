@@ -61,3 +61,54 @@ it('executes B through an actual isolated IPC process while A stalls, then remov
     await rm(home, { recursive: true, force: true })
   }
 }, 15000)
+
+it('refreshes B in the same native session while A stalls, retaining loaded turns and the active credential', async () => {
+  const home = await mkdtemp(tmpdir() + '/account-refresh-ipc-0214-')
+  vi.stubEnv('CODEX_HOME', home)
+  vi.stubEnv('CODEXUI_CODEX_COMMAND', resolve('src/server/fixtures/account-app-server.cjs'))
+  const coordinator = getAccountAuthCoordinator()
+  const token = (id: string) => 'header.' + Buffer.from(JSON.stringify({ exp: Date.now() / 1000 + 3600, 'https://api.openai.com/auth': { chatgpt_account_id: id, user_id: id } })).toString('base64url') + '.signature'
+  const credential = (id: string) => JSON.stringify({ auth_mode: 'chatgpt', tokens: { account_id: id, refresh_token: 'refresh-' + id, access_token: token(id) } })
+  const a = await coordinator.store.upsertCredential(credential('a'), { activate: true })
+  const b = await coordinator.store.upsertCredential(credential('b'))
+  vi.spyOn(coordinator, 'refreshAccount').mockImplementation(async id => (await coordinator.store.readState()).accounts.find(account => account.storageId === id)!)
+  const refresh = vi.fn(async (_url: unknown, options: RequestInit) => {
+    expect(new URLSearchParams(String(options.body)).get('refresh_token')).toBe('refresh-b')
+    return new Response(JSON.stringify({ access_token: token('b'), refresh_token: 'rotated-b' }), { status: 200 })
+  })
+  vi.stubGlobal('fetch', refresh)
+  const app = new AppServerProcess()
+  try {
+    const authBefore = await readFile(home + '/auth.json', 'utf8')
+    const primary = await app.rpc('thread/start', { cwd: home }) as any
+    await app.rpc('turn/start', { threadId: primary.thread.id, input: [{ type: 'text', text: 'STALL' }] })
+    await app.acquireTaskAccount('b-refresh', { accountStorageId: b.account.storageId })
+    const created = await app.automationRpc('thread/start', { cwd: home }, 'b-refresh') as any
+    const worker = (app as any).taskRuns.get('b-refresh')
+    const before = await worker.rpc('account/read', {})
+    for (const text of ['COMPLETE', 'REFRESH']) {
+      await app.automationRpc('turn/start', { threadId: created.thread.id, input: [{ type: 'text', text }] }, 'b-refresh')
+      await vi.waitFor(async () => {
+        const result = await app.automationRpc('thread/read', { threadId: created.thread.id }, 'b-refresh') as any
+        expect(result.thread.turns.at(-1).status).toBe('completed')
+        expect(result.thread.turns.at(-1).items.at(-1).text).toBe('OUTPUT:b')
+      })
+    }
+    const after = await worker.rpc('account/read', {})
+    expect(after.pid).toBe(before.pid)
+    expect((await worker.rpc('thread/loaded/list', {})).data).toContain(created.thread.id)
+    expect((await worker.rpc('thread/read', { threadId: created.thread.id })).thread.turns).toHaveLength(2)
+    expect(refresh).toHaveBeenCalledTimes(1)
+    expect((await coordinator.store.readCredential(b.account.storageId)).auth.tokens?.refresh_token).toBe('rotated-b')
+    expect(await readFile(home + '/auth.json', 'utf8')).toBe(authBefore)
+    expect((await coordinator.store.readState()).activeStorageId).toBe(a.account.storageId)
+    expect(app.liveActivity().activeTurnThreadIds).toContain(primary.thread.id)
+  } finally {
+    app.stopTaskRouting()
+    app.dispose()
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
+    await rm(home, { recursive: true, force: true })
+  }
+}, 15000)

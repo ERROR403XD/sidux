@@ -33,3 +33,26 @@ describe('gateway owned recovery', () => {
     expect(component.status().ready).toBe(false)
   })
 })
+
+it('reclaims an unused current generation while retaining a pinned old connection on another rotation', async () => {
+  const coordinator = { blocksApiAccount: () => false, getApiCredential: async () => ({ storageId: 'a', revision: 3 }) } as unknown as AccountAuthCoordinator
+  const component = new ProxyComponent('/unused', coordinator)
+  const pinned = { id: 'pinned', references: 1 } as ComponentGeneration
+  const current = { id: 'current', storageId: 'a', revision: 2, references: 0, process: { exitCode: null, signalCode: null } } as ComponentGeneration
+  const generations = new Set([pinned, current])
+  Object.assign(component, { current, generations, binary: '/missing-fixture-proxy-binary' })
+  const stop = vi.spyOn(component as any, 'stopGeneration').mockImplementation(async (row: any) => { generations.delete(row) })
+  await expect(component.prepare('a')).rejects.toMatchObject({ code: 'component_missing' })
+  expect(stop).toHaveBeenCalledExactlyOnceWith(current)
+  expect(generations.has(pinned)).toBe(true)
+})
+it('does not reclaim either pinned generation when both still serve connections', async () => {
+  const coordinator = { blocksApiAccount: () => false, getApiCredential: async () => ({ storageId: 'a', revision: 3 }) } as unknown as AccountAuthCoordinator
+  const component = new ProxyComponent('/unused', coordinator)
+  const pinned = { references: 1 } as ComponentGeneration
+  const current = { storageId: 'a', revision: 2, references: 1, process: { exitCode: null, signalCode: null } } as ComponentGeneration
+  Object.assign(component, { current, generations: new Set([pinned, current]) })
+  const stop = vi.spyOn(component as any, 'stopGeneration')
+  await expect(component.prepare('a')).rejects.toMatchObject({ code: 'credential_drain_required' })
+  expect(stop).not.toHaveBeenCalled()
+})
