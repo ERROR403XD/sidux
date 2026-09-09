@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { capabilityValue } from './modelCapabilities'
+import { capabilityValue, type ModelCapability } from './modelCapabilities'
 export type ConversationChoice = { model: string; provider: string; effort: string; tier: string }
 export const WEB_CONVERSATION_PREFERENCES_KEY = 'codexapp.web-conversation-preferences.v1'
 type Preferences = { defaults: ConversationChoice | null; remember: boolean; threads: Record<string, { source: 'web'; saved: ConversationChoice }> }
@@ -52,4 +52,23 @@ export function useWebConversationPreferences(storage?: Pick<Storage, 'getItem' 
   return { state, sessions, error, enter, register, select,
     configure(defaults: ConversationChoice, remember: boolean): void { persist({ ...state.value, defaults, remember }) },
   }
+}
+
+// Saved intent is immutable during catalog changes. Only the effective choice falls back.
+export function effectiveConversationChoice(saved: ConversationChoice, models: ModelCapability[]): ConversationChoice {
+  if (!models.length) return { ...saved }
+  const order = ['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5']
+  const index = order.indexOf(saved.model)
+  const model = models.find(row => row.id === saved.model)
+    || (index >= 0 ? order.slice(index + 1).map(id => models.find(row => row.id === id)).find(Boolean) : undefined)
+    || models[0]!
+  const efforts = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']
+  let effort = saved.effort
+  if (effort && model.efforts && !model.efforts.some(row => row.value === effort)) {
+    const rank = efforts.indexOf(effort)
+    effort = efforts.slice(0, rank < 0 ? 0 : rank).reverse().find(value => model.efforts!.some(row => row.value === value)) || model.defaultEffort || ''
+  }
+  const requestedTier = saved.tier === 'fast' ? 'priority' : saved.tier
+  const tier = requestedTier && model.serviceTiers && !model.serviceTiers.some(row => row.value === requestedTier) ? '' : requestedTier
+  return { ...saved, model: model.id, effort, tier }
 }

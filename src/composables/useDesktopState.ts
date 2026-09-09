@@ -1,5 +1,5 @@
 import { mergeQuotaUpdate } from '../quotaRefresh'
-import { useWebConversationPreferences, type ConversationChoice } from '../webConversationPreferences'
+import { effectiveConversationChoice, useWebConversationPreferences, type ConversationChoice } from '../webConversationPreferences'
 import { historyMessageKey, combineHistoryAndLive, sameMessageIdentity } from '../messageIdentity'
 import { mergeSubtaskMessage, observeTaskNotification } from '../subtasks'
 import { createDeliveryId } from '../delivery'
@@ -1417,13 +1417,12 @@ export function useDesktopState() {
   function initializeWebConversation(threadId: string): void {
     if (!threadId && !webPreferences.state.value.defaults) return
     const value = webPreferences.enter(threadId, webDefaultChoice.value)
-    if (value?.model) selectedModelId.value = value.model
+    if (value?.model) selectedModelId.value = effectiveConversationChoice(value, availableModels.value).model
   }
   function configureWebDefaults(value: ConversationChoice, remember: boolean): void {
-    const model = availableModels.value.find(row => row.id === value.model)
-    const problem = modelSettingsProblem(model, value.effort, value.tier)
-    if (problem) { webPreferenceError.value = problem; return }
-    try { webPreferences.configure(value, remember) } catch { /* The settings page exposes the storage error. */ }
+    try {
+      webPreferences.configure(value, remember)
+    } catch { /* The settings page exposes the storage error. */ }
   }
   const projectGroups = ref<UiProjectGroup[]>([])
   const sourceGroups = ref<UiProjectGroup[]>([])
@@ -1492,7 +1491,7 @@ export function useDesktopState() {
   const selectedModelCapability = computed(() => availableModels.value.find(model => model.id === selectedModelId.value))
   const currentModelSettings = computed(() => {
     const session = webPreferences.sessions.value[selectedThreadId.value]
-    const stored = session || savedModelSettings.value[modelSettingsKey.value]
+    const stored = session ? effectiveConversationChoice(session, availableModels.value) : savedModelSettings.value[modelSettingsKey.value]
     const defaults = configuredModelSettings.value
     const matches = defaults.model === selectedModelId.value && defaults.provider === readProviderIdForThread(selectedThreadId.value)
     const settings = stored || (matches ? defaults : { effort: '', tier: '' })
@@ -1741,7 +1740,7 @@ export function useDesktopState() {
 
   function readModelIdForThread(threadId: string): string {
     const session = webPreferences.sessions.value[threadId === NEW_THREAD_COLLABORATION_MODE_CONTEXT ? '' : threadId]
-    if (session) return session.model
+    if (session) return effectiveConversationChoice(session, availableModels.value).model
     const contextId = toThreadContextId(threadId)
     if (contextId === NEW_THREAD_COLLABORATION_MODE_CONTEXT) {
       const normalizedProviderId = normalizeProviderContextId(activeProviderId.value)
@@ -1945,15 +1944,6 @@ export function useDesktopState() {
     codexRateLimit.value = nextSnapshot
   }
 
-  async function applyFallbackModelSelection(threadId: string = selectedThreadId.value): Promise<void> {
-    if (threadId.trim()) {
-      setSelectedModelIdForThread(threadId, MODEL_FALLBACK_ID)
-    } else {
-      setSelectedModelId(MODEL_FALLBACK_ID)
-    }
-    ensureAvailableModelIds(MODEL_FALLBACK_ID)
-  }
-
   function setSelectedReasoningEffort(effort: ReasoningEffort | ''): void {
     if (effort && !capabilityValue(effort)) {
       return
@@ -2045,8 +2035,7 @@ export function useDesktopState() {
       if (!webPreferences.sessions.value[selectedThreadId.value]) initializeWebConversation(selectedThreadId.value)
       const webSession = webPreferences.sessions.value[selectedThreadId.value]
       if (webSession?.model) {
-        selectedModelId.value = webSession.model
-        if (!modelIds.includes(webSession.model)) modelCatalogError.value = '保存的模型暂不可用，请重新选择模型。'
+        selectedModelId.value = effectiveConversationChoice(webSession, models).model
         return
       }
       const currentModelInNewList = normalizedSelectedModelId && modelIds.includes(normalizedSelectedModelId)
@@ -5006,7 +4995,8 @@ export function useDesktopState() {
 
     const nextText = text.trim()
     const targetCwd = cwd.trim()
-    const selectedModel = readModelIdForThread(NEW_THREAD_COLLABORATION_MODE_CONTEXT).trim()
+    let selectedModel = readModelIdForThread(NEW_THREAD_COLLABORATION_MODE_CONTEXT).trim()
+    const preferredChoice = webPreferences.sessions.value[''] ? { ...webPreferences.sessions.value[''] } : null
     const selectedMode = selectedCollaborationMode.value
     const newThreadSettings = checkedModelSettings(selectedModel, imageUrls.length > 0)
     if (!nextText && imageUrls.length === 0 && fileAttachments.length === 0) return ''
@@ -5024,8 +5014,13 @@ export function useDesktopState() {
         setSelectedCollaborationModeForThread(threadId, selectedMode)
       } catch (unknownError) {
         if (selectedModel && selectedModel !== MODEL_FALLBACK_ID && isUnsupportedChatGptModelError(unknownError)) {
-          await applyFallbackModelSelection()
-          const fallbackThread = await startThread(targetCwd || undefined, MODEL_FALLBACK_ID)
+          // A rejected catalog entry affects this runtime only, never saved preferences.
+          availableModels.value = availableModels.value.filter(model => model.id !== selectedModel)
+          selectedModel = preferredChoice && availableModels.value.length
+            ? effectiveConversationChoice(preferredChoice, availableModels.value).model
+            : MODEL_FALLBACK_ID
+          ensureAvailableModelIds(selectedModel)
+          const fallbackThread = await startThread(targetCwd || undefined, selectedModel)
           threadId = fallbackThread.threadId
           setThreadModelId(threadId, fallbackThread.model)
           setThreadModelProviderId(threadId, fallbackThread.modelProvider || activeProviderId.value)
@@ -5044,9 +5039,9 @@ export function useDesktopState() {
         [threadId]: true,
       }
       setSelectedThreadId(threadId)
-      webPreferences.register(threadId, { model: selectedModel || newThreadSettings.model, provider: readProviderIdForThread(threadId), effort: newThreadSettings.effort, tier: newThreadSettings.serviceTier || '' })
+      webPreferences.register(threadId, preferredChoice || { model: selectedModel || newThreadSettings.model, provider: readProviderIdForThread(threadId), effort: newThreadSettings.effort, tier: newThreadSettings.serviceTier || '' })
       selectedModelId.value = selectedModel || newThreadSettings.model
-      saveCurrentModelSettings({ effort: newThreadSettings.effort, tier: newThreadSettings.serviceTier || '' })
+      if (!preferredChoice) saveCurrentModelSettings({ effort: newThreadSettings.effort, tier: newThreadSettings.serviceTier || '' })
       shouldAutoScrollOnNextAgentEvent = true
       setTurnSummaryForThread(threadId, null)
       setTurnActivityForThread(

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { useWebConversationPreferences, WEB_CONVERSATION_PREFERENCES_KEY } from './webConversationPreferences'
+import { effectiveConversationChoice, useWebConversationPreferences, WEB_CONVERSATION_PREFERENCES_KEY } from './webConversationPreferences'
 const a = { model: 'a', provider: 'openai', effort: 'high', tier: 'priority' }
 const b = { model: 'b', provider: 'openai', effort: 'low', tier: '' }
 function storage() {
@@ -48,4 +48,21 @@ describe('WebUI conversation preferences', () => {
     expect(preferences.state.value.defaults).toEqual(a)
     expect(saved.getItem(WEB_CONVERSATION_PREFERENCES_KEY)).toContain('priority')
   })
+})
+
+it('temporarily downgrades the model and effort without overwriting saved preference or thread memory', () => {
+  const store = storage()
+  const prefs = useWebConversationPreferences(store)
+  const desired = { model: 'gpt-6-astra', provider: 'codex', effort: 'ultra', tier: 'priority' }
+  const model = (id: string, effort: string) => ({ id, model: id, displayName: id, providerId: 'codex', isDefault: true, efforts: [{ value: 'low', description: '' }, { value: effort, description: '' }], defaultEffort: 'low', serviceTiers: [], defaultServiceTier: '', inputModalities: ['text'] })
+  prefs.configure(desired, true)
+  prefs.register('web', desired)
+  const before = store.getItem(WEB_CONVERSATION_PREFERENCES_KEY)
+  const limited = [model('gpt-5.6-terra', 'high'), model('gpt-5.6-luna', 'medium')]
+  expect(effectiveConversationChoice(prefs.enter('web', desired)!, limited)).toMatchObject({ model: 'gpt-5.6-terra', effort: 'high', tier: '' })
+  expect(store.getItem(WEB_CONVERSATION_PREFERENCES_KEY)).toBe(before)
+  const full = [{ ...model('gpt-6-astra', 'ultra'), serviceTiers: [{ value: 'priority', label: 'Fast', description: '' }] }]
+  const reloaded = useWebConversationPreferences(store)
+  expect(effectiveConversationChoice(reloaded.enter('web', desired)!, full)).toEqual(desired)
+  expect(reloaded.state.value.defaults).toEqual(desired)
 })
