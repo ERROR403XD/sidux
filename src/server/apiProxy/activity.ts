@@ -56,6 +56,21 @@ export class ProxyActivity {
   abortKey(keyId: string): void {
     for (const entry of this.entries.values()) if (entry.keyId === keyId) entry.abort()
   }
+  async drainMatching(matches: (entry: Activity) => boolean, timeoutMs: number): Promise<void> {
+    const deadline = Date.now() + timeoutMs
+    const closing = new Set<string>()
+    while ([...this.entries.values()].some(matches)) {
+      for (const entry of this.entries.values()) {
+        if (matches(entry) && !entry.busy && !closing.has(entry.id)) {
+          closing.add(entry.id)
+          entry.abort()
+        }
+      }
+      if (![...this.entries.values()].some(matches)) return
+      if (Date.now() >= deadline) throw new ProxyError('drain_timeout', '所选账号仍有活动请求，已保留原路由。', 409)
+      await new Promise(resolve => setTimeout(resolve, 50))
+    }
+  }
   async drain(timeoutMs: number, force = false): Promise<void> {
     this.draining = true
     const deadline = Date.now() + timeoutMs

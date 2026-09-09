@@ -6,7 +6,7 @@ afterEach(() => vi.useRealTimers())
 describe('gateway owned recovery', () => {
   it('keeps 400 request-scoped and recovers after bounded 500 backoff without replay', async () => {
     vi.useFakeTimers()
-    const coordinator = { isAccountOperationInProgress: () => false } as AccountAuthCoordinator
+    const coordinator = { blocksApiAccount: () => false, isAccountOperationInProgress: () => false } as unknown as AccountAuthCoordinator
     const component = new ProxyComponent('/unused', coordinator)
     const generation = { process: { exitCode: null, signalCode: null }, expiresAt: new Date(Date.now() + 3600_000).toISOString() } as ComponentGeneration
     Object.assign(component, { current: generation, checkedAt: Date.now() })
@@ -22,7 +22,7 @@ describe('gateway owned recovery', () => {
   })
   it('honors retry-after and ignores old-generation errors', () => {
     vi.useFakeTimers()
-    const component = new ProxyComponent('/unused', {} as AccountAuthCoordinator)
+    const component = new ProxyComponent('/unused', {} as unknown as AccountAuthCoordinator)
     const generation = { process: { exitCode: null, signalCode: null } } as ComponentGeneration
     Object.assign(component, { current: generation })
     component.recordResult(generation, 429, '60')

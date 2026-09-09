@@ -497,3 +497,38 @@ it('persists reset usage before the consume RPC and preserves it after credentia
   await authStore.upsertCredential(credential('account-a', 'user-a', 'rotated'))
   expect((await authStore.readState()).accounts[0]?.lastResetUsedAtIso).toBe(stamp)
 })
+
+it('allows other-account model reads while quota refresh is pending without blocking submissions', async () => {
+  const authStore = await store()
+  const a = await authStore.upsertCredential(credential('parallel-a', 'a'), { activate: true })
+  const b = await authStore.upsertCredential(credential('parallel-b', 'b'))
+  let finish!: () => void
+  const pending = new Promise<void>(resolve => { finish = resolve })
+  const coordinator = new AccountAuthCoordinator(authStore, { createProbe: options => ({
+    inspect: async () => {
+      if (options.expectedAccountId === 'parallel-a') await pending
+      return { ...inspection(), models: [{ id: 'fixture-model' }] }
+    }, dispose: vi.fn(),
+  }) as unknown as AccountAppServerProbe })
+  const refresh = coordinator.refreshAccount(a.account.storageId)
+  try {
+    await expect.poll(() => coordinator.isAccountOperationInProgress()).toBe(true)
+    expect(coordinator.blocksNewSubmissions()).toBe(false)
+    expect(coordinator.blocksApiAccount(null)).toBe(false)
+    expect(coordinator.blocksApiAccount(b.account.storageId)).toBe(false)
+    expect(await coordinator.readAccountModels(b.account.storageId)).toEqual([{ id: 'fixture-model' }])
+  } finally { finish(); await refresh }
+})
+
+it('rejects a busy primary switch before invoking API drain', async () => {
+  const authStore = await store()
+  await authStore.upsertCredential(credential('switch-a', 'a'), { activate: true })
+  const b = await authStore.upsertCredential(credential('switch-b', 'b'))
+  const coordinator = new AccountAuthCoordinator(authStore)
+  const beforeMutation = vi.fn(async () => () => {})
+  coordinator.setApiLifecycle({ beforeMutation, isIdle: () => true })
+  const runtime = { rpc: vi.fn(), dispose: vi.fn(), listPendingServerRequests: () => [], getRuntimeQuiescenceSnapshot: async () => ({ idle: false, activeTurnThreadIds: ['running'], queuedThreadIds: [], pendingServerRequestCount: 0, pendingTurnMutationCount: 0 }) }
+  await expect(coordinator.switchAccount({ storageId: b.account.storageId }, runtime)).rejects.toMatchObject({ code: 'account_switch_blocked' })
+  expect(beforeMutation).not.toHaveBeenCalled()
+  expect(coordinator.blocksApiAccount(null)).toBe(false)
+})

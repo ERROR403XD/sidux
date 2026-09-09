@@ -156,7 +156,8 @@ export class AccountAppServerProbe {
           seen.add(cursor)
         }
       }
-      const rateLimits = await client.call('account/rateLimits/read', null)
+      // Model discovery must not depend on an unrelated quota endpoint.
+      const rateLimits = includeModels ? null : await client.call('account/rateLimits/read', null)
       return {
         accountId: runtimeAccountId,
         email: readString(account?.email),

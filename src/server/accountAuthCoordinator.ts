@@ -226,7 +226,14 @@ export class AccountAuthCoordinator {
     try { await update }
     finally { if (this.rollingUpdates.get(storageId) === update) this.rollingUpdates.delete(storageId) }
   }
-  isAccountOperationInProgress(): boolean { return this.operation !== null }
+  private readonly refreshOperations = new Map<string, Promise<unknown>>()
+  isAccountOperationInProgress(): boolean { return this.operation !== null || this.refreshOperations.size > 0 }
+  blocksApiAccount(storageId: string | null): boolean {
+    const operation = this.operation
+    if (!operation || operation.kind === 'refresh') return false
+    if (operation.kind === 'switch') return storageId === null
+    return storageId === null || operation.storageId === storageId
+  }
   blocksNewSubmissions(): boolean { return this.operation !== null && this.operation.kind !== 'refresh' }
   private operation: CoordinatorOperation | null = null
   private loginSession: LoginSession | null = null
@@ -244,7 +251,7 @@ export class AccountAuthCoordinator {
   async getApiCredential(selectedStorageId: string | null, options: { allowRefresh?: boolean } = {}): Promise<{
     storageId: string; revision: number; accessToken: string; accountId: string; expiresAt: string
   }> {
-    if (this.operation) throw new AccountCoordinatorError('account_operation_in_progress', '账号正在处理其他操作，请稍后重试。', 503)
+    if (this.blocksApiAccount(selectedStorageId)) throw new AccountCoordinatorError('account_operation_in_progress', '所选账号正在变更，请稍后重试。', 503)
     let state = await this.store.readState()
     const storageId = selectedStorageId ?? state.activeStorageId
     let entry = state.accounts.find(item => item.storageId === storageId)
@@ -308,7 +315,7 @@ export class AccountAuthCoordinator {
   }
 
   async startLogin(input: { intent: LoginIntent; targetStorageId?: string | null; method?: LoginMethod }, runtime?: AccountRuntime): Promise<{ loginSessionId: string; loginUrl: string; method: LoginMethod; userCode: string | null; expiresAt: string }> {
-    if (this.operation || this.loginSession) {
+    if (this.isAccountOperationInProgress() || this.loginSession) {
       throw new AccountCoordinatorError('account_operation_in_progress', 'Another account operation is already in progress.')
     }
     if (input.intent === 'reauth' && !input.targetStorageId) {
@@ -619,7 +626,7 @@ export class AccountAuthCoordinator {
   async refreshTokensForStorage(storageId: string, params: ChatgptAuthTokensRefreshParams): Promise<ChatgptAuthTokensRefreshResponse> {
     const existing = this.tokenRefreshFlights.get(storageId)
     if (existing) return await existing
-    const flight = this.withOperation('refresh', storageId, async () => {
+    const flight = this.withRefreshOperation(`token:${storageId}`, async () => {
       const state = await this.store.readState()
       const entry = storageId ? state.accounts.find((item) => item.storageId === storageId) ?? null : null
       if (!storageId || !entry) throw new AccountCoordinatorError('account_not_found', 'No active account credential is available.', 404)
@@ -781,7 +788,7 @@ export class AccountAuthCoordinator {
         }
         throw error
       }
-    })
+    }, () => this.assertRuntimeIdle(runtime))
   }
 
   async removeAccount(storageId: string): Promise<ReturnType<AccountAuthCoordinator['listAccounts']> extends Promise<infer T> ? T : never> {
@@ -900,13 +907,30 @@ export class AccountAuthCoordinator {
     }
   }
 
-  private async withOperation<T>(kind: CoordinatorOperation['kind'], storageId: string | null, run: () => Promise<T>): Promise<T> {
+  private async withRefreshOperation<T>(key: string, run: () => Promise<T>): Promise<T> {
     if (this.operation) throw new AccountCoordinatorError('account_operation_in_progress', 'Another account operation is already in progress.')
+    const previous = this.refreshOperations.get(key)
+    const pending = (async () => {
+      await previous?.catch(() => undefined)
+      return await run()
+    })()
+    this.refreshOperations.set(key, pending)
+    try {
+      return await pending
+    } finally {
+      if (this.refreshOperations.get(key) === pending) this.refreshOperations.delete(key)
+    }
+  }
+
+  private async withOperation<T>(kind: CoordinatorOperation['kind'], storageId: string | null, run: () => Promise<T>, preflight?: () => Promise<void>): Promise<T> {
+    if (kind === 'refresh') return this.withRefreshOperation(`probe:${storageId || 'active'}`, run)
+    if (this.isAccountOperationInProgress()) throw new AccountCoordinatorError('account_operation_in_progress', 'Another account operation is already in progress.')
     this.operation = { kind, storageId, startedAt: Date.now() }
     const shortId = storageId?.slice(0, 8) ?? 'active'
     const startedAt = Date.now()
     let releaseApi: (() => void) | undefined
     try {
+      await preflight?.()
       if (kind === 'switch' || kind === 'remove') releaseApi = await this.apiLifecycle?.beforeMutation(kind, storageId)
       const result = await run()
       console.info(`[accounts] operation=${kind} storage=${shortId} result=ok durationMs=${String(Date.now() - startedAt)}`)

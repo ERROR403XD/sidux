@@ -6838,7 +6838,7 @@ export class BackendQueueProcessor {
       options.features ?? (async () => (await catalog.snapshot()).features),
     )
     this.deliveries = new DeliveryService(this.store, {
-      accountBusy: () => this.providerChanging || this.appServer.taskAccountBusy() || getAccountAuthCoordinator().isAccountOperationInProgress(),
+      accountBusy: () => this.providerChanging || this.appServer.taskAccountBusy() || getAccountAuthCoordinator().blocksNewSubmissions(),
       submissionBlocked: () => this.providerChanging || getAccountAuthCoordinator().blocksNewSubmissions(),
       context: options.context ?? (() => this.deliveryContext()),
       canStart: threadId => this.canStartQueuedTurn(threadId),
@@ -6894,7 +6894,7 @@ export class BackendQueueProcessor {
   }
 
   isIdentityChanging(): boolean {
-    return this.providerChanging || getAccountAuthCoordinator().isAccountOperationInProgress()
+    return this.providerChanging || getAccountAuthCoordinator().blocksNewSubmissions()
   }
 
   async readState(): Promise<ThreadQueueState> {

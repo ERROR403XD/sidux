@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiProxyGateway } from './gateway.js'
 import { ProxyStore } from './store.js'
 import { ProxyActivity } from './activity.js'
-import type { AccountAuthCoordinator } from '../accountAuthCoordinator.js'
+import { AccountAuthCoordinator } from '../accountAuthCoordinator.js'
 import { ProxyComponent, type ComponentGeneration } from './component.js'
 
 const cleanups: (() => Promise<void>)[] = []
@@ -52,10 +52,11 @@ async function fixture() {
     ws.send(JSON.stringify({ type: 'response.completed', response: { id: `ws-response-${requests.length}`, status: 'completed', output: [] } }))
   }))
   cleanups.push(async () => { for (const ws of backendWs.clients) ws.terminate(); backendWs.close() })
+  let operation: any = null
   let lifecycle: any
   let guard: (() => Promise<void>) | null = null
   let accountState: any = { activeStorageId: 'account', accounts: [{ storageId: 'account' }, { storageId: 'fixed' }] }
-  const coordinator = { store: { codexHome: directory, readState: async () => accountState }, setSubmissionGuard: (value: any) => { guard = value }, setQuotaObserver: vi.fn(), isAccountOperationInProgress: () => false,
+  const coordinator = { store: { codexHome: directory, readState: async () => accountState }, setSubmissionGuard: (value: any) => { guard = value }, setQuotaObserver: vi.fn(), blocksApiAccount: (id: string | null) => AccountAuthCoordinator.prototype.blocksApiAccount.call({ operation } as any, id), isAccountOperationInProgress: () => !!operation,
     setApiLifecycle: (value: any) => { lifecycle = value }, listAccounts: async () => ({ activeStorageId: 'account', accounts: [{ storageId: 'account' }] }) } as unknown as AccountAuthCoordinator
   const gateway = new ApiProxyGateway(coordinator)
   await gateway.store.ready
@@ -78,7 +79,7 @@ async function fixture() {
   async function post(path: string, input: unknown, secret = first.secret) {
     return await fetch(base + path, { method: 'POST', headers: headers(secret), body: JSON.stringify(input) })
   }
-  return { gateway, base, first, second, headers, post, requests, stop, setAccountState: (value: any) => { accountState = value }, guard: () => guard!(), lifecycle: () => lifecycle, upstreamClosed: () => upstreamClosed }
+  return { setOperation: (value: any) => { operation = value }, gateway, base, first, second, headers, post, requests, stop, setAccountState: (value: any) => { accountState = value }, guard: () => guard!(), lifecycle: () => lifecycle, upstreamClosed: () => upstreamClosed }
 }
 
 describe('API outlet state and admission', () => {
@@ -201,7 +202,7 @@ describe('API outlet transport boundaries', () => {
     f.gateway.activity.finish(entry.id)
     const removeRelease = await f.lifecycle().beforeMutation('remove', 'fixed')
     expect(f.stop).toHaveBeenCalledOnce()
-    expect(f.gateway.activity.draining).toBe(true)
+    expect(f.gateway.activity.draining).toBe(false)
     removeRelease()
     expect(f.gateway.activity.draining).toBe(false)
   })
@@ -293,4 +294,19 @@ it('checks reserve again for each WebSocket frame, not only at handshake', async
   expect(JSON.parse(String(message)).error.code).toBe('account_quota_protected')
   expect(f.requests).toHaveLength(0)
   ws.terminate()
+})
+
+
+it('serves responses and chat completions throughout background refresh and isolates fixed keys during a primary switch', async () => {
+  const f = await fixture()
+  f.setOperation({ kind: 'refresh', storageId: 'account' })
+  for (const path of ['/v1/responses', '/v1/chat/completions']) {
+    expect((await f.post(path, { model: 'fixture', input: [], messages: [] })).status).toBe(200)
+  }
+  await f.gateway.store.saveSettings({ ...f.gateway.store.settings, accountStorageId: 'fixed' })
+  f.setOperation({ kind: 'switch', storageId: 'other' })
+  expect((await f.post('/v1/responses', { input: [] })).status).toBe(200)
+  await f.gateway.store.saveSettings({ ...f.gateway.store.settings, accountStorageId: null })
+  expect((await f.post('/v1/responses', { input: [] })).status).toBe(503)
+  f.setOperation(null)
 })

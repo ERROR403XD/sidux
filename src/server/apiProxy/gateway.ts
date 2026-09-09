@@ -148,22 +148,26 @@ export class ApiProxyGateway {
       isIdle: () => [...this.activity.entries.values()].every(entry => !!(this.store.findKey(entry.keyId)?.accountStorageId || this.store.settings.accountStorageId)),
       beforeMutation: async (kind, storageId) => {
         await this.store.ready
-        const fixedGlobal = this.store.settings.accountStorageId
-        if (kind === 'switch' && (fixedGlobal || (this.activity.entries.size > 0 && [...this.activity.entries.values()].every(entry => !!this.store.findKey(entry.keyId)?.accountStorageId)))) return () => undefined
-        if (kind === 'remove' && fixedGlobal && fixedGlobal !== storageId && !this.accountComponents.has(storageId || '')) return () => undefined
         if (this.mutation) throw new ProxyError('proxy_busy', 'API 出口设置正在变更。', 409)
-        this.mutation = true
-        try {
-          await this.activity.drain(this.store.settings.drainTimeoutSeconds * 1000)
-          await this.stopComponents()
-          this.epoch = randomUUID()
-          this.responseOwners.clear()
-        } catch (error) {
-          this.mutation = false
-          this.activity.draining = false
-          throw error
+        const affectedKey = (keyId: string) => {
+          const fixed = this.store.findKey(keyId)?.accountStorageId || this.store.settings.accountStorageId
+          return kind === 'switch' ? !fixed : fixed === storageId
         }
-        return () => { this.mutation = false; this.activity.draining = false }
+        await this.activity.drainMatching(entry => kind === 'remove'
+          ? entry.storageId === storageId || affectedKey(entry.keyId)
+          : affectedKey(entry.keyId), this.store.settings.drainTimeoutSeconds * 1000)
+        if (kind === 'switch' && !this.store.settings.accountStorageId
+          || kind === 'remove' && (this.store.settings.accountStorageId === storageId || this.component.status().selectedStorageId === storageId)) {
+          await this.component.stop()
+        }
+        if (kind === 'remove' && storageId) {
+          await this.accountComponents.get(storageId)?.stop()
+          this.accountComponents.delete(storageId)
+        }
+        for (const [id, owner] of this.responseOwners) {
+          if (affectedKey(owner.keyId)) this.responseOwners.delete(id)
+        }
+        return () => undefined
       },
     })
   }
@@ -173,7 +177,7 @@ export class ApiProxyGateway {
     const key = this.store.authenticate(raw)
     if (!key) throw new ProxyError('invalid_api_key', '缺少有效的 API key。', 401)
     if (!this.store.settings.enabled) throw new ProxyError('proxy_disabled', 'API 出口未启用。', 503)
-    if (this.coordinator.isAccountOperationInProgress()) throw new ProxyError('account_busy', '账号正在变更，请稍后重试。', 503)
+    if (this.coordinator.blocksApiAccount(key.accountStorageId || this.store.settings.accountStorageId || null)) throw new ProxyError('account_busy', '所选账号正在变更，请稍后重试。', 503)
     return key.id
   }
   private namespace(keyId: string, value: string): string {
@@ -485,7 +489,7 @@ export class ApiProxyGateway {
             if (!this.store.isKeyUsable(keyId)) throw new ProxyError('invalid_api_key', 'API key 已停用、撤销或到期。', 401)
             pending = this.usage.begin(keyId)
             if (processing || record.busy) throw new ProxyError('response_in_progress', '当前响应尚未结束。', 409)
-            if (this.coordinator.isAccountOperationInProgress()) throw new ProxyError('account_busy', '账号正在切换。', 503)
+            if (this.coordinator.blocksApiAccount(this.store.findKey(keyId)?.accountStorageId || this.store.settings.accountStorageId || null)) throw new ProxyError('account_busy', '所选账号正在变更，请稍后重试。', 503)
             const input = JSON.parse(bytes.toString())
             if (!['response.create', 'response.append'].includes(input.type)) throw new ProxyError('unsupported_frame', '不支持此 WebSocket 事件。')
             const adapted = this.adapt(input, keyId, true)
