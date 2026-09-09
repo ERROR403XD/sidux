@@ -10,8 +10,28 @@
       <p v-if="!filteredModels.length" class="model-reasoning-empty">暂无可选模型</p>
     </div>
     <div class="model-reasoning-effort">
-      <header class="model-reasoning-heading"><strong>推理强度</strong><button type="button" class="model-reasoning-reset" aria-label="恢复模型默认推理强度" @click="$emit('effort', '')">默认</button></header>
-      <div class="model-reasoning-levels" role="group" aria-label="推理强度"><button v-for="level in levels" :key="level.value" type="button" :aria-pressed="effectiveEffort === level.value" @click="$emit('effort', level.value)">{{ level.label }}</button></div>
+      <header class="model-reasoning-heading">
+        <strong>推理强度</strong>
+        <output class="model-reasoning-current" aria-live="polite">{{ effortLabel }}</output>
+      </header>
+      <div v-if="levels.length" class="model-reasoning-slider" :style="{ '--effort-progress': `${progress}%` }">
+        <div class="model-reasoning-slider-track" aria-hidden="true">
+          <span class="model-reasoning-slider-fill" />
+          <span v-for="(level, index) in levels" :key="level.value" class="model-reasoning-slider-dot" :class="{ 'is-filled': index <= selectedIndex }" :style="{ left: `${levels.length > 1 ? index / (levels.length - 1) * 100 : 0}%` }" />
+        </div>
+        <input
+          class="model-reasoning-range"
+          type="range"
+          aria-label="推理强度"
+          :aria-valuetext="effortLabel"
+          :min="0"
+          :max="Math.max(1, levels.length - 1)"
+          :step="1"
+          :value="selectedIndex"
+          :disabled="disabled || levels.length === 1"
+          @input="selectEffort"
+        />
+      </div>
       <p v-if="!levels.length" class="model-reasoning-empty">此模型使用默认推理设置</p>
     </div>
   </AppPopover>
@@ -32,9 +52,22 @@ const anchor = ref<HTMLElement | null>(null)
 const visible = ref(false)
 const search = ref('')
 const modelLabel = computed(() => props.models.find(model => model.value === props.selectedModel)?.label || props.selectedModel || '选择模型')
-const levels = computed(() => props.efforts.filter(effort => effort.value))
+const levels = computed(() => {
+  const supported = props.efforts.filter(effort => effort.value)
+  if (supported.length && !supported.some(level => level.value === props.defaultEffort)) {
+    return [{ value: '', label: '模型默认' }, ...supported]
+  }
+  return supported
+})
 const effectiveEffort = computed(() => props.selectedEffort || props.defaultEffort || '')
-const effortLabel = computed(() => levels.value.find(level => level.value === effectiveEffort.value)?.label || '模型默认')
+const selectedIndex = computed(() => Math.max(0, levels.value.findIndex(level => level.value === effectiveEffort.value)))
+const effortLabel = computed(() => levels.value[selectedIndex.value]?.label || '模型默认')
+const progress = computed(() => levels.value.length > 1 ? selectedIndex.value / (levels.value.length - 1) * 100 : 0)
+function selectEffort(event: Event): void {
+  const index = Number((event.target as HTMLInputElement).value)
+  const level = levels.value[index]
+  if (level && !props.disabled) emit('effort', level.value)
+}
 const shortModelLabel = computed(() => {
   const label = modelLabel.value
   const family = label.match(/\b(astra|sol|terra|luna)\b/i)?.[1]

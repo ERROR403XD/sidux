@@ -229,20 +229,6 @@
 
         <span v-if="modelSettingsWarning || modelCatalogError" class="model-capability-warning" role="status">{{ modelSettingsWarning || modelCatalogError }}</span>
         <template v-if="!isDictationRecording">
-          <ModelReasoningPicker
-            ref="commandModelRef"
-            class="thread-composer-control"
-            :selected-model="selectedModel"
-            :selected-effort="selectedReasoningEffort"
-            :default-effort="modelCapability?.defaultEffort"
-            :models="modelOptions"
-            :efforts="reasoningOptions"
-            :disabled="isComposerConfigDisabled"
-            @open-change="onCommandSubmenuChange('model', $event)"
-            @model="onModelSelect"
-            @effort="onReasoningEffortSelect"
-          />
-
           <ComposerSearchDropdown
             ref="commandSkillsRef"
             @open-change="onCommandSubmenuChange('skills', $event)"
@@ -260,22 +246,35 @@
             @create="onCreatePrompt"
             @remove="onRemovePrompt"
           />
-
-
         </template>
 
-        <button
-          class="thread-composer-fast"
-          type="button"
-          role="switch"
-          :aria-checked="isFastSelected"
-          aria-label="Fast 快速模式"
-          :title="fastModeHint"
-          :disabled="isComposerConfigDisabled || (!fastTier && !selectedSpeedMode) || fastIsOnlyDefault"
-          @click="toggleFastMode"
-        >
-          <IconTablerBolt class="thread-composer-fast-icon" aria-hidden="true" /> Fast
-        </button>
+        <div v-if="!isDictationRecording" class="thread-composer-model-controls">
+          <ModelReasoningPicker
+            ref="commandModelRef"
+            class="thread-composer-control"
+            :selected-model="selectedModel"
+            :selected-effort="selectedReasoningEffort"
+            :default-effort="modelCapability?.defaultEffort"
+            :models="modelOptions"
+            :efforts="reasoningOptions"
+            :disabled="isComposerConfigDisabled"
+            @open-change="onCommandSubmenuChange('model', $event)"
+            @model="onModelSelect"
+            @effort="onReasoningEffortSelect"
+          />
+          <button
+            class="thread-composer-fast"
+            type="button"
+            role="switch"
+            :aria-checked="isFastSelected"
+            aria-label="Fast 快速模式"
+            :title="fastModeHint"
+            :disabled="isComposerConfigDisabled || (!fastTier && !selectedSpeedMode) || fastIsOnlyDefault"
+            @click="toggleFastMode"
+          >
+            <IconTablerBolt class="thread-composer-fast-icon" aria-hidden="true" /> Fast
+          </button>
+        </div>
         <div
           class="thread-composer-actions"
           :class="{ 'thread-composer-actions--recording': isDictationRecording }"
@@ -2179,7 +2178,7 @@ watch(
 
 
 .thread-composer-actions {
-  @apply ml-auto flex shrink-0 min-w-0 items-center gap-2;
+  @apply flex shrink-0 min-w-0 items-center gap-2;
 }
 
 .thread-composer-actions--recording {
