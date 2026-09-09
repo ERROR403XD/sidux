@@ -1,35 +1,39 @@
 <template>
   <div class="directory-hub">
     <header class="directory-header">
-      <div><h2 class="directory-title">插件 / 技能 / MCP</h2><p class="directory-subtitle">管理 Codex 原版插件、可用技能与工具连接。</p></div>
+      <div><a class="directory-back" href="#/settings">设置 / 扩展管理</a><h2 class="directory-title">插件 / 技能 / MCP</h2><p class="directory-subtitle">管理 Codex 原版插件、可用技能与工具连接。</p></div>
       <AppButton :busy="loading" @click="refresh(true)">刷新</AppButton>
     </header>
-    <div class="directory-scope">
-      <label>查看范围</label>
-      <AppSelect :model-value="props.cwd || ''" :options="scopeOptions" enable-search :disabled="busy" @update:model-value="emit('scope-change', $event)" />
-      <span v-if="props.threadId" class="directory-scope-note">会话 {{ props.threadId.slice(-8) }} · <a :href="`#/thread/${props.threadId}`">返回会话</a></span>
-      <p class="directory-scope-note">技能按项目读取；安装与启停保存到用户设置。MCP 显示{{ props.threadId ? '此会话' : '全局' }}状态。</p>
-    </div>
     <nav class="directory-tabs" aria-label="扩展分类">
-      <button v-for="tab in tabs" :key="tab.id" type="button" class="directory-tab" :class="{ 'is-active': activeTab === tab.id }" :aria-pressed="activeTab === tab.id" :disabled="busy" @click="selectTab(tab.id)">{{ tab.label }}</button>
+      <button v-for="tab in tabs" :key="tab.id" type="button" class="directory-tab" :class="{ 'is-active': activeTab === tab.id }" :aria-label="tab.label" :aria-pressed="activeTab === tab.id" :disabled="busy" @click="selectTab(tab.id)">
+        <strong>{{ tab.label }}</strong><span>{{ tab.description }}</span>
+      </button>
     </nav>
+    <div class="directory-scope">
+      <div class="directory-scope-picker"><span>查看范围</span><AppSelect :model-value="props.cwd || ''" :options="scopeOptions" enable-search :disabled="busy" @update:model-value="emit('scope-change', $event)" /></div>
+      <p class="directory-scope-note">技能按项目读取；安装与启停保存到用户设置。MCP 显示{{ props.threadId ? '此会话' : '全局' }}状态。</p>
+      <a v-if="props.threadId" class="directory-back" :href="`#/thread/${props.threadId}`">返回会话 {{ props.threadId.slice(-8) }}</a>
+    </div>
     <p v-if="notice" class="directory-toast" role="status">{{ notice }}</p>
     <p v-if="error" class="directory-error" role="alert">{{ error }}</p>
     <section v-if="activeTab === 'plugins'" class="directory-section">
-      <input v-model="search" class="directory-search" type="search" placeholder="搜索插件" aria-label="搜索插件" />
+      <div class="directory-toolbar">
+        <input v-model="search" class="directory-search" type="search" placeholder="搜索插件名称或功能" aria-label="搜索插件" />
+        <AppSelect v-model="pluginFilter" :options="pluginFilterOptions" />
+      </div>
+      <p v-if="ready && supportsPlugins && !loading" class="directory-results-count">{{ filteredPlugins.length }} 个插件<span v-if="installedCount"> · 已安装 {{ installedCount }} 个</span></p>
       <p v-if="!supportsPlugins && ready" class="directory-empty">当前 Codex CLI 未提供原版插件接口。可继续管理技能和 MCP。</p>
       <p v-else-if="loading" class="directory-loading">读取插件…</p>
-      <p v-else-if="!visiblePlugins.length" class="directory-empty">暂无插件。配置原版插件市场后刷新即可查看。</p>
-      <div class="directory-grid">
+      <p v-else-if="!visiblePlugins.length" class="directory-empty">{{ search || pluginFilter !== 'all' ? '没有匹配的插件，试试其他关键词或筛选条件。' : '暂无插件。配置原版插件市场后刷新即可查看。' }}</p>
+      <div v-if="!loading" class="directory-grid">
         <button v-for="plugin in visiblePlugins" :key="plugin.id" type="button" class="directory-card" @click="openPluginDetail(plugin)">
           <div class="directory-card-top">
             <img v-if="pluginIconSrc(plugin)" class="directory-card-icon" :src="pluginIconSrc(plugin)" alt="" loading="lazy" />
             <span v-else class="directory-card-fallback">{{ plugin.displayName.charAt(0) }}</span>
-            <div class="directory-card-main"><strong>{{ plugin.displayName }}</strong><span class="directory-card-meta">{{ plugin.developerName || plugin.marketplaceDisplayName || plugin.marketplaceName }}</span></div>
-            <span class="directory-chip">{{ plugin.installed ? (plugin.enabled ? '已启用' : '已停用') : '可安装' }}</span>
+            <div class="directory-card-main"><strong :title="plugin.displayName">{{ plugin.displayName }}</strong><span class="directory-card-meta">{{ plugin.developerName || plugin.marketplaceDisplayName || plugin.marketplaceName }}</span></div>
           </div>
           <p class="directory-card-description">{{ plugin.description || '查看技能、MCP 与连接要求' }}</p>
-          <div class="directory-card-tags"><span v-for="capability in plugin.capabilities" :key="capability" class="directory-chip">{{ capability }}</span></div>
+          <div class="directory-card-footer"><div class="directory-card-tags"><span v-for="capability in plugin.capabilities" :key="capability" class="directory-chip">{{ capability }}</span></div><span class="directory-plugin-status" :class="{ 'is-installed': plugin.installed }">{{ plugin.installed ? (plugin.enabled ? '已启用' : '已停用') : (plugin.installPolicy === 'NOT_AVAILABLE' || plugin.availability === 'DISABLED_BY_ADMIN' ? '受限' : '可安装') }}</span></div>
         </button>
       </div>
       <div v-if="filteredPlugins.length > 60" class="directory-pagination">
@@ -48,12 +52,12 @@
       >
         <template #before-installed>
           <div class="skills-embedded-section">
-            <button class="skills-embedded-toggle" type="button" @click="isMcpSectionOpen = !isMcpSectionOpen">
-              <span class="skills-embedded-title">MCPs({{ visibleMcpServers.length }})</span>
+            <button class="skills-embedded-toggle" type="button" :aria-expanded="isMcpSectionOpen" @click="isMcpSectionOpen = !isMcpSectionOpen">
+              <span class="skills-embedded-title">MCP 连接 <span class="directory-count">{{ visibleMcpServers.length }}</span></span>
               <span class="skills-embedded-chevron" :class="{ 'is-open': isMcpSectionOpen }">›</span>
             </button>
             <div v-if="isMcpSectionOpen" class="skills-embedded-body">
-              <AppButton v-if="supportsMcpReload" :busy="isReloadingMcps" @click="reloadMcps">重载 MCP 配置</AppButton>
+              <div class="directory-mcp-toolbar"><p class="directory-scope-note">查看已配置服务、连接状态与可用工具。</p><AppButton v-if="supportsMcpReload" :busy="isReloadingMcps" @click="reloadMcps">重载配置</AppButton></div>
               <div v-if="!supportsMcps" class="directory-empty">
                 {{ t('MCP status APIs unavailable in this Codex CLI. Update Codex CLI to inspect MCP servers.') }}
               </div>
@@ -62,7 +66,7 @@
               <div v-else-if="visibleMcpServers.length === 0" class="directory-empty">{{ t('No MCP servers configured.') }}</div>
               <div v-else class="mcp-skill-grid">
                 <article v-for="server in visibleMcpServers" :key="server.name">
-                  <button class="mcp-skill-card skill-card" type="button" @click="toggleMcpExpanded(server.name)">
+                  <button class="mcp-skill-card" type="button" :aria-expanded="expandedMcpNames.has(server.name)" @click="toggleMcpExpanded(server.name)">
                     <div class="mcp-skill-card-top">
                       <div class="mcp-skill-avatar-fallback">{{ server.name.charAt(0) }}</div>
                       <div class="mcp-skill-info">
@@ -74,7 +78,7 @@
                       </div>
                       <span class="mcp-skill-chevron" :class="{ 'is-open': expandedMcpNames.has(server.name) }">›</span>
                     </div>
-                    <p class="mcp-skill-meta">{{ server.toolCount }} tools<span v-if="server.resourceCount !== null"> · {{ server.resourceCount }} resources</span></p>
+                    <p class="mcp-skill-meta">{{ server.toolCount }} 个工具<span v-if="server.resourceCount !== null"> · {{ server.resourceCount }} 项资源</span></p>
                     <div v-if="expandedMcpNames.has(server.name)" class="directory-mcp-detail">
                       <p v-if="mcpDetailError">{{ mcpDetailError }}</p>
                       <p v-else-if="!server.detailsLoaded">读取工具与资源…</p>
@@ -139,7 +143,7 @@ const emit = defineEmits<{ 'scope-change': [cwd: string]; 'skills-changed': []; 
 const { t } = useUiLanguage()
 const route = useRoute()
 const router = useRouter()
-const tabs = [{ id: 'plugins', label: '插件' }, { id: 'skills', label: '技能 / MCP' }] as const
+const tabs = [{ id: 'plugins', label: '插件', description: '浏览和管理原版插件' }, { id: 'skills', label: '技能 / MCP', description: '管理技能与工具连接' }] as const
 const activeTab = computed(() => route.query.tab === 'plugins' ? 'plugins' : 'skills')
 const scopeOptions = computed(() => [{ value: '', label: '全局' }, ...(props.projects || [])])
 const methods = ref(new Set<string>())
@@ -149,6 +153,8 @@ const busy = ref(false)
 const error = ref('')
 const notice = ref('')
 const search = ref('')
+const pluginFilter = ref('all')
+const pluginFilterOptions = [{ value: 'all', label: '全部插件' }, { value: 'installed', label: '已安装' }, { value: 'available', label: '未安装' }]
 const plugins = ref<DirectoryPluginSummary[]>([])
 const selectedPlugin = ref<DirectoryPluginSummary | null>(null)
 const detail = ref<DirectoryPluginDetail | null>(null)
@@ -158,10 +164,18 @@ const authApps = ref<DirectoryPluginAppSummary[]>([])
 const supportsPlugins = computed(() => ['plugin/list', 'plugin/read', 'plugin/install', 'plugin/uninstall'].every(method => methods.value.has(method)))
 const unavailable = computed(() => selectedPlugin.value?.installPolicy === 'NOT_AVAILABLE' || selectedPlugin.value?.availability === 'DISABLED_BY_ADMIN')
 const pluginPage = ref(1)
-const filteredPlugins = computed(() => plugins.value.filter(plugin => `${plugin.displayName} ${plugin.description}`.toLowerCase().includes(search.value.toLowerCase())).sort((a, b) => Number(b.installed) - Number(a.installed) || a.displayName.localeCompare(b.displayName)))
+const sortedPlugins = computed(() => [...plugins.value].sort((a, b) => Number(b.installed) - Number(a.installed) || a.displayName.localeCompare(b.displayName)))
+const installedCount = computed(() => plugins.value.filter(plugin => plugin.installed).length)
+const filteredPlugins = computed(() => {
+  const query = search.value.trim().toLowerCase()
+  return sortedPlugins.value.filter(plugin => {
+    const matchesFilter = pluginFilter.value === 'all' || (pluginFilter.value === 'installed' ? plugin.installed : !plugin.installed)
+    return matchesFilter && `${plugin.displayName} ${plugin.description}`.toLowerCase().includes(query)
+  })
+})
 const pluginPageCount = computed(() => Math.max(1, Math.ceil(filteredPlugins.value.length / 60)))
 const visiblePlugins = computed(() => filteredPlugins.value.slice((pluginPage.value - 1) * 60, pluginPage.value * 60))
-watch([search, plugins], () => { pluginPage.value = 1 })
+watch([search, pluginFilter, plugins], () => { pluginPage.value = 1 })
 const connectionApps = computed(() => [...new Map([...(detail.value?.apps || []), ...authApps.value].map(app => [app.id, app])).values()])
 const skillsHubRef = ref<InstanceType<typeof SkillsHub> | null>(null)
 const mcpServers = ref<DirectoryMcpServerStatus[]>([])
@@ -361,511 +375,86 @@ onBeforeUnmount(() => {
 })
 </script>
 <style scoped>
-.directory-pagination { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 20px 0; color: var(--ui-text-muted); font-size: 12px; }
-@reference "tailwindcss";
-
-.directory-hub {
-  @apply flex h-full w-full flex-col gap-3 overflow-y-auto p-3 sm:p-6;
+.directory-hub { display: flex; flex-direction: column; gap: 20px; height: 100%; overflow-y: auto; color: var(--ui-text); }
+.directory-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.directory-back { color: var(--ui-muted); font-size: 12px; text-decoration: none; }
+.directory-back:hover { color: var(--ui-text); text-decoration: underline; }
+.directory-title { margin: 10px 0 6px; font-size: 24px; line-height: 1.3; font-weight: 650; }
+.directory-subtitle { margin: 0; color: var(--ui-muted); font-size: 13px; line-height: 1.6; }
+.directory-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 6px; border: 1px solid var(--ui-divider); border-radius: var(--ui-radius-dialog); background: var(--ui-hover); }
+.directory-tab { display: flex; flex-direction: column; gap: 4px; padding: 13px 16px; border: 1px solid transparent; border-radius: var(--ui-radius-popover); background: transparent; color: var(--ui-muted); text-align: left; cursor: pointer; transition: background .15s; }
+.directory-tab strong { font-size: 14px; font-weight: 600; }
+.directory-tab span { font-size: 12px; }
+.directory-tab.is-active { border-color: var(--ui-divider); background: var(--ui-surface); color: var(--ui-text); box-shadow: 0 1px 3px #00000008; }
+.directory-tab:focus-visible, .directory-card:focus-visible, .mcp-skill-card:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 2px; }
+.directory-scope { max-width: none; margin: 0; gap: 10px 20px; }
+.directory-scope-picker { display: flex; align-items: center; gap: 12px; min-width: 0; font-size: 12px; color: var(--ui-muted); }
+.directory-scope-picker > span { flex-shrink: 0; }
+.directory-scope-picker :deep(.app-select) { width: 240px; max-width: 100%; min-width: 0; }
+.directory-scope > p { flex: 1 1 260px; line-height: 1.6; }
+.directory-section { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.directory-toolbar { display: flex; align-items: center; gap: 10px; }
+.directory-toolbar > .app-select { flex: 0 0 145px; }
+.directory-search { min-width: 0; width: 100%; height: 40px; padding: 9px 12px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); background: var(--ui-field); color: var(--ui-text); font-size: 13px; }
+.directory-search:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 1px; }
+.directory-results-count { margin: 0; color: var(--ui-muted); font-size: 12px; }
+.directory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 14px; }
+.directory-card { display: flex; flex-direction: column; gap: 14px; min-width: 0; padding: 18px; border: 1px solid var(--ui-divider); border-radius: var(--ui-radius-dialog); background: var(--ui-surface); color: var(--ui-text); text-align: left; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.directory-card:hover { border-color: var(--ui-border); box-shadow: 0 3px 12px #00000008; }
+.directory-card-top { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.directory-card-icon, .directory-card-fallback { display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; flex-shrink: 0; border-radius: 12px; background: var(--ui-hover); color: var(--ui-muted); object-fit: contain; font-size: 18px; text-transform: uppercase; }
+.directory-card-main { min-width: 0; flex: 1; }
+.directory-card-main strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 600; }
+.directory-card-meta { display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ui-muted); font-size: 11px; }
+.directory-card-description { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; min-height: 40px; margin: 0; color: var(--ui-muted); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.directory-card-footer { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin-top: auto; }
+.directory-card-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.directory-chip, .directory-count { padding: 3px 7px; border-radius: 6px; background: var(--ui-hover); color: var(--ui-muted); font-size: 10px; }
+.directory-plugin-status { flex-shrink: 0; color: var(--ui-muted); font-size: 11px; }
+.directory-plugin-status.is-installed { color: var(--ui-focus); }
+.directory-pagination { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 12px 0; color: var(--ui-muted); font-size: 12px; }
+.directory-empty, .directory-loading { padding: 36px 20px; margin: 0; border: 1px dashed var(--ui-border); border-radius: var(--ui-radius-dialog); color: var(--ui-muted); text-align: center; font-size: 13px; }
+.directory-toast { padding: 12px; margin: 0; border: 1px solid var(--ui-divider); border-radius: var(--ui-radius-control); color: var(--ui-text); background: var(--ui-hover); font-size: 13px; }
+.directory-error { padding: 12px; border: 1px solid var(--ui-danger-border); border-radius: var(--ui-radius-control); color: var(--ui-danger); font-size: 13px; overflow-wrap: anywhere; }
+.directory-plugin-description { white-space: pre-line; line-height: 1.7; overflow-wrap: anywhere; }
+.directory-detail-group { padding: 12px 0; border-top: 1px solid var(--ui-divider); font-size: 13px; }
+.directory-detail-group h3 { margin: 0 0 8px; font-size: 14px; }
+.directory-detail-group p { margin: 8px 0; overflow-wrap: anywhere; }
+.directory-detail-group a { color: var(--ui-focus); }
+.skills-embedded-section { display: flex; flex-direction: column; gap: 14px; padding: 18px; border: 1px solid var(--ui-divider); border-radius: var(--ui-radius-dialog); background: var(--ui-surface); }
+.skills-embedded-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0; border: 0; background: transparent; color: var(--ui-text); cursor: pointer; }
+.skills-embedded-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+.skills-embedded-chevron, .mcp-skill-chevron { display: inline-block; font-size: 20px; line-height: 1; color: var(--ui-muted); transition: transform .15s; }
+.skills-embedded-chevron.is-open, .mcp-skill-chevron.is-open { transform: rotate(90deg); }
+.skills-embedded-body { display: flex; flex-direction: column; gap: 14px; }
+.directory-mcp-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.mcp-skill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.mcp-skill-card { display: flex; flex-direction: column; gap: 12px; width: 100%; height: 100%; padding: 14px; border: 1px solid var(--ui-divider); border-radius: var(--ui-radius-popover); background: var(--ui-surface); color: var(--ui-text); text-align: left; cursor: pointer; }
+.mcp-skill-card:hover { border-color: var(--ui-border); }
+.mcp-skill-card-top { display: flex; align-items: center; gap: 10px; }
+.mcp-skill-avatar-fallback { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 34px; height: 34px; border-radius: 10px; background: var(--ui-hover); color: var(--ui-muted); text-transform: uppercase; }
+.mcp-skill-info { min-width: 0; flex: 1; }
+.mcp-skill-header { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.mcp-skill-name { overflow-wrap: anywhere; font-size: 13px; font-weight: 600; }
+.mcp-skill-owner, .mcp-skill-meta { margin: 0; color: var(--ui-muted); font-size: 12px; }
+.mcp-skill-badge { padding: 2px 6px; border-radius: 5px; background: var(--ui-hover); color: var(--ui-muted); font-size: 10px; }
+.mcp-skill-badge-warning { color: var(--ui-danger); }
+.directory-mcp-detail { width: 100%; border-top: 1px solid var(--ui-divider); font-size: 12px; }
+.directory-mini-heading { margin: 12px 0 6px; font-size: 12px; }
+.directory-mini-list { margin: 0; color: var(--ui-muted); line-height: 1.7; }
+.directory-section :deep(.skills-hub) { height: auto; padding: 0; max-width: none; margin: 0; overflow: visible; gap: 18px; }
+.directory-section :deep(.skills-search-panel), .directory-section :deep(.skills-hub-section) { padding: 18px; border: 1px solid var(--ui-divider); border-radius: var(--ui-radius-dialog); background: var(--ui-surface); }
+.directory-section :deep(.skills-hub-grid) { grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+@media (max-width: 600px) {
+  .directory-hub { gap: 16px; }
+  .directory-title { font-size: 20px; }
+  .directory-tab { gap: 6px; padding: 12px 10px; }
+  .directory-tab span { font-size: 11px; }
+  .directory-scope-picker { width: 100%; }
+  .directory-scope-picker :deep(.app-select) { width: auto; flex: 1; }
+  .directory-toolbar > .app-select { flex-basis: 115px; }
+  .skills-embedded-section, .directory-section :deep(.skills-search-panel), .directory-section :deep(.skills-hub-section) { padding: 14px; }
+  .directory-mcp-toolbar { align-items: flex-start; }
+  .directory-mcp-toolbar > .app-button { flex-shrink: 0; }
 }
-
-.directory-header {
-  @apply mx-auto flex w-full max-w-5xl items-start justify-between gap-3;
-}
-
-.directory-header-actions {
-  @apply flex items-center gap-2;
-}
-
-.directory-title {
-  @apply m-0 text-xl font-semibold text-zinc-900 sm:text-2xl;
-}
-
-.directory-subtitle {
-  @apply m-0 mt-1 text-sm text-zinc-500;
-}
-
-.directory-refresh,
-.directory-action,
-.directory-action-link,
-.directory-modal-close {
-  @apply shrink-0 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600 no-underline transition hover:border-zinc-300 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50;
-}
-
-.directory-action.primary {
-  @apply border-zinc-900 bg-zinc-900 text-white hover:bg-black;
-}
-
-.directory-action.danger {
-  @apply border-rose-600 bg-rose-600 text-white hover:bg-rose-700;
-}
-
-.directory-tabs {
-  @apply mx-auto grid w-full max-w-5xl grid-cols-4 rounded-lg border border-zinc-200 bg-zinc-100 p-1;
-}
-
-.directory-tab {
-  @apply rounded-md border-0 bg-transparent px-2 py-1.5 text-sm font-medium text-zinc-500 transition hover:text-zinc-800;
-}
-
-.directory-tab.is-active {
-  @apply bg-white text-zinc-900 shadow-sm;
-}
-
-.directory-section {
-  @apply mx-auto flex w-full max-w-5xl flex-col gap-3;
-}
-
-.directory-section-group {
-  @apply flex flex-col gap-3;
-}
-
-.skills-embedded-section {
-  @apply flex flex-col gap-2;
-}
-
-.skills-embedded-toggle {
-  @apply flex items-center gap-1.5 border-0 bg-transparent p-0 text-sm font-medium text-zinc-600 transition hover:text-zinc-900 cursor-pointer;
-}
-
-.skills-embedded-title {
-  @apply text-sm font-medium;
-}
-
-.skills-embedded-chevron {
-  @apply inline-block text-base leading-none transition-transform;
-}
-
-.skills-embedded-chevron.is-open {
-  @apply rotate-90;
-}
-
-.skills-embedded-body {
-  @apply flex flex-col gap-3;
-}
-
-.mcp-skill-grid {
-  @apply grid grid-cols-1 gap-3 md:grid-cols-2;
-}
-
-.mcp-skill-card {
-  @apply flex w-full flex-col gap-1.5 rounded-xl border border-zinc-200 bg-white p-3 text-left transition hover:border-zinc-300 hover:shadow-sm cursor-pointer;
-}
-
-.mcp-skill-card-top {
-  @apply flex items-start gap-2.5;
-}
-
-.mcp-skill-avatar-fallback {
-  @apply w-8 h-8 rounded-full shrink-0 bg-zinc-200 text-zinc-500 flex items-center justify-center text-xs font-medium uppercase;
-}
-
-.mcp-skill-info {
-  @apply flex flex-col gap-0.5 min-w-0 flex-1;
-}
-
-.mcp-skill-header {
-  @apply flex items-center gap-2;
-}
-
-.mcp-skill-name {
-  @apply text-sm font-medium text-zinc-900 truncate;
-}
-
-.mcp-skill-owner {
-  @apply text-xs text-zinc-400;
-}
-
-.mcp-skill-meta {
-  @apply m-0 text-xs text-zinc-500;
-}
-
-.mcp-skill-chevron {
-  @apply inline-block text-base leading-none text-zinc-400 transition-transform;
-}
-
-.mcp-skill-chevron.is-open {
-  @apply rotate-90;
-}
-
-.mcp-skill-badge {
-  @apply shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium leading-none border;
-}
-
-.mcp-skill-badge-ok {
-  @apply border-emerald-200 bg-emerald-50 text-emerald-700;
-}
-
-.mcp-skill-badge-warning {
-  @apply border-amber-200 bg-amber-50 text-amber-700;
-}
-
-.mcp-skill-badge-muted {
-  @apply border-zinc-200 bg-zinc-100 text-zinc-500;
-}
-
-.directory-section-actions {
-  @apply flex justify-end;
-}
-
-.directory-toolbar {
-  @apply flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between;
-}
-
-.directory-search {
-  @apply min-w-0 flex-1 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400;
-}
-
-.directory-sort-group {
-  @apply inline-flex rounded-lg border border-zinc-200 bg-zinc-100 p-1;
-}
-
-.directory-sort-button {
-  @apply rounded-md border-0 bg-transparent px-2.5 py-1 text-xs font-medium text-zinc-500 transition hover:text-zinc-800;
-}
-
-.directory-sort-button.is-active {
-  @apply bg-white text-zinc-900 shadow-sm;
-}
-
-.directory-grid {
-  @apply grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3;
-}
-
-.directory-list {
-  @apply flex flex-col gap-3;
-}
-
-.directory-card {
-  @apply flex min-h-36 flex-col gap-2 rounded-xl border border-zinc-200 bg-white p-3 text-left transition hover:border-zinc-300 hover:shadow-sm;
-}
-
-button.directory-card {
-  @apply cursor-pointer;
-}
-
-.directory-card.is-disabled {
-  @apply opacity-60;
-}
-
-.directory-card-wide {
-  @apply min-h-0;
-}
-
-.directory-card-top {
-  @apply flex min-w-0 items-start gap-3;
-}
-
-.directory-card-icon,
-.directory-card-fallback {
-  @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-100 object-cover text-sm font-semibold uppercase text-zinc-500;
-}
-
-.directory-card-main {
-  @apply min-w-0 flex-1;
-}
-
-.directory-card-title-row {
-  @apply flex min-w-0 items-center gap-2;
-}
-
-.directory-card-title {
-  @apply truncate text-sm font-semibold text-zinc-900;
-}
-
-.directory-card-meta {
-  @apply mt-0.5 block truncate text-xs text-zinc-400;
-}
-
-.directory-card-description {
-  @apply m-0 line-clamp-3 text-xs leading-relaxed text-zinc-500;
-}
-
-.directory-badge {
-  @apply shrink-0 rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-emerald-700;
-}
-
-.directory-badge.is-muted {
-  @apply border-zinc-200 bg-zinc-100 text-zinc-500;
-}
-
-.directory-chip-row {
-  @apply flex flex-wrap gap-1.5;
-}
-
-.directory-chip {
-  @apply rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500;
-}
-
-.directory-card-actions {
-  @apply mt-auto flex items-center gap-2 pt-1;
-}
-
-.directory-loading,
-.directory-empty,
-.directory-error {
-  @apply rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500;
-}
-
-.directory-empty-copy {
-  @apply flex flex-col gap-3;
-}
-
-.directory-empty-text {
-  @apply m-0;
-}
-
-.directory-error,
-.directory-toast.is-error {
-  @apply border-rose-200 bg-rose-50 text-rose-700;
-}
-
-.directory-auth-status.is-error {
-  @apply border-rose-200 bg-rose-50 text-rose-700;
-}
-
-.directory-toast {
-  @apply mx-auto w-full max-w-5xl rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700;
-}
-
-.directory-card-toggle {
-  @apply flex w-full items-center justify-between gap-3 border-0 bg-transparent p-0 text-left;
-}
-
-.directory-mcp-detail {
-  @apply flex flex-col gap-3 border-t border-zinc-100 pt-3;
-}
-
-.directory-mini-heading,
-.directory-detail-heading {
-  @apply m-0 text-xs font-semibold text-zinc-700;
-}
-
-.directory-mini-list {
-  @apply m-0 text-xs leading-relaxed text-zinc-500;
-}
-
-.directory-modal-overlay {
-  @apply fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center;
-}
-
-.directory-modal {
-  @apply flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:max-h-[82vh] sm:rounded-2xl;
-}
-
-.directory-modal-header,
-.directory-modal-footer {
-  @apply flex shrink-0 items-center justify-between gap-3 p-4 sm:p-5;
-}
-
-.directory-modal-header {
-  @apply border-b border-zinc-100;
-}
-
-.directory-modal-footer {
-  @apply justify-end border-t border-zinc-100;
-}
-
-.directory-modal-title {
-  @apply m-0 truncate text-lg font-semibold text-zinc-900;
-}
-
-.directory-modal-body {
-  @apply flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-5;
-}
-
-.directory-detail-description {
-  @apply m-0 text-sm leading-relaxed text-zinc-600;
-}
-
-.directory-detail-grid {
-  @apply grid grid-cols-1 gap-3 sm:grid-cols-2;
-}
-
-.directory-detail-block,
-.directory-auth-panel {
-  @apply rounded-xl border border-zinc-200 bg-zinc-50 p-3;
-}
-
-.directory-include-row {
-  @apply mt-2 flex items-center justify-between gap-3 text-xs text-zinc-600;
-}
-
-.directory-auth-status {
-  @apply ml-2 inline-flex rounded-md border px-1.5 py-0.5 text-[10px] font-medium leading-none;
-}
-
-.directory-auth-status.is-ok {
-  @apply border-emerald-200 bg-emerald-50 text-emerald-700;
-}
-
-.directory-auth-status.is-warning {
-  @apply border-amber-200 bg-amber-50 text-amber-700;
-}
-
-.directory-auth-status.is-muted {
-  @apply border-zinc-200 bg-white text-zinc-500;
-}
-
-.directory-include-row button {
-  @apply border-0 bg-transparent p-0 text-xs font-medium text-blue-600 hover:underline;
-}
-
-.directory-screenshots {
-  @apply grid grid-cols-1 gap-3 sm:grid-cols-2;
-}
-
-.directory-screenshots img {
-  @apply max-h-56 w-full rounded-xl border border-zinc-200 object-cover;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-:global(:root.dark) .directory-title,
-:global(:root.dark) .directory-card-title,
-:global(:root.dark) .directory-modal-title,
-:global(:root.dark) .directory-mini-heading,
-:global(:root.dark) .directory-detail-heading {
-  @apply text-zinc-100;
-}
-
-:global(:root.dark) .directory-subtitle,
-:global(:root.dark) .directory-card-meta,
-:global(:root.dark) .directory-card-description,
-:global(:root.dark) .directory-mini-list,
-:global(:root.dark) .directory-detail-description {
-  @apply text-zinc-400;
-}
-
-:global(:root.dark) .skills-embedded-toggle,
-:global(:root.dark) .skills-embedded-title {
-  @apply text-zinc-300 hover:text-zinc-100;
-}
-
-:global(:root.dark) .mcp-skill-card {
-  @apply border-zinc-700 bg-zinc-900 hover:border-zinc-600;
-}
-
-:global(.dark) .mcp-skill-card {
-  @apply border-zinc-700 bg-zinc-900 hover:border-zinc-600;
-}
-
-:global(:root.dark) .mcp-skill-avatar-fallback {
-  @apply bg-zinc-700 text-zinc-300;
-}
-
-:global(.dark) .mcp-skill-avatar-fallback {
-  @apply bg-zinc-700 text-zinc-300;
-}
-
-:global(:root.dark) .mcp-skill-name {
-  @apply text-zinc-100;
-}
-
-:global(.dark) .mcp-skill-name {
-  @apply text-zinc-100;
-}
-
-:global(:root.dark) .mcp-skill-owner {
-  @apply text-zinc-400;
-}
-
-:global(.dark) .mcp-skill-owner {
-  @apply text-zinc-400;
-}
-
-:global(:root.dark) .mcp-skill-meta {
-  @apply text-zinc-300;
-}
-
-:global(.dark) .mcp-skill-meta {
-  @apply text-zinc-300;
-}
-
-:global(:root.dark) .mcp-skill-chevron {
-  @apply text-zinc-500;
-}
-
-:global(.dark) .mcp-skill-chevron {
-  @apply text-zinc-500;
-}
-
-@media (prefers-color-scheme: dark) {
-  .mcp-skill-card {
-    @apply border-zinc-700 bg-zinc-900 hover:border-zinc-600;
-  }
-
-  .mcp-skill-avatar-fallback {
-    @apply bg-zinc-700 text-zinc-300;
-  }
-
-  .mcp-skill-name {
-    @apply text-zinc-100;
-  }
-
-  .mcp-skill-owner {
-    @apply text-zinc-400;
-  }
-
-  .mcp-skill-meta {
-    @apply text-zinc-300;
-  }
-
-  .mcp-skill-chevron {
-    @apply text-zinc-500;
-  }
-}
-
-:global(:root.dark) .directory-tabs,
-:global(:root.dark) .directory-search,
-:global(:root.dark) .directory-card,
-:global(:root.dark) .directory-loading,
-:global(:root.dark) .directory-empty,
-:global(:root.dark) .directory-modal,
-:global(:root.dark) .directory-refresh,
-:global(:root.dark) .directory-action,
-:global(:root.dark) .directory-action-link,
-:global(:root.dark) .directory-modal-close {
-  @apply border-zinc-700 bg-zinc-900;
-}
-
-:global(:root.dark) .directory-search {
-  @apply text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-500;
-}
-
-:global(:root.dark) .directory-tab.is-active,
-:global(:root.dark) .directory-sort-button.is-active,
-:global(:root.dark) .directory-detail-block,
-:global(:root.dark) .directory-auth-panel,
-:global(:root.dark) .directory-chip {
-  @apply border-zinc-700 bg-zinc-800 text-zinc-100;
-}
-
-:global(:root.dark) .directory-sort-group {
-  @apply border-zinc-700 bg-zinc-950;
-}
-
-:global(:root.dark) .directory-auth-status.is-muted {
-  @apply border-zinc-700 bg-zinc-900 text-zinc-400;
-}
-
-
-
-
-
-
-:global(:root.dark) .directory-auth-status.is-error,
-:global(:root.dark) .directory-error,
-:global(:root.dark) .directory-toast.is-error {
-  @apply border-rose-900/60 bg-rose-950/60 text-rose-300;
-}
-
 </style>

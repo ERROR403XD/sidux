@@ -2603,3 +2603,14 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
   .thread-composer-model-controls { gap: 5px; }
   .thread-composer-model-controls .model-reasoning-trigger { max-width: 135px; padding-inline: 4px; gap: 4px; }
 }
+
+/* Extension pages use the same surfaces in both tabs, including nested skill panels. */
+:root.dark .directory-hub .directory-tabs { background: var(--ui-hover); border-color: var(--ui-divider); }
+:root.dark .directory-hub .directory-tab.is-active,
+:root.dark .directory-hub .directory-card,
+:root.dark .directory-hub .skills-embedded-section,
+:root.dark .directory-hub .skills-search-panel,
+:root.dark .directory-hub .skills-hub-section { background: var(--ui-surface); color: var(--ui-text); border-color: var(--ui-divider); }
+:root.dark .directory-hub .directory-tab { color: var(--ui-muted); }
+:root.dark .directory-hub .directory-tab.is-active { color: var(--ui-text); }
+:root.dark .directory-hub .directory-search { background: var(--ui-field); color: var(--ui-text); border-color: var(--ui-border); }
