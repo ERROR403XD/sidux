@@ -29,14 +29,14 @@
         <div class="api-proxy-heading api-proxy-key-heading">
           <h2>API key</h2>
           <div class="api-proxy-actions api-proxy-key-toolbar">
-            <AppButton :disabled="busy" @click="openCreate()">创建 key</AppButton>
-            <AppButton @click="showInvalid = !showInvalid">{{ showInvalid ? '返回生效 API Key' : '查看已失效API Key' }}</AppButton>
+            <AppButton :disabled="busy" @click="openCreate()">创建API key</AppButton>
+            <AppButton @click="showInvalid = !showInvalid">{{ showInvalid ? '返回生效 API Key' : '查看失效API key' }}</AppButton>
+            <AppButton @click="usageDialog = true">Token统计</AppButton>
             <AppButton :busy="busy" @click="savePolicies">保存配置</AppButton>
           </div>
         </div>
         <p v-if="!status.keys.length">尚未创建 API key。</p>
         <p v-if="status.usage?.error" role="alert" class="api-proxy-error">{{ status.usage.error }}</p>
-        <div v-if="Object.values(expandedUsage).some(Boolean)" class="api-proxy-fields"><label>用量范围<AppSelect v-model="usageWindow" :options="usageWindows" /></label></div>
         <div v-for="key in visibleKeys" :key="key.id" class="api-proxy-key-row">
           <div class="api-proxy-key-copy"><div class="api-proxy-key-title"><strong>{{ key.name }}</strong><span>••••{{ key.suffix }}</span><small>到期：{{ key.expiresAt ? date(key.expiresAt) : '无限' }}</small><span v-if="showInvalid">{{ keyLabel(key) }}</span></div>
             <small>最近使用：{{ date(key.lastUsedAt) }}</small>
@@ -44,14 +44,9 @@
               <AppSelect v-model="policyDrafts[key.id]!.account" :options="keyAccountOptions" enable-search :disabled="busy || !!key.revokedAt" />
               <label class="api-proxy-check"><input v-model="policyDrafts[key.id]!.protected" type="checkbox" :disabled="busy || !!key.revokedAt" />受保护</label>
             </div>
-            <template v-if="status.usage && expandedUsage[key.id]">
-              <small>请求 {{ usageFor(key.id).requests }} · 成功 {{ usageFor(key.id).completed }} · 失败 {{ usageFor(key.id).failed }} · 中断 {{ usageFor(key.id).interrupted }} · 拒绝 {{ usageFor(key.id).rejected }}</small>
-              <small>Token {{ usageFor(key.id).total.toLocaleString() }} · 输入 {{ usageFor(key.id).input.toLocaleString() }} · 输出 {{ usageFor(key.id).output.toLocaleString() }} · 用量缺失 {{ usageFor(key.id).unknown }} 次</small>
-              <small>缓存输入 {{ usageFor(key.id).cached.toLocaleString() }} · 推理 {{ usageFor(key.id).reasoning.toLocaleString() }} · 模型目录 {{ usageFor(key.id).catalogs }} 次</small>
-            </template>
+
           </div>
           <div class="api-proxy-actions">
-            <AppButton @click="expandedUsage[key.id] = !expandedUsage[key.id]">{{ expandedUsage[key.id] ? '收起统计' : 'Token 统计' }}</AppButton>
             <AppButton :disabled="busy || !!key.revokedAt" @click="renameTarget = key; renameValue = key.name">重命名</AppButton>
             <AppButton :disabled="busy || !!key.revokedAt" @click="updateKey(key, { enabled: !key.enabled })">{{ key.enabled ? '停用' : '启用' }}</AppButton>
             <AppButton :disabled="busy || !!key.revokedAt" @click="openCreate(key)">轮换</AppButton>
@@ -81,6 +76,21 @@
       </section>
       <p class="api-proxy-muted">CLIProxyAPI {{ status.componentVersion }} · 模型目录随组件版本固定 · 请求记录不保存提示词、回复或工具参数。</p>
     </template>
+    <AppDialog :open="usageDialog" title="Token统计" panel-class="api-proxy-usage-dialog" @close="usageDialog = false">
+      <div class="api-proxy-usage-filters">
+        <label>统计周期<AppSelect v-model="usageWindow" :options="usageWindows" /></label>
+        <label>API key<AppSelect v-model="usageKey" :options="usageKeyOptions" enable-search /></label>
+      </div>
+      <p v-if="status?.usage?.error" class="api-proxy-error" role="alert">{{ status.usage.error }}</p>
+      <div class="api-proxy-usage-total"><span>总 Token</span><strong>{{ selectedUsage.total.toLocaleString() }}</strong></div>
+      <div class="api-proxy-usage-grid">
+        <div><span>输入</span><strong>{{ selectedUsage.input.toLocaleString() }}</strong></div>
+        <div><span>输出</span><strong>{{ selectedUsage.output.toLocaleString() }}</strong></div>
+        <div><span>缓存输入</span><strong>{{ selectedUsage.cached.toLocaleString() }}</strong></div>
+        <div><span>推理</span><strong>{{ selectedUsage.reasoning.toLocaleString() }}</strong></div>
+      </div>
+      <div class="api-proxy-usage-requests"><span>请求 <b>{{ selectedUsage.requests }}</b></span><span>成功 <b>{{ selectedUsage.completed }}</b></span><span>失败 <b>{{ selectedUsage.failed }}</b></span><span>中断 <b>{{ selectedUsage.interrupted }}</b></span><span>拒绝 <b>{{ selectedUsage.rejected }}</b></span><span>用量缺失 <b>{{ selectedUsage.unknown }}</b></span></div>
+    </AppDialog>
     <AppDialog :open="createDialog" :title="rotateTarget ? '轮换 API key' : '创建 API key'" :busy="busy" panel-class="api-proxy-key-dialog" @close="closeCreate">
       <p v-if="error" role="alert" class="api-proxy-error">{{ error }}</p>
       <div v-if="!secret" class="api-proxy-key-form">
@@ -124,7 +134,18 @@ import { copyTextToClipboard } from '../../utils/clipboard'
 import { apiProxyRequest, type ApiProxyKey, type ApiProxySettings, type ApiProxyStatus } from '../../api/apiProxy'
 
 const showInvalid = ref(false)
-const expandedUsage = ref<Record<string, boolean>>({})
+const usageDialog = ref(false)
+const usageKey = ref('all')
+const usageKeyOptions = computed(() => [{ value: 'all', label: '全部 API key' }, ...(status.value?.keys || []).map(key => ({ value: key.id, label: `${key.name} · ••••${key.suffix}${key.revokedAt ? ' · 已失效' : ''}` }))])
+const selectedUsage = computed(() => {
+  if (usageKey.value !== 'all') return usageFor(usageKey.value)
+  const total = emptyUsage()
+  for (const summary of Object.values(status.value?.usage?.keys || {})) {
+    const row = summary[usageWindow.value]
+    for (const field of Object.keys(total) as Array<keyof typeof total>) total[field] += row[field] || 0
+  }
+  return total
+})
 const policyDrafts = ref<Record<string, { account: string; protected: boolean }>>({})
 const visibleKeys = computed(() => (status.value?.keys || []).filter(key => {
   const invalid = !!key.revokedAt || !key.enabled || !!key.expiresAt && Date.parse(key.expiresAt) <= Date.now()

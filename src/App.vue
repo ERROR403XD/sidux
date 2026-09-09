@@ -245,7 +245,7 @@
           </template>
           <template v-else-if="isApiProxyRoute"><ApiProxyPanel /></template>
           <template v-else-if="isSettingsRoute"><SettingsPanel>
-<template #accounts><h3>GPT 账号（ChatGPT 登录）</h3><AccountPanel :accounts="accounts" :busy="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
+<template #accounts><AccountPanel :accounts="accounts" :busy="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
   @reload="loadAccountsState()" @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount" />
 <AccountActivation :key="displayTimeZonePreference" :accounts="accounts" />
 <details class="settings-optional-provider" :open="selectedProvider !== 'codex'"><summary>其他连接（可选）<span v-if="selectedProvider !== 'codex'"> · {{ selectedProvider }}</span></summary>              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the API provider for the Codex backend')">

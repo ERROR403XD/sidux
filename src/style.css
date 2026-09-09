@@ -2509,8 +2509,29 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 
 .api-proxy-key-heading { flex-wrap: wrap; }
 .api-proxy-key-toolbar { flex-wrap: nowrap; }
-.api-proxy-key-toolbar .app-button { white-space: nowrap; }
+:root .api-proxy-key-toolbar .app-button { white-space: nowrap; }
 @media (max-width: 640px) {
   .api-proxy-key-toolbar { width: 100%; gap: 6px; }
-  .api-proxy-key-toolbar .app-button { padding: 6px 8px; font-size: 12px; }
+  :root .api-proxy-key-toolbar .app-button { padding: 6px 8px; font-size: 12px; }
 }
+
+.account-plan-badge { flex-shrink: 0; margin-left: auto; color: var(--ui-text); font-size: 12px; opacity: .75; }
+:root button.account-current-button:disabled { opacity: 1; color: var(--ui-text); background: var(--ui-hover); }
+.api-proxy-usage-filters { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; }
+.api-proxy-usage-filters label { display: grid; gap: 8px; font-size: 13px; min-width: 0; }
+.api-proxy-usage-filters .app-select, .api-proxy-usage-filters .composer-dropdown-trigger { width: 100%; }
+.api-proxy-usage-total { display: grid; gap: 8px; padding: 24px; margin-top: 20px; border-radius: var(--ui-radius-popover); background: var(--ui-hover); }
+.api-proxy-usage-total span, .api-proxy-usage-grid span { font-size: 12px; opacity: .7; }
+.api-proxy-usage-total strong { font-size: 32px; font-variant-numeric: tabular-nums; }
+.api-proxy-usage-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
+.api-proxy-usage-grid > div { display: grid; gap: 8px; padding: 16px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); }
+.api-proxy-usage-grid strong { font-size: 20px; font-variant-numeric: tabular-nums; }
+.api-proxy-usage-requests { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-top: 20px; font-size: 12px; }
+@media (max-width: 640px) {
+  .api-proxy-key-toolbar { gap: 4px; }
+  :root .api-proxy-key-toolbar .app-button { padding: 6px 4px; font-size: 11px; }
+  .api-proxy-usage-filters { grid-template-columns: 1fr; }
+  .api-proxy-usage-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.conversation-defaults-note { color: var(--ui-text); opacity: .7; font-size: 12px; line-height: 1.5; }
