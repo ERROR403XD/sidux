@@ -5771,6 +5771,7 @@ export class AppServerProcess {
   private chatgptAuthRefreshPromise: Promise<ChatgptAuthTokensRefreshResponse> | null = null
   private readonly activeTurnThreadIds = new Set<string>()
   private readonly activeTurnIds = new Map<string, string>()
+  private readonly terminalTurnIds = new Set<string>()
   private readonly accountFailureInterrupts = new Set<string>()
   private activityRevision = 0
   private activeConfigSignature = ''
@@ -5957,7 +5958,11 @@ export class AppServerProcess {
       if (turnId) this.activeTurnIds.set(notificationThreadId, turnId)
     }
     if (notificationThreadId && (notification.method === 'turn/completed' || notification.method === 'turn/cancelled')) {
-      const finishedTurnId = this.activeTurnIds.get(notificationThreadId)
+      const finishedTurnId = readNonEmptyString(asRecord(asRecord(notification.params)?.turn)?.id) || this.activeTurnIds.get(notificationThreadId)
+      if (finishedTurnId) {
+        this.terminalTurnIds.add(finishedTurnId)
+        if (this.terminalTurnIds.size > 256) this.terminalTurnIds.delete(this.terminalTurnIds.values().next().value!)
+      }
       if (finishedTurnId) this.accountFailureInterrupts.delete(finishedTurnId)
       this.activeTurnThreadIds.delete(notificationThreadId)
       this.activeTurnIds.delete(notificationThreadId)
@@ -6382,6 +6387,15 @@ export class AppServerProcess {
       this.ownedThreadIds.add(threadId)
     }
     const result = await this.call(method, params)
+    if (method === 'turn/start' && threadId) {
+      const turn = asRecord(asRecord(result)?.turn)
+      const turnId = readNonEmptyString(turn?.id)
+      if (turnId && !this.terminalTurnIds.has(turnId) && !['completed', 'failed', 'interrupted'].includes(String(turn?.status))) {
+        this.activeTurnThreadIds.add(threadId)
+        this.activeTurnIds.set(threadId, turnId)
+        this.executionLease?.setBusy(true)
+      }
+    }
     if (!this.runtimeOptions.isolatedTask && method === 'thread/list') {
       const response = asRecord(result)
       if (Array.isArray(response?.data)) {
@@ -6451,6 +6465,14 @@ export class AppServerProcess {
       return native ? [{ ...native, id }] : []
     })
     return [...this.pendingServerRequests.values(), ...taskRequests]
+  }
+
+  liveActivity(): { activeTurnThreadIds: string[]; pendingOperationCount: number } {
+    const runtimes = [this, ...this.sessionWorkers.values()]
+    return {
+      activeTurnThreadIds: [...new Set(runtimes.flatMap(runtime => [...runtime.activeTurnThreadIds]))],
+      pendingOperationCount: runtimes.reduce((count, runtime) => count + runtime.sessionOperations + [...runtime.pending.values()].filter(request => /^(?:turn\/(?:start|steer|interrupt)|thread\/(?:start|resume|fork|compact\/start|goal\/set|settings\/update))$/.test(request.method)).length, 0),
+    }
   }
 
   async getAccountSwitchSnapshot(): Promise<RuntimeQuiescenceSnapshot> {
@@ -6578,6 +6600,7 @@ export class AppServerProcess {
     this.pendingServerRequests.clear()
     this.activeTurnThreadIds.clear()
     this.activeTurnIds.clear()
+    this.terminalTurnIds.clear()
     this.accountFailureInterrupts.clear()
     this.authRecovery.clear()
     this.emitNotification({ method: 'codexapp/runtime/stopped', params: {} })
@@ -9189,6 +9212,10 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         return
       }
 
+      if (req.method === 'GET' && url.pathname === '/codex-api/runtime/activity') {
+        setJson(res, 200, { data: appServer.liveActivity() })
+        return
+      }
       if (req.method === 'GET' && url.pathname === '/codex-api/automation-runtime') {
         await automationEngine.readyPromise
         setJson(res, 200, { data: automationEngine.snapshot() })

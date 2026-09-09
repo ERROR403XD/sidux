@@ -2,9 +2,10 @@ import { createRequire } from 'node:module'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 const { checkIdle } = createRequire(import.meta.url)('../../../scripts/check-codexapp-idle.cjs')
 afterEach(() => vi.unstubAllGlobals())
-function responses(api: unknown) {
+function responses(api: unknown, activity?: unknown) {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
     const path = new URL(url).pathname
+    if (path === '/codex-api/runtime/activity') return activity === undefined ? new Response('{}', { status: 404 }) : new Response(JSON.stringify({ data: activity }));
     const payload = path === '/codex-api/automation-runtime' ? { data: { ready: true, activeCount: 0, queuedCount: 0 } }
       : path === '/codex-api/thread-queue-state' ? { data: {} }
       : path === '/codex-api/server-requests/pending' ? { data: [] }
@@ -39,6 +40,7 @@ describe('native background activity before cutover', () => {
     const calls: string[] = []
     vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
       const path = new URL(url).pathname
+      if (path === '/codex-api/runtime/activity') return new Response('{}', { status: 404 });
       const request = path === '/codex-api/rpc' ? JSON.parse(String(init?.body)) : null
       calls.push(request?.method || path)
       let payload: unknown
@@ -84,4 +86,13 @@ describe('native background activity before cutover', () => {
     expect(fixture.calls.filter(method => method === 'thread/backgroundTerminals/list')).toHaveLength(11)
     expect(fixture.calls.filter(method => method === 'thread/loaded/list')).toHaveLength(1)
   })
+})
+
+it('blocks a received turn that has not reached the thread catalog yet', async () => {
+  responses({ data: { settings: { enabled: false }, activity: { connections: 0, activeRequests: 0 } } }, { activeTurnThreadIds: ['new-thread'], pendingOperationCount: 0 })
+  expect(await checkIdle('http://fixture')).toMatchObject({ activeTurns: 0, liveActivityCount: 1, idle: false })
+})
+it('fails closed on a malformed live activity snapshot', async () => {
+  responses({}, { activeTurnThreadIds: [], pendingOperationCount: 'unknown' })
+  await expect(checkIdle('http://fixture')).rejects.toThrow('live runtime activity')
 })

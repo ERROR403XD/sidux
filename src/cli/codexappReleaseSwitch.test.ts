@@ -102,6 +102,7 @@ describe('codexapp release switch script', () => {
     let schedulerAvailable = false
     let drainRequests = 0
     const server = createServer((request, response) => {
+      if (request.url === '/codex-api/runtime/activity') { response.statusCode = 404; response.end('{}'); return }
       if (request.url === '/codex-api/automation-runtime/drain') drainRequests += 1
       if (!schedulerAvailable && request.url?.startsWith('/codex-api/automation-runtime')) {
         response.setHeader('Content-Type', 'text/html')

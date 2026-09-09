@@ -127,3 +127,23 @@ it('does not scan historical threads to decide whether the primary account can s
   expect(snapshot.idle).toBe(true)
   expect(call.mock.calls.some(([method]) => method === 'thread/list')).toBe(false)
 })
+
+it('marks an accepted turn active before its start notification and preserves an earlier terminal event', async () => {
+  const { app, call } = await fixture()
+  call.mockImplementation(async (method: unknown) => method === 'turn/start' ? { turn: { id: 'accepted', status: 'inProgress' } } : {})
+  await app.rpc('turn/start', { threadId: 'new-thread' })
+  expect(app.liveActivity().activeTurnThreadIds).toContain('new-thread')
+  const worker = (app as any).threadWorker('new-thread')
+  worker.emitNotification({ method: 'turn/completed', params: { threadId: 'new-thread', turn: { id: 'accepted', status: 'completed' } } })
+  expect(app.liveActivity().activeTurnThreadIds).not.toContain('new-thread')
+  call.mockImplementation(async (method: unknown) => {
+    if (method === 'turn/start') {
+      worker.emitNotification({ method: 'turn/completed', params: { threadId: 'new-thread', turn: { id: 'early', status: 'completed' } } })
+      return { turn: { id: 'early', status: 'inProgress' } }
+    }
+    return {}
+  })
+  await app.rpc('turn/start', { threadId: 'new-thread' })
+  expect(app.liveActivity().activeTurnThreadIds).not.toContain('new-thread')
+  app.stopTaskRouting()
+})

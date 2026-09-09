@@ -15,6 +15,7 @@ describe('candidate replacement', () => {
     const scripts = join(root, 'scripts')
     const log = join(root, 'calls')
     const server = createServer((request, response) => {
+      if (request.url === '/codex-api/runtime/activity') { response.statusCode = 404; response.end('{}'); return }
       response.setHeader('Content-Type', 'application/json')
       if (request.url?.startsWith('/codex-api/automation-runtime')) {
         response.end(JSON.stringify({ data: { ready: true, draining: true, activeCount: 0, queuedCount: 0 } }))

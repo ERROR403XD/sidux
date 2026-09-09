@@ -1,13 +1,25 @@
 // Shared read-only preflight for candidate replacement and production cutover.
 async function checkIdle(baseUrl, { legacyScheduler = false, legacyApiProxy = false } = {}) {
   const deadline = Date.now() + 45000;
-  async function readJson(path, init) {
+  async function readJson(path, init, allowMissing = false) {
     const remaining = deadline - Date.now();
     if (remaining <= 0) throw new Error('Idle inventory exceeded its 45-second limit');
     const response = await fetch(`${baseUrl}${path}`, { ...init, signal: AbortSignal.timeout(Math.min(10000, remaining)) });
+    if (allowMissing && response.status === 404) return null;
     if (!response.ok) throw new Error(`${path} returned HTTP ${response.status}`);
     return response.json();
   }
+  async function liveActivity() {
+    // Older candidates do not expose this snapshot. Their existing inventory
+    // remains required; newer runtimes additionally cover pre-catalog turns.
+    const payload = await readJson('/codex-api/runtime/activity', undefined, true);
+    if (payload === null) return 0;
+    const data = payload?.data;
+    if (!Array.isArray(data?.activeTurnThreadIds) || data.activeTurnThreadIds.some(id => typeof id !== 'string' || !id)
+      || !Number.isInteger(data.pendingOperationCount) || data.pendingOperationCount < 0) throw new Error('Invalid live runtime activity; idle status is unknown');
+    return data.activeTurnThreadIds.length + data.pendingOperationCount;
+  }
+  let liveActivityCount = await liveActivity();
   if (!legacyScheduler) {
     const { data } = await readJson('/codex-api/automation-runtime');
     if (data?.ready !== true || data.activeCount !== 0 || data.queuedCount !== 0) {
@@ -55,7 +67,7 @@ async function checkIdle(baseUrl, { legacyScheduler = false, legacyApiProxy = fa
     if (cursor) cursors.add(cursor);
   } while (cursor && pages < 20);
   if (cursor) throw new Error('Thread inventory exceeded the bounded 2000-thread idle check');
-  const busy = !!(activeTurns || queuedCount || pending.length || apiConnections || apiActiveRequests);
+  const busy = !!(liveActivityCount || activeTurns || queuedCount || pending.length || apiConnections || apiActiveRequests);
   let backgroundCheck = 'skipped-busy';
   let backgroundThreads = null;
   let loadedThreads = 0;
@@ -102,14 +114,15 @@ async function checkIdle(baseUrl, { legacyScheduler = false, legacyApiProxy = fa
       if (failed) throw failed.reason;
     }
   }
-  return { activeTurns, queuedCount, pendingCount: pending.length, pages, apiConnections, apiActiveRequests, backgroundCheck, backgroundThreads, loadedThreads, idle: !busy && !backgroundThreads };
+  liveActivityCount = Math.max(liveActivityCount, await liveActivity());
+  return { liveActivityCount, activeTurns, queuedCount, pendingCount: pending.length, pages, apiConnections, apiActiveRequests, backgroundCheck, backgroundThreads, loadedThreads, idle: !busy && !backgroundThreads && !liveActivityCount };
 }
 
 module.exports = { checkIdle };
 if (require.main === module) {
   checkIdle(process.env.CODEXAPP_IDLE_CHECK_URL, { legacyScheduler: process.env.CODEXAPP_LEGACY_SCHEDULER === '1', legacyApiProxy: process.env.CODEXAPP_LEGACY_API_PROXY === '1' })
     .then(result => {
-      console.log(`idle-check|activeTurns=${result.activeTurns}|queued=${result.queuedCount}|pendingApprovals=${result.pendingCount}|apiConnections=${result.apiConnections}|apiActiveRequests=${result.apiActiveRequests}|backgroundThreads=${result.backgroundThreads ?? result.backgroundCheck}|loadedThreads=${result.loadedThreads}|pages=${result.pages}`);
+      console.log(`idle-check|liveExecutions=${result.liveActivityCount}|activeTurns=${result.activeTurns}|queued=${result.queuedCount}|pendingApprovals=${result.pendingCount}|apiConnections=${result.apiConnections}|apiActiveRequests=${result.apiActiveRequests}|backgroundThreads=${result.backgroundThreads ?? result.backgroundCheck}|loadedThreads=${result.loadedThreads}|pages=${result.pages}`);
       if (!result.idle) process.exitCode = 3;
     })
     .catch(error => { console.error(error.message); process.exitCode = 1; });
