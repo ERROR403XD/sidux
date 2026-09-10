@@ -591,26 +591,6 @@
   @apply bg-zinc-200 text-zinc-900 hover:bg-zinc-200;
 }
 
-:root.dark .automation-thread-list {
-  @apply border-zinc-700 bg-zinc-900;
-}
-
-:root.dark .automation-thread-list-item {
-  @apply text-zinc-300 hover:bg-zinc-800;
-}
-
-:root.dark .automation-thread-list-item.is-active {
-  @apply bg-zinc-800 text-zinc-50 shadow-none;
-}
-
-:root.dark .automation-thread-list-item small {
-  @apply text-zinc-500;
-}
-
-:root.dark .automation-thread-list-add {
-  @apply border-zinc-700 text-zinc-400;
-}
-
 :root.dark .automation-thread-select,
 :root.dark .automation-thread-textarea {
   @apply border-zinc-600 bg-zinc-700 text-zinc-100;
@@ -2127,12 +2107,11 @@
 }
 
 :root [role="dialog"][aria-modal="true"] :is(.automation-thread-label, .automation-schedule-copy, .automation-schedule-preview, .rename-thread-subtitle) { color: var(--ui-muted); font-size: 13px; text-transform: none; letter-spacing: normal; }
-:root [role="dialog"][aria-modal="true"] :is(.automation-thread-list-item.is-active, .automation-schedule-mode.is-active, .automation-target-mode.is-active) { background: var(--ui-hover); border-color: #818cf8; }
+:root [role="dialog"][aria-modal="true"] :is(.automation-schedule-mode.is-active, .automation-target-mode.is-active) { background: var(--ui-hover); border-color: #818cf8; }
 :root .app-dialog.automation-thread-panel { max-width: none; max-height: min(88dvh,900px); overflow: hidden; padding: 0; }
 :root .app-dialog[role="dialog"][aria-modal="true"] .rename-thread-actions { position: static; margin: 0; padding: 0; width: 100%; border: 0; background: transparent; flex-wrap: wrap; }
 :root .app-dialog[role="dialog"][aria-modal="true"] .automation-thread-textarea { min-height: 140px; }
 :root .app-dialog .rename-thread-subtitle { flex: none; }
-:root .app-dialog .automation-thread-list { max-height: 100px; flex-shrink: 0; }
 
 /* Capability controls share the common surface and keep long metadata bounded. */
 .model-capability-summary, .model-capability-warning, .runtime-capabilities, .model-tool-summary {

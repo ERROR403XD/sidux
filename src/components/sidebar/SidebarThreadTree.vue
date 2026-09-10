@@ -752,23 +752,6 @@
             </div>
           </div>
 
-          <div v-if="automationDialogAutomations.length > 0" class="automation-thread-list" :aria-label="automationDialogScope === 'project' ? 'Project automations' : 'Thread automations'">
-            <AppButton
-              v-for="automation in automationDialogAutomations"
-              :key="automation.id"
-              class="automation-thread-list-item"
-              :class="{ 'is-active': automation.id === automationDialogAutomationId }"
-              type="button"
-              @click="selectAutomationForEditing(automation.id)"
-            >
-              <span>{{ automation.name }}</span>
-              <small>{{ automation.status === 'PAUSED' ? t('Paused') : t('Active') }}</small>
-            </AppButton>
-            <AppButton class="automation-thread-list-item automation-thread-list-add" type="button" @click="startNewAutomationDraft">
-              {{ t('Add another automation') }}
-            </AppButton>
-          </div>
-
           <label class="automation-thread-field">
             <span class="automation-thread-label">{{ t('Name') }}</span>
             <input v-model="automationDraft.name" class="rename-thread-input" type="text" :placeholder="t('Automation name')" />
@@ -2239,14 +2222,9 @@ async function onDeleteAutomationFromDialog(): Promise<void> {
       await deleteThreadAutomation(threadId, automationId)
       automationByThreadId.value = removeAutomationForThread(automationByThreadId.value, threadId, automationId)
     }
-    const nextAutomation = automationDialogAutomations.value[0]
-    if (nextAutomation) {
-      selectAutomationForEditing(nextAutomation.id)
-    } else {
-      startNewAutomationDraft()
-    }
     emit('automations-changed')
     isSavingAutomation.value = false
+    closeAutomationDialog()
   } catch (error) {
     automationDialogError.value = error instanceof Error ? error.message : 'Failed to remove automation'
     isSavingAutomation.value = false
@@ -3561,26 +3539,6 @@ onBeforeUnmount(() => {
   @apply flex flex-col gap-2;
 }
 
-.automation-thread-list {
-  @apply mb-3 flex max-h-40 flex-col gap-1 overflow-y-auto rounded-lg border border-zinc-200 bg-zinc-50 p-1;
-}
-
-.automation-thread-list-item {
-  @apply flex items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left text-sm text-zinc-700 hover:bg-white;
-}
-
-.automation-thread-list-item.is-active {
-  @apply bg-white font-medium text-zinc-950 shadow-sm;
-}
-
-.automation-thread-list-item small {
-  @apply text-xs font-normal text-zinc-500;
-}
-
-.automation-thread-list-add {
-  @apply justify-center border border-dashed border-zinc-300 text-zinc-500;
-}
-
 .automation-thread-label {
   @apply text-xs font-medium uppercase tracking-wide text-zinc-500;
 }
@@ -3653,8 +3611,7 @@ onBeforeUnmount(() => {
   }
 
   .automation-thread-field,
-  .automation-target-picker,
-  .automation-thread-list {
+  .automation-target-picker {
     @apply mb-2;
   }
 
