@@ -1,9 +1,11 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { setUiLanguage } from './composables/useUiLanguage'
+import { beforeEach, afterEach, describe, expect, it } from 'vitest'
 import { quotaColor, quotaRemaining, quotaResetTime } from './quotaPresentation'
 
 import { setDisplayTimeZone } from './dateTime'
 
-afterEach(() => setDisplayTimeZone('system'))
+beforeEach(() => setUiLanguage('zh-CN'))
+afterEach(() => { setDisplayTimeZone('system'); setUiLanguage('en') })
 
 describe('quota presentation', () => {
   it('changes color at each used-quota boundary, including exhaustion', () => {
@@ -41,4 +43,14 @@ it('formats monthly recovery as zero-padded dates outside the next week', () => 
   expect(quotaResetTime(Date.parse('2026-10-01T08:00:00Z') / 1000, 43200, now)).toBe('10/01 08:00')
   expect(quotaResetTime(Date.parse('2026-09-09T08:00:00Z') / 1000, 43200, now)).toBe('09/09 08:00')
   expect(quotaResetTime(Date.parse('2026-09-03T08:00:00Z') / 1000, 43200, now)).toBe('后天 08:00')
+})
+
+
+it('switches relative dates and weekdays to English without changing the time zone', () => {
+  setDisplayTimeZone('Asia/Shanghai')
+  setUiLanguage('en')
+  const now = Date.parse('2026-09-08T15:00:00Z')
+  expect(quotaResetTime(now / 1000, 300, now)).toBe('Today 23:00')
+  expect(quotaResetTime((now + 86400_000) / 1000, 300, now)).toBe('Tomorrow 23:00')
+  expect(quotaResetTime((now + 3 * 86400_000) / 1000, 10080, now)).toBe('Fri 23:00')
 })

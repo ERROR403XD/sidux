@@ -1,3 +1,4 @@
+import { useUiLanguage } from './composables/useUiLanguage'
 import { readonly, ref } from 'vue'
 import { DEFAULT_TIME_ZONE } from './timeZoneConstants'
 
@@ -79,6 +80,7 @@ export function displayTimeZone(): string {
 }
 
 export function formatLocalDateTime(value: string | number, options: Intl.DateTimeFormatOptions = {}, locale?: string): string {
+  locale ??= useUiLanguage().uiLanguage.value
   const date = new Date(value)
   if (!Number.isFinite(date.getTime())) return '—'
   const settings: Intl.DateTimeFormatOptions = {

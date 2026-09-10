@@ -1,3 +1,4 @@
+import { englishForSource } from '../i18n/translateSource'
 import { ref } from 'vue'
 
 export type UiLanguage = 'en' | 'zh-CN'
@@ -198,7 +199,7 @@ const zhCN: Record<string, string> = {
   'No automations yet': '暂无自动化',
   'Use a thread or project menu to add an automation.': '通过线程或项目菜单添加自动化。',
   'Automations': '自动化',
-  'API outlet': 'API 出口',
+  'API Proxy': 'API 出口',
   'Codex client access': 'Codex 客户端接入',
   'Automation details': '自动化详情',
   'Refreshing...': '正在刷新…',
@@ -719,6 +720,8 @@ const zhCN: Record<string, string> = {
   'Extra wide': '超宽',
 }
 
+const englishByChinese = Object.fromEntries(Object.entries(zhCN).map(([english, chinese]) => [chinese, english]))
+
 const LANGUAGE_LABELS: Record<UiLanguage, string> = {
   en: 'English',
   'zh-CN': '简体中文',
@@ -750,11 +753,12 @@ export function setUiLanguage(language: UiLanguage): void {
   applyDocumentLanguage(language)
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, language)
+    document.dispatchEvent(new Event('codexapp:language-change'))
   }
 }
 
 export function t(message: string, params?: Record<string, string | number>): string {
-  const translated = currentLanguage.value === 'zh-CN' ? (zhCN[message] ?? message) : message
+  const translated = currentLanguage.value === 'zh-CN' ? (Object.hasOwn(zhCN, message) ? zhCN[message] : message) : englishForSource(message, englishByChinese)
   return formatTemplate(translated, params)
 }
 
