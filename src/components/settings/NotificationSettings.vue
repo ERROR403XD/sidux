@@ -13,7 +13,11 @@
       </div>
       <div class="notification-quiet">
         <AppSwitch v-model="settings.quietEnabled" :disabled="busy" @change="save()">{{ t('免打扰') }}</AppSwitch>
-        <div v-if="settings.quietEnabled" class="notification-hours"><input v-model="settings.quietStart" class="app-input" :aria-label="t('免打扰开始')" placeholder="22:00" maxlength="5" :disabled="busy" @change="save()" /><span>{{ t('至') }}</span><input v-model="settings.quietEnd" class="app-input" :aria-label="t('免打扰结束')" placeholder="08:00" maxlength="5" :disabled="busy" @change="save()" /></div>
+        <div class="notification-hours">
+          <input v-model="settings.quietStart" class="app-input" :aria-label="t('免打扰开始')" placeholder="22:00" maxlength="5" :disabled="busy || !settings.quietEnabled" @change="save()" />
+          <span>{{ t('至') }}</span>
+          <input v-model="settings.quietEnd" class="app-input" :aria-label="t('免打扰结束')" placeholder="08:00" maxlength="5" :disabled="busy || !settings.quietEnabled" @change="save()" />
+        </div>
       </div>
     </template>
     <p v-if="error && !loaded" class="account-panel-error" role="alert">{{ t(error) }}</p>

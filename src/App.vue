@@ -350,7 +350,11 @@
       </div>
       <div class="notification-quiet">
         <AppSwitch v-model="telegramQuietDraft.quietEnabled" :disabled="isTelegramSaving" @change="saveTelegramQuietHours">{{ t('免打扰') }}</AppSwitch>
-        <div v-if="telegramQuietDraft.quietEnabled" class="notification-hours"><input v-model="telegramQuietDraft.quietStart" class="app-input" :aria-label="t('免打扰开始')" placeholder="22:00" maxlength="5" :disabled="isTelegramSaving" @change="saveTelegramQuietHours" /><span>{{ t('至') }}</span><input v-model="telegramQuietDraft.quietEnd" class="app-input" :aria-label="t('免打扰结束')" placeholder="08:00" maxlength="5" :disabled="isTelegramSaving" @change="saveTelegramQuietHours" /></div>
+        <div class="notification-hours">
+          <input v-model="telegramQuietDraft.quietStart" class="app-input" :aria-label="t('免打扰开始')" placeholder="22:00" maxlength="5" :disabled="isTelegramSaving || !telegramQuietDraft.quietEnabled" @change="saveTelegramQuietHours" />
+          <span>{{ t('至') }}</span>
+          <input v-model="telegramQuietDraft.quietEnd" class="app-input" :aria-label="t('免打扰结束')" placeholder="08:00" maxlength="5" :disabled="isTelegramSaving || !telegramQuietDraft.quietEnabled" @change="saveTelegramQuietHours" />
+        </div>
       </div>
     </section>
   </div>
