@@ -285,14 +285,27 @@
                 <p v-if="displayTimeZoneError" class="sidebar-timezone-error" role="alert">{{ t(displayTimeZoneError) }}</p>
               </div>
 </template>
-<template #appearance>              <button class="sidebar-settings-row" type="button" :title="t(SETTINGS_HELP.appearance)" @click="cycleDarkMode">
-                <span class="sidebar-settings-label">{{ t('Appearance') }}</span>
-                <span class="sidebar-settings-value">{{ darkMode === 'system' ? t('System') : darkMode === 'dark' ? t('Dark') : t('Light') }}</span>
-              </button>
-              <button class="sidebar-settings-row" type="button" :title="t(SETTINGS_HELP.chatWidth)" @click="cycleChatWidth">
-                <span class="sidebar-settings-label">{{ t('Chat width') }}</span>
-                <span class="sidebar-settings-value">{{ t(chatWidthLabel) }}</span>
-              </button>
+<template #appearance>
+  <div class="sidebar-settings-row sidebar-settings-row--select" :title="t(SETTINGS_HELP.appearance)">
+    <span class="sidebar-settings-label">{{ t('Appearance') }}</span>
+    <AppSelect
+      :model-value="darkMode"
+      :options="appearanceOptions"
+      :aria-label="t('Appearance')"
+      menu-align="end"
+      @update:model-value="onDarkModeChange"
+    />
+  </div>
+  <div class="sidebar-settings-row sidebar-settings-row--select" :title="t(SETTINGS_HELP.chatWidth)">
+    <span class="sidebar-settings-label">{{ t('Chat width') }}</span>
+    <AppSelect
+      :model-value="chatWidth"
+      :options="chatWidthOptions"
+      :aria-label="t('Chat width')"
+      menu-align="end"
+      @update:model-value="onChatWidthChange"
+    />
+  </div>
 </template>
 <template #input>              <button class="sidebar-settings-row" type="button" :title="t(SETTINGS_HELP.sendWithEnter)" @click="toggleSendWithEnter">
                 <span class="sidebar-settings-label">{{ t('Require ⌘ + enter to send') }}</span>
@@ -1966,7 +1979,15 @@ const existingFolderFilteredEntries = computed(() => {
   )
 })
 const darkModeMediaQuery = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)') : null
-const chatWidthLabel = computed(() => t(CHAT_WIDTH_PRESETS[chatWidth.value].label))
+const appearanceOptions = computed(() => [
+  { value: 'system', label: t('System') },
+  { value: 'light', label: t('Light') },
+  { value: 'dark', label: t('Dark') },
+])
+const chatWidthOptions = computed(() => Object.entries(CHAT_WIDTH_PRESETS).map(([value, preset]) => ({
+  value,
+  label: t(preset.label),
+})))
 const terminalShortcutLabel = computed(() => {
   if (typeof navigator !== 'undefined' && /mac|iphone|ipad|ipod/i.test(navigator.platform)) {
     return '⌘J'
@@ -4386,15 +4407,19 @@ function toggleSendWithEnter(): void {
 function cycleDarkMode(): void {
   const order: Array<'system' | 'light' | 'dark'> = ['dark', 'light', 'system']
   const idx = order.indexOf(darkMode.value)
-  darkMode.value = order[(idx + 1) % order.length]
+  onDarkModeChange(order[(idx + 1) % order.length])
+}
+
+function onDarkModeChange(value: string): void {
+  if (value !== 'system' && value !== 'light' && value !== 'dark') return
+  darkMode.value = value
   window.localStorage.setItem(DARK_MODE_KEY, darkMode.value)
   applyDarkMode()
 }
 
-function cycleChatWidth(): void {
-  const order: ChatWidthMode[] = ['standard', 'wide', 'extra-wide']
-  const idx = order.indexOf(chatWidth.value)
-  chatWidth.value = order[(idx + 1) % order.length]
+function onChatWidthChange(value: string): void {
+  if (value !== 'standard' && value !== 'wide' && value !== 'extra-wide') return
+  chatWidth.value = value
   window.localStorage.setItem(CHAT_WIDTH_KEY, chatWidth.value)
 }
 
