@@ -1,0 +1,22 @@
+{
+  "targetUrl": "http://127.0.0.1:4173/",
+  "warnings": [],
+  "duplicateCounts": {
+    "threadList": 1,
+    "threadListFirstPage": 1,
+    "threadListCursor": 0,
+    "threadResume": 0,
+    "threadRead": 0,
+    "threadReadWithTurns": 0,
+    "threadReadDuplicateKeys": 0,
+    "skillsList": 1,
+    "rateLimitsRead": 1,
+    "providerModels": 1
+  },
+  "totalApiKB": 14.6,
+  "pageState": {
+    "threadLoadingText": "Loading threads...",
+    "threadLoadTimeoutMs": 15000,
+    "stillLoadingThreads": false
+  }
+}

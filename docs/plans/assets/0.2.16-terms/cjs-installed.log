@@ -1,0 +1,29 @@
+Usage: codexui [options] [command] [projectPath]
+
+Web interface for Codex app-server
+
+Arguments:
+  projectPath                 project directory to open on launch
+
+Options:
+  --open-project <path>       open project directory on launch (Codex desktop
+                              parity)
+  -p, --port <port>           port to listen on (default: "5900")
+  --password <pass>           set a specific password
+  --no-password               disable password protection
+  --strict-port               fail when the requested port cannot be bound
+                              (default: false)
+  --open                      open browser on startup (default: true)
+  --no-open                   do not open browser on startup
+  --memories                  enable Codex memories for spawned app-server
+                              processes (default: true)
+  --no-memories               disable Codex memories for spawned app-server
+                              processes
+  --sandbox-mode <mode>       Codex sandbox mode: read-only, workspace-write,
+                              danger-full-access
+  --approval-policy <policy>  Codex approval policy: untrusted, on-failure,
+                              on-request, never
+  -h, --help                  display help for command
+
+Commands:
+  help                        Show codexui command help

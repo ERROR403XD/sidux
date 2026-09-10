@@ -81,6 +81,8 @@
 
 ## UI Rules
 
+- 中英文界面用词遵循 [术语约定](docs/plans/20260910-0013-codexapp-中英文术语约定.md)：会话/conversation、内部线程/thread、回合/turn、额度/quota、额度重置/quota reset、推理强度/reasoning effort。不得全局替换用户内容或协议标识。
+
 - For shared route surfaces and large feature UIs, put decisive dark-theme overrides in `src/style.css` instead of relying only on component-scoped `:global(:root.dark)` blocks.
 - Do not introduce native browser dropdowns (`<select>`) for app controls such as provider, model, branch, runtime, folder, language, or settings pickers. Use the app's custom dropdown/menu components so styling, search, dark theme, and option layout stay consistent.
 - Browser assertions must inspect the real changed UI, not sidebar previews or base page load.
