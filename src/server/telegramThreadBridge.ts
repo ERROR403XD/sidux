@@ -206,6 +206,7 @@ export class TelegramThreadBridge {
   private readonly chatIdsByThreadId = new Map<string, Set<number>>()
   private readonly lastForwardedTurnByThreadId = new Map<string, string>()
   private active = false
+  private notificationsEnabled = true
   private pollingTask: Promise<void> | null = null
   private nextUpdateOffset = 0
   private lastError = ''
@@ -237,6 +238,10 @@ export class TelegramThreadBridge {
 
   stop(): void {
     this.active = false
+  }
+
+  configureNotifications(enabled: boolean): void {
+    this.notificationsEnabled = enabled
   }
 
   private async pollLoop(): Promise<void> {
@@ -333,24 +338,29 @@ export class TelegramThreadBridge {
   }
 
   async sendTestNotification(chatIds: number[], text: string): Promise<void> {
-    for (const chatId of chatIds) await this.sendTelegramMessage(chatId, text)
+    if (!this.notificationsEnabled) throw new Error('Telegram notifications are disabled.')
+    for (const chatId of chatIds) {
+      await this.sendTelegramMessage(chatId, text, { notification: true })
+    }
   }
 
   private async sendTelegramMessage(
     chatId: number,
     text: string,
-    options: { replyMarkup?: unknown } = {},
+    options: { replyMarkup?: unknown; notification?: boolean } = {},
   ): Promise<void> {
     const chunks = splitTelegramText(text)
     if (chunks.length === 0) return
 
     for (let index = 0; index < chunks.length; index += 1) {
+      if (options.notification && !this.notificationsEnabled) return
       const chunk = chunks[index]
       const replyMarkup = index === 0 ? options.replyMarkup : undefined
       const htmlChunk = renderMarkdownToTelegramHtml(chunk)
       try {
         await this.sendMessageRequest(chatId, htmlChunk, { replyMarkup, parseMode: 'HTML' })
       } catch {
+        if (options.notification && !this.notificationsEnabled) return
         await this.sendMessageRequest(chatId, chunk, { replyMarkup })
       }
     }
@@ -395,7 +405,7 @@ export class TelegramThreadBridge {
   }
 
   private async sendOnlineMessage(chatId: number): Promise<void> {
-    await this.sendTelegramMessage(chatId, 'Codex thread bridge went online.')
+    await this.sendTelegramMessage(chatId, 'Codex thread bridge went online.', { notification: true })
   }
 
   private async notifyOnlineForKnownChats(): Promise<void> {
@@ -691,6 +701,7 @@ export class TelegramThreadBridge {
   }
 
   private async handleNotification(notification: { method: string; params: unknown }): Promise<void> {
+    if (!this.notificationsEnabled) return
     if (notification.method !== 'turn/completed') return
     const threadId = this.extractThreadId(notification)
     if (!threadId) return
@@ -704,7 +715,7 @@ export class TelegramThreadBridge {
     const assistantReply = await this.readLatestAssistantMessage(threadId)
     if (!assistantReply) return
     for (const chatId of chatIds) {
-      await this.sendTelegramMessage(chatId, assistantReply)
+      await this.sendTelegramMessage(chatId, assistantReply, { notification: true })
     }
     if (turnId) {
       this.lastForwardedTurnByThreadId.set(threadId, turnId)

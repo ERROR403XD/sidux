@@ -646,6 +646,8 @@ export const zhSourceEnglish: Record<string, string> = {
   "测试通知发送失败。": "Failed to send test notification.",
   "信息通知": "Notifications",
   "启用POST通知": "Enable POST notifications",
+  "启用Telegram通知": "Enable Telegram notifications",
+  "Telegram通知已关闭。": "Telegram notifications are disabled.",
   "请求地址": "Request URL",
   "JSON请求体": "JSON request body",
   "用 {{message}} 插入通知正文。": "Use {{message}} to insert the notification text.",

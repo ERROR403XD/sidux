@@ -282,6 +282,7 @@ export type TelegramStatus = {
 
 export type TelegramConfig = {
   botToken: string
+  notificationsEnabled: boolean
   allowedUserIds: Array<number | '*'>
 }
 
@@ -3235,6 +3236,7 @@ export async function searchThreads(
 export async function configureTelegramBot(
   botToken: string,
   allowedUserIds: Array<number | '*'>,
+  notificationsEnabled?: boolean,
 ): Promise<void> {
   const response = await fetch('/codex-api/telegram/configure-bot', {
     method: 'POST',
@@ -3242,6 +3244,7 @@ export async function configureTelegramBot(
     body: JSON.stringify({
       botToken,
       allowedUserIds,
+      notificationsEnabled,
     }),
   })
   const payload = await response.json()
@@ -3279,6 +3282,7 @@ export async function getTelegramConfig(): Promise<TelegramConfig> {
   }
   return {
     botToken: typeof data.botToken === 'string' ? data.botToken : '',
+    notificationsEnabled: typeof data.notificationsEnabled === 'boolean' ? data.notificationsEnabled : !!data.botToken,
     allowedUserIds,
   }
 }

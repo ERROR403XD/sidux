@@ -4606,6 +4606,7 @@ let sessionIndexThreadTitleCacheState: SessionIndexThreadTitleCacheState = {
 
 type TelegramBridgeConfigState = {
   botToken: string
+  notificationsEnabled: boolean
   chatIds: number[]
   allowedUserIds: Array<number | '*'>
 }
@@ -5164,8 +5165,9 @@ async function rollbackCreatedWorktree(
 
 function normalizeTelegramBridgeConfig(value: unknown): TelegramBridgeConfigState {
   const record = asRecord(value)
-  if (!record) return { botToken: '', chatIds: [], allowedUserIds: [] }
+  if (!record) return { botToken: '', notificationsEnabled: false, chatIds: [], allowedUserIds: [] }
   const botToken = typeof record.botToken === 'string' ? record.botToken.trim() : ''
+  const notificationsEnabled = typeof record.notificationsEnabled === 'boolean' ? record.notificationsEnabled : !!botToken
   const rawChatIds = Array.isArray(record.chatIds) ? record.chatIds : []
   const chatIds = Array.from(new Set(rawChatIds
     .filter((value): value is number => typeof value === 'number' && Number.isFinite(value))
@@ -5187,7 +5189,7 @@ function normalizeTelegramBridgeConfig(value: unknown): TelegramBridgeConfigStat
   const allowedUserIds: Array<number | '*'> = allowAllUsers
     ? ['*' as const, ...normalizedAllowedUserIds]
     : normalizedAllowedUserIds
-  return { botToken, chatIds, allowedUserIds }
+  return { botToken, notificationsEnabled, chatIds, allowedUserIds }
 }
 
 async function readTelegramBridgeConfig(): Promise<TelegramBridgeConfigState> {
@@ -5197,7 +5199,7 @@ async function readTelegramBridgeConfig(): Promise<TelegramBridgeConfigState> {
     const payload = asRecord(JSON.parse(raw)) ?? {}
     return normalizeTelegramBridgeConfig(payload)
   } catch {
-    return { botToken: '', chatIds: [], allowedUserIds: [] }
+    return { botToken: '', notificationsEnabled: false, chatIds: [], allowedUserIds: [] }
   }
 }
 
@@ -5206,6 +5208,7 @@ async function writeTelegramBridgeConfig(nextState: TelegramBridgeConfigState): 
   const telegramConfigPath = getTelegramBridgeConfigPath()
   await writeFile(telegramConfigPath, JSON.stringify({
     botToken: normalized.botToken,
+    notificationsEnabled: normalized.notificationsEnabled,
     chatIds: normalized.chatIds,
     allowedUserIds: normalized.allowedUserIds,
   }), 'utf8')
@@ -5213,11 +5216,17 @@ async function writeTelegramBridgeConfig(nextState: TelegramBridgeConfigState): 
 
 let telegramBridgeConfigMutation: Promise<void> = Promise.resolve()
 
+function mutateTelegramBridgeConfig<T>(mutation: () => Promise<T>): Promise<T> {
+  const result = telegramBridgeConfigMutation.then(mutation)
+  telegramBridgeConfigMutation = result.then(() => {}, () => {})
+  return result
+}
+
 function rememberTelegramChatId(chatId: number): Promise<void> {
   const normalizedChatId = Math.trunc(chatId)
   if (!Number.isFinite(normalizedChatId)) return Promise.resolve()
 
-  telegramBridgeConfigMutation = telegramBridgeConfigMutation.then(async () => {
+  return mutateTelegramBridgeConfig(async () => {
     const current = await readTelegramBridgeConfig()
     if (current.chatIds.includes(normalizedChatId)) return
     const next = {
@@ -5226,7 +5235,6 @@ function rememberTelegramChatId(chatId: number): Promise<void> {
     }
     await writeTelegramBridgeConfig(next)
   })
-  return telegramBridgeConfigMutation
 }
 
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
@@ -7035,7 +7043,7 @@ type SharedBridgeState = {
 }
 
 const SHARED_BRIDGE_KEY = '__codexRemoteSharedBridge__'
-const SHARED_BRIDGE_VERSION = 'shared-runtime-0217-custom-connections-v1'
+const SHARED_BRIDGE_VERSION = 'shared-runtime-0217-telegram-notifications-v1'
 
 function disposeSharedBridgeState(state: SharedBridgeState): Promise<void> {
   if (state.disposal) return state.disposal
@@ -7242,14 +7250,14 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
     const threadId = readNonEmptyString(value?.threadId) || readNonEmptyString(value?.thread_id) || readNonEmptyString(asRecord(value?.thread)?.id)
     search.invalidate(threadId || undefined)
   })
-  void readTelegramBridgeConfig()
-    .then((config) => {
-      if (!config.botToken) return
-      telegramBridge.configureToken(config.botToken)
-      telegramBridge.configureAllowedUserIds(config.allowedUserIds)
-      telegramBridge.start()
-    })
-    .catch(() => {})
+  void mutateTelegramBridgeConfig(async () => {
+    const config = await readTelegramBridgeConfig()
+    telegramBridge.configureNotifications(config.notificationsEnabled)
+    if (!config.botToken) return
+    telegramBridge.configureToken(config.botToken)
+    telegramBridge.configureAllowedUserIds(config.allowedUserIds)
+    telegramBridge.start()
+  }).catch(() => {})
 
   const middleware = async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     const requestStartNs = process.hrtime.bigint()
@@ -9558,20 +9566,24 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         const config = normalizeTelegramBridgeConfig({
           botToken,
           allowedUserIds: rawAllowedUserIds,
+          notificationsEnabled: payload?.notificationsEnabled,
         })
         if (config.allowedUserIds.length === 0) {
           setJson(res, 400, { error: 'At least one allowed Telegram user ID is required' })
           return
         }
 
-        telegramBridge.configureToken(config.botToken)
-        telegramBridge.configureAllowedUserIds(config.allowedUserIds)
-        telegramBridge.start()
-        const existingConfig = await readTelegramBridgeConfig()
-        await writeTelegramBridgeConfig({
-          botToken: config.botToken,
-          chatIds: existingConfig.chatIds,
-          allowedUserIds: config.allowedUserIds,
+        await mutateTelegramBridgeConfig(async () => {
+          const existingConfig = await readTelegramBridgeConfig()
+          // Older clients omit the switch; preserve an existing explicit choice.
+          if (typeof payload?.notificationsEnabled !== 'boolean' && existingConfig.botToken) {
+            config.notificationsEnabled = existingConfig.notificationsEnabled
+          }
+          await writeTelegramBridgeConfig({ ...config, chatIds: existingConfig.chatIds })
+          telegramBridge.configureNotifications(config.notificationsEnabled)
+          telegramBridge.configureToken(config.botToken)
+          telegramBridge.configureAllowedUserIds(config.allowedUserIds)
+          telegramBridge.start()
         })
         setJson(res, 200, { ok: true })
         return
@@ -9580,6 +9592,10 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
       if (req.method === 'POST' && url.pathname === '/codex-api/telegram/test') {
         const config = await readTelegramBridgeConfig()
         const payload = asRecord(await readJsonBody(req))
+        if (!config.notificationsEnabled) {
+          setJson(res, 400, { error: payload?.language === 'zh-CN' ? 'Telegram通知已关闭。' : 'Telegram notifications are disabled.' })
+          return
+        }
         const allowAll = config.allowedUserIds.includes('*')
         const chatIds = [...new Set([...config.chatIds.filter(id => allowAll || config.allowedUserIds.includes(id)), ...config.allowedUserIds.filter((id): id is number => typeof id === 'number')])].slice(0, 50)
         if (!config.botToken || !chatIds.length) {
@@ -9600,6 +9616,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         setJson(res, 200, {
           data: {
             botToken: config.botToken,
+            notificationsEnabled: config.notificationsEnabled,
             allowedUserIds: config.allowedUserIds,
           },
         })

@@ -338,12 +338,13 @@
     <NotificationSettings :key="displayTimeZonePreference" />
     <section class="notification-settings settings-integration-card">
       <h3>Telegram</h3>
+      <AppSwitch v-model="telegramNotificationsEnabledDraft" :disabled="isTelegramSaving">{{ t('启用Telegram通知') }}</AppSwitch>
       <label>{{ t('Bot token') }}<input v-model="telegramBotTokenDraft" class="app-input" type="password" placeholder="123456:ABCDEF" autocomplete="off" spellcheck="false" :disabled="isTelegramSaving" /></label>
       <label>{{ t('Allowed Telegram user IDs') }}<textarea v-model="telegramAllowedUserIdsDraft" class="app-input" rows="3" placeholder="123456789&#10;987654321&#10;*" spellcheck="false" :disabled="isTelegramSaving" /></label>
       <p v-if="telegramConfigError" class="account-panel-error" role="alert">{{ t(telegramConfigError) }}</p>
       <div class="notification-actions">
-        <AppButton :busy="isTelegramSaving" @click="saveTelegramConfig">{{ t('保存Telegram设置') }}</AppButton>
-        <AppButton :disabled="isTelegramSaving" @click="testTelegramNotification">{{ t('发送测试通知') }}</AppButton>
+        <AppButton :busy="isTelegramSaving" @click="saveTelegramConfig()">{{ t('保存Telegram设置') }}</AppButton>
+        <AppButton :disabled="isTelegramSaving || !telegramNotificationsEnabledDraft" @click="testTelegramNotification">{{ t('发送测试通知') }}</AppButton>
         <span v-if="telegramNotice" role="status">{{ t(telegramNotice) }}</span>
       </div>
     </section>
@@ -1522,6 +1523,7 @@ const openRouterWireApi = ref<'responses' | 'chat'>('responses')
 const opencodeZenKey = ref('')
 const telegramNotice = useTransientNotice()
 const telegramBotTokenDraft = ref('')
+const telegramNotificationsEnabledDraft = ref(false)
 const telegramAllowedUserIdsDraft = ref('')
 const telegramConfigError = ref('')
 const isTelegramSaving = ref(false)
@@ -2237,6 +2239,7 @@ async function refreshTelegramConfig(): Promise<void> {
   try {
     const config = await getTelegramConfig()
     telegramBotTokenDraft.value = config.botToken
+    telegramNotificationsEnabledDraft.value = config.notificationsEnabled
     telegramAllowedUserIdsDraft.value = config.allowedUserIds.map((value) => String(value)).join('\n')
     telegramConfigError.value = ''
   } catch (error) {
@@ -2256,37 +2259,42 @@ function parseTelegramAllowedUserIdsInput(value: string): Array<number | '*'> {
   return allowAllUsers ? ['*', ...normalizedUserIds] : normalizedUserIds
 }
 
-async function saveTelegramConfig(): Promise<void> {
+async function saveTelegramConfig(showNotice = true): Promise<boolean> {
+  if (isTelegramSaving.value) return false
   const botToken = telegramBotTokenDraft.value.trim()
   const allowedUserIds = parseTelegramAllowedUserIdsInput(telegramAllowedUserIdsDraft.value)
   if (!botToken) {
     telegramConfigError.value = t('Telegram bot token is required.')
-    return
+    return false
   }
   if (allowedUserIds.length === 0) {
     telegramConfigError.value = t('At least one allowed Telegram user ID or * is required.')
-    return
+    return false
   }
 
   isTelegramSaving.value = true
   telegramConfigError.value = ''
+  telegramNotice.value = ''
   try {
-    await configureTelegramBot(botToken, allowedUserIds)
+    await configureTelegramBot(botToken, allowedUserIds, telegramNotificationsEnabledDraft.value)
     telegramAllowedUserIdsDraft.value = allowedUserIds.map((value) => String(value)).join('\n')
     await Promise.all([
       refreshTelegramConfig(),
       refreshTelegramStatus(),
     ])
-    telegramNotice.value = '已保存'
+    if (showNotice) telegramNotice.value = '已保存'
+    return true
   } catch (error) {
     telegramConfigError.value = error instanceof Error ? error.message : t('Failed to connect Telegram bot')
     void refreshTelegramStatus()
+    return false
   } finally {
     isTelegramSaving.value = false
   }
 }
 
 async function testTelegramNotification(): Promise<void> {
+  if (!telegramNotificationsEnabledDraft.value || !await saveTelegramConfig(false)) return
   isTelegramSaving.value = true
   telegramConfigError.value = ''
   telegramNotice.value = ''
