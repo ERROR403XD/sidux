@@ -17,4 +17,4 @@
 
 ### 0.2.16 更新
 
-现已有 WebUI 入口：项目菜单“编辑项目 / 工作目录”，与创建项目共用弹窗。详见 [统一项目编辑用例](unified-create-project-and-github-clone-modal.md)。上面的 0.1.89 手工区块属于历史约定；本版不会自动迁移或覆盖它，而是独立维护 codexapp:work-directories 区块。主目录内如有 AGENTS.override.md，或已有会话已缓存说明，仍应核查有效说明并在旧线程明确要求重新读取。文件读写测试不代表真实模型已读取目录提示。
+现已有 WebUI 入口：项目菜单“编辑项目”，与创建项目共用弹窗。详见 [统一项目编辑用例](unified-create-project-and-github-clone-modal.md)。上面的 0.1.89 手工区块属于历史约定；本版不会自动迁移或覆盖它，而是独立维护 codexapp:work-directories 区块。主目录内如有 AGENTS.override.md，或已有会话已缓存说明，仍应核查有效说明并在旧线程明确要求重新读取。文件读写测试不代表真实模型已读取目录提示。
