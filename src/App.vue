@@ -1505,7 +1505,8 @@ const worktreeInitStatus = ref<{ phase: 'idle' | 'running' | 'error'; title: str
   title: '',
   message: '',
 })
-const isSidebarCollapsed = ref(loadSidebarCollapsed())
+let desktopSidebarCollapsed = loadSidebarCollapsed()
+const isSidebarCollapsed = ref(isMobile.value || desktopSidebarCollapsed)
 const sidebarSearchQuery = ref('')
 const isSidebarSearchVisible = ref(false)
 const sidebarScrollableRef = ref<HTMLElement | null>(null)
@@ -3131,7 +3132,7 @@ async function onForkThreadFromMessage(payload: { threadId: string; turnId: stri
   if (isMobile.value) setSidebarCollapsed(true)
 }
 
-function setSidebarCollapsed(nextValue: boolean): void {
+function setSidebarCollapsed(nextValue: boolean, persistDesktopPreference = !isMobile.value): void {
   if (isSidebarCollapsed.value === nextValue) return
   if (nextValue) {
     const currentScrollTop = getSidebarScrollableElement()?.scrollTop
@@ -3140,7 +3141,10 @@ function setSidebarCollapsed(nextValue: boolean): void {
     }
   }
   isSidebarCollapsed.value = nextValue
-  saveSidebarCollapsed(nextValue)
+  if (persistDesktopPreference) {
+    desktopSidebarCollapsed = nextValue
+    saveSidebarCollapsed(nextValue)
+  }
   if (!nextValue) {
     restoreSidebarScrollPosition()
   }
@@ -5014,9 +5018,8 @@ watch(
 
 
 watch(isMobile, (mobile) => {
-  if (mobile && !isSidebarCollapsed.value) {
-    setSidebarCollapsed(true)
-  }
+  // A temporary mobile drawer must not overwrite the desktop preference.
+  setSidebarCollapsed(mobile ? true : desktopSidebarCollapsed, false)
 }, { immediate: true })
 
 async function submitFirstMessageForNewThread(
