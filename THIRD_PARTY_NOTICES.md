@@ -30,6 +30,27 @@ Copyright (c) 2025.9-present Router-For.ME
 
 MIT 许可允许使用、修改与分发，要求保留相应版权和许可声明，并按原文提供无担保条款。以随附完整许可为准。集成不表示 CLIProxyAPI 作者、OpenAI 或其他供应方为 CodexApp 背书，也不授予额外模型访问权限。 / MIT permits use, modification, and redistribution subject to retaining its copyright and permission notice, with the warranty disclaimer in the full license. The accompanying license governs. Integration implies no endorsement by CLIProxyAPI authors, OpenAI, or other providers, and grants no additional model access.
 
+## Lucide SunMoon
+
+跟随系统主题使用 [Lucide SunMoon](https://lucide.dev/icons/sun-moon) SVG，描边与显示尺寸适配本项目。 / The system theme control uses the Lucide SunMoon SVG, with stroke and display size adapted to this project.
+
+```text
+ISC License
+
+Copyright (c) 2026 Lucide Icons and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+```
+
 ## 其他依赖 / Other dependencies
 
 Vue、Vite、Express、xterm.js、node-pty 等依赖各自保留其许可证；直接依赖与固定解析版本见 [package.json](package.json) 和 [pnpm-lock.yaml](pnpm-lock.yaml)。这些包通过包管理器安装，本声明不替代其各自的许可证。 / Other dependencies retain their respective licenses. See package.json and pnpm-lock.yaml for direct dependencies and resolved versions; package managers install them separately. This notice does not replace their individual licenses.
