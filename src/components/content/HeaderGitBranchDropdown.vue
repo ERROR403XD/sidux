@@ -98,10 +98,8 @@
                 @keydown.esc.prevent="onEscapeCommitSearch"
               />
             </div>
-            <label class="header-git-toggle-row">
-              <input v-model="showResetHistoryRefs" type="checkbox" @change="reloadSelectedBranchCommits" />
-              <span>{{ t('Reset-history refs') }}</span>
-            </label>
+            <AppSwitch class="header-git-toggle-row" v-model="showResetHistoryRefs"  @change="reloadSelectedBranchCommits"><span>{{ t('Reset-history refs') }}</span>
+            </AppSwitch>
             <div class="header-git-commit-list">
               <div v-if="!selectedBranch" class="header-git-commits-empty">{{ t('Select a branch.') }}</div>
               <div v-else-if="commitsLoadingFor === selectedBranchCommitsKey" class="header-git-commits-empty">{{ t('Loading commits...') }}</div>
@@ -188,6 +186,7 @@
 </template>
 
 <script setup lang="ts">
+import AppSwitch from '../common/AppSwitch.vue'
 import { isOverlayEventInside } from '../../composables/overlayEvents'
 import { useUiLanguage } from '../../composables/useUiLanguage'
 const { t } = useUiLanguage()

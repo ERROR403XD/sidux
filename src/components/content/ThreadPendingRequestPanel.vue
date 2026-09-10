@@ -135,19 +135,13 @@
             </div>
 
             <div v-else class="thread-pending-request-question-options">
-              <label
+              <AppSwitch
                 v-for="option in field.options"
                 :key="`${request.id}:${field.key}:${option.value}`"
                 class="thread-pending-request-checkbox-row"
-              >
-                <input
-                  class="thread-pending-request-checkbox"
-                  type="checkbox"
-                  :checked="readMcpElicitationMultiValue(request.id, field).includes(option.value)"
-                  @change="onMcpElicitationMultiToggle(request.id, field, option.value, $event)"
-                />
-                <span class="thread-pending-request-checkbox-label">{{ option.label }}</span>
-              </label>
+                :model-value="readMcpElicitationMultiValue(request.id, field).includes(option.value)"
+                @change="onMcpElicitationMultiToggle(request.id, field, option.value, $event)"
+              >{{ option.label }}</AppSwitch>
             </div>
           </div>
 
@@ -241,6 +235,7 @@
 </template>
 
 <script setup lang="ts">
+import AppSwitch from '../common/AppSwitch.vue'
 import { isAsyncUserInputRequest } from '../../userQuestions'
 import { computed, ref, watch } from 'vue'
 import type { UiServerRequest, UiServerRequestReply } from '../../types/codex'
@@ -771,12 +766,10 @@ function onMcpElicitationMultiToggle(
   requestId: number,
   field: McpElicitationField,
   optionValue: string,
-  event: Event,
+  checked: boolean,
 ): void {
-  const target = event.target
-  if (!(target instanceof HTMLInputElement)) return
   const current = new Set(readMcpElicitationMultiValue(requestId, field))
-  if (target.checked) current.add(optionValue)
+  if (checked) current.add(optionValue)
   else current.delete(optionValue)
   mcpElicitationAnswers.value = {
     ...mcpElicitationAnswers.value,

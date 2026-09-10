@@ -10,21 +10,21 @@
       <small>{{ t('主额度（周或月）剩余不高于保护值时，仅允许受保护任务使用；0 为关闭。') }}</small>
       <small v-if="hasFiveHourQuota">{{ t('5 小时额度保护值：') }}{{ Math.min(100, Number(percent) * 2) }}{{ t('%。只作用于此账号实际存在的 5 小时窗口。') }}</small>
       <section class="account-notice-rule">
-        <label class="notification-check"><input v-model="rule.fiveHour" type="checkbox" :disabled="busy" />{{ t('5小时额度恢复通知') }}</label>
+        <AppSwitch class="notification-check" v-model="rule.fiveHour"  :disabled="busy">{{ t('5小时额度恢复通知') }}</AppSwitch>
         <template v-if="rule.fiveHour">
           <textarea v-model="rule.fiveHourMessage" class="app-input" rows="3" :aria-label="t('5小时恢复通知内容')" :disabled="busy" />
           <small v-text="t('占位符：{{account}} 账号、{{account_id}} 账号标识、{{window}} 额度窗口、{{remaining}} 剩余百分比、{{reset_at}} 重置时间。')"></small>
         </template>
       </section>
       <section class="account-notice-rule">
-        <label class="notification-check"><input v-model="rule.weekly" type="checkbox" :disabled="busy" />{{ t('主额度恢复通知') }}</label>
+        <AppSwitch class="notification-check" v-model="rule.weekly"  :disabled="busy">{{ t('主额度恢复通知') }}</AppSwitch>
         <template v-if="rule.weekly">
           <textarea v-model="rule.weeklyMessage" class="app-input" rows="3" :aria-label="t('主额度恢复通知内容')" :disabled="busy" />
           <small v-text="t('占位符：{{account}} 账号、{{account_id}} 账号标识、{{window}} 额度窗口、{{remaining}} 剩余百分比、{{reset_at}} 重置时间。')"></small>
         </template>
       </section>
       <section class="account-notice-rule">
-        <label class="notification-check"><input v-model="rule.resetIncrease" type="checkbox" :disabled="busy" />{{ t('重置机会增加提醒') }}</label>
+        <AppSwitch class="notification-check" v-model="rule.resetIncrease"  :disabled="busy">{{ t('重置机会增加提醒') }}</AppSwitch>
         <template v-if="rule.resetIncrease">
           <textarea v-model="rule.resetIncreaseMessage" class="app-input" rows="3" :aria-label="t('重置机会增加提醒内容')" :disabled="busy" />
           <small>{{ t('首次读取仅记录次数，之后增加时通知。') }}</small>
@@ -32,7 +32,7 @@
         </template>
       </section>
       <section class="account-notice-rule">
-        <label class="notification-check"><input v-model="rule.resetExpiry" type="checkbox" :disabled="busy" />{{ t('重置机会到期提醒') }}</label>
+        <AppSwitch class="notification-check" v-model="rule.resetExpiry"  :disabled="busy">{{ t('重置机会到期提醒') }}</AppSwitch>
         <template v-if="rule.resetExpiry">
           <label>{{ t('提前时间') }}<input v-model="rule.resetExpiryLeadTimes" class="app-input" :aria-label="t('重置提醒提前时间')" placeholder="7d, 3d, 12h" :disabled="busy" /></label>
           <small>{{ t('支持英文逗号、中文逗号或空格分隔；1d12h 表示 1 天 12 小时。') }}</small>
@@ -45,6 +45,7 @@
   </AppDialog>
 </template>
 <script setup lang="ts">
+import AppSwitch from '../common/AppSwitch.vue'
 import { t } from '../../composables/useUiLanguage'
 
 import { computed, ref } from 'vue'

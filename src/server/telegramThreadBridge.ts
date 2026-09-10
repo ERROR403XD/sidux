@@ -332,6 +332,10 @@ export class TelegramThreadBridge {
     this.onChatSeen?.(Math.trunc(chatId))
   }
 
+  async sendTestNotification(chatIds: number[], text: string): Promise<void> {
+    for (const chatId of chatIds) await this.sendTelegramMessage(chatId, text)
+  }
+
   private async sendTelegramMessage(
     chatId: number,
     text: string,
