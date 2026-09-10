@@ -24,6 +24,7 @@ const props = withDefaults(defineProps<{
   open: boolean
   anchor: HTMLElement | null
   width?: number
+  matchAnchorWidth?: boolean
   direction?: 'up' | 'down'
   align?: 'start' | 'end'
   panelClass?: string
@@ -43,10 +44,11 @@ function updatePosition(): void {
   frame = 0
   if (!props.open || !props.anchor || !panel.value) return
   setPopoverAnchor(panel.value, props.anchor)
+  const anchorBounds = props.anchor.getBoundingClientRect()
   position.value = positionPopover({
-    anchor: props.anchor.getBoundingClientRect(),
+    anchor: anchorBounds,
     height: panel.value.offsetHeight,
-    width: props.width,
+    width: props.matchAnchorWidth ? anchorBounds.width : props.width,
     viewportWidth: window.innerWidth,
     viewportHeight: window.innerHeight,
     direction: props.direction,
@@ -116,7 +118,7 @@ watch(() => props.open, async (open, _previous, onCleanup) => {
   }
 }, { immediate: true })
 
-watch(() => [props.width, props.direction, props.align, props.anchor], () => {
+watch(() => [props.width, props.matchAnchorWidth, props.direction, props.align, props.anchor], () => {
   if (props.open) schedulePosition()
 })
 onBeforeUnmount(detach)

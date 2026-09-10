@@ -1,16 +1,13 @@
 <template>
   <div class="skills-hub">
-    <div class="skills-hub-header">
-      <h2 class="skills-hub-title">{{ t('Skills Hub') }}</h2>
-    </div>
-
     <div v-if="toast" class="skills-hub-toast" :class="toastClass">{{ t(toast.text) }}</div>
+
+    <slot name="before-search" />
 
     <div class="skills-search-panel">
       <div class="skills-search-header">
         <div class="skills-search-copy">
           <strong>{{ t('Find skills') }}</strong>
-          <span>{{ t('Search the Skills registry with npx skills find.') }}</span>
         </div>
         <a
           class="skills-directory-link"
@@ -27,7 +24,7 @@
           class="skills-search-input"
           type="search"
           :placeholder="t('Search skills...')"
-          aria-label="Search skills"
+          :aria-label="t('Search skills')"
         />
         <button class="skills-hub-sort" type="submit" :disabled="isSearchingSkills || skillSearchQuery.trim().length < 2">
           {{ isSearchingSkills ? t('Searching...') : t('Search') }}
@@ -40,10 +37,7 @@
     </div>
 
     <div v-if="skillSearchResults.length > 0" class="skills-hub-section">
-      <button class="skills-hub-section-toggle" type="button" @click="isSearchResultsOpen = !isSearchResultsOpen">
-        <span class="skills-hub-section-title">{{ t('Search results ({count})', { count: skillSearchResults.length }) }}</span>
-        <IconTablerChevronRight class="skills-hub-section-chevron" :class="{ 'is-open': isSearchResultsOpen }" />
-      </button>
+      <DirectorySectionToggle :title="t('搜索结果')" :count="skillSearchResults.length" :open="isSearchResultsOpen" @toggle="isSearchResultsOpen = !isSearchResultsOpen" />
       <div v-if="isSearchResultsOpen" class="skills-hub-grid">
         <SkillCard
           v-for="skill in skillSearchResults"
@@ -55,14 +49,11 @@
       </div>
     </div>
 
-    <slot name="before-installed" />
+    <input v-model="installedFilter" class="app-input skills-installed-filter" type="search" :placeholder="t('筛选已安装技能')" :aria-label="t('筛选已安装技能')" />
 
     <p v-for="problem in discoveryErrors" :key="problem" class="skills-hub-error">{{ t(problem) }}</p>
-    <div v-if="filteredInstalled.length > 0 && !isLoading && !error" class="skills-hub-section">
-      <button class="skills-hub-section-toggle" type="button" @click="isInstalledOpen = !isInstalledOpen">
-        <span class="skills-hub-section-title">{{ t('Installed skills ({count})', { count: filteredInstalled.length }) }}</span>
-        <IconTablerChevronRight class="skills-hub-section-chevron" :class="{ 'is-open': isInstalledOpen }" />
-      </button>
+    <div v-if="!isLoading && !error" class="skills-hub-section skills-installed-section">
+      <DirectorySectionToggle :title="t('已安装技能')" :count="filteredInstalled.length" :open="isInstalledOpen" @toggle="isInstalledOpen = !isInstalledOpen" />
       <div v-if="isInstalledOpen" class="skills-hub-grid">
         <SkillCard
           v-for="skill in filteredInstalled"
@@ -73,9 +64,10 @@
           @select="(skill) => openDetail(skill as HubSkill)"
         />
       </div>
+      <p v-if="isInstalledOpen && !filteredInstalled.length" class="skills-hub-empty">{{ t(installedFilter ? '没有匹配的技能' : 'No installed skills found.') }}</p>
     </div>
 
-    <div class="skills-hub-section">
+    <div v-if="isLoading || error" class="skills-hub-section">
       <div v-if="isLoading" class="skills-hub-loading">{{ t('Loading skills...') }}</div>
       <div v-else-if="error" class="skills-hub-error">
         <span>{{ t(error) }}</span>
@@ -102,7 +94,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import IconTablerChevronRight from '../icons/IconTablerChevronRight.vue'
+import DirectorySectionToggle from './DirectorySectionToggle.vue'
 import SkillCard from './SkillCard.vue'
 import SkillDetailModal, { type HubSkill } from './SkillDetailModal.vue'
 import { useFeedbackDiagnostics } from '../../composables/useFeedbackDiagnostics'
@@ -123,6 +115,7 @@ const isLoading = ref(false)
 const isSearchingSkills = ref(false)
 const error = ref('')
 const skillSearchQuery = ref('')
+const installedFilter = ref('')
 const skillSearchError = ref('')
 const isInstalledOpen = ref(true)
 const isSearchResultsOpen = ref(true)
@@ -156,7 +149,10 @@ const isDetailInstalling = computed(() =>
 const isDetailUninstalling = computed(() =>
   isUninstallActionInFlight.value && actionSkillKey.value === currentDetailSkillKey.value,
 )
-const filteredInstalled = computed(() => installedSkills.value)
+const filteredInstalled = computed(() => {
+  const query = installedFilter.value.trim().toLocaleLowerCase()
+  return query ? installedSkills.value.filter(skill => [skill.name, skill.description, skill.owner, skill.path].some(value => value?.toLocaleLowerCase().includes(query))) : installedSkills.value
+})
 
 function showToast(text: string, type: 'success' | 'error' = 'success'): void {
   toast.value = { text, type }

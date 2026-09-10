@@ -287,11 +287,11 @@
 </template>
 <template #appearance>
   <div class="sidebar-settings-row sidebar-settings-row--select" :title="t(SETTINGS_HELP.appearance)">
-    <span class="sidebar-settings-label">{{ t('Appearance') }}</span>
+    <span class="sidebar-settings-label">{{ t('主题') }}</span>
     <AppSelect
       :model-value="darkMode"
       :options="appearanceOptions"
-      :aria-label="t('Appearance')"
+      :aria-label="t('主题')"
       menu-align="end"
       @update:model-value="onDarkModeChange"
     />
@@ -306,6 +306,7 @@
       @update:model-value="onChatWidthChange"
     />
   </div>
+  <WebUiBrandingSettings />
 </template>
 <template #input>              <button class="sidebar-settings-row" type="button" :title="t(SETTINGS_HELP.sendWithEnter)" @click="toggleSendWithEnter">
                 <span class="sidebar-settings-label">{{ t('Require ⌘ + enter to send') }}</span>
@@ -340,12 +341,16 @@
       <h3>Telegram</h3>
       <AppSwitch v-model="telegramNotificationsEnabledDraft" :disabled="isTelegramSaving">{{ t('启用Telegram通知') }}</AppSwitch>
       <label>{{ t('Bot token') }}<input v-model="telegramBotTokenDraft" class="app-input" type="password" placeholder="123456:ABCDEF" autocomplete="off" spellcheck="false" :disabled="isTelegramSaving" /></label>
-      <label>{{ t('Allowed Telegram user IDs') }}<textarea v-model="telegramAllowedUserIdsDraft" class="app-input" rows="3" placeholder="123456789&#10;987654321&#10;*" spellcheck="false" :disabled="isTelegramSaving" /></label>
-      <p v-if="telegramConfigError" class="account-panel-error" role="alert">{{ t(telegramConfigError) }}</p>
+      <div class="notification-message-field"><label>{{ t('Allowed Telegram user IDs') }}<textarea v-model="telegramAllowedUserIdsDraft" class="app-input" rows="5" placeholder="123456789&#10;987654321&#10;*" spellcheck="false" :disabled="isTelegramSaving" /></label></div>
       <div class="notification-actions">
+        <p v-if="telegramConfigError" class="account-panel-error" role="alert">{{ t(telegramConfigError) }}</p>
         <AppButton :busy="isTelegramSaving" @click="saveTelegramConfig()">{{ t('保存Telegram设置') }}</AppButton>
         <AppButton :disabled="isTelegramSaving || !telegramNotificationsEnabledDraft" @click="testTelegramNotification">{{ t('发送测试通知') }}</AppButton>
         <span v-if="telegramNotice" role="status">{{ t(telegramNotice) }}</span>
+      </div>
+      <div class="notification-quiet">
+        <AppSwitch v-model="telegramQuietDraft.quietEnabled" :disabled="isTelegramSaving" @change="saveTelegramQuietHours">{{ t('免打扰') }}</AppSwitch>
+        <div v-if="telegramQuietDraft.quietEnabled" class="notification-hours"><input v-model="telegramQuietDraft.quietStart" class="app-input" :aria-label="t('免打扰开始')" placeholder="22:00" maxlength="5" :disabled="isTelegramSaving" @change="saveTelegramQuietHours" /><span>{{ t('至') }}</span><input v-model="telegramQuietDraft.quietEnd" class="app-input" :aria-label="t('免打扰结束')" placeholder="08:00" maxlength="5" :disabled="isTelegramSaving" @change="saveTelegramQuietHours" /></div>
       </div>
     </section>
   </div>
@@ -858,6 +863,9 @@ import { accountDisplayName } from './accountDisplay'
 import AppDialog from './components/common/AppDialog.vue'
 import NotificationSettings from './components/settings/NotificationSettings.vue'
 import AccountActivation from './components/settings/AccountActivation.vue'
+import WebUiBrandingSettings from './components/settings/WebUiBrandingSettings.vue'
+import { useWebUiBranding } from './composables/useWebUiBranding'
+import { webUiDocumentTitle } from './webUiBranding'
 import ConversationDefaults from './components/settings/ConversationDefaults.vue'
 import SettingsPanel from './components/settings/SettingsPanel.vue'
 import IconTablerFilePencil from './components/icons/IconTablerFilePencil.vue'
@@ -992,6 +1000,11 @@ async function onDisplayTimeZoneChange(value: string): Promise<void> {
       body: JSON.stringify({ ...current.data.settings, timezone: value === 'system' ? browserTimeZone() : value }),
     })
     if (!response.ok) throw new Error('同步激活计划时区失败，请重试。')
+    const telegramResponse = await fetch('/codex-api/telegram/notification-preferences', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ timezone: value === 'system' ? browserTimeZone() : value }),
+    })
+    if (!telegramResponse.ok) throw new Error('显示时区保存失败。')
     setDisplayTimeZone(value)
   } catch (cause) {
     displayTimeZoneError.value = cause instanceof Error ? cause.message : '显示时区保存失败。'
@@ -1524,6 +1537,7 @@ const opencodeZenKey = ref('')
 const telegramNotice = useTransientNotice()
 const telegramBotTokenDraft = ref('')
 const telegramNotificationsEnabledDraft = ref(false)
+const telegramQuietDraft = ref({ quietEnabled: false, quietStart: '22:00', quietEnd: '08:00' })
 const telegramAllowedUserIdsDraft = ref('')
 const telegramConfigError = ref('')
 const isTelegramSaving = ref(false)
@@ -1653,9 +1667,10 @@ const browserHostName =
   typeof window !== 'undefined'
     ? (window.location.hostname || window.location.host || 'codexui')
     : 'codexui'
+const { branding } = useWebUiBranding()
 const pageTitle = computed(() => {
   const threadTitle = selectedThread.value?.title?.trim() ?? ''
-  return threadTitle || browserHostName
+  return webUiDocumentTitle(branding.value, route.name === 'thread' ? threadTitle : '', browserHostName)
 })
 const filteredMessages = computed(() =>
   messages.value.filter((message) => {
@@ -1982,7 +1997,7 @@ const existingFolderFilteredEntries = computed(() => {
 })
 const darkModeMediaQuery = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)') : null
 const appearanceOptions = computed(() => [
-  { value: 'system', label: t('System') },
+  { value: 'system', label: t('自动') },
   { value: 'light', label: t('Light') },
   { value: 'dark', label: t('Dark') },
 ])
@@ -2240,6 +2255,7 @@ async function refreshTelegramConfig(): Promise<void> {
     const config = await getTelegramConfig()
     telegramBotTokenDraft.value = config.botToken
     telegramNotificationsEnabledDraft.value = config.notificationsEnabled
+    telegramQuietDraft.value = { quietEnabled: config.quietEnabled, quietStart: config.quietStart, quietEnd: config.quietEnd }
     telegramAllowedUserIdsDraft.value = config.allowedUserIds.map((value) => String(value)).join('\n')
     telegramConfigError.value = ''
   } catch (error) {
@@ -2276,7 +2292,7 @@ async function saveTelegramConfig(showNotice = true): Promise<boolean> {
   telegramConfigError.value = ''
   telegramNotice.value = ''
   try {
-    await configureTelegramBot(botToken, allowedUserIds, telegramNotificationsEnabledDraft.value)
+    await configureTelegramBot(botToken, allowedUserIds, telegramNotificationsEnabledDraft.value, { ...telegramQuietDraft.value, timezone: displayTimeZone() })
     telegramAllowedUserIdsDraft.value = allowedUserIds.map((value) => String(value)).join('\n')
     await Promise.all([
       refreshTelegramConfig(),
@@ -2288,6 +2304,24 @@ async function saveTelegramConfig(showNotice = true): Promise<boolean> {
     telegramConfigError.value = error instanceof Error ? error.message : t('Failed to connect Telegram bot')
     void refreshTelegramStatus()
     return false
+  } finally {
+    isTelegramSaving.value = false
+  }
+}
+
+async function saveTelegramQuietHours(): Promise<void> {
+  if (isTelegramSaving.value) return
+  isTelegramSaving.value = true
+  telegramConfigError.value = ''
+  try {
+    const response = await fetch('/codex-api/telegram/notification-preferences', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...telegramQuietDraft.value, timezone: displayTimeZone() }),
+    })
+    const payload = await response.json()
+    if (!response.ok) throw new Error(payload.error || '保存失败')
+  } catch (error) {
+    telegramConfigError.value = error instanceof Error ? error.message : '保存失败'
   } finally {
     isTelegramSaving.value = false
   }

@@ -20,6 +20,7 @@
       :open="isOpen"
       :anchor="rootRef"
       :width="menuWidth"
+      :match-anchor-width="!iconOnly"
       :direction="openDirection"
       :align="menuAlign"
       panel-class="composer-dropdown-menu-wrap"
@@ -74,7 +75,7 @@ const listRef = ref<HTMLElement | null>(null)
 const isOpen = ref(false)
 const searchQuery = ref('')
 const highlighted = ref(-1)
-const menuWidth = ref(224)
+const menuWidth = computed(() => props.enableSearch ? 320 : 224)
 const selectedLabel = computed(() => props.options.find((option) => option.value === props.modelValue)?.label ?? props.placeholder ?? '')
 const filteredOptions = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -85,7 +86,6 @@ const filteredOptions = computed(() => {
 
 function open(): void {
   if (!props.disabled) {
-    menuWidth.value = Math.max(props.enableSearch ? 320 : 224, rootRef.value?.getBoundingClientRect().width || 0)
     isOpen.value = true
   }
 }

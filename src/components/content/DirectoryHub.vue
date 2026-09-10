@@ -1,7 +1,7 @@
 <template>
   <div class="directory-hub">
     <header class="directory-header">
-      <div><a class="directory-back" href="#/settings">{{ t('设置 / 扩展管理') }}</a><h2 class="directory-title">{{ t('插件 / 技能 / MCP') }}</h2></div>
+      <h2 class="directory-title">{{ t('应用') }}</h2>
       <AppButton v-if="activeTab !== 'plugins'" :busy="loading" @click="refresh(true)">{{ t('刷新') }}</AppButton>
     </header>
     <nav class="directory-tabs" :aria-label="t('扩展分类')">
@@ -51,12 +51,9 @@
         @skills-changed="onDirectorySkillsChanged"
         @try-item="(payload) => emit('try-item', payload)"
       >
-        <template #before-installed>
+        <template #before-search>
           <div class="skills-embedded-section">
-            <button class="skills-embedded-toggle" type="button" :aria-expanded="isMcpSectionOpen" @click="isMcpSectionOpen = !isMcpSectionOpen">
-              <span class="skills-embedded-title">{{ t('MCP 连接') }} <span class="directory-count">{{ visibleMcpServers.length }}</span></span>
-              <span class="skills-embedded-chevron" :class="{ 'is-open': isMcpSectionOpen }">›</span>
-            </button>
+            <DirectorySectionToggle :title="t('MCP 连接')" :count="visibleMcpServers.length" :open="isMcpSectionOpen" @toggle="isMcpSectionOpen = !isMcpSectionOpen" />
             <div v-if="isMcpSectionOpen" class="skills-embedded-body">
               <div class="directory-mcp-toolbar"><p class="directory-scope-note">{{ t('查看已配置服务、连接状态与可用工具。') }}</p><AppButton v-if="supportsMcpReload" :busy="isReloadingMcps" @click="reloadMcps">{{ t('重载配置') }}</AppButton></div>
               <div v-if="!supportsMcps" class="directory-empty">
@@ -139,6 +136,7 @@ import AppSwitch from '../common/AppSwitch.vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppSelect from '../common/AppSelect.vue'
 import SkillsHub from './SkillsHub.vue'
+import DirectorySectionToggle from './DirectorySectionToggle.vue'
 import { useUiLanguage } from '../../composables/useUiLanguage'
 import { formatDirectoryError, pluginManagementUrl, mcpRuntimeLabel } from '../../directory'
 import { subscribeTaskNotifications } from '../../subtasks'
@@ -390,7 +388,7 @@ onBeforeUnmount(() => {
 .directory-title { margin: 10px 0 6px; font-size: 24px; line-height: 1.3; font-weight: 650; }
 .directory-subtitle { margin: 0; color: var(--ui-muted); font-size: 13px; line-height: 1.6; }
 .directory-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 6px; border: 1px solid var(--ui-divider); border-radius: var(--ui-radius-dialog); background: var(--ui-hover); }
-.directory-tab { display: flex; flex-direction: column; gap: 4px; padding: 13px 16px; border: 1px solid transparent; border-radius: var(--ui-radius-popover); background: transparent; color: var(--ui-muted); text-align: left; cursor: pointer; transition: background .15s; }
+.directory-tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 13px 16px; border: 1px solid transparent; border-radius: var(--ui-radius-popover); background: transparent; color: var(--ui-muted); text-align: center; cursor: pointer; transition: background .15s; }
 .directory-tab strong { font-size: 14px; font-weight: 600; }
 .directory-tab span { font-size: 12px; }
 .directory-tab.is-active { border-color: var(--ui-divider); background: var(--ui-surface); color: var(--ui-text); box-shadow: 0 1px 3px #00000008; }

@@ -16,7 +16,7 @@ The Skills tab includes a registry search panel backed by `npx skills find`, sho
 4. In `Find skills`, type a query such as `browser`
 5. Click `Search`
 6. Verify the app calls `/codex-api/skills-hub/search?q=browser`, which runs `npx --yes skills find browser`
-7. Verify `Search results (count)` appears above `Installed skills (count)`
+7. Verify search results appear above the installed-skills filter and installed-skills section.
 8. Verify each registry result card shows its install count metadata, such as `1.2K installs`, even when a GitHub `SKILL.md` description is shown
 9. Open one GitHub-backed result and verify the detail modal shows the skill name, owner/repository, parsed `SKILL.md` description, GitHub-backed icon/avatar, and external link
 10. Click `Install` for a result and verify the backend runs `npx --yes skills add <owner/repo@skill> --yes --global`
@@ -62,3 +62,14 @@ The Skills tab includes a registry search panel backed by `npx skills find`, sho
 - Uninstall any skill installed only for this test
 
 ---
+
+#### 0.2.17 应用页布局与已安装技能筛选
+
+前提：4173 的插件/MCP/技能样本，中文和英文，1440×1000、768×1024、375×812 的明暗主题。
+
+1. 从侧栏“应用”进入，主内容顶部只有“应用”大标题；不出现“设置 / 扩展管理”“插件 / 技能 / MCP”副标题或“技能中心”。插件与技能/MCP 两个选项卡文字居中。
+2. 技能页顺序为 MCP 连接、查找技能、搜索结果、已安装技能筛选框、已安装技能。MCP、结果和已安装列表使用相同数量徽标及右对齐展开箭头；鼠标和键盘都能展开/收起。
+3. 在已安装筛选框输入技能名称、描述、作者或路径片段，显示匹配项及数量；无匹配显示 0 和空状态。清空恢复全部，筛选不请求远端、不重读安装目录。远端查找仍只有显式搜索产生一次请求。
+4. 检查菜单宽度、长名称、空列表和手机布局无溢出；深色无浅色背景。保存实际页面截图及请求计数。
+
+清理：关闭样本浏览器上下文；不安装/卸载真实技能，不改变 MCP 配置。
