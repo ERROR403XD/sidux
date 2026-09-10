@@ -1,0 +1,47 @@
+{
+  "package": {
+    "release": "/home/docker/codexapp-releases/codexapp-0.2.14-0feab2097309-20260910-075958",
+    "version": "0.2.14",
+    "commit": "0feab2097309",
+    "artifactFilesCompared": 17,
+    "cliSha256": "aa68d47fd2b9a2ce721afd7cffdcd06abe6d779211af150b035fa2953a2e1c77",
+    "tarballSha256": "1ab86f3ac78004293106813788d571ec40cbe93427bc56cd5aeaa1305bb52af6",
+    "cjsSmoke": true,
+    "pty": "PREPARED_PTY_OK",
+    "candidateCliIdentical": true,
+    "activated": false,
+    "allArtifactFilesCompared": 27,
+    "candidateAllArtifactsIdentical": true
+  },
+  "cache": {
+    "release": "/home/docker/codexapp-releases/codexapp-0.2.14-0feab2097309-20260910-075958",
+    "port": 59015,
+    "isolatedHome": "/home/Code/codexapp/output/0214-prepare/smoke-home",
+    "entryNoStore": true,
+    "entryValidatorsAbsent": true,
+    "conditionalEntryStatus": 200,
+    "hashedAssetCache": "public, max-age=31536000, immutable",
+    "missingAssetStatus": 404,
+    "missingKeyStatus": 401,
+    "browserReloadPassed": true,
+    "cachedAssets": [
+      "/assets/index-BA3fEuoo.css",
+      "/assets/index-kiqGnYUS.js"
+    ],
+    "pageErrors": []
+  },
+  "check": {
+    "exitCode": 3,
+    "output": "idle-check|liveExecutions=0|activeTurns=1|queued=0|pendingApprovals=0|apiConnections=0|apiActiveRequests=0|backgroundThreads=skipped-busy|loadedThreads=0|pages=2",
+    "backgroundInventoryCompleted": false
+  },
+  "releaseGuardTests": {
+    "files": 2,
+    "passed": 4
+  },
+  "temporaryPortsStopped": [
+    4173,
+    59015
+  ],
+  "activated": false
+}
