@@ -4,10 +4,24 @@ const text = (value: unknown, limit = 240): string => typeof value === 'string' 
 
 export function formatDirectoryError(error: unknown, fallback: string): string {
   const message = error instanceof Error ? error.message : fallback
+  if (/read remote plugin details|remote plugin catalog request/i.test(message) && /status 404\b/i.test(message)) {
+    return '官方插件详情暂不可用（404），请稍后重试。'
+  }
   const htmlIndex = message.search(/<(?:!doctype|html|head|body|script)\b/i)
   if (htmlIndex >= 0 && /failed to list apps/i.test(message) && /status 403\b/i.test(message)) return '应用目录暂时无法读取（上游 HTTP 403）。'
   const brief = (htmlIndex >= 0 ? message.slice(0, htmlIndex) : message).replace(/\s+/g, ' ').trim()
   return brief.slice(0, 500) || fallback
+}
+
+// The legacy URLs still returned by plugin/read redirect to the generic catalog.
+// These exact replacements were verified against https://chatgpt.com/plugins.
+// Preserve new URLs and other providers instead of guessing their plugin IDs.
+export function pluginManagementUrl(installUrl: string): string {
+  const replacements: Record<string, string> = {
+    'https://chatgpt.com/apps/gmail/connector_2128aebfecb84f64a069897515042a44': 'https://chatgpt.com/plugins/plugin_connector_1p_95d39881713c8191931482a62d6edff9',
+    'https://chatgpt.com/apps/google-drive/connector_5f3c8c41a1e54ad7a76272c89e2554fa': 'https://chatgpt.com/plugins/plugin_connector_1p_ab21a553bfbc81919ea8fd1858e3ffa7',
+  }
+  return replacements[installUrl] || installUrl
 }
 
 export type InstalledDirectoryApp = { id: string; enabled: boolean; callable: boolean; name: string }

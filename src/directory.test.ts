@@ -68,3 +68,16 @@ describe('directory runtime evidence', () => {
     await fresh
   })
 })
+
+it('explains an upstream missing plugin without implying its connection is broken', async () => {
+  const { formatDirectoryError } = await import('./directory')
+  expect(formatDirectoryError(new Error('RPC plugin/read failed with HTTP 502: read remote plugin details: remote plugin catalog request to https://chatgpt.com/backend-api/ps/plugins/example failed with status 404 Not Found: {"detail":"Plugin not found"}'), '读取失败')).toBe('官方插件详情暂不可用（404），请稍后重试。')
+  expect(formatDirectoryError(new Error('HTTP 404 local route unavailable'), '读取失败')).toBe('HTTP 404 local route unavailable')
+})
+
+it('updates verified legacy management links and preserves current or unrelated links', async () => {
+  const { pluginManagementUrl } = await import('./directory')
+  expect(pluginManagementUrl('https://chatgpt.com/apps/gmail/connector_2128aebfecb84f64a069897515042a44')).toBe('https://chatgpt.com/plugins/plugin_connector_1p_95d39881713c8191931482a62d6edff9')
+  expect(pluginManagementUrl('https://chatgpt.com/apps/google-drive/connector_5f3c8c41a1e54ad7a76272c89e2554fa')).toBe('https://chatgpt.com/plugins/plugin_connector_1p_ab21a553bfbc81919ea8fd1858e3ffa7')
+  for (const url of ['https://chatgpt.com/plugins/future-id', 'https://chatgpt.com/apps/new/id', 'https://example.com/apps/gmail/id']) expect(pluginManagementUrl(url)).toBe(url)
+})

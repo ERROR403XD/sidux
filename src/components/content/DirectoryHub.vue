@@ -104,13 +104,17 @@
 
     <AppDialog :open="!!selectedPlugin" :title="selectedPlugin?.displayName || '插件'" :busy="busy" @close="closeDetail">
       <p v-if="detailLoading">读取插件详情…</p>
-      <p v-if="detailError" class="directory-error">{{ detailError }}</p>
+      <div v-if="detailError" class="directory-error" role="alert">
+        <p>{{ detailError }}</p>
+        <p v-if="!detail" class="directory-plugin-description">{{ selectedPlugin?.description }}</p>
+        <AppButton v-if="selectedPlugin" :disabled="detailLoading || busy" @click="openPluginDetail(selectedPlugin)">重试</AppButton>
+      </div>
       <template v-if="detail">
         <p class="directory-plugin-description">{{ detail.description || detail.summary.description }}</p>
         <p v-if="unavailable" class="directory-error">{{ detail.summary.disabledReason || '此插件当前不可安装' }}</p>
         <div v-if="detail.skills.length" class="directory-detail-group"><h3>技能</h3><p v-for="skill in detail.skills" :key="skill.path || skill.name"><strong>{{ skill.displayName || skill.name }}</strong> · {{ skill.shortDescription || skill.description }}</p></div>
         <div v-if="detail.mcpServers.length" class="directory-detail-group"><h3>MCP</h3><p v-for="name in detail.mcpServers" :key="name">{{ name }} <AppButton v-if="shouldShowMcpLogin(name)" :busy="mcpLoginServerName === name" @click="loginMcpServer(name)">连接</AppButton></p></div>
-        <div v-if="detail.apps.length || authApps.length" class="directory-detail-group"><h3>服务连接</h3><p v-for="app in connectionApps" :key="app.id">{{ app.name }} <a v-if="app.installUrl" :href="app.installUrl" target="_blank" rel="noopener noreferrer">{{ app.needsAuth ? '授权连接' : '管理连接' }}</a><span v-else> · {{ app.needsAuth ? '安装后按提示授权' : '由原版插件管理' }}</span></p></div>
+        <div v-if="detail.apps.length || authApps.length" class="directory-detail-group"><h3>服务连接</h3><p v-for="app in connectionApps" :key="app.id">{{ app.name }} <a v-if="app.installUrl" :href="pluginManagementUrl(app.installUrl)" target="_blank" rel="noopener noreferrer">{{ app.needsAuth ? '在 ChatGPT 中连接' : '在 ChatGPT 中管理' }}</a><span v-else> · {{ app.needsAuth ? '安装后按提示授权' : '由原版插件管理' }}</span></p></div>
         <p class="directory-scope-note">安装或更改后，新会话会使用最新配置。</p>
       </template>
       <template #footer>
@@ -125,6 +129,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import { useTransientNotice } from '../../composables/useTransientNotice'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppButton from '../common/AppButton.vue'
@@ -132,7 +137,7 @@ import AppDialog from '../common/AppDialog.vue'
 import AppSelect from '../common/AppSelect.vue'
 import SkillsHub from './SkillsHub.vue'
 import { useUiLanguage } from '../../composables/useUiLanguage'
-import { formatDirectoryError, mcpRuntimeLabel } from '../../directory'
+import { formatDirectoryError, pluginManagementUrl, mcpRuntimeLabel } from '../../directory'
 import { subscribeTaskNotifications } from '../../subtasks'
 import { getMethodCatalog, listDirectoryPlugins, readDirectoryPlugin, installDirectoryPlugin, uninstallDirectoryPlugin, setDirectoryPluginEnabled, listDirectoryMcpServers, reloadDirectoryMcpServers, startDirectoryMcpLogin, type DirectoryPluginSummary, type DirectoryPluginDetail, type DirectoryPluginAppSummary, type DirectoryMcpServerStatus } from '../../api/codexGateway'
 
@@ -150,7 +155,7 @@ const ready = ref(false)
 const loading = ref(false)
 const busy = ref(false)
 const error = ref('')
-const notice = ref('')
+const notice = useTransientNotice()
 const search = ref('')
 const pluginFilter = ref('all')
 const pluginFilterOptions = [{ value: 'all', label: '全部插件' }, { value: 'installed', label: '已安装' }, { value: 'available', label: '未安装' }]
@@ -219,7 +224,7 @@ async function refresh(force = false): Promise<void> {
       }
       if (activeTab.value === 'plugins' && supportsPlugins.value) {
         const next = await listDirectoryPlugins(props.cwd ? [props.cwd] : undefined, force, warnings => {
-          if (!disposed && current === revision && warnings.length) notice.value = `部分插件市场读取失败：${warnings.join('；')}`
+          if (!disposed && current === revision && warnings.length) error.value = `部分插件市场读取失败：${warnings.join('；')}`
         })
         if (!disposed && current === revision) plugins.value = next
       } else if (activeTab.value === 'skills') {
@@ -280,7 +285,7 @@ async function loginMcpServer(name: string): Promise<void> {
     const result = await startDirectoryMcpLogin(name)
     if (!result.authorizationUrl) throw new Error('未返回授权地址')
     window.open(result.authorizationUrl, '_blank', 'noopener,noreferrer')
-    notice.value = '完成授权后刷新连接状态。'
+    notice.value = '已打开授权页面'
   } catch (failure) { error.value = formatDirectoryError(failure, '连接失败') }
   finally { mcpLoginServerName.value = '' }
 }
@@ -333,7 +338,7 @@ async function changePlugin(action: 'install' | 'uninstall' | 'toggle'): Promise
     if (action === 'uninstall') closeDetail()
     else if (updated) await openPluginDetail(updated)
     authApps.value = connections
-    notice.value = '插件设置已保存。新会话会使用最新配置。'
+    notice.value = '插件设置已保存'
   } catch (failure) { detailError.value = formatDirectoryError(failure, '插件操作失败') }
   finally { busy.value = false }
 }
