@@ -1,11 +1,10 @@
 <template>
   <div class="api-proxy-panel" data-testid="api-proxy-panel">
-    <p class="api-proxy-intro">使用账号池为外部 Codex 客户端提供 API 接入。</p>
     <p v-if="error" role="alert" class="api-proxy-error">{{ error }}</p>
     <p v-if="!status">正在读取出口状态…</p>
     <template v-else>
       <section class="api-proxy-card">
-        <div class="api-proxy-heading"><h2>服务与账号</h2><span class="api-proxy-state">{{ stateLabel }}</span></div>
+        <div class="api-proxy-heading"><h2>服务与账号</h2></div>
         <p v-if="status.lastError" class="api-proxy-error">{{ status.lastError }}</p>
         <p v-if="status.retryAt" class="api-proxy-muted">下次可重试：{{ date(status.retryAt) }}；保持启用即可等待恢复。</p>
         <label class="api-proxy-check"><input v-model="settings.enabled" type="checkbox" :disabled="busy || !status.installed" />启用 API 出口</label>
@@ -19,7 +18,7 @@
           <label>等待请求结束的上限（秒）<input v-model.number="settings.drainTimeoutSeconds" class="app-input" type="number" min="1" max="300" :disabled="busy" /></label>
         </div>
         <p class="api-proxy-muted">当前实际 API 账号：{{ status.settings.enabled ? accountName(status.selectedStorageId || status.settings.accountStorageId || status.accounts.activeStorageId) : '未启用' }}</p>
-        <p class="api-proxy-muted">切换前停止新接入并等待当前请求结束；等待超时保留原设置。空闲 WebSocket 会正常关闭，客户端随后重连。</p>
+        <p class="api-proxy-muted">切换时等待当前请求结束。</p>
         <div class="api-proxy-actions">
           <AppButton :busy="busy" @click="save(false)">保存</AppButton>
           <AppButton variant="danger" :disabled="busy" @click="forceDialog = true">中断活动连接并保存…</AppButton>
@@ -55,9 +54,8 @@
         </div>
       </section>
       <section class="api-proxy-card">
-        <div class="api-proxy-heading"><h2>Codex 客户端接入</h2><AppButton :disabled="busy || !status.settings.enabled" @click="loadModels">读取模型目录</AppButton></div>
+        <div class="api-proxy-heading"><h2>用例</h2></div>
         <label>Base URL<input class="app-input" :value="baseUrl" readonly /></label>
-        <label>模型<AppSelect v-model="model" :options="modelOptions" enable-search /></label>
         <pre class="api-proxy-config">{{ clientConfig }}</pre>
         <p class="api-proxy-muted api-proxy-endpoints">支持端点：<code>/v1/responses</code>（HTTP / SSE / WebSocket）、<code>/v1/responses/compact</code>、<code>/v1/models</code>、<code>/v1/chat/completions</code>。</p>
       </section>
@@ -181,8 +179,6 @@ const policyTarget = ref<ApiProxyKey | null>(null)
 const keyAccountDraft = ref('global')
 const keyProtectedDraft = ref(false)
 const keyAccountOptions = computed(() => [{ value: 'global', label: '全局账号' }, ...accountOptions.value.filter(option => option.value !== 'follow')])
-const model = ref('gpt-5.6-luna')
-const models = ref<string[]>([])
 const usageWindow = ref<'cumulative' | 'today' | 'week'>('cumulative')
 const usageWindows = [{ value: 'cumulative', label: '累计' }, { value: 'today', label: '今日' }, { value: 'week', label: '近 7 天' }]
 function usageFor(id: string) { return status.value?.usage?.keys[id]?.[usageWindow.value] || emptyUsage() }
@@ -191,11 +187,9 @@ let refreshing = false
 let disposed = false
 const selectedAccount = computed({ get: () => settings.value.accountStorageId || 'follow', set: value => { settings.value.accountStorageId = value === 'follow' ? null : value } })
 const accountOptions = computed(() => [{ value: 'follow', label: '跟随 WebUI 当前账号' }, ...(status.value?.accounts.accounts || []).map(account => ({ value: account.storageId, label: `${accountDisplayName(account)} · ${accountStatusLabel(account.authStatus)}` }))])
-const modelOptions = computed(() => [...new Set([model.value, ...models.value])].map(value => ({ value, label: value })))
 const baseUrl = `${window.location.origin}/v1`
-const stateLabel = computed(() => !status.value?.installed ? '组件未安装' : status.value.activity.draining ? '等待活动请求结束' : !status.value.settings.enabled ? '未启用' : status.value.retryAt ? '等待恢复' : status.value.ready ? '可用' : status.value.lastError ? '异常' : '已启用')
 const keyActivityCount = computed(() => status.value?.activity.entries.filter(entry => entry.keyId === revokeTarget.value?.id).length || 0)
-const clientConfig = computed(() => `model_provider = "codexapp_gateway"\nmodel = "${model.value}"\n\n[model_providers.codexapp_gateway]\nname = "CodexApp API"\nbase_url = "${baseUrl}"\nenv_key = "CODEXAPP_API_KEY"\nwire_api = "responses"\nrequires_openai_auth = false\nsupports_websockets = true`)
+const clientConfig = `model_provider = "codexapp_gateway"\nmodel = "gpt-5.6-luna"\n\n[model_providers.codexapp_gateway]\nname = "CodexApp API"\nbase_url = "${baseUrl}"\nenv_key = "CODEXAPP_API_KEY"\nwire_api = "responses"\nrequires_openai_auth = false\nsupports_websockets = true`
 function accountStatusLabel(value: string): string { return ({ ready: '可用', stale: '待确认', refreshing: '刷新中', reauth_required: '需重新登录', payment_required: '需处理额度', transient_error: '暂时异常', materialization_dirty: '需修复认证' } as Record<string, string>)[value] || value }
 function date(value: string | null): string { return value ? formatLocalDateTime(value, { second: '2-digit' }) : '—' }
 function accountName(id: string | null): string { const account = status.value?.accounts.accounts.find(row => row.storageId === id); return account ? accountDisplayName(account) : '未选择' }
@@ -279,7 +273,6 @@ async function copySecret(): Promise<void> { try { await copyTextToClipboard(sec
 async function updateKey(key: ApiProxyKey, input: unknown): Promise<void> { await run(async () => { await apiProxyRequest(`/keys/${key.id}`, input) }) }
 async function revokeKey(): Promise<void> { const target = revokeTarget.value; if (!target) return; await run(async () => { await apiProxyRequest(`/keys/${target.id}`, { revoke: true, interrupt: interruptKey.value }); revokeTarget.value = null }) }
 async function renameKey(): Promise<void> { const target = renameTarget.value; if (!target) return; await run(async () => { await apiProxyRequest(`/keys/${target.id}`, { name: renameValue.value }); renameTarget.value = null }) }
-async function loadModels(): Promise<void> { await run(async () => { const result = await apiProxyRequest<{ id: string }[]>('/models'); models.value = result.map(item => item.id) }) }
 onMounted(() => {
   void refresh(true)
   timer = setInterval(() => { if (!document.hidden && !busy.value) void refresh(false) }, 10_000)

@@ -2,7 +2,6 @@
   <div class="skills-hub">
     <div class="skills-hub-header">
       <h2 class="skills-hub-title">{{ t('Skills Hub') }}</h2>
-      <p class="skills-hub-subtitle">{{ props.cwd ? '当前项目可见的技能；安装保存到用户目录。' : '用户技能与原版插件提供的技能。' }}</p>
     </div>
 
     <div v-if="toast" class="skills-hub-toast" :class="toastClass">{{ toast.text }}</div>

@@ -2151,11 +2151,9 @@
 
 /* API outlet uses the same shared surfaces in light and dark themes. */
 .api-proxy-panel { width: 100%; max-width: 1100px; margin: 0 auto; padding: 24px; color: var(--ui-text); }
-.api-proxy-intro { margin: 0 0 20px; }
 .api-proxy-card { margin-bottom: 20px; padding: 20px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-dialog); background: var(--ui-surface); }
 .api-proxy-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .api-proxy-heading h2 { margin: 0; font-size: 16px; font-weight: 600; }
-.api-proxy-state { font-size: 13px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); padding: 4px 10px; }
 .api-proxy-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 16px 0; }
 .api-proxy-panel label, .api-proxy-label { display: grid; gap: 8px; font-size: 13px; margin-bottom: 12px; }
 .api-proxy-panel .api-proxy-check { display: flex; align-items: center; gap: 8px; }
@@ -2409,7 +2407,7 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .account-card-heading strong { font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .account-active-badge { flex-shrink: 0; font-size: 12px; color: var(--ui-text); border: 1px solid var(--ui-border); padding: 1px 6px; border-radius: 6px; }
 .account-card-meta { font-size: 12px; opacity: .75; margin: 6px 0; overflow-wrap: anywhere; }
-.account-card-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.account-card-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .account-card-spacer { flex: 1; }
 .account-more-anchor { display: flex; }
 .account-actions-menu { display: flex; flex-direction: column; gap: 6px; }
@@ -2479,6 +2477,7 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .account-reset-credits { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; color: var(--ui-text); }
 .account-reset-credits button { padding: 5px; min-width: 28px; }
 
+.notification-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13px; }
 .notification-settings { display: grid; gap: 12px; color: var(--ui-text); margin: 16px 0; }
 .notification-settings > label { display: grid; gap: 6px; font-size: 13px; }
 .notification-settings .notification-check { display: flex; gap: 8px; align-items: center; }
@@ -2500,7 +2499,7 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .api-proxy-inline-policy { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
 .api-proxy-inline-policy .app-select { flex: 1; }
 .api-proxy-inline-policy .api-proxy-check { flex-shrink: 0; margin: 0; white-space: nowrap; }
-.api-proxy-key-row > .api-proxy-actions { gap: 6px; }
+.api-proxy-key-row > .api-proxy-actions { gap: 8px; }
 .account-actions-menu { padding: 8px; gap: 4px; box-sizing: border-box; }
 .account-actions-menu .app-button { width: 100%; min-width: 0; justify-content: flex-start; margin: 0; box-sizing: border-box; }
 .thread-composer-fast[aria-checked="true"] { color: #a16207; border-color: #eab308; background: #fef9c3; box-shadow: 0 0 0 1px #eab30880, 0 0 12px #eab30866; }
@@ -2516,11 +2515,10 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 }
 
 .api-proxy-key-heading { flex-wrap: wrap; }
-.api-proxy-key-toolbar { flex-wrap: nowrap; }
+.api-proxy-key-toolbar { flex-wrap: wrap; }
 :root .api-proxy-key-toolbar .app-button { white-space: nowrap; }
 @media (max-width: 640px) {
-  .api-proxy-key-toolbar { width: 100%; gap: 6px; }
-  :root .api-proxy-key-toolbar .app-button { padding: 6px 8px; font-size: 12px; }
+  .api-proxy-key-toolbar { width: 100%; }
 }
 
 .account-plan-badge { flex-shrink: 0; margin-left: auto; color: var(--ui-text); font-size: 12px; opacity: .75; }
@@ -2536,8 +2534,6 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .api-proxy-usage-grid strong { font-size: 20px; font-variant-numeric: tabular-nums; }
 .api-proxy-usage-requests { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-top: 20px; font-size: 12px; }
 @media (max-width: 640px) {
-  .api-proxy-key-toolbar { gap: 4px; }
-  :root .api-proxy-key-toolbar .app-button { padding: 6px 4px; font-size: 11px; }
   .api-proxy-usage-filters { grid-template-columns: 1fr; }
   .api-proxy-usage-grid { grid-template-columns: repeat(2, 1fr); }
 }

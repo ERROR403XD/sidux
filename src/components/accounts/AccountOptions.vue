@@ -9,7 +9,6 @@
       <label>保护值（%）<input v-model.number="percent" class="app-input" type="number" min="0" max="100" step="0.1" :disabled="busy" /></label>
       <small>主额度（周或月）剩余不高于保护值时，仅允许受保护任务使用；0 为关闭。</small>
       <small v-if="hasFiveHourQuota">5 小时额度保护值：{{ Math.min(100, Number(percent) * 2) }}%。只作用于此账号实际存在的 5 小时窗口。</small>
-      <small v-else>当前未检测到 5 小时额度窗口，不应用 5 小时保护值。</small>
       <section class="account-notice-rule">
         <label class="notification-check"><input v-model="rule.fiveHour" type="checkbox" :disabled="busy" />5小时额度恢复通知</label>
         <template v-if="rule.fiveHour">
@@ -41,7 +40,6 @@
           <small v-pre>占位符：{{account}} 账号、{{account_id}} 账号标识、{{credit_id}} 机会标识、{{expires_at}} 到期时间、{{remaining}} 剩余时长、{{lead_time}} 提前时长。</small>
         </template>
       </section>
-      <small>通知通过设置中的 POST 渠道发送。已开启通知的占位符也可用于请求体；通知中的账号名称使用原始账号信息。</small>
     </div>
     <template #footer><AppButton :disabled="busy" @click="visible = false">取消</AppButton><AppButton :disabled="!loaded" :busy="busy" @click="save">保存账号设置</AppButton></template>
   </AppDialog>

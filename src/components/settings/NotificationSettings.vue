@@ -10,7 +10,11 @@
       <label class="notification-check"><input v-model="settings.quietEnabled" type="checkbox" :disabled="busy" />免打扰</label>
       <div v-if="settings.quietEnabled" class="notification-hours"><input v-model="settings.quietStart" class="app-input" aria-label="免打扰开始" placeholder="22:00" maxlength="5" :disabled="busy" /><span>至</span><input v-model="settings.quietEnd" class="app-input" aria-label="免打扰结束" placeholder="08:00" maxlength="5" :disabled="busy" /></div>
       <small v-if="settings.quietEnabled">期间暂存，结束后发送；使用全局时区。</small>
-      <div><AppButton :busy="busy" @click="save()">保存通知设置</AppButton><AppButton :disabled="busy || !settings.enabled" @click="test">发送测试通知</AppButton><span v-if="notice" role="status"> {{ notice }}</span></div>
+      <div class="notification-actions">
+        <AppButton :busy="busy" @click="save()">保存通知设置</AppButton>
+        <AppButton :disabled="busy || !settings.enabled" @click="test">发送测试通知</AppButton>
+        <span v-if="notice" role="status">{{ notice }}</span>
+      </div>
     </template>
   </div>
 </template>
