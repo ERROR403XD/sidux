@@ -43,3 +43,4 @@ Return to the [manual test index](../../tests.md).
 - [0.2.14 模型选择器与自动化配色](ui-0214-model-automation.md)
 
 - [0.2.16 中文界面英文补全](ui-0216-language-completion.md)
+- [0.2.17 设置与目标](0217-settings-and-goals.md)
