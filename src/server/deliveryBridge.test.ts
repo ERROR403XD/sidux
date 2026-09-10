@@ -81,3 +81,31 @@ describe('durable bridge delivery', () => {
     expect(await processor.readState()).toEqual({})
   })
 })
+
+it('delivers an interrupted thread continuation through the durable queue exactly once', async () => {
+  const { ThreadQuotaResume } = await import('./threadQuotaResume')
+  const { processor, rpc, message } = await fixture()
+  const home = await mkdtemp(join(tmpdir(), 'resume-delivery-'))
+  const submit = vi.fn(async (threadId: string, id: string) => {
+    const continuation = { ...message, id, text: '继续之前的工作' }
+    const params = await processor.buildQueuedTurnParams({ threadId, message: continuation })
+    const response = await processor.submit({ protocol: 2, threadId, message: continuation, params, expectedContextId: 'fixture-account' })
+    expect(response.status).toBe('accepted')
+  })
+  const runtime = { inspect: vi.fn(async () => ({ active: false, turnId: 'interrupted-turn', status: 'interrupted', error: '' })), available: async () => true, submit, cancel: async () => {}, changed: () => {} }
+  const service = new ThreadQuotaResume(home, runtime, false)
+  cleanups.unshift(async () => { await service.close(); await rm(home, { recursive: true, force: true }) })
+  await service.set('fixture', true)
+  await service.tick()
+  expect((await service.snapshot()).fixture).toMatchObject({ status: 'submitted' })
+  await service.tick()
+  expect(submit).toHaveBeenCalledTimes(1)
+  expect(rpc.mock.calls.filter(([method]) => method === 'turn/start')).toHaveLength(1)
+  const id = (await service.snapshot()).fixture!.attemptId!
+  expect(await processor.deliveries.result(id)).toMatchObject({ status: 'accepted', turnId: 'native-turn' })
+  runtime.inspect.mockResolvedValue({ active: false, turnId: 'native-turn', status: 'completed', error: '' })
+  await service.tick()
+  await service.tick()
+  expect((await service.snapshot()).fixture?.status).toBe('armed')
+  expect(submit).toHaveBeenCalledTimes(1)
+})

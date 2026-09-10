@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createDeliveryId } from '../delivery.js'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { privateJson } from './apiProxy/store.js'
@@ -150,7 +150,7 @@ export class ThreadQuotaResume {
             continue
           }
           mark.status = 'submitted'
-          mark.attemptId = randomUUID()
+          mark.attemptId = createDeliveryId()
           mark.attemptedAt = Date.now()
           delete mark.lastError
           await this.save()
