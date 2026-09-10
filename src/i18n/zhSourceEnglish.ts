@@ -49,7 +49,7 @@ export const zhSourceEnglish: Record<string, string> = {
   "{count}小时": "{count} hours",
   "1天限额": "1-day limit",
   "{count}天限额": "{count}-days limit",
-  "{count}h限额": "{count}h limit",
+  "{count}小时限额": "{count}h limit",
   "{count}m限额": "{count}m limit",
   "{count}分钟": "{count} minutes",
   "读取激活计划失败": "Failed to load the activation schedule",

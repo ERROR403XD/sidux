@@ -27,7 +27,7 @@ const windows = computed(() => [props.snapshot.primary, props.snapshot.secondary
 function duration(minutes: number | null): string {
   if (!minutes) return '—'
   if (minutes % 1440 === 0) return minutes === 1440 ? t('1天限额') : t('{count}天限额', { count: minutes / 1440 })
-  if (minutes % 60 === 0) return t('{count}h限额', { count: minutes / 60 })
+  if (minutes % 60 === 0) return t('{count}小时限额', { count: minutes / 60 })
   return t('{count}m限额', { count: minutes })
 }
 </script>
