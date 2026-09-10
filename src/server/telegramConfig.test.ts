@@ -33,7 +33,7 @@ it('persists the switch with credentials and chat IDs, migrates legacy config, a
     await writeFile(path, JSON.stringify(legacy))
     expect((await getConfig()).notificationsEnabled).toBe(true)
     expect((await post('configure-bot', { ...legacy, notificationsEnabled: false })).status).toBe(200)
-    expect(JSON.parse(await readFile(path, 'utf8'))).toEqual({ ...legacy, notificationsEnabled: false })
+    expect(JSON.parse(await readFile(path, 'utf8'))).toMatchObject({ ...legacy, notificationsEnabled: false, quietEnabled: false, quietStart: '22:00', quietEnd: '08:00' })
     expect((await getConfig()).notificationsEnabled).toBe(false)
     expect(enabled).toHaveBeenLastCalledWith(false)
     expect((await post('test', { language: 'zh-CN' })).status).toBe(400)
@@ -48,6 +48,11 @@ it('persists the switch with credentials and chat IDs, migrates legacy config, a
     expect(send).toHaveBeenCalledExactlyOnceWith([123], 'CodexApp test notification')
     expect(token).toHaveBeenLastCalledWith('fixture-token')
     expect(start).toHaveBeenCalled()
+    const quiet = { quietEnabled: true, quietStart: '23:00', quietEnd: '07:30', timezone: 'America/New_York' }
+    expect((await post('notification-preferences', quiet)).status).toBe(200)
+    expect(await getConfig()).toMatchObject({ ...quiet, botToken: legacy.botToken, allowedUserIds: legacy.allowedUserIds, notificationsEnabled: true })
+    expect((await post('notification-preferences', { quietEnd: '99:00' })).status).toBe(400)
+    expect((await getConfig()).quietEnd).toBe('07:30')
   } finally {
     await middleware.dispose()
     server.closeAllConnections()

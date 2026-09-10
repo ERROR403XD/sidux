@@ -283,6 +283,10 @@ export type TelegramStatus = {
 export type TelegramConfig = {
   botToken: string
   notificationsEnabled: boolean
+  quietEnabled: boolean
+  quietStart: string
+  quietEnd: string
+  timezone: string
   allowedUserIds: Array<number | '*'>
 }
 
@@ -3237,6 +3241,7 @@ export async function configureTelegramBot(
   botToken: string,
   allowedUserIds: Array<number | '*'>,
   notificationsEnabled?: boolean,
+  quietHours?: { quietEnabled: boolean; quietStart: string; quietEnd: string; timezone: string },
 ): Promise<void> {
   const response = await fetch('/codex-api/telegram/configure-bot', {
     method: 'POST',
@@ -3245,6 +3250,7 @@ export async function configureTelegramBot(
       botToken,
       allowedUserIds,
       notificationsEnabled,
+      ...quietHours,
     }),
   })
   const payload = await response.json()
@@ -3283,6 +3289,10 @@ export async function getTelegramConfig(): Promise<TelegramConfig> {
   return {
     botToken: typeof data.botToken === 'string' ? data.botToken : '',
     notificationsEnabled: typeof data.notificationsEnabled === 'boolean' ? data.notificationsEnabled : !!data.botToken,
+    quietEnabled: data.quietEnabled === true,
+    quietStart: typeof data.quietStart === 'string' ? data.quietStart : '22:00',
+    quietEnd: typeof data.quietEnd === 'string' ? data.quietEnd : '08:00',
+    timezone: typeof data.timezone === 'string' ? data.timezone : 'Asia/Shanghai',
     allowedUserIds,
   }
 }

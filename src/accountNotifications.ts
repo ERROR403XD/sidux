@@ -1,5 +1,13 @@
 export type AccountNoticeRule = { resetIncrease?: boolean; resetIncreaseMessage?: string; resetExpiry?: boolean; resetExpiryLeadTimes?: string; resetExpiryMessage?: string; fiveHour: boolean; weekly: boolean; fiveHourMessage: string; weeklyMessage: string }
 export type NotificationSettings = { enabled: boolean; url: string; body: string; timezone: string; quietEnabled: boolean; quietStart: string; quietEnd: string }
+export type QuietHoursSettings = Pick<NotificationSettings, 'timezone' | 'quietEnabled' | 'quietStart' | 'quietEnd'>
+export const defaultQuietHours: QuietHoursSettings = { timezone: 'Asia/Shanghai', quietEnabled: false, quietStart: '22:00', quietEnd: '08:00' }
+export function validateQuietHours(value: QuietHoursSettings): QuietHoursSettings {
+  if (typeof value.quietEnabled !== 'boolean') throw new Error('通知设置格式错误。')
+  new Intl.DateTimeFormat('en', { timeZone: value.timezone })
+  for (const time of [value.quietStart, value.quietEnd]) if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('免打扰时间请填写HH:mm。')
+  return { timezone: value.timezone, quietEnabled: value.quietEnabled, quietStart: value.quietStart, quietEnd: value.quietEnd }
+}
 export const defaultNoticeRule: AccountNoticeRule = { resetIncrease: false, resetIncreaseMessage: '{{account}} 的 Banked reset 重置机会增加 {{increase}} 次，当前可用 {{remaining}} 次（原有 {{previous}} 次）。', resetExpiry: false, resetExpiryLeadTimes: '7d, 3d, 12h', resetExpiryMessage: '{{account}} 的重置机会将于 {{expires_at}} 到期，剩余 {{remaining}}（提醒档位 {{lead_time}}）。', fiveHour: false, weekly: false, fiveHourMessage: '{{account}} 的5小时额度已重置，剩余 {{remaining}}%，下次重置 {{reset_at}}', weeklyMessage: '{{account}} 的主额度已重置，剩余 {{remaining}}%，下次重置 {{reset_at}}' }
 export const defaultNotificationSettings: NotificationSettings = { enabled: false, url: '', body: '{"message":"{{message}}"}', timezone: 'Asia/Shanghai', quietEnabled: false, quietStart: '22:00', quietEnd: '08:00' }
 export function renderNotice(template: string, values: Record<string, string>): string {
@@ -9,7 +17,7 @@ export function renderNoticeBody(template: string, values: Record<string, string
   const replace = (value: unknown): unknown => typeof value === 'string' ? renderNotice(value, values) : Array.isArray(value) ? value.map(replace) : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([key, field]) => [key, replace(field)])) : value
   return JSON.stringify(replace(JSON.parse(template)))
 }
-export function inQuietHours(settings: NotificationSettings, now: number): boolean {
+export function inQuietHours(settings: QuietHoursSettings, now: number): boolean {
   if (!settings.quietEnabled) return false
   const clock = new Intl.DateTimeFormat('en-GB', { timeZone: settings.timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now)
   return settings.quietStart === settings.quietEnd || (settings.quietStart < settings.quietEnd ? clock >= settings.quietStart && clock < settings.quietEnd : clock >= settings.quietStart || clock < settings.quietEnd)

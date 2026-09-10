@@ -1,4 +1,7 @@
 import { basename } from 'node:path'
+import { createHash } from 'node:crypto'
+import { defaultQuietHours, type QuietHoursSettings } from '../accountNotifications.js'
+import { TelegramNotificationQueue } from './telegramNotificationQueue.js'
 
 type TelegramUpdate = {
   update_id?: number
@@ -33,6 +36,7 @@ type AppServerLike = {
 
 type TelegramThreadBridgeOptions = {
   onChatSeen?: (chatId: number) => void
+  notificationDirectory?: string
 }
 
 export type TelegramBridgeStatus = {
@@ -207,6 +211,8 @@ export class TelegramThreadBridge {
   private readonly lastForwardedTurnByThreadId = new Map<string, string>()
   private active = false
   private notificationsEnabled = true
+  private quietHours = { ...defaultQuietHours }
+  private readonly notificationQueue: TelegramNotificationQueue
   private pollingTask: Promise<void> | null = null
   private nextUpdateOffset = 0
   private lastError = ''
@@ -223,11 +229,19 @@ export class TelegramThreadBridge {
         .filter(Boolean),
     )
     this.onChatSeen = options.onChatSeen
+    this.notificationQueue = new TelegramNotificationQueue({
+      directory: options.notificationDirectory,
+      settings: () => this.quietHours,
+      enabled: () => this.notificationsEnabled,
+      botId: () => createHash('sha256').update(this.token).digest('hex'),
+      send: (chatId, text) => this.sendTelegramMessage(chatId, text, { notification: true }),
+    })
   }
 
   start(): void {
     if (!this.token || this.active) return
     this.active = true
+    this.notificationQueue.start()
     void this.syncBotCommands().catch(() => {})
     void this.notifyOnlineForKnownChats().catch(() => {})
     this.pollingTask = this.pollLoop()
@@ -238,11 +252,19 @@ export class TelegramThreadBridge {
 
   stop(): void {
     this.active = false
+    this.notificationQueue.stop()
   }
 
   configureNotifications(enabled: boolean): void {
     this.notificationsEnabled = enabled
+    if (!enabled) void this.notificationQueue.clear().catch(() => {})
   }
+
+  configureQuietHours(settings: QuietHoursSettings): void {
+    this.quietHours = { ...settings }
+    if (this.active) void this.notificationQueue.flush().catch(() => {})
+  }
+  async settleNotifications(): Promise<void> { await this.notificationQueue.settled() }
 
   private async pollLoop(): Promise<void> {
     while (this.active) {
@@ -393,6 +415,7 @@ export class TelegramThreadBridge {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10000),
     })
     const parsed = asRecord(await response.json())
     const ok = parsed?.ok === true
@@ -405,7 +428,7 @@ export class TelegramThreadBridge {
   }
 
   private async sendOnlineMessage(chatId: number): Promise<void> {
-    await this.sendTelegramMessage(chatId, 'Codex thread bridge went online.', { notification: true })
+    await this.notificationQueue.enqueue([chatId], 'Codex thread bridge went online.')
   }
 
   private async notifyOnlineForKnownChats(): Promise<void> {
@@ -714,9 +737,7 @@ export class TelegramThreadBridge {
 
     const assistantReply = await this.readLatestAssistantMessage(threadId)
     if (!assistantReply) return
-    for (const chatId of chatIds) {
-      await this.sendTelegramMessage(chatId, assistantReply, { notification: true })
-    }
+    await this.notificationQueue.enqueue([...chatIds], assistantReply)
     if (turnId) {
       this.lastForwardedTurnByThreadId.set(threadId, turnId)
     }

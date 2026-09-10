@@ -55,6 +55,7 @@ import { callRpcWithRateLimitDecodeRecovery } from './rateLimitDecodeRecovery.js
 import { handleReviewRoutes } from './reviewGit.js'
 import { handleSkillsRoutes } from './skillsRoutes.js'
 import { TelegramThreadBridge } from './telegramThreadBridge.js'
+import { defaultQuietHours, validateQuietHours, type QuietHoursSettings } from '../accountNotifications.js'
 import {
   getRandomFreeKey,
   getFreeKeyCount,
@@ -4604,7 +4605,7 @@ let sessionIndexThreadTitleCacheState: SessionIndexThreadTitleCacheState = {
   cache: EMPTY_THREAD_TITLE_CACHE,
 }
 
-type TelegramBridgeConfigState = {
+type TelegramBridgeConfigState = QuietHoursSettings & {
   botToken: string
   notificationsEnabled: boolean
   chatIds: number[]
@@ -5165,7 +5166,7 @@ async function rollbackCreatedWorktree(
 
 function normalizeTelegramBridgeConfig(value: unknown): TelegramBridgeConfigState {
   const record = asRecord(value)
-  if (!record) return { botToken: '', notificationsEnabled: false, chatIds: [], allowedUserIds: [] }
+  if (!record) return { ...defaultQuietHours, botToken: '', notificationsEnabled: false, chatIds: [], allowedUserIds: [] }
   const botToken = typeof record.botToken === 'string' ? record.botToken.trim() : ''
   const notificationsEnabled = typeof record.notificationsEnabled === 'boolean' ? record.notificationsEnabled : !!botToken
   const rawChatIds = Array.isArray(record.chatIds) ? record.chatIds : []
@@ -5189,7 +5190,13 @@ function normalizeTelegramBridgeConfig(value: unknown): TelegramBridgeConfigStat
   const allowedUserIds: Array<number | '*'> = allowAllUsers
     ? ['*' as const, ...normalizedAllowedUserIds]
     : normalizedAllowedUserIds
-  return { botToken, notificationsEnabled, chatIds, allowedUserIds }
+  const quietHours = validateQuietHours({
+    timezone: typeof record.timezone === 'string' ? record.timezone : defaultQuietHours.timezone,
+    quietEnabled: typeof record.quietEnabled === 'boolean' ? record.quietEnabled : false,
+    quietStart: typeof record.quietStart === 'string' ? record.quietStart : defaultQuietHours.quietStart,
+    quietEnd: typeof record.quietEnd === 'string' ? record.quietEnd : defaultQuietHours.quietEnd,
+  })
+  return { ...quietHours, botToken, notificationsEnabled, chatIds, allowedUserIds }
 }
 
 async function readTelegramBridgeConfig(): Promise<TelegramBridgeConfigState> {
@@ -5199,19 +5206,14 @@ async function readTelegramBridgeConfig(): Promise<TelegramBridgeConfigState> {
     const payload = asRecord(JSON.parse(raw)) ?? {}
     return normalizeTelegramBridgeConfig(payload)
   } catch {
-    return { botToken: '', notificationsEnabled: false, chatIds: [], allowedUserIds: [] }
+    return { ...defaultQuietHours, botToken: '', notificationsEnabled: false, chatIds: [], allowedUserIds: [] }
   }
 }
 
 async function writeTelegramBridgeConfig(nextState: TelegramBridgeConfigState): Promise<void> {
   const normalized = normalizeTelegramBridgeConfig(nextState)
   const telegramConfigPath = getTelegramBridgeConfigPath()
-  await writeFile(telegramConfigPath, JSON.stringify({
-    botToken: normalized.botToken,
-    notificationsEnabled: normalized.notificationsEnabled,
-    chatIds: normalized.chatIds,
-    allowedUserIds: normalized.allowedUserIds,
-  }), 'utf8')
+  await writeFile(telegramConfigPath, JSON.stringify(normalized), 'utf8')
 }
 
 let telegramBridgeConfigMutation: Promise<void> = Promise.resolve()
@@ -7043,7 +7045,7 @@ type SharedBridgeState = {
 }
 
 const SHARED_BRIDGE_KEY = '__codexRemoteSharedBridge__'
-const SHARED_BRIDGE_VERSION = 'shared-runtime-0217-telegram-notifications-v1'
+const SHARED_BRIDGE_VERSION = 'shared-runtime-0217-settings-history-quiet-v1'
 
 function disposeSharedBridgeState(state: SharedBridgeState): Promise<void> {
   if (state.disposal) return state.disposal
@@ -7056,7 +7058,7 @@ function disposeSharedBridgeState(state: SharedBridgeState): Promise<void> {
     const deliveryDisposal = state.backendQueueProcessor.dispose()
     state.appServer.stopTaskRouting?.()
     state.appServer.dispose()
-    await Promise.all([automationDisposal, deliveryDisposal, state.processActivity.flush(), state.quotaResume?.close()])
+    await Promise.all([automationDisposal, deliveryDisposal, state.telegramBridge.settleNotifications(), state.processActivity.flush(), state.quotaResume?.close()])
   })()
   return state.disposal
 }
@@ -7201,6 +7203,7 @@ function getSharedBridgeState(): SharedBridgeState {
     methodCatalog,
     backendQueueProcessor,
     telegramBridge: new TelegramThreadBridge(appServer, {
+      notificationDirectory: join(getCodexHomeDir(), 'telegram-notifications'),
       onChatSeen: (chatId) => {
         void rememberTelegramChatId(chatId).catch(() => {})
       },
@@ -7253,6 +7256,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
   void mutateTelegramBridgeConfig(async () => {
     const config = await readTelegramBridgeConfig()
     telegramBridge.configureNotifications(config.notificationsEnabled)
+    telegramBridge.configureQuietHours(config)
     if (!config.botToken) return
     telegramBridge.configureToken(config.botToken)
     telegramBridge.configureAllowedUserIds(config.allowedUserIds)
@@ -9567,6 +9571,10 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           botToken,
           allowedUserIds: rawAllowedUserIds,
           notificationsEnabled: payload?.notificationsEnabled,
+          quietEnabled: payload?.quietEnabled,
+          quietStart: payload?.quietStart,
+          quietEnd: payload?.quietEnd,
+          timezone: payload?.timezone,
         })
         if (config.allowedUserIds.length === 0) {
           setJson(res, 400, { error: 'At least one allowed Telegram user ID is required' })
@@ -9579,13 +9587,38 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           if (typeof payload?.notificationsEnabled !== 'boolean' && existingConfig.botToken) {
             config.notificationsEnabled = existingConfig.notificationsEnabled
           }
+          for (const key of ['quietEnabled', 'quietStart', 'quietEnd', 'timezone'] as const) {
+            if (payload?.[key] === undefined) Object.assign(config, { [key]: existingConfig[key] })
+          }
           await writeTelegramBridgeConfig({ ...config, chatIds: existingConfig.chatIds })
           telegramBridge.configureNotifications(config.notificationsEnabled)
+          telegramBridge.configureQuietHours(config)
           telegramBridge.configureToken(config.botToken)
           telegramBridge.configureAllowedUserIds(config.allowedUserIds)
           telegramBridge.start()
         })
         setJson(res, 200, { ok: true })
+        return
+      }
+
+      if (req.method === 'POST' && url.pathname === '/codex-api/telegram/notification-preferences') {
+        const payload = asRecord(await readJsonBody(req)) || {}
+        try {
+          await mutateTelegramBridgeConfig(async () => {
+          const current = await readTelegramBridgeConfig()
+          const settings = validateQuietHours({
+            timezone: payload.timezone === undefined ? current.timezone : payload.timezone as string,
+            quietEnabled: payload.quietEnabled === undefined ? current.quietEnabled : payload.quietEnabled as boolean,
+            quietStart: payload.quietStart === undefined ? current.quietStart : payload.quietStart as string,
+            quietEnd: payload.quietEnd === undefined ? current.quietEnd : payload.quietEnd as string,
+          })
+          await writeTelegramBridgeConfig({ ...current, ...settings })
+          telegramBridge.configureQuietHours(settings)
+          })
+          setJson(res, 200, { ok: true })
+        } catch (error) {
+          setJson(res, 400, { error: error instanceof Error ? error.message : '保存失败' })
+        }
         return
       }
 
@@ -9617,6 +9650,10 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           data: {
             botToken: config.botToken,
             notificationsEnabled: config.notificationsEnabled,
+            quietEnabled: config.quietEnabled,
+            quietStart: config.quietStart,
+            quietEnd: config.quietEnd,
+            timezone: config.timezone,
             allowedUserIds: config.allowedUserIds,
           },
         })
