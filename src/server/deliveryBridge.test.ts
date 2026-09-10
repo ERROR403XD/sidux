@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { BackendQueueProcessor } from './codexAppServerBridge'
 import { createDeliveryId } from '../delivery'
+import { readPendingWebDeliveries, rememberWebDelivery, submitRememberedDelivery } from '../api/deliveryOutbox'
 
 const cleanups: Array<() => Promise<void>> = []
 afterEach(async () => { for (const cleanup of cleanups.splice(0)) await cleanup() })
@@ -25,6 +26,65 @@ async function fixture() {
 }
 
 describe('durable bridge delivery', () => {
+  it('recovers a persisted question reply ID and deduplicates a lost acknowledgement', async () => {
+    const { processor, rpc, message } = await fixture()
+    const saved = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      get length() { return saved.size },
+      key: (index: number) => [...saved.keys()][index] ?? null,
+      getItem: (key: string) => saved.get(key) ?? null,
+      setItem: (key: string, value: string) => saved.set(key, value),
+      removeItem: (key: string) => saved.delete(key),
+    })
+    try {
+      // This is the ID shape already persisted by answerAsyncQuestions.
+      const pending = rememberWebDelivery('delivery', {
+        protocol: 2, threadId: 'fixture', mode: 'steer', expectedContextId: 'fixture-account',
+        message: { ...message, id: 'question:fixture:question-turn:0' },
+        params: { threadId: 'fixture', input: [{ type: 'text', text: message.text }] },
+      })
+      let loseResponse = true
+      const fetch = vi.fn(async (_url, options) => {
+        const result = await processor.submit(JSON.parse(options.body))
+        if (loseResponse) {
+          loseResponse = false
+          throw new Error('lost acknowledgement')
+        }
+        return new Response(JSON.stringify({ data: result }))
+      })
+      vi.stubGlobal('fetch', fetch)
+      await expect(submitRememberedDelivery(pending)).rejects.toThrow('lost acknowledgement')
+      const restored = readPendingWebDeliveries('fixture')[0]
+      expect(restored).toEqual(pending)
+      expect(await submitRememberedDelivery(restored)).toEqual({ data: { id: pending.id, status: 'accepted', turnId: 'native-turn' } })
+      expect(fetch.mock.calls[0][1].body).toBe(fetch.mock.calls[1][1].body)
+      expect(rpc.mock.calls.filter(([method]) => method === 'turn/start')).toHaveLength(1)
+      const params = (rpc.mock.calls.find(([method]) => method === 'turn/start') as unknown as [string, Record<string, unknown>])[1]
+      expect(params.clientUserMessageId).toMatch(/^q-\d{13}-[a-f0-9]{64}$/)
+      expect(await processor.deliveries.result(String(params.clientUserMessageId))).toMatchObject({ status: 'accepted', turnId: 'native-turn' })
+      expect(readPendingWebDeliveries('fixture')).toEqual([])
+      expect(await processor.readState()).toEqual({})
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('retains expiry and account snapshot checks for legacy question replies', async () => {
+    const { processor, rpc, message } = await fixture()
+    const body = {
+      protocol: 2, threadId: 'fixture', mode: 'steer',
+      expectedContextId: 'fixture-account',
+      message: { ...message, id: 'question:fixture:turn:0' },
+      params: { threadId: 'fixture', input: [{ type: 'text', text: message.text }] },
+    }
+    await expect(processor.submit(body)).rejects.toThrow('刷新页面')
+    await expect(processor.submit({ ...body, legacyQuestionCreatedAt: Date.now() - 8 * 86400000 })).rejects.toThrow('发送 ID 已过期')
+    const result = await processor.submit({ ...body, legacyQuestionCreatedAt: Date.now(), expectedContextId: 'previous-account' })
+    expect(result.status).toBe('failed')
+    expect(rpc.mock.calls.filter(([method]) => method === 'turn/start')).toHaveLength(0)
+    expect((await processor.readState()).fixture[0].delivery?.error).toContain('账号或供应方已变化')
+  })
+
   it('rejects old queue mutations without changing records', async () => {
     const { processor, message } = await fixture()
     await expect(processor.mutate({ type: 'add', threadId: 'fixture', message })).rejects.toThrow('刷新')

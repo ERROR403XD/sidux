@@ -95,8 +95,14 @@ export function submitRememberedDelivery(row: PendingWebDelivery): Promise<WebDe
   const current = flights.get(row.id)
   if (current) return current
   const request = (async () => {
+    // Old question replies persisted a logical ID without the delivery timestamp.
+    // Keep the saved request and account snapshot; the server derives a stable
+    // protocol ID from this original timestamp when the user checks submission.
+    const body = row.endpoint === 'delivery' && row.id.startsWith('question:')
+      ? { ...row.body, legacyQuestionCreatedAt: row.createdAt }
+      : row.body
     const response = await fetch('/codex-api/' + row.endpoint, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(row.body),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     })
     const payload = await response.json()
     if (!response.ok) throw new Error(payload.error || '未确认提交结果，请核对提交状态')

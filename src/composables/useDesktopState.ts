@@ -4848,7 +4848,7 @@ export function useDesktopState() {
     if ([...(persistedMessagesByThreadId.value[reply.threadId] ?? []), ...detail.messages, ...turnMessages].some(message => message.questionReply && questionRefKey(message.questionReply) === key)) return
     setPersistedMessagesForThread(reply.threadId, mergeMessages(persistedMessagesByThreadId.value[reply.threadId] ?? [], detail.messages, { preserveMissing: true }))
     await startTurnForThread(reply.threadId, buildQuestionReply(question, reply.answers), [], [], [], undefined, 'steer',
-      { id: `question:${reply.threadId}:${reply.turnId}:${question.questionOrdinal ?? question.id}`, requireConfirmed: true })
+      { id: createDeliveryId(), requireConfirmed: true })
   }
 
   async function sendMessageToSelectedThread(

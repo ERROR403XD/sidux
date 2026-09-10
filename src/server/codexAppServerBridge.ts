@@ -6754,6 +6754,14 @@ export class BackendQueueProcessor {
     const params = asRecord(body.params)
     const expectedContextId = readNonEmptyString(body.expectedContextId)
     if (!threadId || !message || !params || !expectedContextId || params.threadId !== threadId || !Array.isArray(params.input)) throw new Error('无效的发送内容或缺少账号快照，请刷新页面')
+    const browserMessageId = message.id
+    if (browserMessageId.startsWith('question:')) {
+      const createdAt = body.legacyQuestionCreatedAt
+      if (typeof createdAt !== 'number' || !Number.isSafeInteger(createdAt)) throw new Error('发送接口已更新，请刷新页面后重试')
+      // Legacy question IDs could never pass DeliveryStore admission. Normalize
+      // only this old format, preserving its first-attempt age and retry identity.
+      message.id = `q-${createdAt}-${createHash('sha256').update(browserMessageId).digest('hex')}`
+    }
     const result = await this.deliveries.submit({
       threadId, message, params, expectedContextId,
       mode: body.mode === 'steer' ? 'steer' : 'immediate',
@@ -6761,8 +6769,8 @@ export class BackendQueueProcessor {
     this.scheduleThreadQueueDrain(threadId, 1000)
     if (!result) throw new Error('找不到发送记录，请核对状态')
     return 'message' in result
-      ? { id: result.message.id, ...deliveryView(result) }
-      : { id: result.id, status: result.status, turnId: result.turnId }
+      ? { id: browserMessageId, ...deliveryView(result) }
+      : { id: browserMessageId, status: result.status, turnId: result.turnId }
   }
 
   async mutate(input: unknown): Promise<{ state: ThreadQueueState; removed?: StoredQueuedMessage; delivered?: { id: string; turnId: string } }> {
