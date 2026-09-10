@@ -2777,6 +2777,7 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 :root .settings-page .settings-form-grid .sidebar-settings-row {
   display: flex;
   flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -2799,8 +2800,7 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 }
 .settings-field-short { --settings-control-width: 140px; }
 .settings-field-roomy { --settings-control-width: 260px; --settings-control-max: 68%; }
-:root .settings-page .settings-form-grid .sidebar-settings-timezone { flex-wrap: wrap; }
-.settings-form-grid .sidebar-settings-timezone > p { flex-basis: 100%; margin: 0; }
+.settings-form-grid > .sidebar-timezone-error { margin: 0; }
 :root .settings-page .settings-form-grid :is(.composer-dropdown-trigger, input.app-input) {
   height: var(--ui-field-height);
   min-height: var(--ui-field-height);

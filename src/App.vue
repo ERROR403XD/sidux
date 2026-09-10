@@ -282,8 +282,8 @@
                   menu-align="end"
                   @update:model-value="onDisplayTimeZoneChange"
                 />
-                <p v-if="displayTimeZoneError" class="sidebar-timezone-error" role="alert">{{ t(displayTimeZoneError) }}</p>
               </div>
+              <p v-if="displayTimeZoneError" class="sidebar-timezone-error settings-field-wide" role="alert">{{ t(displayTimeZoneError) }}</p>
 </div></template>
 <template #appearance>
 <div class="settings-form-grid">
