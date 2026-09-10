@@ -61,7 +61,7 @@ it.each([
     ...(fixed ? { accountStorageId: b.account.storageId } : {}),
   }))
   const rpc = vi.fn((method: string, params: unknown, runId?: string) => runtimeApp.automationRpc(method, params, runId))
-  engine = new AutomationEngine(home, createAutomationRuntime({
+  const runtime = createAutomationRuntime({
     rpc,
     acquireAccount: (id, settings) => runtimeApp.acquireTaskAccount(id, settings),
     releaseAccount: id => runtimeApp.releaseTaskAccount(id),
@@ -70,7 +70,8 @@ it.each([
     pendingRequests: () => runtimeApp.listPendingServerRequests(),
     readHistory: id => runtimeApp.automationRpc('thread/read', { threadId: id, includeTurns: true }),
     buildParams: async (threadId, text) => ({ threadId, input: [{ type: 'text', text }] }),
-  }), () => now, false)
+  })
+  engine = new AutomationEngine(home, runtime, () => now, false)
   const runningEngine = engine
   runtimeApp.onNotification(notification => runningEngine.notification(notification))
   await engine.readyPromise
@@ -95,4 +96,21 @@ it.each([
   expect(rpc.mock.calls.filter(([method]) => method === 'thread/resume')).toHaveLength(0)
   expect(await readFile(join(home, 'auth.json'), 'utf8')).toBe(authBefore)
   expect(engine.snapshot()).toMatchObject({ activeCount: 0, queuedCount: 0 })
+  if (kind === 'cron' && fixed && trigger === 'manual') {
+    vi.spyOn(runtime, 'start').mockRejectedValueOnce(Object.assign(new Error('401 fixture rejection'), { rpcRejected: true }))
+    const rejected = await engine.manual('dispatch', target, 'rejected-request')
+    await engine.tick()
+    expect(engine.runs('dispatch').data[0]).toMatchObject({ runId: rejected.runId, status: 'failed', errorCode: 'AUTH_REQUIRED' })
+    await engine.tick()
+    expect(rpc.mock.calls.filter(([method]) => method === 'turn/start')).toHaveLength(1)
+    const retry = await engine.manual('dispatch', target, 'retry-request', rejected.runId)
+    expect(retry).toMatchObject({ trigger: 'retry', retryOf: rejected.runId, attempt: 2 })
+    expect((await engine.manual('dispatch', target, 'retry-request', rejected.runId)).runId).toBe(retry.runId)
+    await engine.tick()
+    await vi.waitFor(async () => {
+      await runningEngine.refresh()
+      expect(runningEngine.runs('dispatch').data[0]).toMatchObject({ runId: retry.runId, status: 'completed' })
+    })
+    expect(rpc.mock.calls.filter(([method]) => method === 'turn/start')).toHaveLength(2)
+  }
 }, 15_000)
