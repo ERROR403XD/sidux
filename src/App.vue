@@ -259,7 +259,7 @@
   @reload="loadAccountsState()" @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount" />
 <AccountActivation :key="displayTimeZonePreference" :accounts="accounts" />
 <CustomConnections @changed="onCustomConnectionsChanged" /></template>
-<template #general><ConversationDefaults :value="webDefaultChoice" :remember="webPreferenceState.remember" :models="availableModels" :provider="webDefaultsProvider" :error="webPreferenceError" @save="configureWebDefaults" />              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the interface language for the app.')">
+<template #general><div class="settings-form-grid"><ConversationDefaults :value="webDefaultChoice" :remember="webPreferenceState.remember" :models="availableModels" :provider="webDefaultsProvider" :error="webPreferenceError" @save="configureWebDefaults" />              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the interface language for the app.')">
                 <span class="sidebar-settings-label">{{ t('UI language') }}</span>
                 <AppSelect
                   class="sidebar-settings-provider-dropdown"
@@ -284,8 +284,9 @@
                 />
                 <p v-if="displayTimeZoneError" class="sidebar-timezone-error" role="alert">{{ t(displayTimeZoneError) }}</p>
               </div>
-</template>
+</div></template>
 <template #appearance>
+<div class="settings-form-grid">
   <div class="sidebar-settings-row sidebar-settings-row--select" :title="t(SETTINGS_HELP.appearance)">
     <span class="sidebar-settings-label">{{ t('主题') }}</span>
     <AppSelect
@@ -307,32 +308,26 @@
     />
   </div>
   <WebUiBrandingSettings />
+</div>
 </template>
-<template #input>              <button class="sidebar-settings-row" type="button" :title="t(SETTINGS_HELP.sendWithEnter)" @click="toggleSendWithEnter">
-                <span class="sidebar-settings-label">{{ t('Require ⌘ + enter to send') }}</span>
-                <span class="sidebar-settings-toggle" :class="{ 'is-on': !sendWithEnter }" />
-              </button>
-              <button class="sidebar-settings-row" type="button" :title="t(SETTINGS_HELP.dictationClickToToggle)" @click="toggleDictationClickToToggle">
-                <span class="sidebar-settings-label">{{ t('Click to toggle dictation') }}</span>
-                <span class="sidebar-settings-toggle" :class="{ 'is-on': dictationClickToToggle }" />
-              </button>
-              <button class="sidebar-settings-row" type="button" :title="t(SETTINGS_HELP.dictationAutoSend)" @click="toggleDictationAutoSend">
-                <span class="sidebar-settings-label">{{ t('Auto send dictation') }}</span>
-                <span class="sidebar-settings-toggle" :class="{ 'is-on': dictationAutoSend }" />
-              </button>
-              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t(SETTINGS_HELP.dictationLanguage)">
-                <span class="sidebar-settings-label">{{ t('Dictation language') }}</span>
-                <AppSelect
-                  class="sidebar-settings-language-dropdown"
-                  :model-value="dictationLanguage"
-                  :options="dictationLanguageOptions"
-                  :placeholder="t('Auto-detect')"
-                  open-direction="up"
-                  :enable-search="true"
-                  :search-placeholder="t('Search language...')"
-                  @update:model-value="onDictationLanguageChange"
-                />
-              </div>
+<template #input>
+  <div class="settings-form-grid">
+    <AppSwitch class="settings-switch-row" :model-value="!sendWithEnter" :title="t(SETTINGS_HELP.sendWithEnter)" @change="toggleSendWithEnter">{{ t('Require ⌘ + enter to send') }}</AppSwitch>
+    <div class="sidebar-settings-row sidebar-settings-row--select" :title="t(SETTINGS_HELP.dictationLanguage)">
+      <span class="sidebar-settings-label">{{ t('Dictation language') }}</span>
+      <AppSelect
+        :model-value="dictationLanguage"
+        :options="dictationLanguageOptions"
+        :placeholder="t('Auto-detect')"
+        open-direction="up"
+        enable-search
+        :search-placeholder="t('Search language...')"
+        @update:model-value="onDictationLanguageChange"
+      />
+    </div>
+    <AppSwitch class="settings-switch-row" :model-value="dictationClickToToggle" :title="t(SETTINGS_HELP.dictationClickToToggle)" @change="toggleDictationClickToToggle">{{ t('Click to toggle dictation') }}</AppSwitch>
+    <AppSwitch class="settings-switch-row" :model-value="dictationAutoSend" :title="t(SETTINGS_HELP.dictationAutoSend)" @change="toggleDictationAutoSend">{{ t('Auto send dictation') }}</AppSwitch>
+  </div>
 </template>
 <template #integrations>
   <div class="settings-integrations-grid">

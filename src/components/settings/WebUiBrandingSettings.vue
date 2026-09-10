@@ -1,13 +1,23 @@
 <template>
-  <div class="webui-branding-settings">
+  <div class="webui-branding-settings settings-form-subgrid">
     <div class="sidebar-settings-row sidebar-settings-row--select">
+      <label for="webui-title">{{ t('WebUI标题') }}</label>
+      <input id="webui-title" v-model="title" class="app-input" placeholder="Codex Web" maxlength="120" :disabled="busy || convertingLogo" @change="save({ title })" />
+    </div>
+    <div class="sidebar-settings-row sidebar-settings-row--select">
+      <span>{{ t('标题显示') }}</span>
+      <AppSelect :model-value="branding.titleMode" :options="titleOptions" :aria-label="t('标题显示')" :disabled="busy || convertingLogo" @update:model-value="save({ titleMode: $event })" />
+    </div>
+    <div class="sidebar-settings-row sidebar-settings-row--select settings-field-wide">
       <span class="sidebar-settings-label">{{ t('WebUI Logo') }}</span>
-      <div class="webui-logo-actions"><img :src="webUiIconUrl(64, branding.logoVersion)" alt="" /><AppButton :busy="busy || convertingLogo" @click="fileInput?.click()">{{ t('上传Logo') }}</AppButton><AppButton v-if="branding.logoVersion" :disabled="busy || convertingLogo" @click="save({ icons: null })">{{ t('移除') }}</AppButton></div>
+      <div class="webui-logo-actions">
+        <img :src="webUiIconUrl(64, branding.logoVersion)" alt="" />
+        <AppButton :busy="busy || convertingLogo" @click="fileInput?.click()">{{ t('上传Logo') }}</AppButton>
+        <AppButton v-if="branding.logoVersion" :disabled="busy || convertingLogo" @click="save({ icons: null })">{{ t('移除') }}</AppButton>
+      </div>
       <input ref="fileInput" class="visually-hidden" type="file" accept=".svg,.png,.ico,image/svg+xml,image/png,image/x-icon,image/vnd.microsoft.icon" :aria-label="t('上传Logo')" @change="uploadLogo" />
     </div>
-    <div class="sidebar-settings-row sidebar-settings-row--select"><label for="webui-title">{{ t('WebUI标题') }}</label><input id="webui-title" v-model="title" class="app-input" placeholder="Codex Web" maxlength="120" :disabled="busy || convertingLogo" @change="save({ title })" /></div>
-    <div class="sidebar-settings-row sidebar-settings-row--select"><span>{{ t('标题显示') }}</span><AppSelect :model-value="branding.titleMode" :options="titleOptions" :aria-label="t('标题显示')" :disabled="busy || convertingLogo" @update:model-value="save({ titleMode: $event })" /></div>
-    <p v-if="error" class="account-panel-error" role="alert">{{ t(error) }}</p>
+    <p v-if="error" class="account-panel-error settings-field-wide" role="alert">{{ t(error) }}</p>
   </div>
 </template>
 <script setup lang="ts">
