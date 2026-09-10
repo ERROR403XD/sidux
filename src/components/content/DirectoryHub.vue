@@ -1,7 +1,7 @@
 <template>
   <div class="directory-hub">
     <header class="directory-header">
-      <h2 class="directory-title">{{ t('应用') }}</h2>
+      <h1 class="directory-title">{{ t('应用') }}</h1>
       <AppButton v-if="activeTab !== 'plugins'" :busy="loading" @click="refresh(true)">{{ t('刷新') }}</AppButton>
     </header>
     <nav class="directory-tabs" :aria-label="t('扩展分类')">

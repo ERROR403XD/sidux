@@ -1663,7 +1663,7 @@ const contentTitle = computed(() => {
   if (isSettingsRoute.value) return t('Settings')
   if (isApiProxyRoute.value) return t('API Proxy')
   if (isAutomationsRoute.value) return t('Automations')
-  if (isSkillsRoute.value) return '插件 / 技能 / MCP'
+  if (isSkillsRoute.value) return ''
   if (isHomeRoute.value) return t('Start new thread')
   return selectedThread.value?.title ?? t('Choose a thread')
 })
