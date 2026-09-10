@@ -115,3 +115,14 @@ Validate `scripts/codexapp-release-switch.sh`: prepare an immutable release whil
 在隔离服务 fixture 中 activate，确认生成的 drop-in 将 `CODEXAPP_API_PROXY_BINARY` 指向该发布目录，而非候选容器内 `/opt`。损坏组件时 check 必须在访问/切换生产前失败；旧版不含 API 入口的 release 保持可回滚。回滚使用原 drop-in 快照，不能遗留新版本组件路径。
 
 清理：移除 fixture 发布目录和假服务状态；真实 prepare 保留发布目录与 latest-prepared，生产切换另行执行。
+
+
+### 0.2.17 prepare 收尾与缓存迁移
+
+前提：候选已验收，任务启动的 4173 及后台终端身份明确；准备包版本和源码提交已记录。
+
+1. 使用真实 prepared 包、独立 CODEX_HOME 和空闲本地端口：浏览器先访问上一版，再在同一地址切到 prepared 包并刷新，保留浏览器缓存，不使用路由拦截。确认版本更新、入口无验证器且 no-store、旧 JS 404、新资源可命中缓存；执行 CJS 帮助及真实 PTY 命令。
+2. 按 cwd、命令、监听和已知会话的后台终端 processId/itemId 核对任务服务，经应用终端停止入口清理；确认监听消失、启动进程退出、后台记录不存在。保留生产、59001、5173 和未知归属进程。
+3. 清理后运行精确路径 check；有活跃回合或 API 请求时应阻塞。全局 backgroundThreads=skipped-busy 必须标为未检查，不因为本会话后台列表为空就改为零。
+
+清理：只移除本次临时验证服务；保留 prepared 目录及候选数据卷。记录可在独立终端执行的精确路径复查命令，prepare 不执行 activate。
