@@ -270,7 +270,7 @@
                   @update:model-value="setUiLanguage($event as 'en' | 'zh-CN')"
                 />
               </div>
-              <div class="sidebar-settings-row sidebar-settings-timezone">
+              <div class="sidebar-settings-row sidebar-settings-timezone settings-field-roomy">
                 <span class="sidebar-settings-label">{{ t('Display timezone') }}</span>
                 <AppSelect
                   :model-value="displayTimeZonePreference"
@@ -287,7 +287,7 @@
 </div></template>
 <template #appearance>
 <div class="settings-form-grid">
-  <div class="sidebar-settings-row sidebar-settings-row--select" :title="t(SETTINGS_HELP.appearance)">
+  <div class="sidebar-settings-row sidebar-settings-row--select settings-field-short" :title="t(SETTINGS_HELP.appearance)">
     <span class="sidebar-settings-label">{{ t('主题') }}</span>
     <AppSelect
       :model-value="darkMode"
@@ -297,7 +297,7 @@
       @update:model-value="onDarkModeChange"
     />
   </div>
-  <div class="sidebar-settings-row sidebar-settings-row--select" :title="t(SETTINGS_HELP.chatWidth)">
+  <div class="sidebar-settings-row sidebar-settings-row--select settings-field-short" :title="t(SETTINGS_HELP.chatWidth)">
     <span class="sidebar-settings-label">{{ t('Chat width') }}</span>
     <AppSelect
       :model-value="chatWidth"

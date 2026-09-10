@@ -2775,13 +2775,13 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .settings-form-grid { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 24px; align-items: stretch; }
 .settings-form-subgrid { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; column-gap: 24px; }
 :root .settings-page .settings-form-grid .sidebar-settings-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-content: start;
-  align-items: start;
-  gap: 8px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   min-width: 0;
-  min-height: 0;
+  min-height: 64px;
   margin: 0;
   padding: 14px 0;
   border: 0;
@@ -2790,8 +2790,17 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
   font-size: var(--ui-font-control);
   line-height: 20px;
 }
-.settings-form-grid .sidebar-settings-row > :is(span, label) { font-size: var(--ui-font-control); font-weight: 500; line-height: 20px; }
-:root .settings-page .settings-form-grid .sidebar-settings-row > :is(.app-select, .app-input) { width: 100%; min-width: 0; max-width: none; }
+.settings-form-grid .sidebar-settings-row > :is(span, label) { min-width: 0; font-size: var(--ui-font-control); font-weight: 500; line-height: 20px; }
+:root .settings-page .settings-form-grid .sidebar-settings-row > :is(.app-select, .app-input) {
+  flex: 0 1 var(--settings-control-width, 180px);
+  width: var(--settings-control-width, 180px);
+  min-width: 0;
+  max-width: var(--settings-control-max, 55%);
+}
+.settings-field-short { --settings-control-width: 140px; }
+.settings-field-roomy { --settings-control-width: 260px; --settings-control-max: 68%; }
+:root .settings-page .settings-form-grid .sidebar-settings-timezone { flex-wrap: wrap; }
+.settings-form-grid .sidebar-settings-timezone > p { flex-basis: 100%; margin: 0; }
 :root .settings-page .settings-form-grid :is(.composer-dropdown-trigger, input.app-input) {
   height: var(--ui-field-height);
   min-height: var(--ui-field-height);
@@ -2803,7 +2812,7 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .settings-form-grid .composer-dropdown-value { max-width: none; }
 .settings-form-grid .settings-switch-row {
   width: 100%;
-  align-items: flex-start;
+  align-items: center;
   min-width: 0;
   min-height: 64px;
   padding: 14px 0;

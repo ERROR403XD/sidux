@@ -1,7 +1,7 @@
 <template>
   <div class="conversation-defaults settings-form-subgrid">
-    <div class="sidebar-settings-row sidebar-settings-row--select"><span>{{ t('默认模型') }}</span><AppSelect :model-value="value.model" :options="modelOptions" enable-search :search-placeholder="t('搜索模型')" @update:model-value="selectModel" /></div>
-    <div class="sidebar-settings-row sidebar-settings-row--select"><span>{{ t('默认思考强度') }}</span><AppSelect :model-value="value.effort" :options="effortOptions(model, value.effort).map(option => ({ ...option, label: model?.providerId === 'custom' ? option.label : t(option.label) }))" :disabled="reasoningUnavailable(model)" @update:model-value="save({ effort: $event })" /></div>
+    <div class="sidebar-settings-row sidebar-settings-row--select settings-field-roomy"><span>{{ t('默认模型') }}</span><AppSelect :model-value="value.model" :options="modelOptions" enable-search :search-placeholder="t('搜索模型')" @update:model-value="selectModel" /></div>
+    <div class="sidebar-settings-row sidebar-settings-row--select settings-field-short"><span>{{ t('默认思考强度') }}</span><AppSelect :model-value="value.effort" :options="effortOptions(model, value.effort).map(option => ({ ...option, label: model?.providerId === 'custom' ? option.label : t(option.label) }))" :disabled="reasoningUnavailable(model)" @update:model-value="save({ effort: $event })" /></div>
     <AppSwitch class="settings-switch-row" :model-value="!!fastTier && !!value.tier" :disabled="model?.providerId === 'custom' ? !fastTier : !fastTier && !value.tier" @change="save({ tier: $event ? fastTier : '' })">{{ t('默认 Fast') }}</AppSwitch>
     <AppSwitch class="settings-switch-row" :model-value="remember" @change="emit('save', value, $event)">{{ t('记住每个会话上次设置') }}</AppSwitch>
     <p v-if="problem || error" :class="error ? 'sidebar-timezone-error' : 'conversation-defaults-note'" role="status">{{ t(error || problem) }}</p>
