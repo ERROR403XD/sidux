@@ -11,7 +11,7 @@
         <label>{{ t('目标') }}<textarea v-model="objective" data-autofocus rows="5" maxlength="8000" :disabled="working || loading" :placeholder="t('说明希望完成什么，以及如何验收')" /></label>
         <div class="goal-model-fields">
           <div><span class="goal-model-label">{{ t('模型') }}</span><AppSelect v-model="selectedModel" class="goal-model-picker" :options="modelOptions" enable-search :search-placeholder="t('搜索模型')" :disabled="working || loading || !supported" /></div>
-          <div><span class="goal-model-label">{{ t('推理强度') }}</span><AppSelect v-model="selectedEffort" class="goal-effort-picker" :options="goalEffortOptions.map(option => ({ ...option, label: t(option.label) }))" :disabled="working || loading || !supported" /></div>
+          <div><span class="goal-model-label">{{ t('推理强度') }}</span><AppSelect v-model="selectedEffort" class="goal-effort-picker" :options="goalEffortOptions.map(option => ({ ...option, label: selectedCapability?.providerId === 'custom' ? option.label : t(option.label) }))" :disabled="working || loading || !supported || reasoningUnavailable(selectedCapability)" /></div>
         </div>
         <p v-if="settingsProblem" class="thread-command-error">{{ t(settingsProblem) }}</p>
         <label>{{ t('Token 预算') }}<input v-model="budget" maxlength="50" spellcheck="false" :disabled="working || loading" :placeholder="t('100、2k、30M、0.4B；留空不设预算')" /></label>
@@ -50,11 +50,11 @@
 <script setup lang="ts">
 import { t } from '../../composables/useUiLanguage'
 
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppButton from '../common/AppButton.vue'
 import AppSelect from '../common/AppSelect.vue'
-import { effortOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
+import { reasoningUnavailable, effortOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
 import { getGoalModelSettings, applyGoalModelSettings } from '../../api/threadCommands'
 import { goalResumeProblem, goalSavePatch, goalStatusHint, readThreadGoal } from '../../threadGoal'
 import { compactionLabels } from '../../compaction'
@@ -101,11 +101,12 @@ const selectedModel = ref(props.model)
 const selectedEffort = ref(props.effort)
 const modelOptions = computed(() => [...new Set([...props.models.map(model => model.id), selectedModel.value].filter(Boolean))].map(value => ({ value, label: value })))
 const selectedCapability = computed(() => props.models.find(model => model.id === selectedModel.value))
+watch(selectedCapability, model => { if (reasoningUnavailable(model)) selectedEffort.value = '' })
 const goalEffortOptions = computed(() => effortOptions(selectedCapability.value, selectedEffort.value))
 const settingsProblem = computed(() => modelSettingsProblem(selectedCapability.value, selectedEffort.value, ''))
 async function saveModelSettings(): Promise<void> {
   if (settingsProblem.value) throw new Error(settingsProblem.value)
-  const effort = selectedEffort.value || selectedCapability.value?.defaultEffort || ''
+  const effort = reasoningUnavailable(selectedCapability.value) ? '' : selectedEffort.value || selectedCapability.value?.defaultEffort || ''
   await applyGoalModelSettings(threadId, { model: selectedModel.value, effort })
 }
 const goalLabels = goalStatusLabels

@@ -34,7 +34,7 @@ async function readCatalog(rpc: Rpc, options: ModelCatalogOptions): Promise<Mode
       if (!response.ok || !Array.isArray(data.data)) throw new Error('主激活账号模型目录读取失败')
       return uniqueModels(data.data.flatMap((row: unknown) => {
         if (row && typeof row === 'object' && (row as { hidden?: boolean }).hidden) return []
-        const model = normalizeModelCapability(row, 'codex')
+        const model = normalizeModelCapability(row, data.source || 'codex')
         return model ? [model] : []
       }))
     }
@@ -48,7 +48,7 @@ async function readCatalog(rpc: Rpc, options: ModelCatalogOptions): Promise<Mode
       if (!response.ok || !Array.isArray(data.data)) throw new Error('模型目录读取失败')
       // String-only providers have unknown capabilities, even when IDs match Codex.
       providerRows = data.data.flatMap((row: unknown) => {
-        const model = normalizeModelCapability(row, options.providerId || data.source || 'provider')
+        const model = normalizeModelCapability(row, data.source || options.providerId || 'provider')
         return model ? [model] : []
       })
       if (data.exclusive || options.requireProviderModels) return uniqueModels(providerRows)

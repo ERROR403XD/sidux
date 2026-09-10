@@ -52,6 +52,17 @@ describe('model capabilities across saved settings and requests', () => {
 })
 
 describe('fast mode controls shared by composer and automations', () => {
+  it('disables missing external capabilities while preserving advertised raw effort values', async () => {
+    const { fastModeControl, reasoningUnavailable } = await import('./modelCapabilities')
+    const unknown = normalizeModelCapability('sample', 'custom')!
+    expect(reasoningUnavailable(unknown)).toBe(true)
+    expect(effortOptions(unknown, 'high')).toEqual([{ value: '', label: 'N/A' }])
+    expect(fastModeControl(unknown, 'priority')).toMatchObject({ checked: false, disabled: true })
+    const supported = { ...model, providerId: 'custom' }
+    expect(reasoningUnavailable(supported)).toBe(false)
+    expect(effortOptions(supported)[1].label).toBe('max')
+    expect(fastModeControl(supported).disabled).toBe(false)
+  })
   it('only enables advertised fast tiers and can clear unsupported saved tiers', async () => {
     const { fastModeControl } = await import('./modelCapabilities')
     expect(fastModeControl(model, '')).toMatchObject({ checked: false, disabled: false, nextValue: 'priority' })

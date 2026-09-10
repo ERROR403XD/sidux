@@ -1,6 +1,6 @@
 <template>
   <button ref="anchor" class="model-reasoning-trigger" type="button" :disabled="disabled" :title="`${modelLabel} · ${t(effortLabel)}`" :aria-label="t('模型与推理强度')" :aria-expanded="visible" @click="toggle">
-    <span>{{ shortModelLabel }}</span><small>{{ t(shortEffortLabel) }}</small>
+    <span>{{ shortModelLabel }}</span><small>{{ rawEffortLabels ? shortEffortLabel : t(shortEffortLabel) }}</small>
   </button>
   <AppPopover :open="visible" :anchor="anchor" :width="320" direction="up" align="end" panel-class="model-reasoning-popover" @close="close">
     <header class="model-reasoning-heading"><strong>{{ t('模型') }}</strong><span>{{ shortModelLabel }}</span></header>
@@ -9,10 +9,10 @@
       <button v-for="model in filteredModels" :key="model.value" type="button" :aria-pressed="model.value === selectedModel" @click="selectModel(model.value)"><span>{{ model.label }}</span><span v-if="model.value === selectedModel">✓</span></button>
       <p v-if="!filteredModels.length" class="model-reasoning-empty">{{ t('暂无可选模型') }}</p>
     </div>
-    <div class="model-reasoning-effort">
+    <div class="model-reasoning-effort" :class="{ 'is-unavailable': effortUnavailable }">
       <header class="model-reasoning-heading">
-        <strong>{{ t('推理强度') }}</strong>
-        <output class="model-reasoning-current" aria-live="polite">{{ t(effortLabel) }}</output>
+        <strong>{{ effortUnavailable ? 'N/A' : t('推理强度') }}</strong>
+        <output v-if="!effortUnavailable" class="model-reasoning-current" aria-live="polite">{{ rawEffortLabels ? effortLabel : t(effortLabel) }}</output>
       </header>
       <div v-if="levels.length" class="model-reasoning-slider" :style="{ '--effort-progress': `${progress}%` }">
         <div class="model-reasoning-slider-track" aria-hidden="true">
@@ -28,7 +28,7 @@
           :max="Math.max(1, levels.length - 1)"
           :step="1"
           :value="selectedIndex"
-          :disabled="disabled || levels.length === 1"
+          :disabled="disabled || effortUnavailable || levels.length === 1"
           @input="selectEffort"
         />
       </div>
@@ -48,6 +48,8 @@ const props = defineProps<{
   models: { value: string; label: string }[]
   efforts: { value: string; label: string }[]
   disabled?: boolean
+  effortUnavailable?: boolean
+  rawEffortLabels?: boolean
 }>()
 const emit = defineEmits<{ model: [value: string]; effort: [value: string]; 'open-change': [value: boolean] }>()
 const anchor = ref<HTMLElement | null>(null)
@@ -55,6 +57,7 @@ const visible = ref(false)
 const search = ref('')
 const modelLabel = computed(() => props.models.find(model => model.value === props.selectedModel)?.label || props.selectedModel || t('选择模型'))
 const levels = computed(() => {
+  if (props.effortUnavailable) return [{ value: '', label: 'N/A' }]
   const supported = props.efforts.filter(effort => effort.value)
   if (supported.length && !supported.some(level => level.value === props.defaultEffort)) {
     return [{ value: '', label: '模型默认' }, ...supported]
@@ -65,21 +68,23 @@ const effectiveEffort = computed(() => props.selectedEffort || props.defaultEffo
 const selectedIndex = computed(() => Math.max(0, levels.value.findIndex(level => level.value === effectiveEffort.value)))
 const effortNames: Record<string, string> = { none: '无', minimal: '极低', low: '低', medium: '中', high: '高', xhigh: '极高', max: '最大', ultra: '超高' }
 const effortLabel = computed(() => {
+  if (props.effortUnavailable) return 'N/A'
   const level = levels.value[selectedIndex.value]
+  if (props.rawEffortLabels) return level?.label || 'N/A'
   return level ? effortNames[level.value] || level.label : '模型默认'
 })
 const progress = computed(() => levels.value.length > 1 ? selectedIndex.value / (levels.value.length - 1) * 100 : 0)
 function selectEffort(event: Event): void {
   const index = Number((event.target as HTMLInputElement).value)
   const level = levels.value[index]
-  if (level && !props.disabled) emit('effort', level.value)
+  if (level && !props.disabled && !props.effortUnavailable) emit('effort', level.value)
 }
 const shortModelLabel = computed(() => {
   const label = modelLabel.value
   const family = label.match(/\b(astra|sol|terra|luna)\b/i)?.[1]
   return family ? family[0].toUpperCase() + family.slice(1).toLowerCase() : label.replace(/^gpt-/i, 'GPT ')
 })
-const shortEffortLabel = computed(() => effortNames[effectiveEffort.value] || (effectiveEffort.value ? effortLabel.value : '默认'))
+const shortEffortLabel = computed(() => props.effortUnavailable ? 'N/A' : props.rawEffortLabels ? effortLabel.value : effortNames[effectiveEffort.value] || (effectiveEffort.value ? effortLabel.value : '默认'))
 const filteredModels = computed(() => props.models.filter(model => model.label.toLowerCase().includes(search.value.toLowerCase())))
 function open(): void {
   if (props.disabled) return

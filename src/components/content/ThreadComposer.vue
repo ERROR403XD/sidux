@@ -255,6 +255,8 @@
             :selected-model="selectedModel"
             :selected-effort="selectedReasoningEffort"
             :default-effort="modelCapability?.defaultEffort"
+            :effort-unavailable="reasoningUnavailable(modelCapability)"
+            :raw-effort-labels="modelCapability?.providerId === 'custom'"
             :models="modelOptions"
             :efforts="reasoningOptions"
             :disabled="isComposerConfigDisabled"
@@ -369,7 +371,7 @@
 
 <script setup lang="ts">
 import AppSelect from '../common/AppSelect.vue'
-import { fastModeControl, effortOptions, tierOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
+import { reasoningUnavailable, fastModeControl, effortOptions, tierOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
 import { isOverlayEventInside } from '../../composables/overlayEvents'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ComposerCommandPicker from './ComposerCommandPicker.vue'

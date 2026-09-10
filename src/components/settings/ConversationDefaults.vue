@@ -2,8 +2,8 @@
   <div class="conversation-defaults">
     <h3>{{ t('会话') }}</h3>
     <div class="sidebar-settings-row sidebar-settings-row--select"><span>{{ t('默认模型') }}</span><AppSelect :model-value="value.model" :options="modelOptions" enable-search :search-placeholder="t('搜索模型')" @update:model-value="selectModel" /></div>
-    <div class="sidebar-settings-row sidebar-settings-row--select"><span>{{ t('默认思考强度') }}</span><AppSelect :model-value="value.effort" :options="effortOptions(model, value.effort).map(option => ({ ...option, label: t(option.label) }))" @update:model-value="save({ effort: $event })" /></div>
-    <button class="sidebar-settings-row" type="button" role="switch" :aria-checked="!!value.tier" :disabled="!fastTier && !value.tier" @click="save({ tier: value.tier ? '' : fastTier })"><span>{{ t('默认 Fast') }}</span><span class="sidebar-settings-toggle" :class="{ 'is-on': !!value.tier }" /></button>
+    <div class="sidebar-settings-row sidebar-settings-row--select"><span>{{ t('默认思考强度') }}</span><AppSelect :model-value="value.effort" :options="effortOptions(model, value.effort).map(option => ({ ...option, label: model?.providerId === 'custom' ? option.label : t(option.label) }))" :disabled="reasoningUnavailable(model)" @update:model-value="save({ effort: $event })" /></div>
+    <button class="sidebar-settings-row" type="button" role="switch" :aria-checked="!!fastTier && !!value.tier" :disabled="model?.providerId === 'custom' ? !fastTier : !fastTier && !value.tier" @click="save({ tier: value.tier ? '' : fastTier })"><span>{{ t('默认 Fast') }}</span><span class="sidebar-settings-toggle" :class="{ 'is-on': !!fastTier && !!value.tier }" /></button>
     <button class="sidebar-settings-row" type="button" role="switch" :aria-checked="remember" @click="emit('save', value, !remember)"><span>{{ t('记住每个会话上次设置') }}</span><span class="sidebar-settings-toggle" :class="{ 'is-on': remember }" /></button>
     <p v-if="problem || error" :class="error ? 'sidebar-timezone-error' : 'conversation-defaults-note'" role="status">{{ t(error || problem) }}</p>
   </div>
@@ -13,7 +13,7 @@ import { t } from '../../composables/useUiLanguage'
 
 import { computed } from 'vue'
 import AppSelect from '../common/AppSelect.vue'
-import { effortOptions, type ModelCapability } from '../../modelCapabilities'
+import { reasoningUnavailable, effortOptions, type ModelCapability } from '../../modelCapabilities'
 import { effectiveConversationChoice, type ConversationChoice } from '../../webConversationPreferences'
 const props = defineProps<{ value: ConversationChoice; remember: boolean; models: ModelCapability[]; provider: string; error: string }>()
 const emit = defineEmits<{ save: [value: ConversationChoice, remember: boolean] }>()

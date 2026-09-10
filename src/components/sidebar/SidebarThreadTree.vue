@@ -686,10 +686,8 @@
                 :disabled="isSavingAutomation || isRunningAutomation"
               />
             </div>
-            <label class="automation-protection-check">
-              <input v-model="automationDraft.protected" type="checkbox" :disabled="isSavingAutomation || isRunningAutomation" />
-              <span>{{ t('受保护任务') }}</span>
-            </label>
+            <AppSwitch v-if="automationModelCapability?.providerId !== 'custom'" class="automation-protection-check" v-model="automationDraft.protected"  :disabled="isSavingAutomation || isRunningAutomation"><span>{{ t('受保护任务') }}</span>
+            </AppSwitch>
           </div>
 
           <div v-if="automationTargetPickerVisible && automationDialogMode === 'create'" class="automation-target-picker">
@@ -747,10 +745,9 @@
             </div>
             <div class="automation-thread-field">
               <span class="automation-thread-label">{{ t('思考强度') }}</span>
-              <AppSelect v-model="automationDraft.reasoningEffort" class="automation-effort-picker automation-thread-dropdown" :options="automationEffortOptions" :disabled="isSavingAutomation || isRunningAutomation" />
+              <AppSelect v-model="automationDraft.reasoningEffort" class="automation-effort-picker automation-thread-dropdown" :options="automationEffortOptions" :disabled="isSavingAutomation || isRunningAutomation || reasoningUnavailable(automationModelCapability)" />
             </div>
-            <label class="automation-fast-check" :title="t(automationFastControl.hint)">
-              <input type="checkbox" :checked="automationFastControl.checked" :disabled="isSavingAutomation || isRunningAutomation || automationFastControl.disabled" @change="automationDraft.serviceTier = automationFastControl.nextValue" /> {{ t('快速模式') }} </label>
+            <AppSwitch class="automation-fast-check" :title="t(automationFastControl.hint)" :model-value="automationFastControl.checked" :disabled="isSavingAutomation || isRunningAutomation || automationFastControl.disabled" @change="automationDraft.serviceTier = automationFastControl.nextValue">{{ t('快速模式') }} </AppSwitch>
           </div>
 
           <div class="automation-thread-field">
@@ -868,6 +865,7 @@
 </template>
 
 <script setup lang="ts">
+import AppSwitch from '../common/AppSwitch.vue'
 import { createThreadMatcher } from '../../threadSearchMatch'
 import { useTransientNotice } from '../../composables/useTransientNotice'
 import { accountDisplayName } from '../../accountDisplay'
@@ -908,7 +906,7 @@ import { useUiLanguage } from '../../composables/useUiLanguage'
 import { useFeedbackDiagnostics } from '../../composables/useFeedbackDiagnostics'
 import { getPathLeafName, getPathParent, isAbsoluteLikePath, isProjectlessChatPath } from '../../pathUtils.js'
 import AppSelect from '../common/AppSelect.vue'
-import { normalizeModelCapability, fastModeControl, effortOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
+import { normalizeModelCapability, reasoningUnavailable, fastModeControl, effortOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
 import SidebarMenuRow from './SidebarMenuRow.vue'
 import { reconcilePinnedThreadIds } from './pinnedThreadUtils'
 
@@ -1083,7 +1081,7 @@ watch(() => [automationDialogVisible.value, automationDraft.value.accountStorage
     const data = await response.json()
     if (!response.ok) throw new Error('所选账号模型目录读取失败')
     if (generation !== accountModelGeneration) return
-    accountModels.value = data.data.map((row: unknown) => normalizeModelCapability(row, 'codex')).filter(Boolean)
+    accountModels.value = data.data.map((row: unknown) => normalizeModelCapability(row, data.source || 'codex')).filter(Boolean)
   } catch {
     if (generation === accountModelGeneration) accountModelsError.value = '所选账号模型目录读取失败，请重新选择账号重试。'
   } finally {
@@ -1091,7 +1089,7 @@ watch(() => [automationDialogVisible.value, automationDraft.value.accountStorage
   }
 })
 const automationModelOptions = computed(() => [{ value: '', label: t('跟随运行时默认模型') }, ...(automationDraft.value.accountStorageId ? accountModels.value.map(model => model.id) : props.models ?? []).map(value => ({ value, label: value }))])
-const automationModelCapability = computed(() => (automationDraft.value.accountStorageId ? accountModels.value : props.modelCapabilities)?.find(model => model.id === automationDraft.value.model))
+const automationModelCapability = computed(() => (automationDraft.value.accountStorageId ? accountModels.value : props.modelCapabilities)?.find(model => model.id === automationDraft.value.model || (!automationDraft.value.model && model.isDefault)))
 const automationFastControl = computed(() => fastModeControl(automationModelCapability.value, automationDraft.value.serviceTier))
 const automationEffortOptions = computed(() => effortOptions(automationModelCapability.value, automationDraft.value.reasoningEffort))
 const automationScheduleDraft = ref<AutomationScheduleDraft>({
@@ -2140,8 +2138,8 @@ async function submitAutomationDialog(): Promise<void> {
       rrule: automationDraft.value.rrule,
       timezone: displayTimeZone(),
       status: automationDraft.value.status,
-      accountStorageId: automationDraft.value.accountStorageId || null, protected: automationDraft.value.protected,
-      model: automationDraft.value.model || null, reasoningEffort: automationDraft.value.reasoningEffort || null, serviceTier: automationDraft.value.serviceTier || null,
+      accountStorageId: automationDraft.value.accountStorageId || null, protected: automationModelCapability.value?.providerId === 'custom' ? false : automationDraft.value.protected,
+      model: automationDraft.value.model || null, reasoningEffort: reasoningUnavailable(automationModelCapability.value) ? null : automationDraft.value.reasoningEffort || null, serviceTier: automationModelCapability.value?.providerId === 'custom' && !automationModelCapability.value.serviceTiers?.length ? null : automationDraft.value.serviceTier || null,
     }
     const saved = automationDialogScope.value === 'project'
       ? await upsertProjectAutomation({ ...input, projectName })

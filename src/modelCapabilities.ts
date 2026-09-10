@@ -45,9 +45,14 @@ export function normalizeModelCapability(value: unknown, providerId = 'codex'): 
   }
 }
 
+export function reasoningUnavailable(model: ModelCapability | null | undefined): boolean {
+  return model?.providerId === 'custom' && !model.efforts?.length
+}
+
 export function effortOptions(model: ModelCapability | null | undefined, selected = '') {
+  if (reasoningUnavailable(model)) return [{ value: '', label: 'N/A' }]
   const labels: Record<string, string> = { none: '无', minimal: '极低', low: '低', medium: '中', high: '高', xhigh: '极高' }
-  const options = (model?.efforts ?? []).map(item => ({ value: item.value, label: labels[item.value] || item.value }))
+  const options = (model?.efforts ?? []).map(item => ({ value: item.value, label: model?.providerId === 'custom' ? item.value : labels[item.value] || item.value }))
   if (selected && !options.some(item => item.value === selected)) options.push({ value: selected, label: `${selected}（已保存，目录未确认）` })
   return [{ value: '', label: model?.defaultEffort ? `模型默认（${labels[model.defaultEffort] || model.defaultEffort}）` : '跟随运行时默认强度' }, ...options]
 }
@@ -59,6 +64,7 @@ export function tierOptions(model: ModelCapability | null | undefined, selected 
 }
 
 export function fastModeControl(model: ModelCapability | null | undefined, selected = '') {
+  if (model?.providerId === 'custom' && !model.serviceTiers?.length) return { checked: false, disabled: true, nextValue: '', hint: 'N/A' }
   const fast = model?.serviceTiers?.find(tier => tier.value === 'priority' || /^fast$/i.test(tier.label))
   const standard = model?.serviceTiers?.find(tier => /^(default|standard)$/i.test(tier.value))
   const checked = !!fast && (selected || model?.defaultServiceTier) === fast.value
@@ -73,8 +79,8 @@ export function fastModeControl(model: ModelCapability | null | undefined, selec
 }
 
 export function modelSettingsProblem(model: ModelCapability | null | undefined, effort: string, tier: string, hasImages = false): string {
-  if (effort && model?.efforts && !model.efforts.some(item => item.value === effort)) return `模型未公布思考强度 ${effort}，请重新选择或使用模型默认。`
-  if (tier && model?.serviceTiers && !model.serviceTiers.some(item => item.value === tier)) return `模型未公布服务档位 ${tier}，请重新选择或使用标准速度。`
+  if (effort && !reasoningUnavailable(model) && model?.efforts && !model.efforts.some(item => item.value === effort)) return `模型未公布思考强度 ${effort}，请重新选择或使用模型默认。`
+  if (tier && !(model?.providerId === 'custom' && !model.serviceTiers?.length) && model?.serviceTiers && !model.serviceTiers.some(item => item.value === tier)) return `模型未公布服务档位 ${tier}，请重新选择或使用标准速度。`
   if (hasImages && model?.inputModalities && !model.inputModalities.includes('image')) return '当前模型不支持图片，请更换模型或移除图片。'
   return ''
 }

@@ -51,3 +51,9 @@ it('keeps the active-account catalog separate from provider and proxy catalogs',
   expect(fetcher.mock.calls[0]?.[0]).toBe('/codex-api/accounts/models')
   expect(rpc).not.toHaveBeenCalled()
 })
+
+it('retains the explicit custom capability source for a connection-specific provider ID', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => reply({ source: 'custom', exclusive: true, data: [{ id: 'fixture', supportedReasoningEfforts: [], serviceTiers: [] }] })))
+  const rows = await loadModelCatalog(vi.fn(), { providerId: 'custom_connection_id', requireProviderModels: true })
+  expect(rows[0]).toMatchObject({ providerId: 'custom', efforts: [], serviceTiers: [] })
+})
