@@ -33,5 +33,32 @@
   "regressionTests": 17,
   "checkExitCode": 3,
   "check": "idle-check|liveExecutions=1|activeTurns=1|queued=0|pendingApprovals=0|apiConnections=0|apiActiveRequests=0|backgroundThreads=skipped-busy|loadedThreads=0|pages=2",
-  "productionActivated": false
+  "productionActivated": false,
+  "cleanup": {
+    "backgroundThreads": 0,
+    "loadedThreads": 10,
+    "listeners": {
+      "4173": false,
+      "59015": false
+    },
+    "release": "/home/docker/codexapp-releases/codexapp-0.2.15-42e3babae331-20260910-124935",
+    "verifiedArtifacts": 27,
+    "production": [
+      "MainPID=768848",
+      "ActiveState=active"
+    ],
+    "candidateRunning": "true"
+  },
+  "termination": {
+    "threadId": "01a088de-66f1-76e3-b2ee-6de414eed3a4",
+    "processId": "74750",
+    "itemId": "exec-7ddf4fa8-1a47-46d5-affa-4eb93157d455",
+    "result": {
+      "data": {
+        "terminated": true,
+        "absent": false
+      }
+    }
+  },
+  "checkAfterCleanup": "idle-check|liveExecutions=1|activeTurns=1|queued=0|pendingApprovals=0|apiConnections=0|apiActiveRequests=0|backgroundThreads=skipped-busy|loadedThreads=0|pages=2"
 }
