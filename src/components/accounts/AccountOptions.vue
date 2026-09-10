@@ -4,10 +4,9 @@
     <p>{{ account.email || account.accountId }}</p>
     <p v-if="error" class="account-panel-error" role="alert">{{ t(error) }}</p>
     <div v-if="loaded" class="notification-settings account-options">
-      <label>{{ t('账号别名') }}<input v-model="alias" class="app-input" maxlength="80" :placeholder="t('例如：日常使用、自动化专用')" :disabled="busy" /></label>
-      <small>{{ t('留空使用原名称。') }}</small>
+      <label>{{ t('账号别名') }}<input v-model="alias" class="app-input" maxlength="80" :disabled="busy" /></label>
       <label>{{ t('保护值（%）') }}<input v-model.number="percent" class="app-input" type="number" min="0" max="100" step="0.1" :disabled="busy" /></label>
-      <small>{{ t('主额度（周或月）剩余不高于保护值时，仅允许受保护任务使用；0 为关闭。') }}</small>
+      <small>{{ t('保护值范围内的主额度仅限受保护任务使用') }}</small>
       <small v-if="hasFiveHourQuota">{{ t('5 小时额度保护值：') }}{{ Math.min(100, Number(percent) * 2) }}{{ t('%。只作用于此账号实际存在的 5 小时窗口。') }}</small>
       <section class="account-notice-rule">
         <AppSwitch class="notification-check" v-model="rule.fiveHour"  :disabled="busy">{{ t('5小时额度恢复通知') }}</AppSwitch>

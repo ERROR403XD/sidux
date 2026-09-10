@@ -142,10 +142,17 @@
             </button>
           </div>
           <AppPopover :open="isSettingsOpen" :anchor="settingsAreaRef" :width="400" direction="up" panel-class="account-popover" @close="isSettingsOpen = false">
-            <AccountPanel :accounts="displayAccounts" :busy="isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
-  @reload="loadAccountsState()" @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount">
-              <template #footer><CustomConnections @changed="onCustomConnectionsChanged" /><div class="account-versions"><span>Codex {{ t(runtimeCapabilities?.cliVersion || '检测中…') }}</span><span>CodexApp {{ runtimeCapabilities?.appVersion || appVersion }}</span></div><AppButton @click="openSettings">{{ t('全局设置 →') }}</AppButton></template>
-            </AccountPanel>
+            <div class="account-popover-content">
+              <div class="account-popover-scroll">
+                <AccountPanel :accounts="displayAccounts" :busy="isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
+                  @reload="loadAccountsState()" @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount" />
+                <CustomConnections @changed="onCustomConnectionsChanged" />
+              </div>
+              <footer class="account-panel-footer">
+                <div class="account-versions"><span>Codex {{ t(runtimeCapabilities?.cliVersion || '检测中…') }}</span><span>CodexApp {{ runtimeCapabilities?.appVersion || appVersion }}</span></div>
+                <AppButton @click="openSettings">{{ t('全局设置 →') }}</AppButton>
+              </footer>
+            </div>
           </AppPopover>
         </div>
       </section>

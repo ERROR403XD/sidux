@@ -11,8 +11,8 @@
     </div>
     <div class="model-reasoning-effort" :class="{ 'is-unavailable': effortUnavailable }">
       <header class="model-reasoning-heading">
-        <strong>{{ effortUnavailable ? 'N/A' : t('推理强度') }}</strong>
-        <output v-if="!effortUnavailable" class="model-reasoning-current" aria-live="polite">{{ rawEffortLabels ? effortLabel : t(effortLabel) }}</output>
+        <strong>{{ t('推理强度') }}</strong>
+        <output class="model-reasoning-current" aria-live="polite">{{ rawEffortLabels ? effortLabel : t(effortLabel) }}</output>
       </header>
       <div v-if="levels.length" class="model-reasoning-slider" :style="{ '--effort-progress': `${progress}%` }">
         <div class="model-reasoning-slider-track" aria-hidden="true">

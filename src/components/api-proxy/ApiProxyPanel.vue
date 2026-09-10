@@ -28,7 +28,7 @@
           <h2>API key</h2>
           <div class="api-proxy-actions api-proxy-key-toolbar">
             <AppButton :disabled="busy" @click="openCreate()">{{ t('创建API key') }}</AppButton>
-            <AppButton @click="showInvalid = !showInvalid">{{ t(showInvalid ? '返回生效 API Key' : '查看失效API key') }}</AppButton>
+            <AppButton @click="showInvalid = !showInvalid">{{ t(showInvalid ? '返回生效 API key' : '查看失效 API key') }}</AppButton>
             <AppButton @click="usageDialog = true">{{ t('Token统计') }}</AppButton>
             <AppButton :busy="busy" @click="savePolicies">{{ t('保存配置') }}</AppButton>
           </div>
