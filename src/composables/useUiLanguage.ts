@@ -412,7 +412,7 @@ const zhCN: Record<string, string> = {
   'Skills': '技能',
   'Search skills...': '搜索技能',
   'Search skills and prompts...': '搜索技能和提示词',
-  'Thinking': "推理强度",
+  'Thinking': '思考中',
   'Saving thread before stop is available': "会话保存后才能停止",
   'Stop': '停止',
   'Queue message': '加入队列',

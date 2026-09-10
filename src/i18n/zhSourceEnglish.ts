@@ -1,6 +1,14 @@
 // English translations for application UI messages originally authored in Chinese.
 // User content, saved prompts, and outbound notification templates are intentionally excluded.
 export const zhSourceEnglish: Record<string, string> = {
+  "保存POST设置": "Save POST settings",
+  "保存Telegram设置": "Save Telegram settings",
+  "请先保存Telegram设置，并与机器人开始会话。": "Save Telegram settings and start a conversation with the bot first.",
+  "选择页面": "Select page",
+  "应用": "Apps",
+  "Token 预算": "Token budget",
+  "100、2k、30M、0.4B；留空不设预算": "100, 2k, 30M, 0.4B; leave blank for no budget",
+  "预算请输入 token 数量，可使用 k、M、B": "Enter a token count, optionally using k, M or B",
   "1天": "1 day",
   "1小时": "1 hour",
   "1分钟": "1 minute",
@@ -1192,7 +1200,7 @@ export const zhSourceEnglish: Record<string, string> = {
   "New chat": "New conversation",
   "No chats": "No conversations",
   "Chat width": "Conversation width",
-  "Thinking": "Reasoning effort",
+  "Thinking": "Thinking",
   "Saving thread before stop is available": "Saving conversation before stop is available",
   "Fork thread from this response": "Fork conversation from this response",
   "This summary was restored from the final answer text, but the thread history does not include patch diff content for this file.": "This summary was restored from the final answer text, but the conversation history does not include patch diff content for this file.",

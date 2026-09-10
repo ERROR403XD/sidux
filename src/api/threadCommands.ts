@@ -4,10 +4,10 @@ export { goalStatusLabels, type ThreadGoal } from '../threadGoal'
 export function parseGoalTokenBudget(value: string): number | null {
   const input = value.trim()
   if (!input) return null
-  const match = /^(\d+(?:\.\d*)?|\.\d+)\s*([MB])?$/i.exec(input)
-  if (!match || input.length > 50) throw new Error('预算默认按 M，可输入 1、1.5M 或 0.01B')
+  const match = /^(\d+(?:\.\d*)?|\.\d+)\s*([KMB])?$/i.exec(input)
+  if (!match || input.length > 50) throw new Error('预算请输入 token 数量，可使用 k、M、B')
   const [whole = '0', fraction = ''] = match[1]!.split('.')
-  const scale = match[2]?.toUpperCase() === 'B' ? 9 : 6
+  const scale = ({ K: 3, M: 6, B: 9 } as Record<string, number>)[match[2]?.toUpperCase() || ''] ?? 0
   const digits = BigInt((whole || '0') + fraction)
   const shift = scale - fraction.length
   const divisor = 10n ** BigInt(Math.max(0, -shift))
@@ -18,7 +18,9 @@ export function parseGoalTokenBudget(value: string): number | null {
 }
 export function formatGoalTokenBudget(value: number | null | undefined): string {
   if (value == null) return ''
-  const unit = value >= 1_000_000_000 ? 'B' : 'M', scale = unit === 'B' ? 9 : 6
+  if (value < 1000) return String(value)
+  const unit = value >= 1_000_000_000 ? 'B' : value >= 1_000_000 ? 'M' : 'k'
+  const scale = unit === 'B' ? 9 : unit === 'M' ? 6 : 3
   const divisor = 10n ** BigInt(scale), tokens = BigInt(value)
   const fraction = (tokens % divisor).toString().padStart(scale, '0').replace(/0+$/, '')
   return `${tokens / divisor}${fraction ? `.${fraction}` : ''}${unit}`

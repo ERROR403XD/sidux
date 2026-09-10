@@ -39,6 +39,13 @@ describe('Chinese-authored interface translations', () => {
 })
 
 describe('canonical Codex terminology', () => {
+  it('keeps live Thinking separate from model reasoning effort', () => {
+    setUiLanguage('en')
+    expect(t('Thinking')).toBe('Thinking')
+    setUiLanguage('zh-CN')
+    expect(t('Thinking')).toBe('思考中')
+    expect(t('Reasoning effort')).toBe('推理强度')
+  })
   it('distinguishes user conversations from internal threads and turns', () => {
     setUiLanguage('en')
     expect(t('New chat')).toBe('New conversation')

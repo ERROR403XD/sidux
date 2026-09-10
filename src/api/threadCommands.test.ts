@@ -5,18 +5,18 @@ import { validateGoalInput, parseGoalTokenBudget, formatGoalTokenBudget, getLate
 describe('native thread commands', () => {
   it('validates goals and budgets without silently inventing a limit', () => {
     expect(validateGoalInput(' 完成内部样本 ', '')).toEqual({ objective: '完成内部样本', tokenBudget: null })
-    expect(validateGoalInput('目标', '1').tokenBudget).toBe(1000000)
-    for (const value of ['0', '-1', 'NaN', '9007199254740992', '0.0000001M']) expect(() => validateGoalInput('目标', value)).toThrow('预算')
+    expect(validateGoalInput('目标', '1').tokenBudget).toBe(1)
+    for (const value of ['0', '-1', 'NaN', '9007199254740992', '0.0000001M', '0.4', '0.0001k']) expect(() => validateGoalInput('目标', value)).toThrow('预算')
     expect(() => validateGoalInput(' ', '')).toThrow('目标')
     expect(() => validateGoalInput('字'.repeat(4001), '')).toThrow('目标')
   })
-  it('accepts default M, fractional M/B and lowercase units with exact persisted round trips', () => {
-    for (const [input, tokens] of [['1', 1000000], ['1.5M', 1500000], ['0.01B', 10000000], ['2b', 2000000000], ['0.003M', 3000], ['1.000001M', 1000001], ['0.000000001B', 1]] as const) {
+  it('accepts individual tokens, fractional k/M/B and lowercase units with exact persisted round trips', () => {
+    for (const [input, tokens] of [['1', 1], ['100', 100], ['2k', 2000], ['0.4B', 400000000], ['0.001K', 1], ['9007199254740991', 9007199254740991], ['1.5M', 1500000], ['0.01B', 10000000], ['2b', 2000000000], ['0.003M', 3000], ['1.000001M', 1000001], ['0.000000001B', 1]] as const) {
       expect(parseGoalTokenBudget(input)).toBe(tokens)
       expect(parseGoalTokenBudget(formatGoalTokenBudget(tokens))).toBe(tokens)
     }
     expect(formatGoalTokenBudget(null)).toBe('')
-    expect(formatGoalTokenBudget(3000)).toBe('0.003M')
+    expect(formatGoalTokenBudget(3000)).toBe('3k')
     expect(formatGoalTokenBudget(1500000000)).toBe('1.5B')
   })
   it('uses native goal RPC; pause does not rewrite the objective or usage', async () => {
