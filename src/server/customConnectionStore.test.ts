@@ -84,3 +84,13 @@ describe('custom connection credential boundaries', () => {
   })
 
 })
+
+it('shares connection identity with an execution bridge retained across module reloads', async () => {
+  const { home } = await fixture()
+  const firstModule = await import('./customConnectionStore')
+  const store = firstModule.getCustomConnectionStore(home)
+  await store.ready
+  vi.resetModules()
+  const reloaded = await import('./customConnectionStore')
+  expect(reloaded.getCustomConnectionStore(home)).toBe(store)
+})

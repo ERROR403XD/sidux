@@ -7027,7 +7027,7 @@ type SharedBridgeState = {
 }
 
 const SHARED_BRIDGE_KEY = '__codexRemoteSharedBridge__'
-const SHARED_BRIDGE_VERSION = 'shared-runtime-0214-isolated-accounts-v1'
+const SHARED_BRIDGE_VERSION = 'shared-runtime-0217-custom-connections-v1'
 
 function disposeSharedBridgeState(state: SharedBridgeState): Promise<void> {
   if (state.disposal) return state.disposal

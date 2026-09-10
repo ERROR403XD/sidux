@@ -138,7 +138,9 @@ export class CustomConnectionStore {
     await this.mutate(() => ({ ...this.state, activeId: this.state.activeId === id ? null : this.state.activeId, connections: this.state.connections.filter(row => row.storageId !== id) }))
   }
 }
-const stores = new Map<string, CustomConnectionStore>()
+// Vite retains the shared execution bridge across reloads; its store must share the same identity.
+const storeScope = globalThis as typeof globalThis & { __codexCustomConnectionStores?: Map<string, CustomConnectionStore> }
+const stores = storeScope.__codexCustomConnectionStores ??= new Map<string, CustomConnectionStore>()
 export function getCustomConnectionStore(home = process.env.CODEX_HOME?.trim() || join(homedir(), '.codex')): CustomConnectionStore {
   let store = stores.get(home)
   if (!store) { store = new CustomConnectionStore(home); stores.set(home, store) }
