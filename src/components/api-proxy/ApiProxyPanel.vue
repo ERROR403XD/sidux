@@ -193,7 +193,10 @@ const accountOptions = computed(() => [{ value: 'follow', label: t('跟随 WebUI
 const baseUrl = `${window.location.origin}/v1`
 const keyActivityCount = computed(() => status.value?.activity.entries.filter(entry => entry.keyId === revokeTarget.value?.id).length || 0)
 const clientConfig = `model_provider = "codexapp_gateway"\nmodel = "gpt-5.6-luna"\n\n[model_providers.codexapp_gateway]\nname = "CodexApp API"\nbase_url = "${baseUrl}"\nenv_key = "CODEXAPP_API_KEY"\nwire_api = "responses"\nrequires_openai_auth = false\nsupports_websockets = true`
-function customEndpoints(id: string): string[] { return status.value?.accounts.accounts.find(row => row.storageId === id)?.supportedEndpoints || [] }
+function customEndpoints(id: string): string[] {
+  const resolved = ['global', 'follow'].includes(id) ? settings.value.accountStorageId || status.value?.accounts.activeStorageId : id
+  return status.value?.accounts.accounts.find(row => row.storageId === resolved)?.supportedEndpoints || []
+}
 function isCustomAccount(id: string): boolean {
   const resolved = ['global', 'follow'].includes(id) ? settings.value.accountStorageId || status.value?.accounts.activeStorageId : id
   return status.value?.accounts.accounts.find(row => row.storageId === resolved)?.kind === 'custom'
