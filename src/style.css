@@ -2415,6 +2415,12 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .account-quota-grid { display: grid; grid-template-columns: max-content minmax(24px, 1fr) max-content max-content; gap: 8px 7px; margin: 8px 0 2px; }
 .account-quota-window { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; font-size: 11px; font-variant-numeric: tabular-nums; }
 .account-quota-grid > small { grid-column: 1 / -1; }
+.account-panel-list--quota { display: grid; grid-template-columns: max-content minmax(24px, 1fr) max-content max-content; column-gap: 7px; }
+.account-panel-list--quota > * { grid-column: 1 / -1; }
+.account-panel-list--quota > .account-card { display: grid; grid-template-columns: subgrid; row-gap: 0; }
+.account-panel-list--quota > .account-card > * { grid-column: 1 / -1; min-width: 0; }
+.account-panel-list--quota > .account-card > .account-quota-grid { grid-template-columns: subgrid; }
+.account-panel-list--quota > .account-card > .account-card-meta { margin-bottom: 0; }
 .account-quota-window > span:first-child { white-space: nowrap; }
 .account-quota-window strong { font-weight: 500; text-align: right; }
 .account-quota-window time { opacity: .8; text-align: right; white-space: nowrap; }

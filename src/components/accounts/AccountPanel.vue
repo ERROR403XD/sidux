@@ -7,7 +7,7 @@
     </header>
     <p v-if="error" class="account-panel-error" role="alert">{{ t(error) }}</p>
     <p v-if="notice" class="account-panel-notice" role="status">{{ t(notice) }}</p>
-    <div class="account-panel-list">
+    <div class="account-panel-list account-panel-list--quota">
       <p v-if="!accounts.length" class="account-panel-empty">{{ t('No accounts yet. Add one from this panel.') }}</p>
       <article v-for="account in accounts" :key="account.storageId" class="account-card" :class="{ 'is-active': account.isActive }" :data-account-id="account.storageId">
         <div class="account-card-heading">
