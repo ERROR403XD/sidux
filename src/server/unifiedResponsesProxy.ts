@@ -52,9 +52,14 @@ type ChatCompletionsRequest = {
     function: { name: string; description?: string; parameters?: unknown }
   }>
   tool_choice?: string | { type: 'function'; function: { name: string } }
+  reasoning_effort?: string
+  service_tier?: string
 }
 
 export type UnifiedProxyOptions = {
+  requestBody?: Buffer
+  sanitizeRequest?: (payload: Record<string, unknown>) => Record<string, unknown>
+  onPayload?: (payload: unknown) => void
   bearerToken: string
   requireBearerToken?: boolean
   wireApi: 'responses' | 'chat'
@@ -334,6 +339,7 @@ function forwardStreamingTextResponse(
   upstreamRes: IncomingMessage,
   res: ServerResponse,
   model: string,
+  onPayload?: (payload: unknown) => void,
 ): void {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -364,6 +370,7 @@ function forwardStreamingTextResponse(
           id?: string
           choices?: Array<{ delta?: { content?: string; reasoning_content?: string } }>
         }
+        onPayload?.(parsed)
         if (parsed.id) responseId = `resp_${parsed.id}`
         const delta = parsed.choices?.[0]?.delta
         if (delta?.reasoning_content) {
@@ -483,8 +490,9 @@ export function handleUnifiedResponsesProxyRequest(
         return
       }
 
-      const rawBody = await readRequestBody(req)
-      const parsedBody = JSON.parse(rawBody.toString()) as ResponsesApiRequest
+      const rawBody = options.requestBody ?? await readRequestBody(req)
+      const rawPayload = JSON.parse(rawBody.toString())
+      const parsedBody = (options.sanitizeRequest ? options.sanitizeRequest(rawPayload) : rawPayload) as ResponsesApiRequest
       const hasTools = Array.isArray(parsedBody.tools) && parsedBody.tools.length > 0
       const hasToolOutputs = hasToolOutputsInInput(parsedBody.input)
       const useResponsesFallback = options.allowToolFallbackToResponses && (hasTools || hasToolOutputs)
@@ -502,6 +510,9 @@ export function handleUnifiedResponsesProxyRequest(
           messages: responsesInputToMessages(parsedBody.input, parsedBody.instructions),
           stream: effectiveStreaming,
         }
+        const reasoning = parsedBody.reasoning as { effort?: string } | undefined
+        if (reasoning?.effort) chatReq.reasoning_effort = reasoning.effort
+        if (typeof parsedBody.service_tier === 'string') chatReq.service_tier = parsedBody.service_tier
         if (parsedBody.temperature != null) chatReq.temperature = parsedBody.temperature
         if (parsedBody.top_p != null) chatReq.top_p = parsedBody.top_p
         if (parsedBody.max_output_tokens != null) chatReq.max_tokens = parsedBody.max_output_tokens
@@ -545,9 +556,27 @@ export function handleUnifiedResponsesProxyRequest(
           ...(options.bearerToken ? { 'Authorization': `Bearer ${options.bearerToken}` } : {}),
         },
       }, (upstreamRes) => {
+        res.once('close', () => { if (!res.writableFinished) upstreamRes.destroy() })
         const status = upstreamRes.statusCode ?? 502
+        if (!useChatPayload && isStreaming && status < 400) {
+          res.writeHead(status, copyProxyHeaders(upstreamRes.headers))
+          let pending = ''
+          upstreamRes.on('data', (chunk: Buffer) => {
+            pending += chunk.toString('utf8')
+            let end: number
+            while ((end = pending.indexOf('\n')) !== -1) {
+              const line = pending.slice(0, end).trim()
+              pending = pending.slice(end + 1)
+              if (line.startsWith('data: ')) { try { options.onPayload?.(JSON.parse(line.slice(6))) } catch {} }
+            }
+            if (pending.length > 4 * 1024 * 1024) pending = ''
+          })
+          upstreamRes.on('error', () => res.destroy())
+          upstreamRes.pipe(res)
+          return
+        }
         if (useChatPayload && effectiveStreaming && status >= 200 && status < 300) {
-          forwardStreamingTextResponse(upstreamRes, res, parsedBody.model)
+          forwardStreamingTextResponse(upstreamRes, res, parsedBody.model, options.onPayload)
           return
         }
 
@@ -555,6 +584,7 @@ export function handleUnifiedResponsesProxyRequest(
         upstreamRes.on('data', (chunk: Buffer) => chunks.push(chunk))
         upstreamRes.on('end', () => {
           const rawResponseBody = Buffer.concat(chunks).toString()
+          try { options.onPayload?.(JSON.parse(rawResponseBody)) } catch {}
           if (!useChatPayload) {
             res.writeHead(status, copyProxyHeaders(upstreamRes.headers))
             res.end(rawResponseBody)
@@ -591,6 +621,8 @@ export function handleUnifiedResponsesProxyRequest(
         })
       })
 
+      res.once('close', () => { if (!res.writableFinished) proxyReq.destroy() })
+      proxyReq.setTimeout(30 * 60000, () => proxyReq.destroy())
       proxyReq.on('error', (error) => {
         if (!res.headersSent) {
           res.writeHead(502, { 'Content-Type': 'application/json' })

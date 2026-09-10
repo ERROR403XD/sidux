@@ -112,3 +112,52 @@ it('refreshes B in the same native session while A stalls, retaining loaded turn
     await rm(home, { recursive: true, force: true })
   }
 }, 15000)
+
+it('isolates a custom automation from a busy OpenAI session and never changes its authentication', async () => {
+  const { getCustomConnectionStore } = await import('./customConnectionStore')
+  const home = await mkdtemp(tmpdir() + '/custom-account-ipc-0217-')
+  vi.stubEnv('CODEX_HOME', home)
+  vi.stubEnv('CODEXUI_CODEX_COMMAND', resolve('src/server/fixtures/account-app-server.cjs'))
+  const coordinator = getAccountAuthCoordinator()
+  const credential = JSON.stringify({ auth_mode: 'chatgpt', tokens: { account_id: 'primary', refresh_token: 'fixture', access_token: 'header.' + Buffer.from(JSON.stringify({ exp: Date.now() / 1000 + 3600, 'https://api.openai.com/auth': { chatgpt_account_id: 'primary', user_id: 'primary' } })).toString('base64url') + '.signature' } })
+  const a = await coordinator.store.upsertCredential(credential, { activate: true })
+  const app = new AppServerProcess()
+  try {
+    const before = await readFile(home + '/auth.json', 'utf8')
+    const primary = await app.rpc('thread/start', { cwd: home }) as any
+    await app.rpc('turn/start', { threadId: primary.thread.id, input: [{ type: 'text', text: 'STALL' }] })
+    const connections = getCustomConnectionStore()
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith('/models') ? { data: [{ id: 'external' }] } : { output: [{ type: 'message', content: [{ type: 'output_text', text: 'hi' }] }] }))))
+    const draft = { alias: 'External', provider: 'custom', baseUrl: 'https://fixture.test/v1', apiKey: 'fixture-external', model: 'external', wireApi: 'responses' as const }
+    const test = await connections.test(draft)
+    await connections.save(draft, test.token)
+    const custom = connections.snapshot().connections[0]
+    const getCredential = vi.spyOn(coordinator, 'getApiCredential')
+    expect(await app.acquireTaskAccount('custom-run', { accountStorageId: custom.storageId })).toBe(true)
+    const created = await app.automationRpc('thread/start', { cwd: home }, 'custom-run') as any
+    await app.automationRpc('turn/start', { threadId: created.thread.id, input: [{ type: 'text', text: 'COMPLETE' }], effort: 'high', serviceTier: 'priority' }, 'custom-run')
+    await vi.waitFor(async () => {
+      const result = await app.automationRpc('thread/read', { threadId: created.thread.id }, 'custom-run') as any
+      expect(result.thread.turns.at(-1).items.at(-1).text).toBe('OUTPUT:custom')
+    })
+    expect(getCredential).not.toHaveBeenCalledWith(custom.storageId)
+    expect(app.liveActivity().activeTurnThreadIds).toContain(primary.thread.id)
+    expect(await readFile(home + '/auth.json', 'utf8')).toBe(before)
+    expect((await coordinator.store.readState()).activeStorageId).toBe(a.account.storageId)
+    app.releaseTaskAccount('custom-run')
+    await connections.select(custom.storageId)
+    const externalChat = await app.rpc('thread/start', { cwd: home }) as any
+    await app.rpc('turn/start', { threadId: externalChat.thread.id, input: [{ type: 'text', text: 'COMPLETE' }] })
+    await vi.waitFor(async () => expect(((await app.rpc('thread/read', { threadId: externalChat.thread.id })) as any).thread.turns.at(-1).items.at(-1).text).toBe('OUTPUT:custom'))
+    expect(app.liveActivity().activeTurnThreadIds).toContain(primary.thread.id)
+    await connections.select(null)
+    expect(await readFile(home + '/auth.json', 'utf8')).toBe(before)
+  } finally {
+    app.stopTaskRouting()
+    app.dispose()
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
+    await rm(home, { recursive: true, force: true })
+  }
+}, 15000)

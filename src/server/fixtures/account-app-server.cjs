@@ -6,6 +6,9 @@ const { randomUUID } = require('node:crypto')
 if (!process.argv.includes('app-server')) process.exit(0)
 let account = 'none'
 try { account = JSON.parse(readFileSync(process.env.CODEX_HOME + '/auth.json', 'utf8')).tokens.account_id } catch {}
+const configuredProviderArg = process.argv.find(arg => arg.startsWith('model_provider='))
+const configuredProvider = configuredProviderArg ? JSON.parse(configuredProviderArg.slice('model_provider='.length)) : 'openai'
+if (configuredProvider.startsWith('custom_')) account = 'custom'
 const threads = new Map()
 const loaded = new Set()
 const refreshReplies = new Map()
@@ -24,9 +27,12 @@ createInterface({ input: process.stdin }).on('line', line => {
   }
   if (!method || id === undefined) return
   let result = {}
-  if (method === 'account/login/start') account = p.chatgptAccountId
+  if (method === 'account/login/start') {
+    if (configuredProvider.startsWith('custom_')) { send({ id, error: { message: 'custom_runtime_must_not_login' } }); return }
+    account = p.chatgptAccountId
+  }
   if (method === 'account/read') result = { account: { id: account, email: account + '@example.test' }, pid: process.pid }
-  if (method === 'config/read') result = { config: { model_provider: 'openai', model: 'fixture' } }
+  if (method === 'config/read') result = { config: { model_provider: configuredProvider, model: 'fixture' } }
   if (method === 'account/rateLimits/read') result = { rateLimits: { primary: { usedPercent: 10, windowDurationMins: 300 } } }
   if (method === 'thread/start') {
     const thread = { id: randomUUID(), cwd: p.cwd, status: { type: 'idle' }, turns: [] }

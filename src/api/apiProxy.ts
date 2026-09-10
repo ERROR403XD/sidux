@@ -10,7 +10,7 @@ export type ApiProxyStatus = {
   usage?: import('./proxyUsageTypes').ProxyUsageSummary
   settings: ApiProxySettings; installed: boolean; ready: boolean; componentVersion: string; selectedStorageId: string | null; lastError: string | null
   keys: ApiProxyKey[]
-  accounts: { activeStorageId: string | null; accounts: { storageId: string; alias?: string; email: string | null; accountId: string; authStatus: string }[] }
+  accounts: { activeStorageId: string | null; accounts: { storageId: string; kind?: 'custom'; supportedEndpoints?: string[]; alias?: string; email: string | null; accountId: string; authStatus: string }[] }
   activity: { draining: boolean; activeRequests: number; connections: number; idleWebSockets: number;
     entries: { id: string; keyId: string; transport: string; model: string | null; startedAt: string; status: string }[];
     recent: { id: string; keyId: string; transport: string; model: string | null; startedAt: string; status: string }[] }

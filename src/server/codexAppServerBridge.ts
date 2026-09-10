@@ -1,7 +1,10 @@
+import { getCustomConnectionStore, customRuntimeConfig } from './customConnectionStore.js'
+import { customConnectionModels } from '../customConnections.js'
 import { readProjectDirectories, saveProjectDirectories } from './projectDirectories.js'
 import { ThreadCompletionList } from './threadCompletionList.js'
 import { AccountResourcePool } from './accountResourcePool.js'
 import { resolveAccountSelection, type AccountExecutionLease } from './accountExecution.js'
+import { DirectoryPluginCache } from './directoryPluginCache.js'
 import { DirectoryMcpReader } from './directoryMcpReader.js'
 import { BackgroundTerminalReader, threadsWithBackgroundTerminals } from './backgroundTerminalReader.js'
 import { ProcessActivityStore } from './processActivityStore.js'
@@ -5493,7 +5496,7 @@ export class AppServerProcess {
     this.quotaReadCache = null
     const coordinator = getAccountAuthCoordinator()
     const id = await this.runtimeAccountId()
-    if (id) await coordinator.observeRuntimeQuota(id, payload)
+    if (id && !getCustomConnectionStore().get(id)) await coordinator.observeRuntimeQuota(id, payload)
   }
   constructor(private readonly runtimeOptions: { isolatedTask?: boolean; requestIdOffset?: number } = {}) {
     this.nextId = runtimeOptions.requestIdOffset || 1
@@ -5565,13 +5568,15 @@ export class AppServerProcess {
     const coordinator = getAccountAuthCoordinator()
     const changed = this.assignedStorageId !== storageId
     const initialized = this.initialized
+    const customChanged = changed && (!!getCustomConnectionStore().get(storageId) || !!getCustomConnectionStore().get(this.assignedStorageId))
+    if (customChanged && this.process) await this.closeSession()
     this.assignedStorageId = storageId
     this.executionLease?.release()
     this.executionLease = storageId ? coordinator.executions.register({ storageId, kind, ownerId, protected: this.taskLease?.protected, busy: !!this.currentTaskRun || !!this.activeTurnThreadIds.size, disconnect: () => this.dispose() }) : null
     const lease = this.executionLease
     try {
       await this.ensureInitialized()
-      if (initialized && changed) {
+      if (initialized && changed && !customChanged) {
         if (storageId) {
           const credential = await coordinator.getApiCredential(storageId)
           await this.call('account/login/start', { type: 'chatgptAuthTokens', accessToken: credential.accessToken, chatgptAccountId: credential.accountId })
@@ -5605,9 +5610,12 @@ export class AppServerProcess {
       const state = await coordinator.store.readState()
       const config = settings.accountStorageId ? null : asRecord(asRecord(await this.rpc('config/read', {}))?.config)
       const followsOtherProvider = !settings.accountStorageId && !settings.protected && config?.model_provider && config.model_provider !== 'openai'
-      const storageId = followsOtherProvider ? null : resolveAccountSelection(state, settings).storageId
+      await getCustomConnectionStore().ready
+      const custom = settings.accountStorageId ? getCustomConnectionStore().get(settings.accountStorageId) : getCustomConnectionStore().active()
+      if (custom && custom.wireApi !== 'responses') throw new Error('Codex 需要 Responses API')
+      const storageId = custom?.storageId || (followsOtherProvider ? null : resolveAccountSelection(state, settings).storageId)
       if (coordinator.blocksApiAccount(settings.accountStorageId || null)) return false
-      if (storageId) {
+      if (storageId && !custom) {
         await coordinator.getApiCredential(storageId)
         const account = await coordinator.refreshAccount(storageId)
         const fresh = account.quotaUpdatedAtIso && Date.now() - Date.parse(account.quotaUpdatedAtIso) < 30000
@@ -5647,7 +5655,7 @@ export class AppServerProcess {
     if (!worker && runId) throw Object.assign(new Error('自动化账号连接已释放，本次操作未发送'), { rpcRejected: true, submissionNotSent: true })
     if (!worker) return this.rpc(method, params)
     const input = worker.taskLease?.storageId && ['thread/start', 'thread/resume'].includes(method)
-      ? { ...asRecord(params), modelProvider: 'openai' }
+      ? { ...asRecord(params), modelProvider: getCustomConnectionStore().get(worker.taskLease.storageId) ? `custom_${worker.taskLease.storageId}` : 'openai' }
       : params
     return worker.rpc(method, input, worker.taskLease?.runId)
   }
@@ -5738,7 +5746,13 @@ export class AppServerProcess {
 
   private buildAppServerConfig(): { args: string[]; env: Record<string, string> } {
     const args = buildAppServerArgs()
-    if (this.runtimeOptions.isolatedTask && this.assignedStorageId) {
+    const connections = getCustomConnectionStore()
+    const custom = this.runtimeOptions.isolatedTask ? connections.get(this.assignedStorageId) : undefined
+    if (custom) {
+      const config = customRuntimeConfig(custom, Number(process.env.CODEXUI_SERVER_PORT) || 4173)
+      return { args: [...args, ...config.args], env: config.env }
+    }
+    if ((!this.runtimeOptions.isolatedTask && connections.explicitSelection()) || (this.runtimeOptions.isolatedTask && this.assignedStorageId)) {
       args.push('-c', 'model_provider="openai"')
       return { args, env: {} }
     }
@@ -6212,6 +6226,7 @@ export class AppServerProcess {
   }
 
   private async ensureInitialized(): Promise<void> {
+    await getCustomConnectionStore().ready
     if (this.closingSession) await this.closingSession
     if (this.initialized) return
     if (this.initializePromise) {
@@ -6232,7 +6247,7 @@ export class AppServerProcess {
         jsonrpc: '2.0',
         method: 'initialized',
       })
-      if (this.runtimeOptions.isolatedTask && this.assignedStorageId) {
+      if (this.runtimeOptions.isolatedTask && this.assignedStorageId && !getCustomConnectionStore().get(this.assignedStorageId)) {
         const credential = await getAccountAuthCoordinator().getApiCredential(this.assignedStorageId)
         await this.call('account/login/start', { type: 'chatgptAuthTokens', accessToken: credential.accessToken, chatgptAccountId: credential.accountId })
       }
@@ -6241,7 +6256,7 @@ export class AppServerProcess {
       }
       if (!this.runtimeOptions.isolatedTask) {
         const storageId = await this.runtimeAccountId()
-        if (storageId) {
+        if (storageId && !getCustomConnectionStore().get(storageId)) {
           this.runtimeStorageId = storageId
           const credential = await getAccountAuthCoordinator().store.readCredential(storageId)
           // All ChatGPT runtimes delegate token rotation to the same coordinator.
@@ -6255,7 +6270,7 @@ export class AppServerProcess {
       void Promise.resolve().then(async () => {
         const coordinator = getAccountAuthCoordinator()
         const storageId = await this.runtimeAccountId()
-        if (storageId && this.initialized && this.process) await this.readRuntimeQuota(storageId)
+        if (storageId && !getCustomConnectionStore().get(storageId) && this.initialized && this.process) await this.readRuntimeQuota(storageId)
       }).catch(() => undefined)
     }).finally(() => {
       this.initializePromise = null
@@ -6315,7 +6330,7 @@ export class AppServerProcess {
           if (!worker.currentTaskRun && selectsAccount) {
             const state = await coordinator.store.readState()
             const config = asRecord(asRecord(await this.rpc('config/read', {}))?.config)
-            const storageId = config?.model_provider && config.model_provider !== 'openai' ? null : state.activeStorageId
+            const storageId = getCustomConnectionStore().active()?.storageId || (config?.model_provider && config.model_provider !== 'openai' ? null : state.activeStorageId)
             await worker.configureSession(storageId, 'primary', threadId || 'new-thread')
           }
           const input = worker.currentTaskRun && method === 'thread/resume'
@@ -6329,11 +6344,16 @@ export class AppServerProcess {
     }
     this.disposeIfConfigChanged()
     await this.ensureInitialized()
+    const customConnection = this.runtimeOptions.isolatedTask ? getCustomConnectionStore().get(this.assignedStorageId) : undefined
+    const selectedCustom = getCustomConnectionStore().active()
+    if (!this.runtimeOptions.isolatedTask && selectedCustom && method === 'model/list') return { data: customConnectionModels({ ...selectedCustom, hasApiKey: true }), nextCursor: null }
+    if (customConnection && method === 'model/list') return { data: customConnectionModels({ ...customConnection, hasApiKey: true }), nextCursor: null }
+    if (customConnection && method === 'account/rateLimits/read') return null
     if (method === 'account/rateLimits/read') {
       const storageId = await this.runtimeAccountId()
       return (await this.readRuntimeQuota(storageId)).payload
     }
-    if (mutatingTurn) {
+    if (mutatingTurn && !customConnection) {
       await getAccountAuthCoordinator().assertSubmissionAllowed(async () => {
         const result = asRecord(await this.call('config/read', {}))
         const config = asRecord(result?.config)
@@ -6343,10 +6363,33 @@ export class AppServerProcess {
       })
     }
     if (this.runtimeOptions.isolatedTask && mutatingTurn && threadId && !this.ownedThreadIds.has(threadId)) {
-      await this.call('thread/resume', { threadId, excludeTurns: true })
+      await this.call('thread/resume', { threadId, excludeTurns: true, ...(customConnection ? { modelProvider: `custom_${customConnection.storageId}`, model: customConnection.model } : {}) })
       this.ownedThreadIds.add(threadId)
     }
+    if (customConnection && ['thread/start', 'thread/resume', 'thread/fork'].includes(method)) params = { ...asRecord(params), modelProvider: `custom_${customConnection.storageId}` }
+    if (customConnection && mutatingTurn) {
+      const input = { ...asRecord(params) }
+      const capability = customConnection.models.find(model => model.id === input.model) || customConnection.models.find(model => model.id === customConnection.model)
+      if (!capability?.efforts?.length) {
+        delete input.effort
+        if (input.collaborationMode) {
+          const mode = asRecord(input.collaborationMode)
+          input.collaborationMode = { ...mode, settings: { ...asRecord(mode?.settings), reasoning_effort: null } }
+        }
+      }
+      if (!capability?.serviceTiers?.length) delete input.serviceTier
+      params = input
+    }
     const result = await this.call(method, params)
+    if (!this.runtimeOptions.isolatedTask && selectedCustom && method === 'config/read') {
+      const response = asRecord(result)
+      const config = asRecord(response?.config)
+      const provider = `custom_${selectedCustom.storageId}`
+      return { ...response, config: { ...config, model: selectedCustom.model, model_provider: provider,
+        model_reasoning_effort: selectedCustom.models.find(model => model.id === selectedCustom.model)?.defaultEffort || null,
+        model_providers: { ...asRecord(config?.model_providers), [provider]: { base_url: selectedCustom.baseUrl, wire_api: selectedCustom.wireApi } },
+      } }
+    }
     if (method === 'turn/start' && threadId) {
       const turn = asRecord(asRecord(result)?.turn)
       const turnId = readNonEmptyString(turn?.id)
@@ -6674,7 +6717,8 @@ export class BackendQueueProcessor {
     const settings = asRecord(asRecord(config?.model_providers)?.[provider])
     // Persist only the identity digest, never the credential or unrelated model settings.
     return createHash('sha256').update(JSON.stringify({
-      account: account.activeStorageId ?? auth?.accountId ?? null,
+      account: getCustomConnectionStore().active()?.storageId || account.activeStorageId || auth?.accountId || null,
+      connectionRevision: getCustomConnectionStore().active()?.revision || null,
       provider, baseUrl: settings?.base_url ?? null, wireApi: settings?.wire_api ?? null,
     })).digest('hex')
   }
@@ -7154,6 +7198,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
   const sharedState = getSharedBridgeState()
   sharedState.owners++
   const { appServer, terminalManager, methodCatalog, telegramBridge, backendQueueProcessor, automationEngine, threadGoalReader, threadCompactionGate, quotaResume } = sharedState
+  const directoryPlugins = new DirectoryPluginCache(join(getCodexHomeDir(), 'cache', 'plugin-catalog'), params => appServer.rpc('plugin/list', params))
   const directoryMcps = new DirectoryMcpReader((method, params) => appServer.rpc(method, params))
   const backgroundTerminals = new BackgroundTerminalReader((method, params) => appServer.rpc(method, params), () => backendQueueProcessor.isIdentityChanging())
   const history = new ThreadHistory(
@@ -7248,7 +7293,53 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
       }
 
       const url = new URL(req.url, 'http://localhost')
-
+      const connections = getCustomConnectionStore()
+      await connections.ready
+      const runtimeConnection = /^\/codex-api\/custom-connections\/runtime\/([a-f0-9]{64})\/(\d+)\/v1\/responses$/.exec(url.pathname)
+      if (runtimeConnection && req.method === 'POST') {
+        const connection = connections.get(runtimeConnection[1])
+        if (!isLoopbackRemoteAddress(req.socket.remoteAddress) || !connection || connection.wireApi !== 'responses' || connection.revision !== Number(runtimeConnection[2]) || req.headers.authorization !== `Bearer ${connection.runtimeToken}`) {
+          setJson(res, 409, { error: '连接配置已变化，请重新发送' })
+          return
+        }
+        handleCustomEndpointProxyRequest(req, res, { baseUrl: connection.baseUrl, bearerToken: connection.apiKey, wireApi: connection.wireApi, sanitizeRequest: payload => {
+          const value = { ...payload }
+          const model = connection.models.find(row => row.id === value.model)
+          if (!model?.efforts?.length) { delete value.reasoning; delete value.reasoning_effort }
+          if (!model?.serviceTiers?.length) delete value.service_tier
+          return value
+        } })
+        return
+      }
+      if (url.pathname === '/codex-api/custom-connections' && req.method === 'GET') {
+        setJson(res, 200, { data: connections.snapshot() })
+        return
+      }
+      if (url.pathname.startsWith('/codex-api/custom-connections') && req.method === 'POST') {
+        const input = asRecord(await readJsonBody(req)) || {}
+        try {
+          if (url.pathname.endsWith('/test')) {
+            setJson(res, 200, { data: await connections.test(input as any) })
+            return
+          }
+          releaseProviderChange = backendQueueProcessor.beginProviderChange()
+          const id = readNonEmptyString(input.storageId)
+          if (!url.pathname.endsWith('/select') && id && getAccountAuthCoordinator().executions.snapshot().some(entry => entry.storageId === id && entry.busy)) throw new Error('连接正在使用，请等待任务完成')
+          if (url.pathname.endsWith('/select')) await connections.select(id || null)
+          else if (url.pathname.endsWith('/remove')) await connections.remove(id)
+          else await connections.save(input as any, String(input.testToken || ''))
+          setJson(res, 200, { data: connections.snapshot() })
+        } catch (error) { setJson(res, 400, { error: getErrorMessage(error, '连接配置无效') }) }
+        return
+      }
+      if (url.pathname === '/codex-api/accounts/models' && req.method === 'GET') {
+        const id = url.searchParams.get('storageId')
+        const custom = id ? connections.get(id) : connections.active()
+        if (custom) {
+          setJson(res, 200, { data: customConnectionModels({ ...custom, hasApiKey: true }), source: 'custom' })
+          return
+        }
+      }
       if (url.pathname === '/codex-api/zen-proxy/v1/responses' && req.method === 'POST') {
         if (!isLoopbackRemoteAddress(req.socket.remoteAddress)) {
           setJson(res, 403, { error: 'Zen proxy is only available from localhost' })
@@ -7539,6 +7630,16 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         return
       }
 
+      if (url.pathname === '/codex-api/accounts/switch' && req.method === 'POST' && connections.active()) {
+        releaseProviderChange = backendQueueProcessor.beginProviderChange()
+        const previous = connections.active()!.storageId
+        await connections.select(null)
+        try {
+          await handleAccountRoutes(req, res, url, { appServer })
+          if (res.statusCode >= 400) await connections.select(previous)
+        } catch (error) { await connections.select(previous); throw error }
+        return
+      }
       if (await handleAccountRoutes(req, res, url, { appServer })) {
         return
       }
@@ -7691,7 +7792,9 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           if (['config/batchWrite', 'config/value/write', 'config/mcpServer/reload', 'plugin/install', 'plugin/uninstall'].includes(body.method)) directoryMcps.invalidate()
           if (body.method === 'turn/start' || body.method === 'turn/steer') throw new Error('发送接口已更新，请刷新页面后重试')
           if (body.method === 'thread/rollback') await history.assertRollbackAllowed(readNonEmptyString(params.threadId))
-          if (body.method === 'thread/compact/start') {
+          if (body.method === 'plugin/list') {
+            rpcResult = await directoryPlugins.read(params)
+          } else if (body.method === 'thread/compact/start') {
             rpcResult = await threadCompactionGate.start(readNonEmptyString(params.threadId), params.repeatUnknown === true)
           } else if (body.method === 'thread/resume' || (body.method === 'thread/read' && params.includeTurns === true)) {
             rpcResult = await history.initial(body.method, params)
@@ -8197,6 +8300,11 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
 
       if (req.method === 'GET' && url.pathname === '/codex-api/provider-models') {
         try {
+          const custom = connections.active()
+          if (custom) {
+            setJson(res, 200, { data: customConnectionModels({ ...custom, hasApiKey: true }), source: 'custom', exclusive: true })
+            return
+          }
           const requestedProvider = url.searchParams.get('provider')?.trim() ?? ''
           if (requestedProvider) {
             setJson(res, 200, {
@@ -9458,6 +9566,24 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         return
       }
 
+      if (req.method === 'POST' && url.pathname === '/codex-api/telegram/test') {
+        const config = await readTelegramBridgeConfig()
+        const payload = asRecord(await readJsonBody(req))
+        const allowAll = config.allowedUserIds.includes('*')
+        const chatIds = [...new Set([...config.chatIds.filter(id => allowAll || config.allowedUserIds.includes(id)), ...config.allowedUserIds.filter((id): id is number => typeof id === 'number')])].slice(0, 50)
+        if (!config.botToken || !chatIds.length) {
+          setJson(res, 400, { error: '请先保存Telegram设置，并与机器人开始会话。' })
+          return
+        }
+        try {
+          await telegramBridge.sendTestNotification(chatIds, payload?.language === 'zh-CN' ? 'CodexApp 测试通知' : 'CodexApp test notification')
+          setJson(res, 200, { ok: true })
+        } catch {
+          setJson(res, 502, { error: '测试通知发送失败。' })
+        }
+        return
+      }
+
       if (req.method === 'GET' && url.pathname === '/codex-api/telegram/config') {
         const config = await readTelegramBridgeConfig()
         setJson(res, 200, {
@@ -9516,6 +9642,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
   let middlewareDisposal: Promise<void> | null = null
   middleware.dispose = () => {
     if (middlewareDisposal) return middlewareDisposal
+    directoryPlugins.dispose()
     unsubscribeSearch()
     search.invalidate()
     unsubscribeHistory()

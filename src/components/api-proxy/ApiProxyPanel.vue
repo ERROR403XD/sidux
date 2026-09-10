@@ -7,7 +7,7 @@
         <div class="api-proxy-heading"><h2>{{ t('服务与账号') }}</h2></div>
         <p v-if="status.lastError" class="api-proxy-error">{{ t(status.lastError) }}</p>
         <p v-if="status.retryAt" class="api-proxy-muted">{{ t('下次可重试：') }}{{ date(status.retryAt) }}{{ t('；保持启用即可等待恢复。') }}</p>
-        <label class="api-proxy-check"><input v-model="settings.enabled" type="checkbox" :disabled="busy || !status.installed" />{{ t('启用 API 出口') }}</label>
+        <AppSwitch class="api-proxy-check" v-model="settings.enabled"  :disabled="busy || !status.installed">{{ t('启用 API 出口') }}</AppSwitch>
         <div class="api-proxy-fields">
           <label>{{ t('API 使用账号') }} <AppSelect v-model="selectedAccount" :options="accountOptions" enable-search :search-placeholder="t('搜索账号')" :disabled="busy" />
           </label>
@@ -40,13 +40,14 @@
             <small>{{ t('最近使用：') }}{{ date(key.lastUsedAt) }}</small>
             <div v-if="policyDrafts[key.id]" class="api-proxy-inline-policy">
               <AppSelect v-model="policyDrafts[key.id]!.account" :options="keyAccountOptions" enable-search :search-placeholder="t('搜索账号')" :disabled="busy || !!key.revokedAt" />
-              <label class="api-proxy-check"><input v-model="policyDrafts[key.id]!.protected" type="checkbox" :disabled="busy || !!key.revokedAt" />{{ t('受保护') }}</label>
+              <span v-if="isCustomAccount(policyDrafts[key.id]!.account)" class="api-proxy-muted">{{ customEndpoints(policyDrafts[key.id]!.account).join(' · ') }}</span>
+              <AppSwitch v-if="!isCustomAccount(policyDrafts[key.id]!.account)" class="api-proxy-check" v-model="policyDrafts[key.id]!.protected"  :disabled="busy || !!key.revokedAt">{{ t('受保护') }}</AppSwitch>
             </div>
 
           </div>
           <div class="api-proxy-actions">
             <AppButton :disabled="busy || !!key.revokedAt" @click="renameTarget = key; renameValue = key.name">{{ t('重命名') }}</AppButton>
-            <AppButton :disabled="busy || !!key.revokedAt" @click="updateKey(key, { enabled: !key.enabled })">{{ t(key.enabled ? '停用' : '启用') }}</AppButton>
+            <AppSwitch :disabled="busy || !!key.revokedAt" :model-value="key.enabled" @change="updateKey(key, { enabled: $event })">{{ t('启用') }}</AppSwitch>
             <AppButton :disabled="busy || !!key.revokedAt" @click="openCreate(key)">{{ t('轮换') }}</AppButton>
             <AppButton variant="danger" :disabled="busy || !!key.revokedAt" @click="revokeTarget = key; interruptKey = false">{{ t('撤销…') }}</AppButton>
           </div>
@@ -94,20 +95,22 @@
         <label>{{ t('持续时间（天）') }} <input v-model="keyDurationDays" class="app-input" type="number" min="1" step="1" :placeholder="t('无限')" :disabled="busy" />
         </label>
         <label>{{ t('使用账号') }}<AppSelect v-model="keyAccountDraft" :options="keyAccountOptions" enable-search :search-placeholder="t('搜索账号')" :disabled="busy" /></label>
-        <label class="api-proxy-check"><input v-model="keyProtectedDraft" type="checkbox" :disabled="busy" />{{ t('受保护') }}</label>
+        <p v-if="isCustomAccount(keyAccountDraft)" class="api-proxy-muted">{{ customEndpoints(keyAccountDraft).join(' · ') }}</p>
+        <AppSwitch v-if="!isCustomAccount(keyAccountDraft)" class="api-proxy-check" v-model="keyProtectedDraft"  :disabled="busy">{{ t('受保护') }}</AppSwitch>
         <p v-if="rotateTarget" class="api-proxy-muted">{{ t('旧 key 将于 24 小时后到期，也可提前撤销。') }}</p>
       </div>
       <template v-else><p>{{ t('请现在保存完整 key，关闭后不会再次显示。') }}</p><textarea class="app-input api-proxy-secret" :value="secret" readonly rows="3" :aria-label="t('新 API key')" /><AppButton @click="copySecret">{{ t('复制 key') }}</AppButton></template>
       <template #footer><AppButton :disabled="busy" @click="closeCreate">{{ t(secret ? '已保存，关闭' : '取消') }}</AppButton><AppButton v-if="!secret" :busy="busy" @click="createKey">{{ t('创建') }}</AppButton></template>
     </AppDialog>
     <AppDialog :open="!!revokeTarget" :title="t('撤销 API key')" :busy="busy" size="compact" @close="revokeTarget = null">
-      <p>{{ t('撤销“') }}{{ revokeTarget?.name }}{{ t('”后无法重新启用。') }}</p><label class="api-proxy-check"><input v-model="interruptKey" type="checkbox" />{{ t('同时中断这把 key 的活动连接（') }}{{ keyActivityCount }}）</label>
+      <p>{{ t('撤销“') }}{{ revokeTarget?.name }}{{ t('”后无法重新启用。') }}</p><AppSwitch class="api-proxy-check" v-model="interruptKey">{{ t('同时中断这把 key 的活动连接（') }}{{ keyActivityCount }}）</AppSwitch>
       <template #footer><AppButton :disabled="busy" @click="revokeTarget = null">{{ t('取消') }}</AppButton><AppButton variant="danger" :busy="busy" @click="revokeKey">{{ t('撤销') }}</AppButton></template>
     </AppDialog>
     <AppDialog :open="!!policyTarget" :title="t('账号与额度保护')" :busy="busy" size="compact" @close="policyTarget = null">
       <p v-if="error" class="api-proxy-error" role="alert">{{ t(error) }}</p>
       <label>{{ t('使用账号') }}<AppSelect v-model="keyAccountDraft" :options="keyAccountOptions" enable-search :search-placeholder="t('搜索账号')" :disabled="busy" /></label>
-      <label class="api-proxy-check"><input v-model="keyProtectedDraft" type="checkbox" :disabled="busy" />{{ t('受保护') }}</label>
+      <p v-if="isCustomAccount(keyAccountDraft)" class="api-proxy-muted">{{ customEndpoints(keyAccountDraft).join(' · ') }}</p>
+        <AppSwitch v-if="!isCustomAccount(keyAccountDraft)" class="api-proxy-check" v-model="keyProtectedDraft"  :disabled="busy">{{ t('受保护') }}</AppSwitch>
       <p class="api-proxy-muted">{{ t('保护值在账号设置中配置，受保护Key共享所选账号的预留额度。保存会断开此Key的旧连接。') }}</p>
       <template #footer><AppButton :disabled="busy" @click="policyTarget = null">{{ t('取消') }}</AppButton><AppButton :busy="busy" @click="savePolicy">{{ t('保存') }}</AppButton></template>
     </AppDialog>
@@ -117,6 +120,7 @@
 </template>
 
 <script setup lang="ts">
+import AppSwitch from '../common/AppSwitch.vue'
 import { t } from '../../composables/useUiLanguage'
 
 import { accountDisplayName } from '../../accountDisplay'
@@ -189,6 +193,11 @@ const accountOptions = computed(() => [{ value: 'follow', label: t('跟随 WebUI
 const baseUrl = `${window.location.origin}/v1`
 const keyActivityCount = computed(() => status.value?.activity.entries.filter(entry => entry.keyId === revokeTarget.value?.id).length || 0)
 const clientConfig = `model_provider = "codexapp_gateway"\nmodel = "gpt-5.6-luna"\n\n[model_providers.codexapp_gateway]\nname = "CodexApp API"\nbase_url = "${baseUrl}"\nenv_key = "CODEXAPP_API_KEY"\nwire_api = "responses"\nrequires_openai_auth = false\nsupports_websockets = true`
+function customEndpoints(id: string): string[] { return status.value?.accounts.accounts.find(row => row.storageId === id)?.supportedEndpoints || [] }
+function isCustomAccount(id: string): boolean {
+  const resolved = ['global', 'follow'].includes(id) ? settings.value.accountStorageId || status.value?.accounts.activeStorageId : id
+  return status.value?.accounts.accounts.find(row => row.storageId === resolved)?.kind === 'custom'
+}
 function accountStatusLabel(value: string): string { return ({ ready: '可用', stale: '待确认', refreshing: '刷新中', reauth_required: '需重新登录', payment_required: '需处理额度', transient_error: '暂时异常', materialization_dirty: '需修复认证' } as Record<string, string>)[value] || value }
 function date(value: string | null): string { return value ? formatLocalDateTime(value, { second: '2-digit' }) : '—' }
 function accountName(id: string | null): string { const account = status.value?.accounts.accounts.find(row => row.storageId === id); return account ? accountDisplayName(account) : t('未选择') }

@@ -12,10 +12,12 @@ export function handleCustomEndpointProxyRequest(
     baseUrl: string
     bearerToken: string
     wireApi: 'responses' | 'chat'
+    sanitizeRequest?: (payload: Record<string, unknown>) => Record<string, unknown>
   },
 ): void {
   handleUnifiedResponsesProxyRequest(req, res, {
     bearerToken: options.bearerToken,
+    sanitizeRequest: options.sanitizeRequest,
     wireApi: options.wireApi,
     responsesEndpoint: joinEndpoint(options.baseUrl, '/responses'),
     chatCompletionsEndpoint: joinEndpoint(options.baseUrl, '/chat/completions'),

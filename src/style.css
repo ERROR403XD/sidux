@@ -2659,3 +2659,55 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
   resize: vertical;
   min-height: 100px;
 }
+
+/* 0.2.17: shared controls and application entry. */
+.sidebar-apps-link .sidebar-apps-link-icon { color: #15803d; background: #dcfce7; }
+:root.dark .sidebar-apps-link .sidebar-apps-link-icon { color: #86efac; background: #14532d; }
+.directory-pagination > .app-select { width: 110px; }
+
+.app-switch { display: inline-flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 32px; padding: 4px 0; border: 0; background: transparent; color: var(--ui-text); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.app-switch:disabled { opacity: .5; cursor: default; }
+.app-switch:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 3px; border-radius: var(--ui-radius-control); }
+.app-switch-label { min-width: 0; overflow-wrap: anywhere; }
+.app-switch-track { display: inline-block; position: relative; width: 36px; height: 20px; flex: 0 0 36px; border-radius: 999px; background: #d4d4d8; transition: background .15s; }
+.app-switch-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px #0002; transition: transform .15s; }
+.app-switch-track.is-on { background: #27272a; }
+.app-switch-track.is-on::after { transform: translateX(16px); }
+:root.dark .app-switch-track { background: #52525b; }
+:root.dark .app-switch-track.is-on { background: #e4e4e7; }
+:root.dark .app-switch-track::after { background: #18181b; }
+
+.settings-integrations-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 16px; }
+.settings-integration-card { min-width: 0; margin: 0; padding: 18px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-dialog); background: var(--ui-surface); }
+.settings-integration-card h3 { margin: 0; font-size: 15px; }
+.notification-quiet { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--ui-divider); }
+.notification-quiet > .app-switch { width: 100%; }
+@media (max-width: 1000px) { .settings-integrations-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.activation-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px 24px; margin: 14px 0; }
+.activation-selection, .activation-account-list { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.activation-account-list { padding-top: 12px; border-top: 1px solid var(--ui-divider); }
+.activation-account-list .app-switch-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.activation-section-label { color: var(--ui-muted); font-size: 12px; }
+.activation-times-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+.activation-time-list { display: grid; gap: 10px; min-height: 78px; padding: 12px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-popover); background: var(--ui-surface); }
+.activation-time-row { flex-wrap: nowrap; }
+.activation-time-row .app-button { margin-left: auto; }
+.activation-next { grid-column: 1 / -1; padding-top: 12px; border-top: 1px solid var(--ui-divider); }
+@media (max-width: 650px) { .activation-layout { grid-template-columns: minmax(0, 1fr); } }
+
+.custom-connections { min-width: 0; }
+.custom-connection-url { overflow-wrap: anywhere; }
+.custom-connection-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.custom-connection-form > label { display: grid; gap: 7px; min-width: 0; font-size: 13px; color: var(--ui-text); }
+.custom-connection-wide, .custom-connection-form > [role="alert"] { grid-column: 1 / -1; }
+.custom-connection-form .app-input { width: 100%; min-width: 0; }
+@media (max-width: 520px) { .custom-connection-form { grid-template-columns: minmax(0, 1fr); } }
+
+.custom-connection-endpoints { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.custom-connection-api-only { font-size: 11px; border: 1px solid var(--ui-border); border-radius: 6px; padding: 3px 7px; color: var(--ui-muted); background: var(--ui-surface-hover); }
+
+.model-reasoning-effort.is-unavailable { color: var(--ui-muted); }
+.model-reasoning-effort.is-unavailable .model-reasoning-slider { --effort-blue: var(--ui-muted); opacity: .4; }
+.model-reasoning-effort.is-unavailable .model-reasoning-range { cursor: not-allowed; }
+.model-reasoning-effort.is-unavailable .model-reasoning-slider-fill { width: 0; }
