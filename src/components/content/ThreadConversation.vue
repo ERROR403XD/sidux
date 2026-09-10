@@ -39,7 +39,7 @@
             >
               <span class="cmd-chevron" :class="{ 'cmd-chevron-open': isCommandGroupExpanded(message) }">▶</span>
               <span class="cmd-group-label">{{ commandGroupSummaryLabel(message) }}</span>
-              <span class="cmd-status">{{ commandGroupSummaryStatus(message) }}</span>
+              <span class="cmd-status">{{ t(commandGroupSummaryStatus(message)) }}</span>
             </button>
             <div
               v-if="getGroupedCommandsForLatest(message).length > 0"

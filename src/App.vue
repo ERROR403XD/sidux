@@ -622,7 +622,7 @@
                             :disabled="!canCreateFolder || isCreatingFolder"
                             @click="onCreateFolder"
                           >
-                            {{ createFolderSubmitLabel }}
+                            {{ t(createFolderSubmitLabel) }}
                           </button>
                         </div>
                         <div v-if="createFolderError" class="new-thread-open-folder-error visible-error-with-feedback">

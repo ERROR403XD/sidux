@@ -15,7 +15,7 @@
         />
         <input :id="`${inputId}-${index}`" v-model="freeText[index]" class="app-input" :placeholder="t(question.options.length ? '自填答案' : '填写答案')" :disabled="busy" />
       </div>
-      <p v-if="error" class="async-question-error" role="alert">{{ error }}</p>
+      <p v-if="error" class="async-question-error" role="alert">{{ t(error) }}</p>
       <div class="async-question-actions">
         <AppButton :disabled="busy" @click="collapsed = true">{{ t('暂不回答') }}</AppButton>
         <AppButton :busy="busy" @click="submit">{{ t('发送回答') }}</AppButton>

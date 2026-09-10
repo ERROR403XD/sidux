@@ -25,7 +25,7 @@
           <AppButton v-if="goal" type="button" :disabled="working || loading || !supported || goalConflict" @click="clearGoal">{{ t('清除目标') }}</AppButton>
         </div>
         <p v-if="goal && goal.status !== 'active' && goalFormDirty" class="thread-command-hint">{{ t('请先保存目标或预算的修改，再继续。') }}</p>
-        <p v-if="goal && goal.status !== 'active' && goalResumeProblem(goal) && goal.status !== 'budgetLimited'" class="thread-command-hint">{{ goalResumeProblem(goal) }}</p>
+        <p v-if="goal && goal.status !== 'active' && goalResumeProblem(goal) && goal.status !== 'budgetLimited'" class="thread-command-hint">{{ t(goalResumeProblem(goal)) }}</p>
         <details class="thread-command-hint goal-behavior-help">
           <summary>{{ t('预算与暂停说明') }}</summary>
           <p>{{ t('预算按 Codex 目标计数控制后续推进，当前回合可能超出预算；该计数不等于会话历史总 tokens。') }}</p>
