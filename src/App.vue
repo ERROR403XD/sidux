@@ -532,9 +532,6 @@
                   :enable-search="true"
                   :search-placeholder="t('Search projects')"
                   :disabled="false" @update:model-value="onSelectNewThreadFolder" />
-                <p v-if="newThreadCwd" class="new-thread-folder-selected" :title="newThreadCwd">
-                  {{ t('Selected folder') }}: {{ newThreadCwd }}
-                </p>
                 <div class="new-thread-folder-actions">
                   <button class="new-thread-folder-action new-thread-folder-action-primary" type="button" @click="onOpenExistingFolder">
                     {{ t('Select folder') }}
@@ -800,9 +797,6 @@
                     }}
                   </p>
                 </div>
-                <p v-if="isNewThreadCwdGitRepo" class="new-thread-runtime-help">
-                  {{ t('Local project uses the selected folder directly. New worktree creates an isolated Git worktree before the first prompt.') }}
-                </p>
                 <div
                   v-if="worktreeInitStatus.phase !== 'idle'"
                   class="worktree-init-status"
