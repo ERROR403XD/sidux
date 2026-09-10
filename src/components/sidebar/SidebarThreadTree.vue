@@ -697,9 +697,23 @@
     </AppDialog>
 
     <AppDialog :open="automationDialogVisible" :title="automationDialogMode === 'edit' ? t('Edit automation') : t('Add automation')" :busy="isSavingAutomation || isRunningAutomation" panel-class="automation-thread-panel" @close="closeAutomationDialog">
-          <p class="rename-thread-subtitle">{{ t(automationDialogSubtitle) }}</p>
-          <div class="automation-thread-field"><span class="automation-thread-label">使用账号</span><AppSelect v-model="automationDraft.accountStorageId" :options="automationAccountOptions" enable-search :disabled="isSavingAutomation || isRunningAutomation" /></div>
-          <label class="notification-check"><input v-model="automationDraft.protected" type="checkbox" :disabled="isSavingAutomation || isRunningAutomation" />受保护任务</label>
+          <div class="automation-account-fields">
+            <div class="automation-thread-field">
+              <span class="automation-thread-label">使用账号</span>
+              <AppSelect
+                v-model="automationDraft.accountStorageId"
+                class="automation-account-picker automation-thread-dropdown"
+                :options="automationAccountOptions"
+                enable-search
+                search-placeholder="搜索账号"
+                :disabled="isSavingAutomation || isRunningAutomation"
+              />
+            </div>
+            <label class="automation-protection-check">
+              <input v-model="automationDraft.protected" type="checkbox" :disabled="isSavingAutomation || isRunningAutomation" />
+              <span>受保护任务</span>
+            </label>
+          </div>
 
           <div v-if="automationTargetPickerVisible && automationDialogMode === 'create'" class="automation-target-picker">
             <span class="automation-thread-label">{{ t('Target') }}</span>
@@ -766,7 +780,6 @@
             <div class="automation-thread-field"><span class="automation-thread-label">思考强度</span><AppSelect v-model="automationDraft.reasoningEffort" class="automation-effort-picker automation-thread-dropdown" :options="automationEffortOptions" :disabled="isSavingAutomation || isRunningAutomation" /></div>
             <div class="automation-thread-field"><span class="automation-thread-label">服务档位</span><AppSelect v-model="automationDraft.serviceTier" class="automation-tier-picker automation-thread-dropdown" :options="automationTierOptions" :disabled="isSavingAutomation || isRunningAutomation" /></div>
           </div>
-          <p class="automation-schedule-preview">留空跟随运行时默认配置；指定后，每次手动或定时执行均使用该设置。</p>
 
           <div class="automation-thread-field">
             <span class="automation-thread-label">{{ t('Schedule') }}</span>
@@ -1124,15 +1137,6 @@ const automationDialogAutomations = computed(() => {
   return threadId ? (automationByThreadId.value[threadId] ?? []) : []
 })
 const automationSchedulePreview = computed(() => describeAutomationSchedule(automationDraft.value.rrule))
-const automationDialogSubtitle = computed(() => {
-  if (automationTargetPickerVisible.value && automationDialogMode.value === 'create') {
-    if (automationTargetMode.value === 'thread') return 'This creates a heartbeat automation attached to the selected chat.'
-    return 'This creates a project automation attached to the selected project folder.'
-  }
-  return automationDialogScope.value === 'project'
-    ? 'This creates project automations attached to the selected project folder.'
-    : 'This creates heartbeat automations attached to the selected thread.'
-})
 const automationThreadTargetOptions = computed(() => {
   const rows: Array<{ value: string; label: string; searchText: string }> = []
   for (const group of props.groups) {

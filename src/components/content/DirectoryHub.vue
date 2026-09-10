@@ -1,17 +1,16 @@
 <template>
   <div class="directory-hub">
     <header class="directory-header">
-      <div><a class="directory-back" href="#/settings">设置 / 扩展管理</a><h2 class="directory-title">插件 / 技能 / MCP</h2><p class="directory-subtitle">管理 Codex 原版插件、可用技能与工具连接。</p></div>
+      <div><a class="directory-back" href="#/settings">设置 / 扩展管理</a><h2 class="directory-title">插件 / 技能 / MCP</h2></div>
       <AppButton :busy="loading" @click="refresh(true)">刷新</AppButton>
     </header>
     <nav class="directory-tabs" aria-label="扩展分类">
       <button v-for="tab in tabs" :key="tab.id" type="button" class="directory-tab" :class="{ 'is-active': activeTab === tab.id }" :aria-label="tab.label" :aria-pressed="activeTab === tab.id" :disabled="busy" @click="selectTab(tab.id)">
-        <strong>{{ tab.label }}</strong><span>{{ tab.description }}</span>
+        <strong>{{ tab.label }}</strong>
       </button>
     </nav>
     <div class="directory-scope">
       <div class="directory-scope-picker"><span>查看范围</span><AppSelect :model-value="props.cwd || ''" :options="scopeOptions" enable-search :disabled="busy" @update:model-value="emit('scope-change', $event)" /></div>
-      <p class="directory-scope-note">技能按项目读取；安装与启停保存到用户设置。MCP 显示{{ props.threadId ? '此会话' : '全局' }}状态。</p>
       <a v-if="props.threadId" class="directory-back" :href="`#/thread/${props.threadId}`">返回会话 {{ props.threadId.slice(-8) }}</a>
     </div>
     <p v-if="notice" class="directory-toast" role="status">{{ notice }}</p>
@@ -143,7 +142,7 @@ const emit = defineEmits<{ 'scope-change': [cwd: string]; 'skills-changed': []; 
 const { t } = useUiLanguage()
 const route = useRoute()
 const router = useRouter()
-const tabs = [{ id: 'plugins', label: '插件', description: '浏览和管理原版插件' }, { id: 'skills', label: '技能 / MCP', description: '管理技能与工具连接' }] as const
+const tabs = [{ id: 'plugins', label: '插件' }, { id: 'skills', label: '技能 / MCP' }] as const
 const activeTab = computed(() => route.query.tab === 'plugins' ? 'plugins' : 'skills')
 const scopeOptions = computed(() => [{ value: '', label: '全局' }, ...(props.projects || [])])
 const methods = ref(new Set<string>())

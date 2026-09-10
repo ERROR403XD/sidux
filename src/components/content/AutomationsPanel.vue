@@ -33,7 +33,6 @@
     <div v-else-if="automationRows.length === 0" class="automations-empty">
       <IconTablerBolt class="automations-empty-icon" />
       <p>{{ t('No automations yet') }}</p>
-      <span>{{ t('Use a thread or project menu to add an automation.') }}</span>
     </div>
 
     <div v-else class="automations-layout">

@@ -4,7 +4,7 @@
   </button>
   <AppPopover :open="visible" :anchor="anchor" :width="320" direction="up" align="end" panel-class="model-reasoning-popover" @close="close">
     <header class="model-reasoning-heading"><strong>模型</strong><span>{{ shortModelLabel }}</span></header>
-    <input v-model="search" class="model-reasoning-search" placeholder="搜索模型" aria-label="搜索模型" />
+    <input v-model="search" class="app-input model-reasoning-search" data-popover-autofocus placeholder="搜索模型" aria-label="搜索模型" />
     <div class="model-reasoning-models" role="group" aria-label="可用模型">
       <button v-for="model in filteredModels" :key="model.value" type="button" :aria-pressed="model.value === selectedModel" @click="selectModel(model.value)"><span>{{ model.label }}</span><span v-if="model.value === selectedModel">✓</span></button>
       <p v-if="!filteredModels.length" class="model-reasoning-empty">暂无可选模型</p>
