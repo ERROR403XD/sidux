@@ -116,7 +116,6 @@
             @rename-thread="onRenameThread"
             @fork-thread="onForkThread"
             @remove-project="onRemoveProject" @reorder-project="onReorderProject"
-            @copy-thread-chat="onCopyThreadChat"
             @automations-changed="onAutomationsChanged"
             @start-new-chat="onStartProjectlessNewChat" />
         </div>
@@ -2522,11 +2521,6 @@ function onAutomationsChanged(): void {
   void automationsPanelRef.value?.loadAutomations()
 }
 
-async function onCopyThreadChat(threadId: string): Promise<void> {
-  if (!threadId) return
-  if (selectedThreadId.value !== threadId) return
-  await copySelectedThreadChat()
-}
 
 function shortAccountId(accountId: string): string {
   return accountId.length > 8 ? accountId.slice(-8) : accountId
@@ -4407,16 +4401,6 @@ function onImplementPlan(payload: { turnId: string }): void {
 }
 
 
-async function copySelectedThreadChat(): Promise<void> {
-  if (isHomeRoute.value || isSkillsRoute.value || isAutomationsRoute.value || isApiProxyRoute.value || isSettingsRoute.value) return
-  if (!selectedThread.value || filteredMessages.value.length === 0) return
-  const markdown = buildThreadMarkdown()
-  try {
-    await copyTextToClipboard(markdown)
-  } catch {
-    // Clipboard writes can be blocked by browser permissions; keep the menu action best-effort.
-  }
-}
 
 function buildThreadMarkdown(): string {
   const lines: string[] = []

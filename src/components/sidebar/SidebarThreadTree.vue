@@ -631,18 +631,6 @@
         <button class="thread-menu-item" type="button" @click="onSaveThreadProject(openThreadMenuThread.id)">
           {{ t('Export Project') }}
         </button>
-        <button class="thread-menu-item" type="button" @click="onCopyThreadPath(openThreadMenuThread.id)">
-          {{ t('Copy path') }}
-        </button>
-        <button
-          class="thread-menu-item"
-          type="button"
-          :disabled="openThreadMenuThread.id !== selectedThreadId"
-          :title="openThreadMenuThread.id === selectedThreadId ? t('Copy chat') : t('Open this chat before copying')"
-          @click="onCopyThreadChat(openThreadMenuThread.id)"
-        >
-          {{ t('Copy chat') }}
-        </button>
         <button class="thread-menu-item" type="button" @click="onForkThread(openThreadMenuThread.id)">
           {{ t('Create chat fork') }}
         </button>
@@ -978,7 +966,6 @@ const emit = defineEmits<{
   'rename-thread': [payload: { threadId: string; title: string }]
   'remove-project': [projectName: string]
   'reorder-project': [payload: { projectName: string; toIndex: number }]
-  'copy-thread-chat': [threadId: string]
   'fork-thread': [threadId: string]
   'start-new-chat': []
   'automations-changed': []
@@ -1798,11 +1785,6 @@ function setAutomationScheduleMode(mode: AutomationScheduleMode): void {
   syncAutomationRruleFromScheduleDraft()
 }
 
-function onCopyThreadChat(threadId: string): void {
-  if (threadId !== props.selectedThreadId) return
-  emit('copy-thread-chat', threadId)
-  closeThreadMenu()
-}
 
 function onForkThread(threadId: string): void {
   emit('fork-thread', threadId)
@@ -1827,16 +1809,6 @@ function onSaveThreadProject(threadId: string): void {
   closeThreadMenu()
 }
 
-async function onCopyThreadPath(threadId: string): Promise<void> {
-  const path = threadById.value.get(threadId)?.cwd?.trim() ?? ''
-  closeThreadMenu()
-  if (!path || typeof navigator === 'undefined' || !navigator.clipboard) return
-  try {
-    await navigator.clipboard.writeText(path)
-  } catch {
-    // Clipboard writes can be blocked by browser permissions; the menu action is best-effort.
-  }
-}
 
 function onThreadRowLeave(threadId: string, event?: MouseEvent): void {
   if (openThreadMenuId.value !== threadId) return
