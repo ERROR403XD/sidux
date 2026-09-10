@@ -1,0 +1,17 @@
+{
+  "release": "/home/docker/codexapp-releases/codexapp-0.2.16-65733869c5e5-20260910-184328",
+  "port": 59015,
+  "isolatedHome": "/home/Code/codexapp/output/0216-prepare/smoke-home",
+  "entryNoStore": true,
+  "entryValidatorsAbsent": true,
+  "conditionalEntryStatus": 200,
+  "hashedAssetCache": "public, max-age=31536000, immutable",
+  "missingAssetStatus": 404,
+  "missingKeyStatus": 401,
+  "browserReloadPassed": true,
+  "cachedAssets": [
+    "/assets/index-Dc4Nm5L0.css",
+    "/assets/index-zITWbaCC.js"
+  ],
+  "pageErrors": []
+}

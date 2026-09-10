@@ -1,0 +1,10 @@
+[WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.onlyBuiltDependencies". See https://pnpm.io/settings for the new home of each setting.
+
+ RUN  v4.1.11 /home/Code/codexapp
+
+
+ Test Files  2 passed (2)
+      Tests  4 passed (4)
+   Start at  18:43:59
+   Duration  1.43s (transform 51ms, setup 0ms, import 80ms, tests 1.81s, environment 0ms)
+
