@@ -31,9 +31,12 @@ export class AccountActivationSession {
     await mkdir(cwd)
     const command = this.options.command || resolveCodexCommand()
     if (!command) throw new Error('激活运行时不可用')
-    const invocation = getSpawnInvocation(command, ['app-server', '-c', 'model_provider="openai"', '-c', 'approval_policy="never"', '-c', 'sandbox_mode="read-only"', '-c', 'features.memories=false'])
+    const invocation = getSpawnInvocation(command, ['app-server', '-c', 'model_provider="openai"', '-c', 'approval_policy="never"', '-c', 'sandbox_mode="read-only"', '-c', 'features.memories=false', '-c', 'features.apps=false'])
+    const activationEnv: NodeJS.ProcessEnv = { ...process.env, CODEX_HOME: this.home }
+    delete activationEnv.OPENAI_API_KEY
+    delete activationEnv.CODEX_API_KEY
     const proc = (this.options.spawnImpl || spawn)(invocation.command, invocation.args, {
-      cwd, env: { ...process.env, CODEX_HOME: this.home }, stdio: ['pipe', 'pipe', 'pipe'],
+      cwd, env: activationEnv, stdio: ['pipe', 'pipe', 'pipe'],
     })
     this.process = proc
     const client = new AccountProbeRpcClient(message => proc.stdin.write(`${JSON.stringify(message)}\n`), async () => { throw new Error('激活凭据已过期') })
