@@ -9,7 +9,6 @@ export function validateActivationSettings(value: unknown): ActivationSettings {
   try { new Intl.DateTimeFormat('en', { timeZone: row.timezone }).format() } catch { throw new Error('请选择有效时区') }
   if (typeof row.timezone !== 'string' || !row.timezone) throw new Error('请选择有效时区')
   const settings = { enabled: row.enabled, accountIds: [...new Set(row.accountIds)], times: [...new Set(row.times)].sort(), timezone: row.timezone }
-  if (settings.enabled && (!settings.accountIds.length || !settings.times.length)) throw new Error('请至少选择一个账号和一个激活时刻')
   return settings
 }
 export function activationClock(timezone: string) {
@@ -20,7 +19,7 @@ export function activationClock(timezone: string) {
   }
 }
 export function nextActivationAt(settings: ActivationSettings, after: number): number | null {
-  if (!settings.enabled) return null
+  if (!settings.enabled || !settings.accountIds.length || !settings.times.length) return null
   const clock = activationClock(settings.timezone)
   const times = new Set(settings.times)
   // Bounded to cover DST's missing hour. Called on schedule advancement, never per account.

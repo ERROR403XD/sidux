@@ -18,8 +18,8 @@ async function fixture() {
   const dependencies = {
     model: 'test-model', accountExists: vi.fn(async () => true), busy: () => busy,
     check: vi.fn(async () => ({ allowed: !busy, reason: busy ? '有连接' : '', stamp })),
-    quota: vi.fn(async () => ({ usedPercent: 0, windowMinutes: 300 })),
-    prepare: vi.fn(async () => ({ send, dispose })),
+    wait: vi.fn(async () => { busy = false }),
+    prepare: vi.fn(async (_id: string) => ({ send, dispose })),
   }
   const service = new AccountActivationScheduler(directory, dependencies, () => now, false)
   cleanups.push(() => service.dispose())
@@ -43,28 +43,27 @@ describe('account activation scheduling and admission', () => {
     expect(f.send).toHaveBeenCalledTimes(2)
     expect((await f.service.snapshot()).runs.every(run => run.status === 'sent')).toBe(true)
   })
-  it.each([0.01, 10, 100, NaN])('only admits raw usedPercent exactly zero, got %s', async usedPercent => {
-    const f = await fixture()
-    f.dependencies.quota.mockResolvedValue({ usedPercent, windowMinutes: 300 })
-    await f.service.configure(settings)
-    f.setNow('2026-09-08T08:00:00Z')
-    await f.service.tick()
-    expect(f.send).not.toHaveBeenCalled()
-    expect(f.dependencies.prepare).not.toHaveBeenCalled()
-    expect((await f.service.snapshot()).runs[0].status).toBe('skipped')
-  })
-  it('skips busy accounts before querying quota, and never substitutes another quota window', async () => {
+  it('waits for credential changes without querying quota or switching the foreground account', async () => {
     const f = await fixture()
     await f.service.configure(settings)
     f.setBusy(true)
     f.setNow('2026-09-08T08:00:00Z')
     await f.service.tick()
-    expect(f.dependencies.quota).not.toHaveBeenCalled()
-    f.setBusy(false)
-    f.dependencies.quota.mockResolvedValue({ usedPercent: 0, windowMinutes: 10080 })
-    f.setNow('2026-09-08T13:00:00Z')
+    expect(f.dependencies.wait).toHaveBeenCalledOnce()
+    expect(f.send).toHaveBeenCalledOnce()
+  })
+  it('serializes accounts even when completion exceeds the original one-minute slot', async () => {
+    const f = await fixture()
+    const order: string[] = []
+    f.dependencies.prepare.mockImplementation(async (id?: string) => ({
+      send: vi.fn(async () => { order.push(id!); f.setNow('2026-09-08T08:03:00Z') }),
+      dispose: f.dispose,
+    }))
+    await f.service.configure({ ...settings, accountIds: ['a', 'b'] })
+    f.setNow('2026-09-08T08:00:00Z')
     await f.service.tick()
-    expect(f.send).not.toHaveBeenCalled()
+    expect(order).toEqual(['a', 'b'])
+    expect(f.dispose).toHaveBeenCalledTimes(2)
   })
   it('foreground connection/activity wins during preparation', async () => {
     const f = await fixture()
@@ -85,12 +84,13 @@ describe('account activation scheduling and admission', () => {
     expect(f.send).not.toHaveBeenCalled()
     expect((await f.service.snapshot()).settings.times).toEqual(settings.times)
   })
-  it('does not backfill missed slots or retry an uncertain request after restart', async () => {
+  it('allows imprecise timing but never retries an uncertain request after restart', async () => {
     const f = await fixture()
     await f.service.configure(settings)
     f.setNow('2026-09-08T08:02:00Z')
     await f.service.tick()
-    expect(f.send).not.toHaveBeenCalled()
+    expect(f.send).toHaveBeenCalledOnce()
+    f.send.mockClear()
     f.send.mockRejectedValue(new Error('结果未知'))
     f.setNow('2026-09-08T13:00:00Z')
     await f.service.tick()
@@ -106,9 +106,9 @@ describe('account activation scheduling and admission', () => {
     const saved = JSON.parse(await readFile(join(f.directory, 'state.json'), 'utf8'))
     expect(saved.claims).toHaveProperty(JSON.stringify(['a', 'UTC', '2026-09-08', '13:00']))
   })
-  it('rejects invalid/empty enabled schedules and handles DST without running missing local times', () => {
+  it('rejects invalid times, allows editing empty schedules and handles DST without running missing local times', () => {
     expect(() => validateActivationSettings({ ...settings, times: ['25:00'] })).toThrow()
-    expect(() => validateActivationSettings({ ...settings, accountIds: [] })).toThrow()
+    expect(nextActivationAt(validateActivationSettings({ ...settings, accountIds: [] }), Date.now())).toBeNull()
     const next = nextActivationAt({ ...settings, times: ['02:30'], timezone: 'America/New_York' }, Date.parse('2026-03-08T06:59:00Z'))
     expect(new Date(next!).toISOString()).toBe('2026-03-09T06:30:00.000Z')
   })

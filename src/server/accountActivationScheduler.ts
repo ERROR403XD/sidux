@@ -1,5 +1,6 @@
 import { mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { setTimeout as delay } from 'node:timers/promises'
 import { AutomationStore } from './automationStore.js'
 import { privateJson } from './apiProxy/store.js'
 import { activationClock, nextActivationAt, validateActivationSettings, type ActivationSettings, type ActivationRun, type ActivationSnapshot } from '../accountActivation.js'
@@ -21,7 +22,8 @@ export class AccountActivationScheduler {
   constructor(private directory: string, private dependencies: {
     check: (accountId: string) => Promise<ActivationCheck>
     busy: (accountId: string) => boolean
-    quota: (accountId: string, signal: AbortSignal) => Promise<{ usedPercent: number; windowMinutes: number | null } | null>
+    initialize?: () => Promise<void>
+    wait?: (signal: AbortSignal) => Promise<void>
     prepare: (accountId: string, signal: AbortSignal) => Promise<ActivationWorker>
     accountExists: (accountId: string) => Promise<boolean>
     model: string
@@ -38,6 +40,7 @@ export class AccountActivationScheduler {
       this.state = { ...saved, settings: validateActivationSettings(saved.settings) }
       this.state.runs = this.state.runs.map(run => ['preparing', 'sending'].includes(run.status) ? { ...run, status: 'unknown', reason: '服务曾中断，不自动重发', finishedAt: this.now() } : run)
     } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error }
+    await this.dependencies.initialize?.()
     // Startup deliberately chooses the next future slot; there is no backfill.
     this.nextAt = nextActivationAt(this.state.settings, this.now())
     if (start) {
@@ -75,8 +78,9 @@ export class AccountActivationScheduler {
   }
   async tick(): Promise<void> {
     await this.ready
-    if (this.closed || this.error || this.flight) return
+    if (this.closed || this.error) return
     await this.lease.renew()
+    if (this.flight) return
     const at = this.nextAt
     if (at === null || this.now() < at) return
     const settings = structuredClone(this.state.settings)
@@ -100,13 +104,14 @@ export class AccountActivationScheduler {
       let worker: ActivationWorker | undefined
       let dispatched = false
       try {
-        if (this.now() - at > 60000) throw new Error('已错过计划时刻，不补发')
+        const signal = AbortSignal.any([this.abort.signal, AbortSignal.timeout(30 * 60000)])
+        while (this.dependencies.busy(accountId)) {
+          if (this.closed || revision !== this.revision) throw new Error('计划已变更')
+          if (this.dependencies.wait) await this.dependencies.wait(signal)
+          else await delay(5000, undefined, { signal })
+        }
         const before = await this.dependencies.check(accountId)
         if (!before.allowed) throw new Error(before.reason)
-        const signal = AbortSignal.any([this.abort.signal, AbortSignal.timeout(60000)])
-        const quota = await this.dependencies.quota(accountId, signal)
-        if (!quota || quota.windowMinutes !== 300 || !Number.isFinite(quota.usedPercent)) throw new Error('目标 5h 额度状态不明')
-        if (quota.usedPercent !== 0) throw new Error('目标额度已使用')
         worker = await this.dependencies.prepare(accountId, signal)
         run.status = 'sending'
         await this.write()
@@ -117,11 +122,11 @@ export class AccountActivationScheduler {
         dispatched = true
         await worker.send(signal)
         run.status = 'sent'
-        run.reason = '发送成功；窗口变化尚未确认'
+        run.reason = '激活完成，会话已清理'
       } catch (error) {
         run.status = dispatched ? 'unknown' : 'skipped'
         // Dependencies return only fixed diagnostic strings, never upstream credential-bearing bodies.
-        run.reason = error instanceof Error ? error.message : '状态无法确认，不自动重发'
+        run.reason = error instanceof Error && error.name !== 'AbortError' ? error.message : '激活已中止，不自动重发'
       } finally {
         await worker?.dispose().catch(() => { this.error = '临时激活进程未能清理，已停止后续执行' })
         run.finishedAt = this.now()
