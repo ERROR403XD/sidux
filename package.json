@@ -7,11 +7,11 @@
   "author": "Pavel Voronin, Igor Levochkin",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/friuns2/codexui.git"
+    "url": "git+https://github.com/ERROR403XD/codexapp.git"
   },
-  "homepage": "https://github.com/friuns2/codexui#readme",
+  "homepage": "https://github.com/ERROR403XD/codexapp#readme",
   "bugs": {
-    "url": "https://github.com/friuns2/codexui/issues"
+    "url": "https://github.com/ERROR403XD/codexapp/issues"
   },
   "publishConfig": {
     "access": "public"
@@ -35,7 +35,11 @@
     "dist-cli/",
     "scripts/dev.cjs",
     "scripts/dev-random-home.cjs",
-    "scripts/fix-pty-native-build.cjs"
+    "scripts/fix-pty-native-build.cjs",
+    "README.en.md",
+    "THIRD_PARTY_NOTICES.md",
+    "resources/api-proxy/LICENSE",
+    "resources/api-proxy/manifest.json"
   ],
   "pnpm": {
     "onlyBuiltDependencies": [
