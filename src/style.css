@@ -2840,3 +2840,7 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 :root .automations-panel .automation-detail-prompt h3 { font-size: var(--ui-font-subsection); font-weight: 600; line-height: 20px; letter-spacing: normal; text-transform: none; }
 :root .automations-panel .automation-detail-prompt p { font-size: var(--ui-font-control); line-height: 22px; }
 @media (max-width: 640px) { :root .content-header .content-title.is-accent, :root .directory-header .directory-title { font-size: 18px; line-height: 26px; } }
+:root .automations-panel .automation-history-heading h3 { font-size: var(--ui-font-subsection); font-weight: 600; line-height: 20px; }
+:root .automations-panel :is(.automations-create, .automations-refresh, .automation-edit-button, .automation-detail-edit) { height: 32px; border-radius: var(--ui-radius-control); font-size: var(--ui-font-control); line-height: 20px; }
+:root .automations-panel :is(.automations-refresh, .automation-edit-button, .automation-detail-edit) { border: 1px solid var(--ui-border); background: var(--ui-surface); color: var(--ui-text); }
+:root .automations-panel :is(.automations-refresh, .automation-edit-button, .automation-detail-edit):hover:not(:disabled) { background: var(--ui-hover); }
