@@ -38,10 +38,9 @@ export function createAutomationRuntime(options: {
       return { threadId: thread.id, model: typeof response.model === 'string' ? response.model : undefined }
     },
     async prepare(threadId, text, runId, settings = {}) {
-      // The selected account process may not have loaded this thread at all.
-      // Resume establishes native ownership; reading first can fail before the
-      // primary process has relinquished its writer.
-      await rpc('thread/resume', { threadId, excludeTurns: true, ...(settings.model ? { model: settings.model } : {}) }, runId)
+      // The account worker owns newly created threads before a rollout exists.
+      // Its turn/start path resumes only unloaded threads; resuming here would
+      // reject a new empty thread before its first message can be submitted.
       const params = await options.buildParams(threadId, text, runId)
       if (settings.model) params.model = settings.model
       if (settings.reasoningEffort) params.effort = settings.reasoningEffort

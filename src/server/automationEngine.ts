@@ -33,6 +33,7 @@ export function automationError(error: unknown): { errorCode: string; error: str
   if (/auth|401|403|token|credential|bearer/iu.test(text)) return { errorCode: 'AUTH_REQUIRED', error: '认证失败；请检查当前账号，然后手动重试' }
   if (/model.*(not|invalid|unavailable|support)|模型/iu.test(text)) return { errorCode: 'MODEL_UNAVAILABLE', error: '模型不可用；请检查模型配置后重试' }
   if (/ENOENT|ENOTDIR|cwd|目录/iu.test(text)) return { errorCode: 'CWD_UNAVAILABLE', error: '工作目录不存在或不可访问' }
+  if (/no rollout found|thread (?:not found|not loaded)|thread.*does not exist/iu.test(text)) return { errorCode: 'THREAD_UNAVAILABLE', error: '执行会话无法加载；请检查目标会话后重试' }
   if (/timeout|timed out|超时/iu.test(text)) return { errorCode: 'TIMEOUT', error: '请求超时；请打开执行会话核对结果' }
   if (/ECONN|EPIPE|network|fetch failed|socket/iu.test(text)) return { errorCode: 'CONNECTION_ERROR', error: '上游连接暂时不可用' }
   return { errorCode: 'EXECUTION_ERROR', error: '执行未完成；请打开会话查看错误并处理' }
@@ -374,7 +375,7 @@ export class AutomationEngine {
         this.runtime.releaseAccount?.(run.runId)
         run.status = 'queued'; run.retryAfter = this.now() + 5000 * 2 ** (run.attempt - 1); run.attempt += 1
         Object.assign(run, info)
-      } else this.finish(run, 'failed', info.error, info.errorCode)
+      } else this.finish(run, 'failed', info.errorCode === 'EXECUTION_ERROR' ? '消息尚未发送；请检查任务配置后重试' : info.error, info.errorCode)
     }
     await this.persist()
   }

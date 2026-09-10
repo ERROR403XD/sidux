@@ -41,6 +41,8 @@ createInterface({ input: process.stdin }).on('line', line => {
   if (method === 'thread/unsubscribe') result = { status: loaded.has(p.threadId) ? 'unsubscribed' : 'notLoaded' }
   if (method === 'thread/resume') {
     const thread = JSON.parse(readFileSync(process.env.CODEX_HOME + '/fixture-thread-' + p.threadId + '.json', 'utf8'))
+    // Native Codex does not persist a resumable rollout until the first turn.
+    if (!thread.turns.length) { send({ id, error: { message: 'no rollout found for thread id ' + p.threadId } }); return }
     threads.set(thread.id, thread)
     loaded.add(thread.id)
     result = { thread }
