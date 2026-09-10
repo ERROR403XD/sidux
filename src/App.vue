@@ -988,7 +988,7 @@
                       </label>
                       <label v-if="projectSetupMode === 'create'" class="new-thread-project-field">
                         <span class="new-thread-open-folder-label">附加工作目录</span>
-                        <textarea v-model="projectDirectoryDraft" class="new-thread-open-folder-path project-directories-input" rows="4" :disabled="isProjectSetupSubmitting || !projectDirectoriesLoaded" :placeholder="'/home/Code/项目1\n/home/Code/项目2'" />
+                        <textarea v-model="projectDirectoryDraft" class="new-thread-open-folder-path project-directories-input" rows="4" :disabled="isProjectSetupSubmitting || !projectDirectoriesLoaded" :placeholder="'/home/Code/project1\n/home/Code/project2'" />
                       </label>
                       <div v-if="projectSetupError" class="new-thread-open-folder-error visible-error-with-feedback">
                         <span>{{ t(projectSetupError) }}</span>
