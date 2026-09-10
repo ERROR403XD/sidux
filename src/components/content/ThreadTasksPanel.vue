@@ -1,32 +1,34 @@
 <template>
-  <section class="thread-tasks-panel" aria-label="任务导航">
+  <section class="thread-tasks-panel" :aria-label="t('任务导航')">
     <div class="thread-task-toolbar">
-      <AppButton v-if="identity?.parentThreadId" @click="emit('returnTask', identity.parentThreadId)">返回上级任务</AppButton>
+      <AppButton v-if="identity?.parentThreadId" @click="emit('returnTask', identity.parentThreadId)">{{ t('返回上级任务') }}</AppButton>
       <span v-if="identity?.parentThreadId" class="task-identity">{{ identity.nickname || identity.path || shortTaskId(identity.id) }}<small v-if="identity.role"> · {{ identity.role }}</small></span>
-      <AppButton :aria-expanded="open" @click="toggle">{{ open ? '收起子任务' : '子任务' }}</AppButton>
-      <AppButton @click="emit('searchTasks')">搜索任务</AppButton>
+      <AppButton :aria-expanded="open" @click="toggle">{{ t(open ? '收起子任务' : '子任务') }}</AppButton>
+      <AppButton @click="emit('searchTasks')">{{ t('搜索任务') }}</AppButton>
       <slot name="tools" />
     </div>
-    <p v-if="identity?.canAcceptDirectInput === false" class="task-input-note">{{ identity?.parentThreadId ? '此子任务由上级控制，可返回上级继续沟通。' : '当前任务不接受直接输入。' }}</p>
+    <p v-if="identity?.canAcceptDirectInput === false" class="task-input-note">{{ t(identity?.parentThreadId ? '此子任务由上级控制，可返回上级继续沟通。' : '当前任务不接受直接输入。') }}</p>
     <div v-if="open" class="thread-tasks-body">
-      <div class="task-result-heading"><small>直属子任务</small><AppButton :disabled="loading" @click="load(false)">刷新</AppButton></div>
-      <p v-if="error" role="alert">{{ error }}</p>
-      <p v-if="loading" role="status">读取中…</p>
-      <p v-else-if="!rows.length && !error">暂无已保存的直属子任务。</p>
+      <div class="task-result-heading"><small>{{ t('直属子任务') }}</small><AppButton :disabled="loading" @click="load(false)">{{ t('刷新') }}</AppButton></div>
+      <p v-if="error" role="alert">{{ t(error) }}</p>
+      <p v-if="loading" role="status">{{ t('读取中…') }}</p>
+      <p v-else-if="!rows.length && !error">{{ t('暂无已保存的直属子任务。') }}</p>
       <ul class="task-result-list">
         <li v-for="row in rows" :key="row.id">
-          <div class="task-result-heading"><a :href="`#/thread/${row.id}`" :title="row.id" @click.prevent="emit('openTask', row.id)">{{ row.nickname || row.title }}</a><small>{{ taskStatusLabel(row.status) }}</small></div>
+          <div class="task-result-heading"><a :href="`#/thread/${row.id}`" :title="row.id" @click.prevent="emit('openTask', row.id)">{{ row.nickname || row.title }}</a><small>{{ t(taskStatusLabel(row.status)) }}</small></div>
           <small v-if="row.role || row.path">{{ [row.role, row.path].filter(Boolean).join(' · ') }}</small>
           <p v-if="row.preview" class="task-preview">{{ row.preview }}</p>
         </li>
       </ul>
-      <AppButton v-if="cursor && rows.length < 200" :disabled="loading" @click="load(true)">加载更多子任务</AppButton>
-      <small v-else-if="cursor">当前显示前 200 个子任务。</small>
+      <AppButton v-if="cursor && rows.length < 200" :disabled="loading" @click="load(true)">{{ t('加载更多子任务') }}</AppButton>
+      <small v-else-if="cursor">{{ t('当前显示前 200 个子任务。') }}</small>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
+import { t } from '../../composables/useUiLanguage'
+
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AppButton from '../common/AppButton.vue'
 import { listTaskPage } from '../../api/tasks'

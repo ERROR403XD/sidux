@@ -21,8 +21,8 @@
       </div>
     </div>
 
-    <p v-if="runtime" class="automation-runtime-status" :class="{ 'has-error': !runtime.ready }">调度器：{{ runtime.error || (runtime.draining ? '正在交接，停止领取新任务' : runtime.ready ? '运行中' : '初始化中') }}</p>
-    <p v-for="problem in runtime?.definitions.filter(row => row.error) ?? []" :key="problem.id" class="automations-error">{{ problem.id }}：{{ problem.error }}</p>
+    <p v-if="runtime" class="automation-runtime-status" :class="{ 'has-error': !runtime.ready }">{{ t('调度器：') }}{{ t(runtime.error || (runtime.draining ? '正在交接，停止领取新任务' : runtime.ready ? '运行中' : '初始化中')) }}</p>
+    <p v-for="problem in runtime?.definitions.filter(row => row.error) ?? []" :key="problem.id" class="automations-error">{{ problem.id }}：{{ t(problem.error || '') }}</p>
     <p v-if="loadError" class="automations-error">{{ t(loadError) }}</p>
 
     <div v-if="isLoading && automationRows.length === 0" class="automations-empty">
@@ -57,8 +57,8 @@
             <span class="automation-row-meta">{{ t(row.scopeLabel) }} • {{ row.targetLabel }}</span>
           </span>
           <span class="automation-row-side">
-            <span class="automation-row-status" :data-status="row.automation.status">{{ statusLabel(row.automation.status) }}</span>
-            <span class="automation-row-schedule">{{ row.scheduleLabel }}</span>
+            <span class="automation-row-status" :data-status="row.automation.status">{{ t(statusLabel(row.automation.status)) }}</span>
+            <span class="automation-row-schedule">{{ t(row.scheduleLabel) }}</span>
           </span>
           <button class="automation-edit-button" type="button" @click.stop="emitEditAutomation(row)">
             {{ t('Edit') }}
@@ -84,11 +84,11 @@
         <dl class="automation-detail-grid">
           <div>
             <dt>{{ t('Status') }}</dt>
-            <dd>{{ statusLabel(selectedRow.automation.status) }}</dd>
+            <dd>{{ t(statusLabel(selectedRow.automation.status)) }}</dd>
           </div>
           <div>
             <dt>{{ t('Schedule') }}</dt>
-            <dd>{{ selectedRow.scheduleLabel }}</dd>
+            <dd>{{ t(selectedRow.scheduleLabel) }}</dd>
           </div>
           <div>
             <dt>{{ t('Target') }}</dt>
@@ -98,10 +98,10 @@
             <dt>ID</dt>
             <dd>{{ selectedRow.automation.id }}</dd>
           </div>
-          <div><dt>账号与保护</dt><dd>{{ selectedRow.automation.accountStorageId ? '固定账号' : '跟随全局账号' }} · {{ selectedRow.automation.protected ? '受保护' : '普通任务' }}</dd></div>
-          <div><dt>模型</dt><dd>{{ selectedRow.automation.model || '跟随运行时默认' }}</dd></div>
-          <div><dt>思考强度</dt><dd>{{ selectedRow.automation.reasoningEffort || '跟随运行时默认' }}</dd></div>
-          <div><dt>服务档位</dt><dd>{{ selectedRow.automation.serviceTier || '跟随模型默认' }}</dd></div>
+          <div><dt>{{ t('账号与保护') }}</dt><dd>{{ t(selectedRow.automation.accountStorageId ? '固定账号' : '跟随全局账号') }} · {{ t(selectedRow.automation.protected ? '受保护' : '普通任务') }}</dd></div>
+          <div><dt>{{ t('模型') }}</dt><dd>{{ t(selectedRow.automation.model || '跟随运行时默认') }}</dd></div>
+          <div><dt>{{ t('思考强度') }}</dt><dd>{{ t(selectedRow.automation.reasoningEffort || '跟随运行时默认') }}</dd></div>
+          <div><dt>{{ t('服务档位') }}</dt><dd>{{ t(selectedRow.automation.serviceTier || '跟随模型默认') }}</dd></div>
         </dl>
 
         <section class="automation-detail-prompt">

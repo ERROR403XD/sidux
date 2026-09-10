@@ -1,7 +1,7 @@
 <template>
   <section v-if="request" class="thread-pending-request">
     <div v-if="collapsed && isAsyncUserInputRequest(request)" class="async-question-heading">
-      <span>问题待回答</span><button type="button" class="thread-pending-request-secondary" @click="collapsed = false">回答</button>
+      <span>{{ t('问题待回答') }}</span><button type="button" class="thread-pending-request-secondary" @click="collapsed = false">{{ t('回答') }}</button>
     </div>
     <fieldset
       v-else
@@ -152,7 +152,7 @@
           </div>
 
           <p v-if="mcpElicitationValidationError" class="thread-pending-request-validation-error">
-            {{ mcpElicitationValidationError }}
+            {{ t(mcpElicitationValidationError) }}
           </p>
 
           <footer class="thread-pending-request-footer">
@@ -209,9 +209,9 @@
             </label>
           </div>
 
-          <p v-if="toolValidationError" role="alert" class="thread-pending-request-validation-error">{{ toolValidationError }}</p>
+          <p v-if="toolValidationError" role="alert" class="thread-pending-request-validation-error">{{ t(toolValidationError) }}</p>
           <footer class="thread-pending-request-footer">
-            <button v-if="isAsyncUserInputRequest(request)" type="button" class="thread-pending-request-secondary" @click="collapsed = true">暂不回答</button>
+            <button v-if="isAsyncUserInputRequest(request)" type="button" class="thread-pending-request-secondary" @click="collapsed = true">{{ t('暂不回答') }}</button>
             <button type="button" class="thread-pending-request-primary" @click="onRespondToolRequestUserInput(request)">
               {{ t('Send') }}
             </button>

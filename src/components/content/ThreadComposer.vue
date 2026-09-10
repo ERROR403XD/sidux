@@ -1,7 +1,7 @@
 <template>
   <form class="thread-composer" @submit.prevent="onSubmit(isTurnInProgress ? activeInProgressMode : 'steer')">
     <p v-if="dictationErrorText" class="thread-composer-dictation-error">
-      {{ dictationErrorText }}
+      {{ t(dictationErrorText) }}
     </p>
 
     <div
@@ -128,7 +128,7 @@
           ref="inputRef"
           v-model="draft"
           class="thread-composer-input"
-          :placeholder="placeholderText"
+          :placeholder="t(placeholderText)"
           :disabled="isInteractionDisabled"
           :role="commandPicker.visible.value ? 'combobox' : undefined"
           :aria-expanded="commandPicker.visible.value"
@@ -198,14 +198,14 @@
               {{ t('Take photo') }}
             </button>
             <div class="thread-composer-attach-separator" />
-            <button class="thread-composer-attach-item" type="button" :disabled="isInteractionDisabled" @click="isAttachMenuOpen = false; emit('command', { name: 'goal', complete: () => {} })">持续目标</button>
+            <button class="thread-composer-attach-item" type="button" :disabled="isInteractionDisabled" @click="isAttachMenuOpen = false; emit('command', { name: 'goal', complete: () => {} })">{{ t('持续目标') }}</button>
             <div class="thread-composer-attach-separator" />
             <div class="thread-composer-attach-setting-copy model-capability-summary">
-              <span>{{ modelCapabilityDescription }}</span>
-              <span v-if="reportedModel">运行时最近返回：{{ reportedModel }}</span>
-              <span>{{ speedModeDescription }}</span>
+              <span>{{ t(modelCapabilityDescription) }}</span>
+              <span v-if="reportedModel">{{ t('运行时最近返回：') }}{{ reportedModel }}</span>
+              <span>{{ t(speedModeDescription) }}</span>
             </div>
-            <AppSelect class="model-service-tier-picker" :model-value="selectedSpeedMode" :options="serviceTierOptions" :disabled="isSpeedToggleDisabled" @update:model-value="emit('update:selected-speed-mode', $event)" />
+            <AppSelect class="model-service-tier-picker" :model-value="selectedSpeedMode" :options="serviceTierOptions.map(option => ({ ...option, label: t(option.label) }))" :disabled="isSpeedToggleDisabled" @update:model-value="emit('update:selected-speed-mode', $event)" />
             <button
               class="thread-composer-attach-setting"
               type="button"
@@ -227,7 +227,7 @@
           </div>
         </div>
 
-        <span v-if="modelSettingsWarning || modelCatalogError" class="model-capability-warning" role="status">{{ modelSettingsWarning || modelCatalogError }}</span>
+        <span v-if="modelSettingsWarning || modelCatalogError" class="model-capability-warning" role="status">{{ t(modelSettingsWarning || modelCatalogError || '') }}</span>
         <template v-if="!isDictationRecording">
           <ComposerSearchDropdown hide-chevron
             ref="commandSkillsRef"
@@ -267,8 +267,8 @@
             type="button"
             role="switch"
             :aria-checked="isFastSelected"
-            aria-label="Fast 快速模式"
-            :title="fastModeHint"
+            :aria-label="t('Fast 快速模式')"
+            :title="t(fastModeHint)"
             :disabled="isComposerConfigDisabled || fastControl.disabled"
             @click="toggleFastMode"
           >
@@ -284,7 +284,7 @@
           </div>
 
           <span v-if="dictationState === 'recording'" class="thread-composer-dictation-timer">
-            {{ dictationDurationLabel }}
+            {{ t(dictationDurationLabel) }}
           </span>
 
           <button
@@ -294,8 +294,8 @@
               'thread-composer-mic--active': dictationState === 'recording',
             }"
             type="button"
-            :aria-label="dictationButtonLabel"
-            :title="dictationButtonLabel"
+            :aria-label="t(dictationButtonLabel)"
+            :title="t(dictationButtonLabel)"
             :disabled="isInteractionDisabled"
             @click="onDictationToggle"
             @pointerdown="onDictationPressStart"

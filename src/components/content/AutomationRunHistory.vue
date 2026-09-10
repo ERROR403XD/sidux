@@ -1,33 +1,35 @@
 <template>
-  <section class="automation-history" aria-label="执行记录">
+  <section class="automation-history" :aria-label="t('执行记录')">
     <div class="automation-history-heading">
-      <h3>执行记录</h3>
-      <AppButton type="button" :disabled="runDisabled" @click="runNow()">{{ busy ? '提交中…' : '立即运行' }}</AppButton>
+      <h3>{{ t('执行记录') }}</h3>
+      <AppButton type="button" :disabled="runDisabled" @click="runNow()">{{ t(busy ? '提交中…' : '立即运行') }}</AppButton>
     </div>
-    <p class="automation-history-schedule">{{ nextTime }}</p>
-    <p v-if="error" class="automations-error" role="alert">{{ error }}</p>
-    <p v-if="!runs.length" class="automation-history-muted">{{ loading ? '读取中…' : '尚无执行记录。' }}</p>
+    <p class="automation-history-schedule">{{ t(nextTime) }}</p>
+    <p v-if="error" class="automations-error" role="alert">{{ t(error) }}</p>
+    <p v-if="!runs.length" class="automation-history-muted">{{ t(loading ? '读取中…' : '尚无执行记录。') }}</p>
     <AutomationRunList :runs="runs" :target="target" :disabled="runDisabled" @retry="runNow" />
-    <AppButton class="automation-history-all" type="button" @click="openHistory">查看全部</AppButton>
-    <AppDialog ref="historyDialog" :open="allOpen" :title="`${automation.name} · 全部执行记录`" @close="closeHistory">
+    <AppButton class="automation-history-all" type="button" @click="openHistory">{{ t('查看全部') }}</AppButton>
+    <AppDialog ref="historyDialog" :open="allOpen" :title="t(`${automation.name} · 全部执行记录`)" @close="closeHistory">
       <section class="automation-history automation-history-full" :aria-busy="pageLoading">
-        <p v-if="pageError" class="automation-history-error" role="alert">{{ pageError }}</p>
-        <p v-if="pageLoading" class="automation-history-muted">读取中…</p>
-        <p v-else-if="!pageRuns.length" class="automation-history-muted">尚无执行记录。</p>
+        <p v-if="pageError" class="automation-history-error" role="alert">{{ t(pageError) }}</p>
+        <p v-if="pageLoading" class="automation-history-muted">{{ t('读取中…') }}</p>
+        <p v-else-if="!pageRuns.length" class="automation-history-muted">{{ t('尚无执行记录。') }}</p>
         <AutomationRunList :runs="pageRuns" :target="target" :disabled="runDisabled" @retry="runNow" />
       </section>
       <template #footer>
-        <span>第 {{ pageIndex + 1 }} 页 · 每页 100 条</span>
+        <span>{{ t('第') }} {{ pageIndex + 1 }} {{ t('页 · 每页 100 条') }}</span>
         <div class="automation-history-pagination">
-          <AppButton type="button" :disabled="pageLoading || pageIndex === 0" @click="loadPage(pageIndex - 1)">上一页</AppButton>
-          <AppButton type="button" :disabled="pageLoading || !nextCursor" @click="loadPage(pageIndex + 1)">下一页</AppButton>
-          <AppButton type="button" :disabled="pageLoading" @click="refreshHistory">刷新</AppButton>
+          <AppButton type="button" :disabled="pageLoading || pageIndex === 0" @click="loadPage(pageIndex - 1)">{{ t('上一页') }}</AppButton>
+          <AppButton type="button" :disabled="pageLoading || !nextCursor" @click="loadPage(pageIndex + 1)">{{ t('下一页') }}</AppButton>
+          <AppButton type="button" :disabled="pageLoading" @click="refreshHistory">{{ t('刷新') }}</AppButton>
         </div>
       </template>
     </AppDialog>
   </section>
 </template>
 <script setup lang="ts">
+import { t } from '../../composables/useUiLanguage'
+
 import { formatLocalDateTime } from '../../dateTime'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AppDialog from '../common/AppDialog.vue'

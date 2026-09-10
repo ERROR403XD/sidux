@@ -31,6 +31,21 @@
       (() => {
         let mounted = false
         let failed = false
+        const translateRecovery = () => {
+          let chinese = false
+          try { chinese = localStorage.getItem('codex-web-local.ui-language.v1') === 'zh-CN' } catch {}
+          const messages = {
+            'app-load-title': ['Unable to load the interface', '界面加载失败'],
+            'app-load-description': ['Check your connection and reload. Copy any unsent text before reloading.', '请检查网络后重新加载。重新加载前，请先复制尚未发送的文字。'],
+            'app-load-reload': ['Reload', '重新加载'],
+            'app-load-dismiss': ['Later', '稍后'],
+          }
+          for (const [id, values] of Object.entries(messages)) {
+            const element = document.getElementById(id)
+            if (element) element.textContent = values[chinese ? 1 : 0]
+          }
+        }
+        document.addEventListener('codexapp:language-change', translateRecovery)
         const show = () => {
           failed = true
           const panel = document.getElementById('app-load-recovery')
@@ -39,6 +54,7 @@
             const theme = localStorage.getItem('codex-web-local.dark-mode.v1')
             if (theme === 'light' || theme === 'dark') panel.dataset.theme = theme
           } catch {}
+          translateRecovery()
           panel.hidden = false
           panel.dataset.startup = String(!mounted)
           document.body.classList.toggle('app-load-pending', !mounted)
@@ -55,14 +71,7 @@
           if (!mounted || /dynamically imported module|Importing a module script failed|Loading (?:chunk|CSS chunk)/i.test(message)) show()
         })
         document.addEventListener('DOMContentLoaded', () => {
-          let language = navigator.language
-          try { language = localStorage.getItem('codex-web-local.ui-language.v1') || language } catch {}
-          if (!language.toLowerCase().startsWith('zh')) {
-            document.getElementById('app-load-title').textContent = 'Unable to load the interface'
-            document.getElementById('app-load-description').textContent = 'Check your connection and reload. Copy any unsent text before reloading.'
-            document.getElementById('app-load-reload').textContent = 'Reload'
-            document.getElementById('app-load-dismiss').textContent = 'Later'
-          }
+          translateRecovery()
           document.getElementById('app-load-reload').onclick = () => {
             const url = new URL(location.href)
             url.searchParams.set('_ui_reload', String(Date.now()))

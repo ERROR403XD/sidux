@@ -1,22 +1,24 @@
 <template>
   <details class="process-card hook-run" :data-status="run.status" @toggle="onToggle">
-    <summary><span>{{ run.statusMessage || run.eventName }}</span><span>{{ hookStatusLabel(run) }}<small v-if="run.durationMs !== null"> · {{ run.durationMs }} ms</small></span><small v-if="run.entries.length" class="process-id">{{ run.entries[0]?.text.slice(0, 160) }}</small></summary>
-    <p>{{ run.eventName }} · {{ run.handlerType }} · {{ run.executionMode === 'async' ? '异步' : '同步' }}</p>
+    <summary><span>{{ run.statusMessage || run.eventName }}</span><span>{{ t(hookStatusLabel(run)) }}<small v-if="run.durationMs !== null"> · {{ run.durationMs }} ms</small></span><small v-if="run.entries.length" class="process-id">{{ run.entries[0]?.text.slice(0, 160) }}</small></summary>
+    <p>{{ run.eventName }} · {{ run.handlerType }} · {{ t(run.executionMode === 'async' ? '异步' : '同步') }}</p>
     <small>{{ run.source }} · {{ run.sourcePath }}</small>
     <p>{{ formatLocalDateTime(run.startedAt * 1000) }}<template v-if="run.completedAt !== null"> → {{ formatLocalDateTime(run.completedAt * 1000) }}</template></p>
-    <p v-if="run.status === 'running' && !run.currentRuntime" class="process-note">CLI 已重启，未收到这次执行的结束状态。</p>
-    <p v-if="loading">读取结果中…</p>
-    <p v-if="error" class="process-error" role="alert">{{ error }} <AppButton @click="load">重试</AppButton></p>
+    <p v-if="run.status === 'running' && !run.currentRuntime" class="process-note">{{ t('CLI 已重启，未收到这次执行的结束状态。') }}</p>
+    <p v-if="loading">{{ t('读取结果中…') }}</p>
+    <p v-if="error" class="process-error" role="alert">{{ t(error) }} <AppButton @click="load">{{ t('重试') }}</AppButton></p>
     <template v-if="detail">
       <div v-for="(entry, index) in detail.entries" :key="index"><small>{{ entry.kind }}</small><pre>{{ entry.text }}</pre></div>
-      <p v-if="!detail.entries.length">无输出记录。</p>
-      <small v-if="detail.truncated">输出已截断。</small>
+      <p v-if="!detail.entries.length">{{ t('无输出记录。') }}</p>
+      <small v-if="detail.truncated">{{ t('输出已截断。') }}</small>
     </template>
-    <small class="process-id">执行 {{ run.id }}<template v-if="run.turnId"> · 回合 {{ run.turnId }}</template></small>
+    <small class="process-id">{{ t('执行') }} {{ run.id }}<template v-if="run.turnId"> {{ t('· 回合') }} {{ run.turnId }}</template></small>
   </details>
 </template>
 
 <script setup lang="ts">
+import { t } from '../../composables/useUiLanguage'
+
 import { onBeforeUnmount, ref, watch } from 'vue'
 import AppButton from '../common/AppButton.vue'
 import { formatLocalDateTime } from '../../dateTime'

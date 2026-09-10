@@ -1,6 +1,6 @@
 <template>
   <section class="thread-tree-root" :class="{ 'chats-first': showChatsFirst }">
-    <p v-if="quotaResumeError" class="account-panel-error" role="alert">{{ quotaResumeError }}</p>
+    <p v-if="quotaResumeError" class="account-panel-error" role="alert">{{ t(quotaResumeError) }}</p>
     <section v-if="pinnedThreads.length > 0" class="pinned-section">
       <SidebarMenuRow
         as="button"
@@ -63,20 +63,20 @@
                       {{ threadAutomationCount(thread.id) }}
                     </span>
                   </span>
-                  <span v-if="goals?.[thread.id]" class="thread-row-automation-chip thread-row-goal-chip" :title="`持续目标 · ${goalStatusLabels[goals[thread.id]!.status]}`" aria-label="持续目标"><IconTablerTarget class="thread-row-automation-icon" /></span>
-                  <span v-if="quotaResumeMarks?.[thread.id]" class="thread-row-automation-chip" :title="quotaResumeTitle(thread.id)" aria-label="额度恢复后继续"><IconTablerPlayerPlayRepeat class="thread-row-automation-icon" /></span>
+                  <span v-if="goals?.[thread.id]" class="thread-row-automation-chip thread-row-goal-chip" :title="t(`持续目标 · ${t(goalStatusLabels[goals[thread.id]!.status])}`)" :aria-label="t('持续目标')"><IconTablerTarget class="thread-row-automation-icon" /></span>
+                  <span v-if="quotaResumeMarks?.[thread.id]" class="thread-row-automation-chip" :title="t(quotaResumeTitle(thread.id))" :aria-label="t('额度恢复后继续')"><IconTablerPlayerPlayRepeat class="thread-row-automation-icon" /></span>
                   <span
                     v-if="thread.pendingRequestState"
                     class="thread-row-request-chip"
                     :data-state="thread.pendingRequestState"
                   >
-                    {{ threadRequestLabel(thread) }}
+                    {{ t(threadRequestLabel(thread)) }}
                   </span>
                 </span>
               </span>
             </button>
             <template #right>
-              <span class="thread-row-time">{{ formatRelativeThread(thread) }}</span>
+              <span class="thread-row-time">{{ t(formatRelativeThread(thread)) }}</span>
             </template>
             <template #right-hover>
               <div :ref="(el) => setThreadMenuWrapRef(thread.id, el)" class="thread-menu-wrap">
@@ -176,7 +176,7 @@
       </SidebarMenuRow>
 
       <template v-if="isProjectsSectionExpanded || isSearchActive">
-      <p v-if="projectAutomationActionError" class="thread-tree-action-error">{{ projectAutomationActionError }}</p>
+      <p v-if="projectAutomationActionError" class="thread-tree-action-error">{{ t(projectAutomationActionError) }}</p>
 
       <p v-if="isSearchActive && searchState !== 'loading' && searchState !== 'error' && filteredGroups.length === 0 && globalThreads.length === 0 && pinnedThreads.length === 0" class="thread-tree-no-results">{{ t('No matching threads') }}</p>
 
@@ -233,20 +233,20 @@
                     {{ threadAutomationCount(thread.id) }}
                   </span>
                 </span>
-                <span v-if="goals?.[thread.id]" class="thread-row-automation-chip thread-row-goal-chip" :title="`持续目标 · ${goalStatusLabels[goals[thread.id]!.status]}`" aria-label="持续目标"><IconTablerTarget class="thread-row-automation-icon" /></span>
-                  <span v-if="quotaResumeMarks?.[thread.id]" class="thread-row-automation-chip" :title="quotaResumeTitle(thread.id)" aria-label="额度恢复后继续"><IconTablerPlayerPlayRepeat class="thread-row-automation-icon" /></span>
+                <span v-if="goals?.[thread.id]" class="thread-row-automation-chip thread-row-goal-chip" :title="t(`持续目标 · ${t(goalStatusLabels[goals[thread.id]!.status])}`)" :aria-label="t('持续目标')"><IconTablerTarget class="thread-row-automation-icon" /></span>
+                  <span v-if="quotaResumeMarks?.[thread.id]" class="thread-row-automation-chip" :title="t(quotaResumeTitle(thread.id))" :aria-label="t('额度恢复后继续')"><IconTablerPlayerPlayRepeat class="thread-row-automation-icon" /></span>
                 <span
                   v-if="thread.pendingRequestState"
                   class="thread-row-request-chip"
                   :data-state="thread.pendingRequestState"
                 >
-                  {{ threadRequestLabel(thread) }}
+                  {{ t(threadRequestLabel(thread)) }}
                 </span>
               </span>
             </span>
           </button>
           <template #right>
-            <span class="thread-row-time">{{ formatRelativeThread(thread) }}</span>
+            <span class="thread-row-time">{{ t(formatRelativeThread(thread)) }}</span>
           </template>
           <template #right-hover>
             <div :ref="(el) => setThreadMenuWrapRef(thread.id, el)" class="thread-menu-wrap">
@@ -352,9 +352,7 @@
                       >
                         {{ t('New worktree') }}
                       </button>
-                      <button class="project-menu-item" type="button" @click="openRenameProjectMenu(group)">
-                        编辑项目
-                      </button>
+                      <button class="project-menu-item" type="button" @click="openRenameProjectMenu(group)"> {{ t('编辑项目') }} </button>
                       <button
                         class="project-menu-item project-menu-item-danger"
                         type="button"
@@ -431,20 +429,20 @@
                           {{ threadAutomationCount(thread.id) }}
                         </span>
                       </span>
-                      <span v-if="goals?.[thread.id]" class="thread-row-automation-chip thread-row-goal-chip" :title="`持续目标 · ${goalStatusLabels[goals[thread.id]!.status]}`" aria-label="持续目标"><IconTablerTarget class="thread-row-automation-icon" /></span>
-                  <span v-if="quotaResumeMarks?.[thread.id]" class="thread-row-automation-chip" :title="quotaResumeTitle(thread.id)" aria-label="额度恢复后继续"><IconTablerPlayerPlayRepeat class="thread-row-automation-icon" /></span>
+                      <span v-if="goals?.[thread.id]" class="thread-row-automation-chip thread-row-goal-chip" :title="t(`持续目标 · ${t(goalStatusLabels[goals[thread.id]!.status])}`)" :aria-label="t('持续目标')"><IconTablerTarget class="thread-row-automation-icon" /></span>
+                  <span v-if="quotaResumeMarks?.[thread.id]" class="thread-row-automation-chip" :title="t(quotaResumeTitle(thread.id))" :aria-label="t('额度恢复后继续')"><IconTablerPlayerPlayRepeat class="thread-row-automation-icon" /></span>
                       <span
                         v-if="thread.pendingRequestState"
                         class="thread-row-request-chip"
                         :data-state="thread.pendingRequestState"
                       >
-                        {{ threadRequestLabel(thread) }}
+                        {{ t(threadRequestLabel(thread)) }}
                       </span>
                     </span>
                   </span>
                 </button>
                 <template #right>
-                  <span class="thread-row-time">{{ formatRelativeThread(thread) }}</span>
+                  <span class="thread-row-time">{{ t(formatRelativeThread(thread)) }}</span>
                 </template>
                 <template #right-hover>
                   <div :ref="(el) => setThreadMenuWrapRef(thread.id, el)" class="thread-menu-wrap">
@@ -562,20 +560,20 @@
                       {{ threadAutomationCount(thread.id) }}
                     </span>
                   </span>
-                  <span v-if="goals?.[thread.id]" class="thread-row-automation-chip thread-row-goal-chip" :title="`持续目标 · ${goalStatusLabels[goals[thread.id]!.status]}`" aria-label="持续目标"><IconTablerTarget class="thread-row-automation-icon" /></span>
-                  <span v-if="quotaResumeMarks?.[thread.id]" class="thread-row-automation-chip" :title="quotaResumeTitle(thread.id)" aria-label="额度恢复后继续"><IconTablerPlayerPlayRepeat class="thread-row-automation-icon" /></span>
+                  <span v-if="goals?.[thread.id]" class="thread-row-automation-chip thread-row-goal-chip" :title="t(`持续目标 · ${t(goalStatusLabels[goals[thread.id]!.status])}`)" :aria-label="t('持续目标')"><IconTablerTarget class="thread-row-automation-icon" /></span>
+                  <span v-if="quotaResumeMarks?.[thread.id]" class="thread-row-automation-chip" :title="t(quotaResumeTitle(thread.id))" :aria-label="t('额度恢复后继续')"><IconTablerPlayerPlayRepeat class="thread-row-automation-icon" /></span>
                   <span
                     v-if="thread.pendingRequestState"
                     class="thread-row-request-chip"
                     :data-state="thread.pendingRequestState"
                   >
-                    {{ threadRequestLabel(thread) }}
+                    {{ t(threadRequestLabel(thread)) }}
                   </span>
                 </span>
               </span>
             </button>
             <template #right>
-              <span class="thread-row-time">{{ formatRelativeThread(thread) }}</span>
+              <span class="thread-row-time">{{ t(formatRelativeThread(thread)) }}</span>
             </template>
             <template #right-hover>
               <div :ref="(el) => setThreadMenuWrapRef(thread.id, el)" class="thread-menu-wrap">
@@ -612,7 +610,7 @@
         :data-open-direction="getThreadMenuDirection(openThreadMenuThread.id)"
         @click.stop
       >
-        <button class="thread-menu-item" type="button" @click="emit('toggle-quota-resume', openThreadMenuThread.id)">{{ quotaResumeMarks?.[openThreadMenuThread.id] ? '取消额度恢复续跑' : '额度恢复后继续' }}</button>
+        <button class="thread-menu-item" type="button" @click="emit('toggle-quota-resume', openThreadMenuThread.id)">{{ t(quotaResumeMarks?.[openThreadMenuThread.id] ? '取消额度恢复续跑' : '额度恢复后继续') }}</button>
         <button class="thread-menu-item" type="button" @click="openAutomationDialog(openThreadMenuThread.id)">
           {{ threadHasAutomation(openThreadMenuThread.id) ? t('Manage automations…') : t('Add automation…') }}
         </button>
@@ -678,19 +676,19 @@
     <AppDialog :open="automationDialogVisible" :title="automationDialogMode === 'edit' ? t('Edit automation') : t('Add automation')" :busy="isSavingAutomation || isRunningAutomation" panel-class="automation-thread-panel" @close="closeAutomationDialog">
           <div class="automation-account-fields">
             <div class="automation-thread-field">
-              <span class="automation-thread-label">使用账号</span>
+              <span class="automation-thread-label">{{ t('使用账号') }}</span>
               <AppSelect
                 v-model="automationDraft.accountStorageId"
                 class="automation-account-picker automation-thread-dropdown"
                 :options="automationAccountOptions"
                 enable-search
-                search-placeholder="搜索账号"
+                :search-placeholder="t('搜索账号')"
                 :disabled="isSavingAutomation || isRunningAutomation"
               />
             </div>
             <label class="automation-protection-check">
               <input v-model="automationDraft.protected" type="checkbox" :disabled="isSavingAutomation || isRunningAutomation" />
-              <span>受保护任务</span>
+              <span>{{ t('受保护任务') }}</span>
             </label>
           </div>
 
@@ -741,20 +739,18 @@
             <textarea v-model="automationDraft.prompt" class="automation-thread-textarea" rows="6" :placeholder="t('Describe what the automation should do')"></textarea>
           </label>
 
-          <p v-if="accountModelsError" role="alert">{{ accountModelsError }}</p>
+          <p v-if="accountModelsError" role="alert">{{ t(accountModelsError) }}</p>
           <div class="automation-model-fields">
             <div class="automation-thread-field">
-              <span class="automation-thread-label">模型</span>
-              <AppSelect v-model="automationDraft.model" class="automation-model-picker automation-thread-dropdown" :options="automationModelOptions" enable-search search-placeholder="搜索模型" :disabled="isSavingAutomation || isRunningAutomation" />
+              <span class="automation-thread-label">{{ t('模型') }}</span>
+              <AppSelect v-model="automationDraft.model" class="automation-model-picker automation-thread-dropdown" :options="automationModelOptions" enable-search :search-placeholder="t('搜索模型')" :disabled="isSavingAutomation || isRunningAutomation" />
             </div>
             <div class="automation-thread-field">
-              <span class="automation-thread-label">思考强度</span>
+              <span class="automation-thread-label">{{ t('思考强度') }}</span>
               <AppSelect v-model="automationDraft.reasoningEffort" class="automation-effort-picker automation-thread-dropdown" :options="automationEffortOptions" :disabled="isSavingAutomation || isRunningAutomation" />
             </div>
-            <label class="automation-fast-check" :title="automationFastControl.hint">
-              <input type="checkbox" :checked="automationFastControl.checked" :disabled="isSavingAutomation || isRunningAutomation || automationFastControl.disabled" @change="automationDraft.serviceTier = automationFastControl.nextValue" />
-              快速模式
-            </label>
+            <label class="automation-fast-check" :title="t(automationFastControl.hint)">
+              <input type="checkbox" :checked="automationFastControl.checked" :disabled="isSavingAutomation || isRunningAutomation || automationFastControl.disabled" @change="automationDraft.serviceTier = automationFastControl.nextValue" /> {{ t('快速模式') }} </label>
           </div>
 
           <div class="automation-thread-field">
@@ -823,7 +819,7 @@
               placeholder="FREQ=DAILY;BYHOUR=9;BYMINUTE=0"
               @input="syncAutomationScheduleDraftFromRrule"
             />
-            <p class="automation-schedule-preview">{{ automationSchedulePreview }}</p>
+            <p class="automation-schedule-preview">{{ t(automationSchedulePreview) }}</p>
           </div>
 
           <div class="automation-thread-field">
@@ -937,7 +933,7 @@ const props = defineProps<{
 
 function quotaResumeTitle(threadId: string): string {
   const status = props.quotaResumeMarks?.[threadId]?.status
-  return '额度恢复后继续 · ' + ({ armed: '已启用', waiting: '等待额度', submitted: '已提交续跑', unknown: '提交结果待核对，请查看会话' }[status || 'armed'])
+  return t('额度恢复后继续') + ' · ' + t({ armed: '已启用', waiting: '等待额度', submitted: '已提交续跑', unknown: '提交结果待核对，请查看会话' }[status || 'armed'])
 }
 const { t } = useUiLanguage()
 const { recordVisibleFailure } = useFeedbackDiagnostics()
@@ -1070,7 +1066,7 @@ const automationDraft = ref<{
   rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0',
   status: 'ACTIVE', model: '', reasoningEffort: '', serviceTier: '', accountStorageId: '', protected: false,
 })
-const automationAccountOptions = computed(() => [{ value: '', label: '跟随全局账号' }, ...(props.accounts || []).map(account => ({ value: account.storageId, label: accountDisplayName(account) }))])
+const automationAccountOptions = computed(() => [{ value: '', label: t('跟随全局账号') }, ...(props.accounts || []).map(account => ({ value: account.storageId, label: accountDisplayName(account) }))])
 const accountModels = ref<import('../../modelCapabilities').ModelCapability[]>([])
 const accountModelsLoading = ref(false)
 const accountModelsError = ref('')
@@ -1094,7 +1090,7 @@ watch(() => [automationDialogVisible.value, automationDraft.value.accountStorage
     if (generation === accountModelGeneration) accountModelsLoading.value = false
   }
 })
-const automationModelOptions = computed(() => [{ value: '', label: '跟随运行时默认模型' }, ...(automationDraft.value.accountStorageId ? accountModels.value.map(model => model.id) : props.models ?? []).map(value => ({ value, label: value }))])
+const automationModelOptions = computed(() => [{ value: '', label: t('跟随运行时默认模型') }, ...(automationDraft.value.accountStorageId ? accountModels.value.map(model => model.id) : props.models ?? []).map(value => ({ value, label: value }))])
 const automationModelCapability = computed(() => (automationDraft.value.accountStorageId ? accountModels.value : props.modelCapabilities)?.find(model => model.id === automationDraft.value.model))
 const automationFastControl = computed(() => fastModeControl(automationModelCapability.value, automationDraft.value.serviceTier))
 const automationEffortOptions = computed(() => effortOptions(automationModelCapability.value, automationDraft.value.reasoningEffort))

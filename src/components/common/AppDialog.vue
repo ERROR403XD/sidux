@@ -20,7 +20,7 @@
       >
         <header class="app-dialog-header">
           <h2>{{ title }}</h2>
-          <AppButton :disabled="busy" aria-label="关闭窗口" @click="close">×</AppButton>
+          <AppButton :disabled="busy" :aria-label="t('关闭窗口')" @click="close">×</AppButton>
         </header>
         <div ref="body" class="app-dialog-body"><slot /></div>
         <footer v-if="$slots.footer" class="app-dialog-footer"><slot name="footer" /></footer>
@@ -30,6 +30,8 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '../../composables/useUiLanguage'
+
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { vModalBackdrop } from '../../composables/modalBackdrop'
 import AppButton from './AppButton.vue'

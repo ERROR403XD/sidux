@@ -61,7 +61,7 @@
               :disabled="isActing"
               @click="onToggleEnabled"
             >
-              {{ props.isToggling ? '保存中…' : effectiveEnabled ? t('Disable') : t('Enable') }}
+              {{ t(props.isToggling ? '保存中…' : effectiveEnabled ? t('Disable') : t('Enable')) }}
             </button>
 
             <button

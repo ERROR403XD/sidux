@@ -1,61 +1,63 @@
 <template>
   <AppDialog :open="true" :busy="working" :title="`/${request.name} · ${title}`" @close="close">
     <div class="thread-command-dialog" :aria-busy="working || loading">
-      <p v-if="error" class="thread-command-error" role="alert">{{ error }}</p>
-      <p v-if="feedback" class="thread-command-feedback" role="status">{{ feedback }}</p>
-      <p v-if="loading">读取中…</p>
+      <p v-if="error" class="thread-command-error" role="alert">{{ t(error) }}</p>
+      <p v-if="feedback" class="thread-command-feedback" role="status">{{ t(feedback) }}</p>
+      <p v-if="loading">{{ t('读取中…') }}</p>
       <template v-if="request.name === 'goal'">
-        <p>目标保存在会话中，由 Codex 持续推进；保存并开始后可随时暂停。</p>
-        <p v-if="goal" class="thread-goal-status">{{ goalLabels[goal.status] }} · Codex 计量 {{ goal.tokensUsed.toLocaleString() }} tokens · {{ Math.round(goal.timeUsedSeconds / 60) }} 分钟</p>
-        <p v-if="goal && goalStatusHint(goal)" class="thread-command-hint" role="status">{{ goalStatusHint(goal) }}</p>
-        <p v-if="goalConflict" class="thread-command-error" role="alert">目标已在其他位置修改。请重新读取后再编辑。<AppButton :disabled="working" @click="reloadGoalForm">重新读取</AppButton></p>
-        <label>目标<textarea v-model="objective" data-autofocus rows="5" maxlength="8000" :disabled="working || loading" placeholder="说明希望完成什么，以及如何验收" /></label>
+        <p>{{ t('目标保存在会话中，由 Codex 持续推进；保存并开始后可随时暂停。') }}</p>
+        <p v-if="goal" class="thread-goal-status">{{ t(goalLabels[goal.status]) }} {{ t('· Codex 计量') }} {{ goal.tokensUsed.toLocaleString() }} tokens · {{ Math.round(goal.timeUsedSeconds / 60) }} {{ t('分钟') }}</p>
+        <p v-if="goal && goalStatusHint(goal)" class="thread-command-hint" role="status">{{ t(goalStatusHint(goal)) }}</p>
+        <p v-if="goalConflict" class="thread-command-error" role="alert">{{ t('目标已在其他位置修改。请重新读取后再编辑。') }}<AppButton :disabled="working" @click="reloadGoalForm">{{ t('重新读取') }}</AppButton></p>
+        <label>{{ t('目标') }}<textarea v-model="objective" data-autofocus rows="5" maxlength="8000" :disabled="working || loading" :placeholder="t('说明希望完成什么，以及如何验收')" /></label>
         <div class="goal-model-fields">
-          <div><span class="goal-model-label">模型</span><AppSelect v-model="selectedModel" class="goal-model-picker" :options="modelOptions" enable-search search-placeholder="搜索模型" :disabled="working || loading || !supported" /></div>
-          <div><span class="goal-model-label">推理强度</span><AppSelect v-model="selectedEffort" class="goal-effort-picker" :options="goalEffortOptions" :disabled="working || loading || !supported" /></div>
+          <div><span class="goal-model-label">{{ t('模型') }}</span><AppSelect v-model="selectedModel" class="goal-model-picker" :options="modelOptions" enable-search :search-placeholder="t('搜索模型')" :disabled="working || loading || !supported" /></div>
+          <div><span class="goal-model-label">{{ t('推理强度') }}</span><AppSelect v-model="selectedEffort" class="goal-effort-picker" :options="goalEffortOptions.map(option => ({ ...option, label: t(option.label) }))" :disabled="working || loading || !supported" /></div>
         </div>
-        <p v-if="settingsProblem" class="thread-command-error">{{ settingsProblem }}</p>
-        <p class="thread-command-hint">保存或继续目标时应用于会话后续回合；当前已开始的回合保持原配置。</p>
-        <label>Token 预算（默认 M，可填 M/B）<input v-model="budget" maxlength="50" spellcheck="false" :disabled="working || loading" placeholder="如 1、1.5M 或 0.01B；留空不设预算" /></label>
-        <p class="thread-command-hint">M = 100 万 tokens；B = 10 亿 tokens。不写单位时按 M 计算。</p>
-        <p v-if="goal && objective.trim() !== goal.objective" class="thread-command-hint">修改目标内容会重置该目标的用量统计。</p>
+        <p v-if="settingsProblem" class="thread-command-error">{{ t(settingsProblem) }}</p>
+        <p class="thread-command-hint">{{ t('保存或继续目标时应用于会话后续回合；当前已开始的回合保持原配置。') }}</p>
+        <label>{{ t('Token 预算（默认 M，可填 M/B）') }}<input v-model="budget" maxlength="50" spellcheck="false" :disabled="working || loading" :placeholder="t('如 1、1.5M 或 0.01B；留空不设预算')" /></label>
+        <p class="thread-command-hint">{{ t('M = 100 万 tokens；B = 10 亿 tokens。不写单位时按 M 计算。') }}</p>
+        <p v-if="goal && objective.trim() !== goal.objective" class="thread-command-hint">{{ t('修改目标内容会重置该目标的用量统计。') }}</p>
         <div class="thread-command-actions">
-          <AppButton type="button" :disabled="working || loading || !supported || goalConflict || !!settingsProblem || !objective.trim()" @click="saveGoal">{{ goal ? '保存目标' : '保存并开始' }}</AppButton>
-          <AppButton v-if="goal" type="button" :disabled="working || loading || !supported || (goal.status !== 'active' && (!!goalResumeProblem(goal) || !!settingsProblem || goalConflict || goalFormDirty))" @click="changeGoalStatus(goal.status === 'active' ? 'paused' : 'active')">{{ goal.status === 'active' ? '暂停目标' : '继续目标' }}</AppButton>
-          <AppButton v-if="goal" type="button" :disabled="working || loading || !supported || goalConflict" @click="clearGoal">清除目标</AppButton>
+          <AppButton type="button" :disabled="working || loading || !supported || goalConflict || !!settingsProblem || !objective.trim()" @click="saveGoal">{{ t(goal ? '保存目标' : '保存并开始') }}</AppButton>
+          <AppButton v-if="goal" type="button" :disabled="working || loading || !supported || (goal.status !== 'active' && (!!goalResumeProblem(goal) || !!settingsProblem || goalConflict || goalFormDirty))" @click="changeGoalStatus(goal.status === 'active' ? 'paused' : 'active')">{{ t(goal.status === 'active' ? '暂停目标' : '继续目标') }}</AppButton>
+          <AppButton v-if="goal" type="button" :disabled="working || loading || !supported || goalConflict" @click="clearGoal">{{ t('清除目标') }}</AppButton>
         </div>
-        <p v-if="goal && goal.status !== 'active' && goalFormDirty" class="thread-command-hint">请先保存目标或预算的修改，再继续。</p>
+        <p v-if="goal && goal.status !== 'active' && goalFormDirty" class="thread-command-hint">{{ t('请先保存目标或预算的修改，再继续。') }}</p>
         <p v-if="goal && goal.status !== 'active' && goalResumeProblem(goal) && goal.status !== 'budgetLimited'" class="thread-command-hint">{{ goalResumeProblem(goal) }}</p>
         <details class="thread-command-hint goal-behavior-help">
-          <summary>预算与暂停说明</summary>
-          <p>预算按 Codex 目标计数控制后续推进，当前回合可能超出预算；该计数不等于会话历史总 tokens。</p>
-          <p>暂停或清除停止目标的后续推进；需立即停止当前回合时，使用会话停止按钮。</p>
+          <summary>{{ t('预算与暂停说明') }}</summary>
+          <p>{{ t('预算按 Codex 目标计数控制后续推进，当前回合可能超出预算；该计数不等于会话历史总 tokens。') }}</p>
+          <p>{{ t('暂停或清除停止目标的后续推进；需立即停止当前回合时，使用会话停止按钮。') }}</p>
         </details>
       </template>
       <template v-else-if="request.name === 'help'">
-        <p>输入 / 后继续搜索；↑↓ 选择，Enter 确认，Esc 收起。未选择命令时按原方式输入和发送文字。</p>
-        <dl class="thread-command-help"><template v-for="command in helpCommands" :key="command.id"><dt>{{ command.name }}</dt><dd>{{ command.description }}</dd></template></dl>
+        <p>{{ t('输入 / 后继续搜索；↑↓ 选择，Enter 确认，Esc 收起。未选择命令时按原方式输入和发送文字。') }}</p>
+        <dl class="thread-command-help"><template v-for="command in helpCommands" :key="command.id"><dt>{{ command.name }}</dt><dd>{{ t(command.description) }}</dd></template></dl>
       </template>
       <template v-else-if="request.name === 'status'">
-        <dl class="thread-command-status"><dt>会话</dt><dd>{{ threadName || '新会话' }}</dd><dt>模型</dt><dd>{{ model || '未选择' }}</dd><dt>推理强度</dt><dd>{{ effort || '默认' }}</dd><dt>运行状态</dt><dd>{{ busy ? '当前任务运行中，新消息默认排队' : '空闲' }}</dd><dt>工作目录</dt><dd>{{ cwd || '未选择' }}</dd><dt>上下文</dt><dd>{{ contextSummary }}</dd></dl>
+        <dl class="thread-command-status"><dt>{{ t('会话') }}</dt><dd>{{ threadName || t('新会话') }}</dd><dt>{{ t('模型') }}</dt><dd>{{ model || t('未选择') }}</dd><dt>{{ t('推理强度') }}</dt><dd>{{ t(effort || '默认') }}</dd><dt>{{ t('运行状态') }}</dt><dd>{{ t(busy ? '当前任务运行中，新消息默认排队' : '空闲') }}</dd><dt>{{ t('工作目录') }}</dt><dd>{{ cwd || t('未选择') }}</dd><dt>{{ t('上下文') }}</dt><dd>{{ t(contextSummary) }}</dd></dl>
       </template>
       <template v-else>
-        <p>{{ descriptor?.description }}</p>
-        <label v-if="request.name === 'rename'">会话名称<input v-model="value" data-autofocus maxlength="200" /></label>
+        <p>{{ t(descriptor?.description || '') }}</p>
+        <label v-if="request.name === 'rename'">{{ t('会话名称') }}<input v-model="value" data-autofocus maxlength="200" /></label>
         <template v-if="request.name === 'compact'">
-          <p class="thread-command-hint">任务结束后可压缩上下文，进度会显示在会话中。</p>
-          <p v-if="compactionRequest" class="thread-command-feedback" role="status">{{ compactionRequest.status === 'requested' ? '已请求压缩，等待运行时状态。' : compactionLabels[compactionRequest.status] }}</p>
-          <p v-if="compactionRequest?.error" class="thread-command-error">{{ compactionRequest.error }}</p>
-          <AppButton v-if="isCompactionPending(compactionRequest)" :disabled="working || loading" @click="checkCompaction">检查结果</AppButton>
+          <p class="thread-command-hint">{{ t('任务结束后可压缩上下文，进度会显示在会话中。') }}</p>
+          <p v-if="compactionRequest" class="thread-command-feedback" role="status">{{ t(compactionRequest.status === 'requested' ? '已请求压缩，等待运行时状态。' : compactionLabels[compactionRequest.status]) }}</p>
+          <p v-if="compactionRequest?.error" class="thread-command-error">{{ t(compactionRequest.error) }}</p>
+          <AppButton v-if="isCompactionPending(compactionRequest)" :disabled="working || loading" @click="checkCompaction">{{ t('检查结果') }}</AppButton>
         </template>
-        <p v-if="request.name === 'review'" class="thread-command-hint">会在当前会话发起一次代码审查，使用当前运行时模型。</p>
-        <p v-if="unavailable" class="thread-command-hint">{{ unavailable }}</p>
-        <AppButton type="button" :disabled="working || loading || !!unavailable || !supported || compactWaiting || (request.name === 'rename' && !value.trim())" @click="execute">{{ request.name === 'compact' && compactionRequest?.status === 'unknown' ? '再次压缩' : actionLabel }}</AppButton>
+        <p v-if="request.name === 'review'" class="thread-command-hint">{{ t('会在当前会话发起一次代码审查，使用当前运行时模型。') }}</p>
+        <p v-if="unavailable" class="thread-command-hint">{{ t(unavailable) }}</p>
+        <AppButton type="button" :disabled="working || loading || !!unavailable || !supported || compactWaiting || (request.name === 'rename' && !value.trim())" @click="execute">{{ t(request.name === 'compact' && compactionRequest?.status === 'unknown' ? '再次压缩' : actionLabel) }}</AppButton>
       </template>
     </div>
   </AppDialog>
 </template>
 <script setup lang="ts">
+import { t } from '../../composables/useUiLanguage'
+
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppButton from '../common/AppButton.vue'

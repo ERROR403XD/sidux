@@ -4,7 +4,7 @@
       <h2 class="skills-hub-title">{{ t('Skills Hub') }}</h2>
     </div>
 
-    <div v-if="toast" class="skills-hub-toast" :class="toastClass">{{ toast.text }}</div>
+    <div v-if="toast" class="skills-hub-toast" :class="toastClass">{{ t(toast.text) }}</div>
 
     <div class="skills-search-panel">
       <div class="skills-search-header">
@@ -34,7 +34,7 @@
         </button>
       </form>
       <div v-if="skillSearchError" class="skills-hub-error">
-        <span>{{ skillSearchError }}</span>
+        <span>{{ t(skillSearchError) }}</span>
         <a class="skills-error-feedback" :href="feedbackMailto" @click="prepareSkillsErrorFeedback($event, skillSearchError)">{{ t('Send feedback') }}</a>
       </div>
     </div>
@@ -57,7 +57,7 @@
 
     <slot name="before-installed" />
 
-    <p v-for="problem in discoveryErrors" :key="problem" class="skills-hub-error">{{ problem }}</p>
+    <p v-for="problem in discoveryErrors" :key="problem" class="skills-hub-error">{{ t(problem) }}</p>
     <div v-if="filteredInstalled.length > 0 && !isLoading && !error" class="skills-hub-section">
       <button class="skills-hub-section-toggle" type="button" @click="isInstalledOpen = !isInstalledOpen">
         <span class="skills-hub-section-title">{{ t('Installed skills ({count})', { count: filteredInstalled.length }) }}</span>
@@ -78,7 +78,7 @@
     <div class="skills-hub-section">
       <div v-if="isLoading" class="skills-hub-loading">{{ t('Loading skills...') }}</div>
       <div v-else-if="error" class="skills-hub-error">
-        <span>{{ error }}</span>
+        <span>{{ t(error) }}</span>
         <a class="skills-error-feedback" :href="feedbackMailto" @click="prepareSkillsErrorFeedback($event, error)">{{ t('Send feedback') }}</a>
       </div>
       <div v-else-if="installedSkills.length === 0" class="skills-hub-empty">{{ t('No installed skills found.') }}</div>

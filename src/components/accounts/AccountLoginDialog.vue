@@ -1,30 +1,32 @@
 <template>
-  <AppDialog :open="open" :title="intent === 'reauth' ? '重新登录账号' : '登录新账号'" :busy="busy || verifying" size="compact" panel-class="account-login-dialog" @close="cancel">
+  <AppDialog :open="open" :title="t(intent === 'reauth' ? '重新登录账号' : '登录新账号')" :busy="busy || verifying" size="compact" panel-class="account-login-dialog" @close="cancel">
     <div class="account-login-fields">
-      <label>登录方式<AppSelect :model-value="method" :options="methods" :disabled="busy || verifying" @update:model-value="changeMethod" /></label>
-      <p v-if="targetLabel">预期账号：{{ targetLabel }}</p>
-      <p>{{ method === 'link' ? '打开授权链接，完成登录后将浏览器的完整 localhost 回调链接粘贴到下方。' : '打开验证网页，输入设备码。授权完成后会自动验证并加入账号列表。' }}</p>
+      <label>{{ t('登录方式') }}<AppSelect :model-value="method" :options="methods.map(option => ({ ...option, label: t(option.label) }))" :disabled="busy || verifying" @update:model-value="changeMethod" /></label>
+      <p v-if="targetLabel">{{ t('预期账号：') }}{{ targetLabel }}</p>
+      <p>{{ t(method === 'link' ? '打开授权链接，完成登录后将浏览器的完整 localhost 回调链接粘贴到下方。' : '打开验证网页，输入设备码。授权完成后会自动验证并加入账号列表。') }}</p>
       <template v-if="session">
-        <a v-if="session.loginUrl" :href="session.loginUrl" target="_blank" rel="noopener noreferrer">{{ method === 'link' ? '打开授权链接' : '打开验证网页' }}</a>
+        <a v-if="session.loginUrl" :href="session.loginUrl" target="_blank" rel="noopener noreferrer">{{ t(method === 'link' ? '打开授权链接' : '打开验证网页') }}</a>
         <template v-if="method === 'device' && session.userCode">
-          <output class="account-login-code" aria-label="设备授权码">{{ session.userCode }}</output>
-          <AppButton @click="copyCode">复制设备码</AppButton>
+          <output class="account-login-code" :aria-label="t('设备授权码')">{{ session.userCode }}</output>
+          <AppButton @click="copyCode">{{ t('复制设备码') }}</AppButton>
         </template>
-        <label v-if="method === 'link'">回调链接<input v-model="callback" class="app-input" type="url" placeholder="粘贴完整 localhost 回调链接" :disabled="busy" @keydown.enter.prevent="completeLink" /></label>
-        <p role="status">{{ verifying ? '正在验证账号…' : terminal ? '本次登录已结束，可重新开始。' : method === 'device' ? '等待设备授权…' : '等待回调链接…' }}</p>
-        <small v-if="session.expiresAt && !terminal">有效期至 {{ formatLocalDateTime(session.expiresAt) }}</small>
+        <label v-if="method === 'link'">{{ t('回调链接') }}<input v-model="callback" class="app-input" type="url" :placeholder="t('粘贴完整 localhost 回调链接')" :disabled="busy" @keydown.enter.prevent="completeLink" /></label>
+        <p role="status">{{ t(verifying ? '正在验证账号…' : terminal ? '本次登录已结束，可重新开始。' : method === 'device' ? '等待设备授权…' : '等待回调链接…') }}</p>
+        <small v-if="session.expiresAt && !terminal">{{ t('有效期至') }} {{ formatLocalDateTime(session.expiresAt) }}</small>
       </template>
-      <p v-if="error" role="alert" class="account-login-error">{{ error }}</p>
+      <p v-if="error" role="alert" class="account-login-error">{{ t(error) }}</p>
     </div>
     <template #footer>
-      <AppButton :disabled="busy || verifying" @click="cancel">取消</AppButton>
-      <AppButton v-if="!session || terminal" :busy="busy" @click="start">开始登录</AppButton>
-      <AppButton v-else-if="method === 'link'" :busy="busy" :disabled="!callback.trim()" @click="completeLink">完成登录</AppButton>
+      <AppButton :disabled="busy || verifying" @click="cancel">{{ t('取消') }}</AppButton>
+      <AppButton v-if="!session || terminal" :busy="busy" @click="start">{{ t('开始登录') }}</AppButton>
+      <AppButton v-else-if="method === 'link'" :busy="busy" :disabled="!callback.trim()" @click="completeLink">{{ t('完成登录') }}</AppButton>
     </template>
   </AppDialog>
 </template>
 
 <script setup lang="ts">
+import { t } from '../../composables/useUiLanguage'
+
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppSelect from '../common/AppSelect.vue'

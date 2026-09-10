@@ -20,10 +20,10 @@
           <span class="skill-card-name">{{ skill.displayName || skill.name }}</span>
           <template v-if="showStatusBadge">
             <span v-if="skill.installed && skill.enabled === false" class="skill-card-badge-disabled">{{ t('Disabled') }}</span>
-            <span v-else-if="skill.installed" class="skill-card-badge">{{ skill.enabled === true ? '已启用' : '状态未知' }}</span>
+            <span v-else-if="skill.installed" class="skill-card-badge">{{ t(skill.enabled === true ? '已启用' : '状态未知') }}</span>
           </template>
         </div>
-        <span v-if="skill.scope" class="skill-card-owner" :title="skill.path">{{ skill.pluginId ? '插件' : skill.scope === 'repo' ? '项目' : skill.scope === 'user' ? '用户' : skill.scope }} · {{ skill.path }}</span>
+        <span v-if="skill.scope" class="skill-card-owner" :title="skill.path">{{ t(skill.pluginId ? '插件' : skill.scope === 'repo' ? '项目' : skill.scope === 'user' ? '用户' : skill.scope) }} · {{ skill.path }}</span>
         <span v-if="showOwner" class="skill-card-owner">{{ skill.owner }}</span>
       </div>
       <button
@@ -38,7 +38,7 @@
     </div>
     <p v-if="skill.description" class="skill-card-desc">{{ skill.description }}</p>
     <div v-if="metaLabels.length > 0" class="skill-card-meta-row">
-      <span v-for="label in metaLabels" :key="label" class="skill-card-meta">{{ label }}</span>
+      <span v-for="label in metaLabels" :key="label" class="skill-card-meta">{{ t(label) }}</span>
     </div>
   </button>
 </template>

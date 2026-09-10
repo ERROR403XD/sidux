@@ -1,12 +1,12 @@
 <template>
   <div class="account-panel">
     <header class="account-panel-header">
-      <h3>OpenAI账号 <small>{{ accounts.length }}</small></h3>
-      <AppButton :disabled="busy" title="刷新账号列表" aria-label="刷新账号列表" @click="$emit('refresh')">↻</AppButton>
+      <h3>{{ t('OpenAI账号') }} <small>{{ accounts.length }}</small></h3>
+      <AppButton :disabled="busy" :title="t('刷新账号列表')" :aria-label="t('刷新账号列表')" @click="$emit('refresh')">↻</AppButton>
       <AppButton :disabled="busy" @click="$emit('add')">{{ t('Add account') }}</AppButton>
     </header>
-    <p v-if="error" class="account-panel-error" role="alert">{{ error }}</p>
-    <p v-if="notice" class="account-panel-notice" role="status">{{ notice }}</p>
+    <p v-if="error" class="account-panel-error" role="alert">{{ t(error) }}</p>
+    <p v-if="notice" class="account-panel-notice" role="status">{{ t(notice) }}</p>
     <div class="account-panel-list">
       <p v-if="!accounts.length" class="account-panel-empty">{{ t('No accounts yet. Add one from this panel.') }}</p>
       <article v-for="account in accounts" :key="account.storageId" class="account-card" :class="{ 'is-active': account.isActive }" :data-account-id="account.storageId">
@@ -14,27 +14,27 @@
           <strong :title="account.email || account.accountId">{{ accountDisplayName(account) }}</strong>
           <span class="account-plan-badge">{{ account.planType || t('unknown') }}</span>
         </div>
-        <p v-if="account.authStatus !== 'ready'" class="account-card-meta">{{ status(account) }}</p>
-        <p v-if="account.quotaUpdatedAtIso" class="account-card-meta">更新于 {{ formatLocalDateTime(account.quotaUpdatedAtIso, { second: '2-digit' }) }}</p>
-        <p v-if="account.protectionPercent" class="account-card-meta">主额度保护 {{ account.protectionPercent }}%<span v-if="account.quotaSnapshot?.primary?.windowMinutes === 300 || account.quotaSnapshot?.secondary?.windowMinutes === 300"> · 5h保护 {{ Math.min(100, account.protectionPercent * 2) }}%</span></p>
+        <p v-if="account.authStatus !== 'ready'" class="account-card-meta">{{ t(status(account)) }}</p>
+        <p v-if="account.quotaUpdatedAtIso" class="account-card-meta">{{ t('更新于') }} {{ formatLocalDateTime(account.quotaUpdatedAtIso, { second: '2-digit' }) }}</p>
+        <p v-if="account.protectionPercent" class="account-card-meta">{{ t('主额度保护') }} {{ account.protectionPercent }}%<span v-if="account.quotaSnapshot?.primary?.windowMinutes === 300 || account.quotaSnapshot?.secondary?.windowMinutes === 300"> {{ t('· 5h保护') }} {{ Math.min(100, account.protectionPercent * 2) }}%</span></p>
         <AccountQuota v-if="account.quotaSnapshot" :snapshot="account.quotaSnapshot" />
         <p v-else class="account-card-meta">{{ account.quotaStatus === 'loading' ? t('Loading quota…') : t('Quota unavailable') }}</p>
-        <p v-if="account.quotaError" class="account-panel-error">{{ account.quotaError }}</p>
+        <p v-if="account.quotaError" class="account-panel-error">{{ t(account.quotaError) }}</p>
         <AccountResetCredits :account="account" :disabled="busy" @changed="$emit('reload')" />
         <footer class="account-card-actions">
           <AccountOptions :account="account" @changed="$emit('reload')" />
-          <AppButton v-if="account.isActive" class="account-current-button" disabled>当前使用</AppButton>
-          <AppButton v-else :disabled="disabled(account) || !account.canSwitch" @click="$emit('switch', account.storageId)">切换至此账号</AppButton>
+          <AppButton v-if="account.isActive" class="account-current-button" disabled>{{ t('当前使用') }}</AppButton>
+          <AppButton v-else :disabled="disabled(account) || !account.canSwitch" @click="$emit('switch', account.storageId)">{{ t('切换至此账号') }}</AppButton>
           <AppButton v-if="account.actionRequired === 'reauthenticate'" :disabled="disabled(account)" @click="$emit('reauth', account.storageId)">{{ t('Re-authenticate') }}</AppButton>
           <span class="account-card-spacer" />
           <div :ref="element => setAnchor(account.storageId, element)" class="account-more-anchor">
-            <AppButton aria-label="账号更多操作" :aria-expanded="menuId === account.storageId" @click="menuId = menuId === account.storageId ? '' : account.storageId">⋯</AppButton>
+            <AppButton :aria-label="t('账号更多操作')" :aria-expanded="menuId === account.storageId" @click="menuId = menuId === account.storageId ? '' : account.storageId">⋯</AppButton>
           </div>
           <AppPopover :open="menuId === account.storageId" :anchor="anchors[account.storageId] || null" direction="up" align="end" panel-class="account-actions-menu" @close="menuId = ''">
             <p class="account-card-meta" :title="account.accountId">Workspace {{ account.accountId }}</p>
             <AppButton :disabled="disabled(account)" @click="run('quota', account.storageId)">{{ t('Refresh quota') }}</AppButton>
             <AppButton :disabled="disabled(account)" @click="run('reauth', account.storageId)">{{ t('Re-authenticate') }}</AppButton>
-            <AppButton variant="danger" @click="$emit('remove', account.storageId)">{{ confirmingRemoveId === account.storageId ? '确认移除并中断' : t('Remove') }}</AppButton>
+            <AppButton variant="danger" @click="$emit('remove', account.storageId)">{{ t(confirmingRemoveId === account.storageId ? '确认移除并中断' : t('Remove')) }}</AppButton>
           </AppPopover>
         </footer>
       </article>

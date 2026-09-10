@@ -1,21 +1,23 @@
 <template>
   <Teleport to="body">
     <div ref="root" class="composer-command-picker" :style="placement" @pointerdown.prevent>
-      <div class="composer-command-heading"><span>命令</span><span>/</span></div>
-      <div :id="listId" ref="optionsRoot" class="composer-command-options" role="listbox" @scroll="onScroll" aria-label="斜杠命令">
+      <div class="composer-command-heading"><span>{{ t('命令') }}</span><span>/</span></div>
+      <div :id="listId" ref="optionsRoot" class="composer-command-options" role="listbox" @scroll="onScroll" :aria-label="t('斜杠命令')">
         <div :style="{ height: `${windowStart * rowHeight}px` }" aria-hidden="true"></div>
         <button v-for="({ command, index }) in windowCommands" :id="`${listId}-${index}`" :key="command.id" class="composer-command-option" :class="{ 'is-selected': index === selectedIndex }" role="option" :aria-selected="index === selectedIndex" :aria-setsize="commands.length" :aria-posinset="index + 1" type="button" tabindex="-1" @click="emit('choose', command)">
-          <span class="composer-command-text"><strong>{{ command.name }}</strong><span>{{ command.description }}</span></span>
-          <small>{{ command.group }}</small>
+          <span class="composer-command-text"><strong>{{ command.name }}</strong><span>{{ t(command.description) }}</span></span>
+          <small>{{ t(command.group) }}</small>
         </button>
         <div :style="{ height: `${Math.max(0, commands.length - windowStart - windowCommands.length) * rowHeight}px` }" aria-hidden="true"></div>
-        <div v-if="!commands.length" class="composer-command-empty">没有匹配命令，继续输入或按原方式发送</div>
+        <div v-if="!commands.length" class="composer-command-empty">{{ t('没有匹配命令，继续输入或按原方式发送') }}</div>
       </div>
-      <div class="composer-command-footer">↑↓ 选择 · Enter 确认 · Esc 收起<span>也可直接输入文字</span></div>
+      <div class="composer-command-footer">{{ t('↑↓ 选择 · Enter 确认 · Esc 收起') }}<span>{{ t('也可直接输入文字') }}</span></div>
     </div>
   </Teleport>
 </template>
 <script setup lang="ts">
+import { t } from '../../composables/useUiLanguage'
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { ComposerCommand } from './composerCommands'
 const props = defineProps<{ commands: ComposerCommand[]; selectedIndex: number; anchor: HTMLTextAreaElement | null; listId: string }>()

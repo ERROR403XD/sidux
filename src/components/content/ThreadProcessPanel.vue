@@ -1,51 +1,51 @@
 <template>
   <AppButton @click="show('hooks')">Hooks</AppButton>
-  <AppButton @click="show('terminals')">Codex 后台终端</AppButton>
-  <AppDialog :open="mode !== null" :title="mode === 'hooks' ? 'Hooks' : 'Codex 后台终端'" :busy="stopping" panel-class="thread-process-dialog" @close="close">
-    <div class="process-heading"><small>{{ cwd }}</small><AppButton :disabled="loading || stopping" @click="load()">刷新</AppButton></div>
-    <p v-if="loading" role="status">读取中…</p>
-    <p v-if="error" class="process-error" role="alert">{{ error }}</p>
+  <AppButton @click="show('terminals')">{{ t('Codex 后台终端') }}</AppButton>
+  <AppDialog :open="mode !== null" :title="t(mode === 'hooks' ? 'Hooks' : 'Codex 后台终端')" :busy="stopping" panel-class="thread-process-dialog" @close="close">
+    <div class="process-heading"><small>{{ cwd }}</small><AppButton :disabled="loading || stopping" @click="load()">{{ t('刷新') }}</AppButton></div>
+    <p v-if="loading" role="status">{{ t('读取中…') }}</p>
+    <p v-if="error" class="process-error" role="alert">{{ t(error) }}</p>
     <template v-if="mode === 'hooks'">
-      <p class="process-note">观察记录始于 {{ formatLocalDateTime(hooks.observedSince) }}；仅包含已收到的事件。</p>
-      <p v-if="hooks.error" class="process-error" role="alert">{{ hooks.error }}</p>
-      <p v-if="hooks.limited" class="process-note">仅保留最近记录。</p>
-      <p v-if="!loading && !error && !hooks.runs.length">尚未观察到本会话的 Hooks 执行。</p>
+      <p class="process-note">{{ t('观察记录始于') }} {{ formatLocalDateTime(hooks.observedSince) }}{{ t('；仅包含已收到的事件。') }}</p>
+      <p v-if="hooks.error" class="process-error" role="alert">{{ t(hooks.error) }}</p>
+      <p v-if="hooks.limited" class="process-note">{{ t('仅保留最近记录。') }}</p>
+      <p v-if="!loading && !error && !hooks.runs.length">{{ t('尚未观察到本会话的 Hooks 执行。') }}</p>
       <HookRunCard v-for="run in hooks.runs" :key="hookRunKey(run)" :run="run" />
-      <details class="process-config"><summary>当前目录的 Hooks 配置（{{ configuration?.hooks.length ?? '—' }}）</summary>
-        <p v-if="configError" class="process-error" role="alert">{{ configError }}</p>
-        <p v-for="warning in configuration?.warnings" :key="warning" class="process-error">{{ warning }}</p>
-        <p v-if="configuration && !configuration.hooks.length">当前目录没有 Hooks 配置。</p>
-        <p class="process-note">需审阅的配置请在 Codex CLI 的 /hooks 中处理。</p>
+      <details class="process-config"><summary>{{ t('当前目录的 Hooks 配置（') }}{{ configuration?.hooks.length ?? '—' }}）</summary>
+        <p v-if="configError" class="process-error" role="alert">{{ t(configError) }}</p>
+        <p v-for="warning in configuration?.warnings" :key="warning" class="process-error">{{ t(warning) }}</p>
+        <p v-if="configuration && !configuration.hooks.length">{{ t('当前目录没有 Hooks 配置。') }}</p>
+        <p class="process-note">{{ t('需审阅的配置请在 Codex CLI 的 /hooks 中处理。') }}</p>
         <details v-for="definition in configuration?.hooks" :key="definition.key" class="process-card">
-          <summary><span>{{ definition.statusMessage || definition.eventName }}</span><span>{{ definition.enabled ? '已启用' : '已禁用' }} · {{ trustLabel(definition.trustStatus) }}</span></summary>
+          <summary><span>{{ definition.statusMessage || definition.eventName }}</span><span>{{ t(definition.enabled ? '已启用' : '已禁用') }} · {{ t(trustLabel(definition.trustStatus)) }}</span></summary>
           <p>{{ definition.eventName }} · {{ definition.handlerType }} · {{ definition.source }}</p>
-          <small>{{ definition.sourcePath }}</small><p v-if="definition.matcher">匹配：{{ definition.matcher }}</p><pre v-if="definition.command">{{ definition.command }}</pre>
+          <small>{{ definition.sourcePath }}</small><p v-if="definition.matcher">{{ t('匹配：') }}{{ definition.matcher }}</p><pre v-if="definition.command">{{ definition.command }}</pre>
         </details>
-        <p v-if="configuration?.limited">配置列表已截断。</p>
+        <p v-if="configuration?.limited">{{ t('配置列表已截断。') }}</p>
       </details>
     </template>
     <template v-if="mode === 'terminals'">
-      <p class="process-note">Codex 启动的后台进程。</p>
-      <p v-if="terminalReadAt" class="process-note">上次读取 {{ formatLocalDateTime(terminalReadAt) }}</p>
-      <p v-if="!loading && !error && !terminals.length">当前没有 Codex 后台终端。</p>
-      <p v-if="notice" role="status">{{ notice }}</p>
+      <p class="process-note">{{ t('Codex 启动的后台进程。') }}</p>
+      <p v-if="terminalReadAt" class="process-note">{{ t('上次读取') }} {{ formatLocalDateTime(terminalReadAt) }}</p>
+      <p v-if="!loading && !error && !terminals.length">{{ t('当前没有 Codex 后台终端。') }}</p>
+      <p v-if="notice" role="status">{{ t(notice) }}</p>
       <article v-for="terminal in terminals" :key="terminal.processId" class="process-card background-terminal">
-        <div class="process-heading"><strong>后台运行 · {{ terminal.processId }}</strong><div class="process-actions"><AppButton @click="selectOutput(terminal)">查看输出</AppButton><AppButton v-if="canTerminate" variant="danger" :disabled="stopping || loading || !!error" @click="confirming = terminal">停止</AppButton></div></div>
+        <div class="process-heading"><strong>{{ t('后台运行 ·') }} {{ terminal.processId }}</strong><div class="process-actions"><AppButton @click="selectOutput(terminal)">{{ t('查看输出') }}</AppButton><AppButton v-if="canTerminate" variant="danger" :disabled="stopping || loading || !!error" @click="confirming = terminal">{{ t('停止') }}</AppButton></div></div>
         <pre>{{ terminal.command }}</pre><small>{{ terminal.cwd }}</small>
-        <small class="process-id">{{ terminalMetrics(terminal) }}</small>
-        <section v-if="confirming?.processId === terminal.processId" class="process-confirm" aria-label="确认停止进程">
-          <p><strong>停止进程 {{ confirming.processId }}？</strong></p>
-          <p>命令项 {{ confirming.itemId }}</p>
-          <div class="process-actions"><AppButton :disabled="stopping" @click="confirming = null">取消</AppButton><AppButton variant="danger" :busy="stopping" @click="terminate">停止此进程</AppButton></div>
+        <small class="process-id">{{ t(terminalMetrics(terminal)) }}</small>
+        <section v-if="confirming?.processId === terminal.processId" class="process-confirm" :aria-label="t('确认停止进程')">
+          <p><strong>{{ t('停止进程') }} {{ confirming.processId }}？</strong></p>
+          <p>{{ t('命令项') }} {{ confirming.itemId }}</p>
+          <div class="process-actions"><AppButton :disabled="stopping" @click="confirming = null">{{ t('取消') }}</AppButton><AppButton variant="danger" :busy="stopping" @click="terminate">{{ t('停止此进程') }}</AppButton></div>
         </section>
       </article>
-      <section v-if="selected" class="process-card terminal-output" aria-label="进程输出">
-        <div class="process-heading"><strong>输出 · {{ selected.processId }}</strong><AppButton :disabled="outputLoading" @click="selectOutput(selected)">重新读取输出</AppButton></div>
-        <p v-if="terminalReadAt && !terminals.some(row => row.processId === selected?.processId)">已不在后台列表。</p>
-        <p v-if="outputLoading">读取输出中…</p><p v-if="outputError" class="process-error" role="alert">{{ outputError }}</p>
+      <section v-if="selected" class="process-card terminal-output" :aria-label="t('进程输出')">
+        <div class="process-heading"><strong>{{ t('输出 ·') }} {{ selected.processId }}</strong><AppButton :disabled="outputLoading" @click="selectOutput(selected)">{{ t('重新读取输出') }}</AppButton></div>
+        <p v-if="terminalReadAt && !terminals.some(row => row.processId === selected?.processId)">{{ t('已不在后台列表。') }}</p>
+        <p v-if="outputLoading">{{ t('读取输出中…') }}</p><p v-if="outputError" class="process-error" role="alert">{{ t(outputError) }}</p>
         <template v-if="output">
-          <p v-if="output.source === 'unavailable'">当前观察记录及最近 10 回合中没有这条命令的输出。</p>
-          <template v-else><small>{{ output.source === 'toolResult' ? '工具返回片段' : output.source === 'history' ? '会话历史' : '已观察的输出' }} · {{ commandStatusLabel(output.status) }}<template v-if="output.exitCode !== null"> · 退出码 {{ output.exitCode }}</template></small><pre>{{ output.text || '尚未收到输出。' }}</pre><small v-if="output.truncated">只显示已记录的片段或尾部，最多 32k 字符。</small></template>
+          <p v-if="output.source === 'unavailable'">{{ t('当前观察记录及最近 10 回合中没有这条命令的输出。') }}</p>
+          <template v-else><small>{{ t(output.source === 'toolResult' ? '工具返回片段' : output.source === 'history' ? '会话历史' : '已观察的输出') }} · {{ t(commandStatusLabel(output.status)) }}<template v-if="output.exitCode !== null"> {{ t('· 退出码') }} {{ output.exitCode }}</template></small><pre>{{ output.text || t('尚未收到输出。') }}</pre><small v-if="output.truncated">{{ t('只显示已记录的片段或尾部，最多 32k 字符。') }}</small></template>
         </template>
       </section>
     </template>
@@ -53,6 +53,8 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '../../composables/useUiLanguage'
+
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import AppButton from '../common/AppButton.vue'
 import AppDialog from '../common/AppDialog.vue'

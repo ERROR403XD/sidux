@@ -62,7 +62,7 @@
             />
           </div>
 
-          <p v-if="!isSidebarCollapsed && isSidebarSearchVisible && sidebarSearchQuery.trim()" class="sidebar-search-status" :title="threadSearchScope" role="status">{{ threadSearchStatus }} <button v-if="threadSearchState === 'error'" type="button" class="sidebar-search-retry" @click="threadSearchVersion += 1">重试</button></p>
+          <p v-if="!isSidebarCollapsed && isSidebarSearchVisible && sidebarSearchQuery.trim()" class="sidebar-search-status" :title="t(threadSearchScope)" role="status">{{ t(threadSearchStatus) }} <button v-if="threadSearchState === 'error'" type="button" class="sidebar-search-retry" @click="threadSearchVersion += 1">{{ t('重试') }}</button></p>
 
 
 
@@ -91,7 +91,7 @@
           >
             <span class="sidebar-skills-link-icon sidebar-api-proxy-link-icon" aria-hidden="true"><IconTablerPlug /></span>
             <span class="sidebar-skills-link-copy">
-              <span class="sidebar-skills-link-title">{{ t('API outlet') }}</span>
+              <span class="sidebar-skills-link-title">{{ t('API Proxy') }}</span>
               <span class="sidebar-skills-link-subtitle">{{ t('Codex client access') }}</span>
             </span>
           </button>
@@ -121,24 +121,24 @@
         </div>
 
         <div v-if="!isSidebarCollapsed" class="sidebar-account-footer">
-          <div class="sidebar-context-summary" :title="threadContextTooltip" :data-state="threadContextBadgeState">
-            <span>当前会话上下文</span>
-            <strong>{{ selectedThreadId ? threadContextPrimaryText : '未选择会话' }}</strong>
-            <small>{{ selectedThreadId ? threadContextSecondaryText : '' }}</small>
+          <div class="sidebar-context-summary" :title="t(threadContextTooltip)" :data-state="threadContextBadgeState">
+            <span>{{ t('当前会话上下文') }}</span>
+            <strong>{{ t(selectedThreadId ? threadContextPrimaryText : '未选择会话') }}</strong>
+            <small>{{ selectedThreadId ? t(threadContextSecondaryText) : '' }}</small>
           </div>
           <div ref="settingsAreaRef">
-            <button ref="settingsButtonRef" class="account-usage-button" type="button" :aria-expanded="isSettingsOpen" aria-label="账号与用量" @click="isSettingsOpen = !isSettingsOpen">
-              <span class="account-usage-heading"><strong>{{ activeAccount ? accountDisplayName(activeAccount) : '添加 GPT 账号' }}</strong><span aria-hidden="true">⌃</span></span>
-              <small v-if="activeAccount?.quotaUpdatedAtIso">更新于 {{ formatLocalDateTime(activeAccount.quotaUpdatedAtIso, { year: undefined, month: undefined, day: undefined, second: '2-digit' }, 'zh-CN') }}</small>
-              <small v-if="activeAccount && (activeAccount.authStatus !== 'ready' || activeAccount.quotaStatus === 'error')" class="account-panel-error">{{ activeAccount.quotaError || formatAccountStatus(activeAccount) }}</small>
+            <button ref="settingsButtonRef" class="account-usage-button" type="button" :aria-expanded="isSettingsOpen" :aria-label="t('账号与用量')" @click="isSettingsOpen = !isSettingsOpen">
+              <span class="account-usage-heading"><strong>{{ t(activeAccount ? accountDisplayName(activeAccount) : '添加 GPT 账号') }}</strong><span aria-hidden="true">⌃</span></span>
+              <small v-if="activeAccount?.quotaUpdatedAtIso">{{ t('更新于') }} {{ formatLocalDateTime(activeAccount.quotaUpdatedAtIso, { year: undefined, month: undefined, day: undefined, second: '2-digit' }, 'zh-CN') }}</small>
+              <small v-if="activeAccount && (activeAccount.authStatus !== 'ready' || activeAccount.quotaStatus === 'error')" class="account-panel-error">{{ t(activeAccount.quotaError || formatAccountStatus(activeAccount)) }}</small>
               <AccountQuota v-if="activeAccount?.quotaSnapshot" :snapshot="activeAccount.quotaSnapshot" compact />
-              <small v-else>{{ activeAccount ? (activeAccount.quotaStatus === 'loading' ? '正在读取用量…' : '暂无用量数据') : '尚未添加账号' }}</small>
+              <small v-else>{{ t(activeAccount ? (activeAccount.quotaStatus === 'loading' ? '正在读取用量…' : '暂无用量数据') : '尚未添加账号') }}</small>
             </button>
           </div>
           <AppPopover :open="isSettingsOpen" :anchor="settingsAreaRef" :width="400" direction="up" panel-class="account-popover" @close="isSettingsOpen = false">
             <AccountPanel :accounts="accounts" :busy="isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
   @reload="loadAccountsState()" @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount">
-              <template #footer><div class="account-versions"><span>Codex {{ runtimeCapabilities?.cliVersion || '检测中…' }}</span><span>CodexApp {{ runtimeCapabilities?.appVersion || appVersion }}</span></div><AppButton @click="openSettings">全局设置 →</AppButton></template>
+              <template #footer><div class="account-versions"><span>Codex {{ t(runtimeCapabilities?.cliVersion || '检测中…') }}</span><span>CodexApp {{ runtimeCapabilities?.appVersion || appVersion }}</span></div><AppButton @click="openSettings">{{ t('全局设置 →') }}</AppButton></template>
             </AccountPanel>
           </AppPopover>
         </div>
@@ -245,7 +245,7 @@
 <template #accounts><AccountPanel :accounts="accounts" :busy="isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
   @reload="loadAccountsState()" @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount" />
 <AccountActivation :key="displayTimeZonePreference" :accounts="accounts" />
-<details class="settings-optional-provider" :open="selectedProvider !== 'codex'"><summary>其他连接（可选）<span v-if="selectedProvider !== 'codex'"> · {{ selectedProvider }}</span></summary>              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the API provider for the Codex backend')">
+<details class="settings-optional-provider" :open="selectedProvider !== 'codex'"><summary>{{ t('其他连接（可选）') }}<span v-if="selectedProvider !== 'codex'"> · {{ selectedProvider }}</span></summary>              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the API provider for the Codex backend')">
                 <span class="sidebar-settings-label">{{ t('Provider') }}</span>
                 <AppSelect
                   class="sidebar-settings-provider-dropdown"
@@ -258,7 +258,7 @@
                 />
               </div>
               <div v-if="providerError" class="sidebar-settings-row sidebar-settings-error">
-                <span>{{ providerError }}</span>
+                <span>{{ t(providerError) }}</span>
                 <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, providerError)">{{ t('Send feedback') }}</a>
               </div>
               <div v-if="selectedProvider === 'openrouter'" class="sidebar-settings-row sidebar-settings-row--input">
@@ -421,31 +421,31 @@
                   menu-align="end"
                   @update:model-value="onDisplayTimeZoneChange"
                 />
-                <p v-if="displayTimeZoneError" class="sidebar-timezone-error" role="alert">{{ displayTimeZoneError }}</p>
+                <p v-if="displayTimeZoneError" class="sidebar-timezone-error" role="alert">{{ t(displayTimeZoneError) }}</p>
               </div>
 </template>
-<template #appearance>              <button class="sidebar-settings-row" type="button" :title="SETTINGS_HELP.appearance" @click="cycleDarkMode">
+<template #appearance>              <button class="sidebar-settings-row" type="button" :title="t(SETTINGS_HELP.appearance)" @click="cycleDarkMode">
                 <span class="sidebar-settings-label">{{ t('Appearance') }}</span>
                 <span class="sidebar-settings-value">{{ darkMode === 'system' ? t('System') : darkMode === 'dark' ? t('Dark') : t('Light') }}</span>
               </button>
-              <button class="sidebar-settings-row" type="button" :title="SETTINGS_HELP.chatWidth" @click="cycleChatWidth">
+              <button class="sidebar-settings-row" type="button" :title="t(SETTINGS_HELP.chatWidth)" @click="cycleChatWidth">
                 <span class="sidebar-settings-label">{{ t('Chat width') }}</span>
-                <span class="sidebar-settings-value">{{ chatWidthLabel }}</span>
+                <span class="sidebar-settings-value">{{ t(chatWidthLabel) }}</span>
               </button>
 </template>
-<template #input>              <button class="sidebar-settings-row" type="button" :title="SETTINGS_HELP.sendWithEnter" @click="toggleSendWithEnter">
+<template #input>              <button class="sidebar-settings-row" type="button" :title="t(SETTINGS_HELP.sendWithEnter)" @click="toggleSendWithEnter">
                 <span class="sidebar-settings-label">{{ t('Require ⌘ + enter to send') }}</span>
                 <span class="sidebar-settings-toggle" :class="{ 'is-on': !sendWithEnter }" />
               </button>
-              <button class="sidebar-settings-row" type="button" :title="SETTINGS_HELP.dictationClickToToggle" @click="toggleDictationClickToToggle">
+              <button class="sidebar-settings-row" type="button" :title="t(SETTINGS_HELP.dictationClickToToggle)" @click="toggleDictationClickToToggle">
                 <span class="sidebar-settings-label">{{ t('Click to toggle dictation') }}</span>
                 <span class="sidebar-settings-toggle" :class="{ 'is-on': dictationClickToToggle }" />
               </button>
-              <button class="sidebar-settings-row" type="button" :title="SETTINGS_HELP.dictationAutoSend" @click="toggleDictationAutoSend">
+              <button class="sidebar-settings-row" type="button" :title="t(SETTINGS_HELP.dictationAutoSend)" @click="toggleDictationAutoSend">
                 <span class="sidebar-settings-label">{{ t('Auto send dictation') }}</span>
                 <span class="sidebar-settings-toggle" :class="{ 'is-on': dictationAutoSend }" />
               </button>
-              <div class="sidebar-settings-row sidebar-settings-row--select" :title="SETTINGS_HELP.dictationLanguage">
+              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t(SETTINGS_HELP.dictationLanguage)">
                 <span class="sidebar-settings-label">{{ t('Dictation language') }}</span>
                 <AppSelect
                   class="sidebar-settings-language-dropdown"
@@ -460,9 +460,9 @@
               </div>
 </template>
 <template #integrations>
-<AppButton @click="openDirectory()">插件 / 技能 / MCP</AppButton><NotificationSettings :key="displayTimeZonePreference" />              <button class="sidebar-settings-row" type="button" aria-live="polite" @click="isTelegramConfigOpen = !isTelegramConfigOpen">
+<AppButton @click="openDirectory()">{{ t('插件 / 技能 / MCP') }}</AppButton><NotificationSettings :key="displayTimeZonePreference" />              <button class="sidebar-settings-row" type="button" aria-live="polite" @click="isTelegramConfigOpen = !isTelegramConfigOpen">
                 <span class="sidebar-settings-label">{{ t('Telegram') }}</span>
-                <span class="sidebar-settings-value">{{ telegramStatusText }}</span>
+                <span class="sidebar-settings-value">{{ t(telegramStatusText) }}</span>
               </button>
               <div v-if="isTelegramConfigOpen" class="sidebar-settings-telegram-panel">
                 <label class="sidebar-settings-field">
@@ -490,7 +490,7 @@
                   {{ t('Put one Telegram user ID per line or separate them with commas. Use `*` to allow all Telegram users. Unauthorized users will see their own ID in the rejection message so they can copy it here.') }}
                 </div>
                 <div v-if="telegramConfigError" class="sidebar-settings-telegram-error">
-                  <span>{{ telegramConfigError }}</span>
+                  <span>{{ t(telegramConfigError) }}</span>
                   <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, telegramConfigError)">{{ t('Send feedback') }}</a>
                 </div>
                 <div class="sidebar-settings-telegram-actions">
@@ -505,12 +505,12 @@
                 </div>
               </div>
 </template>
-<template #about><div class="settings-about-versions"><div class="account-versions"><span>Codex {{ runtimeCapabilities?.cliVersion || '检测中…' }}</span><span>CodexApp {{ runtimeCapabilities?.appVersion || appVersion }}</span></div><p>工作树 {{ worktreeName }}</p>
-<p v-if="runtimeCapabilities && runtimeCapabilities.appVersion !== appVersion" role="alert">前端版本 {{ appVersion }} 与服务端版本不同，请刷新页面。</p></div>
-<details class="runtime-capabilities"><summary>运行版本与能力</summary>
-<template v-if="runtimeCapabilities"><p>模型：动态目录 · 工具：轻量摘要</p><p>异步问题：已接入</p><p>原生历史分页：{{ runtimeCapabilities.features?.historyPaging ? '可用' : 'CLI 未声明，使用兼容路径' }}</p><p>协议 {{ runtimeCapabilities.experimental ? 'experimental' : '默认' }} · {{ runtimeCapabilities.schemaHash.slice(0,12) }}</p><p>CLI 声明 {{ runtimeCapabilities.methods.length }} 个方法，声明数量不代表客户端支持率。</p><p>检测时间 {{ runtimeCapabilities.generatedAt }}</p></template>
-<p v-if="runtimeCapabilitiesError" role="alert">{{ runtimeCapabilitiesError }}</p>
-<AppButton :busy="runtimeCapabilitiesLoading" @click="loadRuntimeCapabilities">重新检测</AppButton></details>              <a
+<template #about><div class="settings-about-versions"><div class="account-versions"><span>Codex {{ t(runtimeCapabilities?.cliVersion || '检测中…') }}</span><span>CodexApp {{ runtimeCapabilities?.appVersion || appVersion }}</span></div><p>{{ t('工作树') }} {{ worktreeName }}</p>
+<p v-if="runtimeCapabilities && runtimeCapabilities.appVersion !== appVersion" role="alert">{{ t('前端版本') }} {{ appVersion }} {{ t('与服务端版本不同，请刷新页面。') }}</p></div>
+<details class="runtime-capabilities"><summary>{{ t('运行版本与能力') }}</summary>
+<template v-if="runtimeCapabilities"><p>{{ t('模型：动态目录 · 工具：轻量摘要') }}</p><p>{{ t('异步问题：已接入') }}</p><p>{{ t('原生历史分页：') }}{{ t(runtimeCapabilities.features?.historyPaging ? '可用' : 'CLI 未声明，使用兼容路径') }}</p><p>{{ t('协议') }} {{ t(runtimeCapabilities.experimental ? 'experimental' : '默认') }} · {{ runtimeCapabilities.schemaHash.slice(0,12) }}</p><p>{{ t('CLI 声明') }} {{ runtimeCapabilities.methods.length }} {{ t('个方法，声明数量不代表客户端支持率。') }}</p><p>{{ t('检测时间') }} {{ runtimeCapabilities.generatedAt }}</p></template>
+<p v-if="runtimeCapabilitiesError" role="alert">{{ t(runtimeCapabilitiesError) }}</p>
+<AppButton :busy="runtimeCapabilitiesLoading" @click="loadRuntimeCapabilities">{{ t('重新检测') }}</AppButton></details>              <a
                 v-if="hasVisibleFeedbackError"
                 class="sidebar-settings-row sidebar-settings-feedback-row"
                 :href="feedbackMailto"
@@ -716,8 +716,8 @@
                     'is-error': worktreeInitStatus.phase === 'error',
                   }"
                 >
-                  <strong class="worktree-init-status-title">{{ worktreeInitStatus.title }}</strong>
-                  <span class="worktree-init-status-message">{{ worktreeInitStatus.message }}</span>
+                  <strong class="worktree-init-status-title">{{ t(worktreeInitStatus.title) }}</strong>
+                  <span class="worktree-init-status-message">{{ t(worktreeInitStatus.message) }}</span>
                 </div>
               </div>
 
@@ -773,12 +773,12 @@
 
               <template v-else>
                 <div class="content-thread">
-                  <p v-if="threadGoalsError" class="thread-goal-read-error" role="alert">{{ threadGoalsError }} <AppButton @click="refreshThreadGoals">重新读取</AppButton></p>
-                  <p v-if="pendingCompactionRequest" class="thread-compaction-pending" role="status">压缩请求等待确认。<AppButton @click="onComposerCommand({ name: 'compact', complete: () => {} })">检查压缩</AppButton></p>
+                  <p v-if="threadGoalsError" class="thread-goal-read-error" role="alert">{{ t(threadGoalsError) }} <AppButton @click="refreshThreadGoals">{{ t('重新读取') }}</AppButton></p>
+                  <p v-if="pendingCompactionRequest" class="thread-compaction-pending" role="status">{{ t('压缩请求等待确认。') }}<AppButton @click="onComposerCommand({ name: 'compact', complete: () => {} })">{{ t('检查压缩') }}</AppButton></p>
                   <ThreadTasksPanel :thread-id="selectedThreadId" :identity="selectedThread?.task || null" @return-task="onReturnTask" @open-task="onOpenRelatedTask" @search-tasks="isTaskSearchOpen = true">
                     <template #tools><ThreadProcessPanel :key="`${selectedThreadId}:${composerCwd}:${directoryAccountRevision}`" :thread-id="selectedThreadId" :cwd="composerCwd" /></template>
                   </ThreadTasksPanel>
-                  <AppButton v-if="taskReturnId" class="task-return-button" @click="onReturnTask(taskReturnId)">返回原会话</AppButton>
+                  <AppButton v-if="taskReturnId" class="task-return-button" @click="onReturnTask(taskReturnId)">{{ t('返回原会话') }}</AppButton>
                   <ThreadGoalCard v-if="selectedGoal" :goal="selectedGoal" @manage="onComposerCommand({ name: 'goal', complete: () => {} })" />
                   <ThreadConversation ref="threadConversationRef" :messages="filteredMessages" :is-loading="isLoadingMessages"
                     :active-thread-id="composerThreadContextId" :cwd="composerCwd"
@@ -797,20 +797,20 @@
 
                 <div class="composer-with-queue">
                   <p v-if="selectedAuthRecovery" class="thread-auth-recovery" role="status">
-                    {{ selectedAuthRecovery.phase === 'started' ? '正在恢复凭据' : '凭据恢复已结束' }}
-                    <span v-if="selectedAuthRecovery.message"> · {{ selectedAuthRecovery.message }}</span>
+                    {{ t(selectedAuthRecovery.phase === 'started' ? '正在恢复凭据' : '凭据恢复已结束') }}
+                    <span v-if="selectedAuthRecovery.message"> · {{ t(selectedAuthRecovery.message) }}</span>
                   </p>
                   <div v-if="codexCliMissingError" class="composer-runtime-error" role="alert">
                     <span>{{ t(codexCliMissingError) }}</span>
                     <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, codexCliMissingError)">{{ t('Send feedback') }}</a>
                   </div>
-                  <p v-if="selectedThreadQueueError" class="composer-runtime-error" role="alert">{{ selectedThreadQueueError }}</p>
-                  <p v-if="threadHistoryActionError" class="composer-runtime-error" role="alert">{{ threadHistoryActionError }}</p>
+                  <p v-if="selectedThreadQueueError" class="composer-runtime-error" role="alert">{{ t(selectedThreadQueueError) }}</p>
+                  <p v-if="threadHistoryActionError" class="composer-runtime-error" role="alert">{{ t(threadHistoryActionError) }}</p>
                   <DeliveryOutbox :thread-id="selectedThreadId" :queue="selectedThreadQueuedMessages" @settled="onDeliveryAcknowledged" />
-                  <p v-if="queueDraftError" class="composer-runtime-error" role="alert">{{ queueDraftError }}</p>
+                  <p v-if="queueDraftError" class="composer-runtime-error" role="alert">{{ t(queueDraftError) }}</p>
                   <div v-if="editingQueuedMessageState" class="queue-edit-notice" role="status">
-                    <span>正在编辑队列消息</span>
-                    <AppButton @click="resumeQueuedMessage(editingQueuedMessageState.messageId)">取消编辑</AppButton>
+                    <span>{{ t('正在编辑队列消息') }}</span>
+                    <AppButton @click="resumeQueuedMessage(editingQueuedMessageState.messageId)">{{ t('取消编辑') }}</AppButton>
                   </div>
                   <QueuedMessages
                     :messages="selectedThreadQueuedMessages"
@@ -904,13 +904,13 @@
       </p>
       <div class="project-zip-progress-label" role="status" aria-live="polite">
         <span>{{ projectZipExportStatus.phase === 'exporting' ? t('Exporting') : t('Ready') }}</span>
-        <span>{{ projectZipProgressText }}</span>
+        <span>{{ t(projectZipProgressText) }}</span>
       </div>
       <div class="project-zip-progress-track">
         <div class="project-zip-progress-fill" :style="{ width: projectZipProgressWidth }" />
       </div>
       <p v-if="projectZipExportStatus.error" class="project-zip-modal-error" role="alert">
-        {{ projectZipExportStatus.error }}
+        {{ t(projectZipExportStatus.error) }}
       </p>
       <div class="project-zip-modal-actions">
         <button class="project-zip-modal-cancel" type="button" :disabled="projectZipExportStatus.phase === 'exporting'" @click="onCloseProjectZipExportModal">
@@ -926,7 +926,7 @@
     </div>
   </div>
   <AccountLoginDialog :open="isCodexLoginModalOpen" :intent="loginIntent" :target-storage-id="loginTargetStorageId" :target-label="loginTargetAccount ? accountDisplayName(loginTargetAccount) : ''" @close="isCodexLoginModalOpen = false" @completed="onAccountLoginCompleted" @resume="resumeAccountLogin" />
-  <AppDialog :open="isProjectSetupModalOpen" :title="projectEditingId ? '编辑项目' : t('Create or clone project')" :busy="isProjectSetupSubmitting" @close="onCloseProjectSetupModal">
+  <AppDialog :open="isProjectSetupModalOpen" :title="t(projectEditingId ? '编辑项目' : t('Create or clone project'))" :busy="isProjectSetupSubmitting" @close="onCloseProjectSetupModal">
                       <div v-if="!projectEditingId" class="new-thread-project-mode-tabs" role="tablist" :aria-label="t('Project source')">
                         <button
                           class="new-thread-project-mode-tab"
@@ -987,7 +987,7 @@
                         />
                       </label>
                       <label v-if="projectSetupMode === 'create'" class="new-thread-project-field">
-                        <span class="new-thread-open-folder-label">附加工作目录</span>
+                        <span class="new-thread-open-folder-label">{{ t('附加工作目录') }}</span>
                         <textarea v-model="projectDirectoryDraft" class="new-thread-open-folder-path project-directories-input" rows="4" :disabled="isProjectSetupSubmitting || !projectDirectoriesLoaded" :placeholder="'/home/Code/project1\n/home/Code/project2'" />
                       </label>
                       <div v-if="projectSetupError" class="new-thread-open-folder-error visible-error-with-feedback">
@@ -996,14 +996,14 @@
                       </div>
     <template #footer>
       <AppButton :disabled="isProjectSetupSubmitting" @click="onCloseProjectSetupModal">{{ t('Cancel') }}</AppButton>
-      <AppButton :disabled="!canSubmitProjectSetup" :busy="isProjectSetupSubmitting" @click="onSubmitProjectSetup">{{ projectSetupSubmitLabel }}</AppButton>
+      <AppButton :disabled="!canSubmitProjectSetup" :busy="isProjectSetupSubmitting" @click="onSubmitProjectSetup">{{ t(projectSetupSubmitLabel) }}</AppButton>
     </template>
   </AppDialog>
-  <AppDialog :open="Boolean(replaceQueueDraftId)" title="替换当前草稿？" size="compact" @close="replaceQueueDraftId = ''">
-    <p>用这条队列消息替换输入框中的草稿。</p>
+  <AppDialog :open="Boolean(replaceQueueDraftId)" :title="t('替换当前草稿？')" size="compact" @close="replaceQueueDraftId = ''">
+    <p>{{ t('用这条队列消息替换输入框中的草稿。') }}</p>
     <template #footer>
-      <AppButton @click="replaceQueueDraftId = ''">保留草稿</AppButton>
-      <AppButton @click="hydrateQueuedMessage(replaceQueueDraftId)">替换并编辑</AppButton>
+      <AppButton @click="replaceQueueDraftId = ''">{{ t('保留草稿') }}</AppButton>
+      <AppButton @click="hydrateQueuedMessage(replaceQueueDraftId)">{{ t('替换并编辑') }}</AppButton>
     </template>
   </AppDialog>
 </template>
@@ -1791,7 +1791,7 @@ const routeAutomationId = computed(() => {
 })
 const contentTitle = computed(() => {
   if (isSettingsRoute.value) return t('Settings')
-  if (isApiProxyRoute.value) return t('API outlet')
+  if (isApiProxyRoute.value) return t('API Proxy')
   if (isAutomationsRoute.value) return t('Automations')
   if (isSkillsRoute.value) return '插件 / 技能 / MCP'
   if (isHomeRoute.value) return t('Start new thread')

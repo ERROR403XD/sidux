@@ -1,31 +1,33 @@
 <template>
-  <AppDialog :open="open" title="搜索任务" panel-class="task-search-dialog" @close="emit('close')">
+  <AppDialog :open="open" :title="t('搜索任务')" panel-class="task-search-dialog" @close="emit('close')">
     <div class="task-search-controls">
-      <input v-model="query" class="app-input" aria-label="搜索任务" maxlength="200" :placeholder="mode === 'title' ? '搜索标题' : '搜索正文'" />
-      <AppSelect :model-value="mode" :options="[{ value: 'title', label: '标题' }, { value: 'body', label: '正文' }]" @update:model-value="setMode" />
+      <input v-model="query" class="app-input" :aria-label="t('搜索任务')" maxlength="200" :placeholder="t(mode === 'title' ? '搜索标题' : '搜索正文')" />
+      <AppSelect :model-value="mode" :options="[{ value: 'title', label: t('标题') }, { value: 'body', label: t('正文') }]" @update:model-value="setMode" />
     </div>
-    <p class="task-search-scope">{{ query.trim() ? (mode === 'body' ? '搜索已索引正文' : '按任务标题搜索') : '最近的非归档任务' }} · 每页 20 条</p>
-    <p v-if="error" role="alert">{{ error }} <AppButton :disabled="loading || inserting" @click="load(false)">重试</AppButton></p>
-    <p v-if="loading" role="status">搜索中…</p>
-    <p v-else-if="!rows.length && !error">未找到匹配任务。</p>
+    <p class="task-search-scope">{{ t(query.trim() ? (mode === 'body' ? '搜索已索引正文' : '按任务标题搜索') : '最近的非归档任务') }} {{ t('· 每页 20 条') }}</p>
+    <p v-if="error" role="alert">{{ t(error) }} <AppButton :disabled="loading || inserting" @click="load(false)">{{ t('重试') }}</AppButton></p>
+    <p v-if="loading" role="status">{{ t('搜索中…') }}</p>
+    <p v-else-if="!rows.length && !error">{{ t('未找到匹配任务。') }}</p>
     <ul class="task-result-list">
       <li v-for="row in rows" :key="row.id">
-        <div class="task-result-heading"><strong>{{ row.title }}</strong><small>{{ taskStatusLabel(row.status) }}</small></div>
+        <div class="task-result-heading"><strong>{{ row.title }}</strong><small>{{ t(taskStatusLabel(row.status)) }}</small></div>
         <small v-if="row.nickname || row.role">{{ [row.nickname, row.role].filter(Boolean).join(' · ') }}</small>
         <p class="task-preview">{{ row.snippet || row.preview }}</p>
         <div class="task-row-actions">
-          <AppButton :disabled="loading || inserting" @click="emit('openTask', row.id)">打开任务</AppButton>
-          <AppButton :disabled="!allowInsert || loading || inserting" @click="insert(row.id)">{{ insertingId === row.id ? '读取摘录…' : '插入任务摘录' }}</AppButton>
+          <AppButton :disabled="loading || inserting" @click="emit('openTask', row.id)">{{ t('打开任务') }}</AppButton>
+          <AppButton :disabled="!allowInsert || loading || inserting" @click="insert(row.id)">{{ t(insertingId === row.id ? '读取摘录…' : '插入任务摘录') }}</AppButton>
         </div>
       </li>
     </ul>
-    <AppButton v-if="cursor && rows.length < 200" :disabled="loading || inserting" @click="load(true)">加载更多任务</AppButton>
-    <small v-else-if="cursor">当前显示前 200 条；请缩小搜索范围。</small>
-    <p class="task-search-scope">摘录只包含最近 10 回合的用户与最终回复，最多 6,000 字符；插入后可在草稿中编辑。</p>
+    <AppButton v-if="cursor && rows.length < 200" :disabled="loading || inserting" @click="load(true)">{{ t('加载更多任务') }}</AppButton>
+    <small v-else-if="cursor">{{ t('当前显示前 200 条；请缩小搜索范围。') }}</small>
+    <p class="task-search-scope">{{ t('摘录只包含最近 10 回合的用户与最终回复，最多 6,000 字符；插入后可在草稿中编辑。') }}</p>
   </AppDialog>
 </template>
 
 <script setup lang="ts">
+import { t } from '../../composables/useUiLanguage'
+
 import { onBeforeUnmount, ref, watch } from 'vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppButton from '../common/AppButton.vue'

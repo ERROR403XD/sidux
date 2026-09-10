@@ -12,7 +12,7 @@
     </button>
 
     <template v-if="!isSidebarCollapsed">
-    <button class="sidebar-thread-controls-button" type="button" :title="`主题：${theme === 'dark' ? '深色' : theme === 'light' ? '浅色' : '跟随系统'}`" :aria-label="`主题：${theme === 'dark' ? '深色' : theme === 'light' ? '浅色' : '跟随系统'}`" @click="$emit('cycle-theme')">
+    <button class="sidebar-thread-controls-button" type="button" :title="t(`主题：${t(theme === 'dark' ? '深色' : theme === 'light' ? '浅色' : '跟随系统')}`)" :aria-label="t(`主题：${t(theme === 'dark' ? '深色' : theme === 'light' ? '浅色' : '跟随系统')}`)" @click="$emit('cycle-theme')">
       <svg class="sidebar-thread-controls-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
         <path v-if="theme === 'dark'" d="M20 15.2A8 8 0 0 1 8.8 4 8 8 0 1 0 20 15.2Z" />
         <template v-else-if="theme === 'light'"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></template>

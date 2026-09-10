@@ -1,27 +1,29 @@
 <template>
   <div v-if="pending.length || error" class="delivery-outbox">
-    <p v-if="error" class="delivery-outbox-error" role="alert">{{ error }}</p>
+    <p v-if="error" class="delivery-outbox-error" role="alert">{{ t(error) }}</p>
     <div v-for="row in pending" :key="row.id" class="delivery-outbox-row" :data-outbox-id="row.id">
       <div class="delivery-outbox-content">
-        <span>提交结果待确认</span>
-        <span class="delivery-outbox-preview">{{ readQuestionReply(row.body.message.text).questionReply ? '问题回答' : row.body.message.text || '含附件的消息' }}</span>
+        <span>{{ t('提交结果待确认') }}</span>
+        <span class="delivery-outbox-preview">{{ readQuestionReply(row.body.message.text).questionReply ? t('问题回答') : row.body.message.text || t('含附件的消息') }}</span>
       </div>
       <div class="delivery-outbox-actions">
-        <AppButton :busy="busyId === row.id" :disabled="Boolean(busyId)" @click="reconcile(row)">核对提交</AppButton>
-        <AppButton :disabled="Boolean(busyId)" @click="forgetId = row.id">停止跟踪</AppButton>
+        <AppButton :busy="busyId === row.id" :disabled="Boolean(busyId)" @click="reconcile(row)">{{ t('核对提交') }}</AppButton>
+        <AppButton :disabled="Boolean(busyId)" @click="forgetId = row.id">{{ t('停止跟踪') }}</AppButton>
       </div>
     </div>
-    <AppDialog :open="Boolean(forgetId)" title="停止跟踪这次提交？" size="compact" @close="forgetId = ''">
-      <p>这次提交可能已经到达服务器。停止跟踪不会取消服务器上的队列消息或中止任务。</p>
+    <AppDialog :open="Boolean(forgetId)" :title="t('停止跟踪这次提交？')" size="compact" @close="forgetId = ''">
+      <p>{{ t('这次提交可能已经到达服务器。停止跟踪不会取消服务器上的队列消息或中止任务。') }}</p>
       <template #footer>
-        <AppButton @click="forgetId = ''">保留记录</AppButton>
-        <AppButton variant="danger" @click="confirmForget">停止跟踪</AppButton>
+        <AppButton @click="forgetId = ''">{{ t('保留记录') }}</AppButton>
+        <AppButton variant="danger" @click="confirmForget">{{ t('停止跟踪') }}</AppButton>
       </template>
     </AppDialog>
   </div>
 </template>
 
 <script setup lang="ts">
+import { t } from '../../composables/useUiLanguage'
+
 import { readQuestionReply } from '../../userQuestions'
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { DELIVERY_OUTBOX_EVENT, forgetWebDelivery, readPendingWebDeliveries, submitRememberedDelivery, type PendingWebDelivery } from '../../api/deliveryOutbox'

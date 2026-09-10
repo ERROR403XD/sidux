@@ -19,7 +19,7 @@
         >
           {{ isLoadingMore || isLoadingPersistedAbove ? 'Loading…' : 'Load earlier messages' }}
         </button>
-        <p v-if="historyLoadError" class="history-load-error" role="alert">{{ historyLoadError }}</p>
+        <p v-if="historyLoadError" class="history-load-error" role="alert">{{ t(historyLoadError) }}</p>
       </li>
       <template v-for="message in visibleMessages" :key="renderKey(message)">
       <li
@@ -66,7 +66,7 @@
                   >
                     <span class="cmd-chevron" :class="{ 'cmd-chevron-open': isCommandExpanded(cmd) }">▶</span>
                     <code class="cmd-label">{{ cmd.commandExecution?.command || '(command)' }}</code>
-                    <span class="cmd-status">{{ commandStatusLabel(cmd) }}</span>
+                    <span class="cmd-status">{{ t(commandStatusLabel(cmd)) }}</span>
                   </button>
                   <div
                     class="cmd-output-wrap"
@@ -98,7 +98,7 @@
               >
                 <span class="cmd-chevron" :class="{ 'cmd-chevron-open': isCommandExpanded(message) }">▶</span>
                 <code class="cmd-label">{{ message.commandExecution?.command || '(command)' }}</code>
-                <span class="cmd-status">{{ commandStatusLabel(message) }}</span>
+                <span class="cmd-status">{{ t(commandStatusLabel(message)) }}</span>
               </button>
               <div
                 class="cmd-output-wrap"
@@ -133,7 +133,7 @@
                 >
                   <span class="cmd-chevron" :class="{ 'cmd-chevron-open': isFileChangeSummaryExpanded(message) }">▶</span>
                   <span class="file-change-summary-label">
-                    {{ fileChangeSummaryLabel(readStandaloneFileChangeSummary(message)) }}
+                    {{ t(fileChangeSummaryLabel(readStandaloneFileChangeSummary(message))) }}
                   </span>
                   <span class="file-change-summary-status">
                     <span
@@ -155,7 +155,7 @@
                         class="file-change-item"
                       >
                         <span class="file-change-badge" :data-operation="fileChangeOperationTone(change)">
-                          {{ fileChangeOperationLabel(change) }}
+                          {{ t(fileChangeOperationLabel(change)) }}
                         </span>
                         <button
                           type="button"
@@ -189,21 +189,21 @@
                     </ul>
                     <div v-if="isFileChangeActionable(readStandaloneFileChangeSummary(message))" class="file-change-actions">
                       <p v-if="fileChangeActionErrorText(readStandaloneFileChangeSummary(message))" class="file-change-action-error">
-                        {{ fileChangeActionErrorText(readStandaloneFileChangeSummary(message)) }}
+                        {{ t(fileChangeActionErrorText(readStandaloneFileChangeSummary(message))) }}
                       </p>
                       <button
                         type="button"
                         class="file-change-action-button"
                         :disabled="fileChangeActionStatus(readStandaloneFileChangeSummary(message)) === 'undoing' || fileChangeActionStatus(readStandaloneFileChangeSummary(message)) === 'redoing'"
-                        :title="fileChangeNextAction(readStandaloneFileChangeSummary(message)) === 'redo' ? 'Redo file changes from this turn' : 'Undo file changes from this turn'"
-                        :aria-label="fileChangeNextAction(readStandaloneFileChangeSummary(message)) === 'redo' ? 'Redo file changes from this turn' : 'Undo file changes from this turn'"
+                        :title="t(fileChangeNextAction(readStandaloneFileChangeSummary(message)) === 'redo' ? 'Redo file changes from this turn' : 'Undo file changes from this turn')"
+                        :aria-label="t(fileChangeNextAction(readStandaloneFileChangeSummary(message)) === 'redo' ? 'Redo file changes from this turn' : 'Undo file changes from this turn')"
                         @click="runFileChangeAction(readStandaloneFileChangeSummary(message), fileChangeNextAction(readStandaloneFileChangeSummary(message)))"
                       >
                         <IconTablerArrowBackUp
                           class="icon-svg file-change-action-icon"
                           :class="{ 'file-change-action-icon-redo': fileChangeNextAction(readStandaloneFileChangeSummary(message)) === 'redo' }"
                         />
-                        {{ fileChangeActionLabel(readStandaloneFileChangeSummary(message)) }}
+                        {{ t(fileChangeActionLabel(readStandaloneFileChangeSummary(message))) }}
                       </button>
                     </div>
                   </div>
@@ -279,9 +279,9 @@
                 </div>
                 <SubtaskEventCard v-if="message.subtask" :event="message.subtask" @open-task="emit('openTask', $event)" />
                 <div v-else-if="message.compaction" class="thread-compaction-event" :data-status="message.compaction.status" role="status">
-                  <span>{{ message.text }}</span>
-                  <small v-if="message.compaction.durationMs != null">{{ (message.compaction.durationMs / 1000).toFixed(1) }} 秒</small>
-                  <p v-if="message.compaction.error" role="alert">{{ message.compaction.error }}</p>
+                  <span>{{ t(message.text) }}</span>
+                  <small v-if="message.compaction.durationMs != null">{{ (message.compaction.durationMs / 1000).toFixed(1) }} {{ t('秒') }}</small>
+                  <p v-if="message.compaction.error" role="alert">{{ t(message.compaction.error) }}</p>
                 </div>
                 <details v-else-if="message.isUnhandled" class="model-tool-summary"><summary>{{ message.text }}</summary><p>{{ message.rawPayload }}</p></details>
                 <div v-else-if="message.messageType === 'worked'" class="worked-separator-wrap" aria-live="polite">
@@ -311,7 +311,7 @@
                       >
                         <span class="cmd-chevron" :class="{ 'cmd-chevron-open': isCommandExpanded(cmd) }">▶</span>
                         <code class="cmd-label">{{ cmd.commandExecution?.command || '(command)' }}</code>
-                        <span class="cmd-status">{{ commandStatusLabel(cmd) }}</span>
+                        <span class="cmd-status">{{ t(commandStatusLabel(cmd)) }}</span>
                       </button>
                       <div
                         class="cmd-output-wrap"
@@ -634,7 +634,7 @@
                 >
                   <span class="cmd-chevron" :class="{ 'cmd-chevron-open': isFileChangeSummaryExpanded(message) }">▶</span>
                   <span class="file-change-summary-label">
-                    {{ fileChangeSummaryLabel(readAnchoredFileChangeSummary(message)) }}
+                    {{ t(fileChangeSummaryLabel(readAnchoredFileChangeSummary(message))) }}
                   </span>
                   <span class="file-change-summary-status">
                     <span
@@ -656,7 +656,7 @@
                         class="file-change-item"
                       >
                         <span class="file-change-badge" :data-operation="fileChangeOperationTone(change)">
-                          {{ fileChangeOperationLabel(change) }}
+                          {{ t(fileChangeOperationLabel(change)) }}
                         </span>
                         <button
                           type="button"
@@ -690,21 +690,21 @@
                     </ul>
                     <div v-if="isFileChangeActionable(readAnchoredFileChangeSummary(message))" class="file-change-actions">
                       <p v-if="fileChangeActionErrorText(readAnchoredFileChangeSummary(message))" class="file-change-action-error">
-                        {{ fileChangeActionErrorText(readAnchoredFileChangeSummary(message)) }}
+                        {{ t(fileChangeActionErrorText(readAnchoredFileChangeSummary(message))) }}
                       </p>
                       <button
                         type="button"
                         class="file-change-action-button"
                         :disabled="fileChangeActionStatus(readAnchoredFileChangeSummary(message)) === 'undoing' || fileChangeActionStatus(readAnchoredFileChangeSummary(message)) === 'redoing'"
-                        :title="fileChangeNextAction(readAnchoredFileChangeSummary(message)) === 'redo' ? 'Redo file changes from this turn' : 'Undo file changes from this turn'"
-                        :aria-label="fileChangeNextAction(readAnchoredFileChangeSummary(message)) === 'redo' ? 'Redo file changes from this turn' : 'Undo file changes from this turn'"
+                        :title="t(fileChangeNextAction(readAnchoredFileChangeSummary(message)) === 'redo' ? 'Redo file changes from this turn' : 'Undo file changes from this turn')"
+                        :aria-label="t(fileChangeNextAction(readAnchoredFileChangeSummary(message)) === 'redo' ? 'Redo file changes from this turn' : 'Undo file changes from this turn')"
                         @click="runFileChangeAction(readAnchoredFileChangeSummary(message), fileChangeNextAction(readAnchoredFileChangeSummary(message)))"
                       >
                         <IconTablerArrowBackUp
                           class="icon-svg file-change-action-icon"
                           :class="{ 'file-change-action-icon-redo': fileChangeNextAction(readAnchoredFileChangeSummary(message)) === 'redo' }"
                         />
-                        {{ fileChangeActionLabel(readAnchoredFileChangeSummary(message)) }}
+                        {{ t(fileChangeActionLabel(readAnchoredFileChangeSummary(message))) }}
                       </button>
                     </div>
                   </div>
@@ -760,7 +760,7 @@
         <div class="message-row">
           <div class="message-stack">
             <article class="live-overlay-inline" aria-live="polite">
-              <p class="live-overlay-label">{{ liveOverlay.activityLabel }}</p>
+              <p class="live-overlay-label">{{ t(liveOverlay.activityLabel) }}</p>
               <p
                 v-if="liveOverlay.reasoningText"
                 class="live-overlay-reasoning"
@@ -768,7 +768,7 @@
                 {{ liveOverlay.reasoningText }}
               </p>
               <div v-if="liveOverlay.errorText" class="live-overlay-error">
-                <span>{{ liveOverlay.errorText }}</span>
+                <span>{{ t(liveOverlay.errorText) }}</span>
                 <a class="live-overlay-feedback" :href="feedbackMailto" @click="prepareLiveErrorFeedback($event, liveOverlay.errorText)">Send feedback</a>
               </div>
             </article>
@@ -838,7 +838,7 @@
               @click="selectDiffViewerChange(change)"
             >
               <span class="file-change-badge" :data-operation="fileChangeOperationTone(change)">
-                {{ fileChangeOperationLabel(change) }}
+                {{ t(fileChangeOperationLabel(change)) }}
               </span>
               <span class="diff-viewer-file-label">
                 {{ displayFileChangePath(change.path) }}
@@ -857,7 +857,7 @@
                 <template v-if="activeDiffViewerChange.movedToPath"> → {{ displayFileChangePath(activeDiffViewerChange.movedToPath) }}</template>
               </p>
               <p class="diff-viewer-subtitle">
-                {{ fileChangeOperationLabel(activeDiffViewerChange) }}
+                {{ t(fileChangeOperationLabel(activeDiffViewerChange)) }}
                 <span v-if="formatFileChangeDelta(activeDiffViewerChange)"> · {{ formatFileChangeDelta(activeDiffViewerChange) }}</span>
               </p>
             </div>
@@ -923,7 +923,7 @@
                   @click="selectDiffViewerChange(change)"
                 >
                   <span class="file-change-badge" :data-operation="fileChangeOperationTone(change)">
-                    {{ fileChangeOperationLabel(change) }}
+                    {{ t(fileChangeOperationLabel(change)) }}
                   </span>
                   <span class="diff-viewer-file-label">
                     {{ displayFileChangePath(change.path) }}

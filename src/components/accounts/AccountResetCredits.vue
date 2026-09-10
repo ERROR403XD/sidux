@@ -1,20 +1,22 @@
 <template>
-  <div v-if="count > 0" class="account-reset-credits" aria-label="可用重置机会">
-    <AppButton v-for="(credit, index) in shown" :key="credit?.id || index" :disabled="disabled || !credit || busy" :title="credit ? expiry(credit) : '到期明细暂不可用，请刷新账号'" :aria-label="credit ? `使用重置机会，${expiry(credit)}` : '重置机会明细未知'" @click="choose(credit)">
+  <div v-if="count > 0" class="account-reset-credits" :aria-label="t('可用重置机会')">
+    <AppButton v-for="(credit, index) in shown" :key="credit?.id || index" :disabled="disabled || !credit || busy" :title="t(credit ? expiry(credit) : '到期明细暂不可用，请刷新账号')" :aria-label="t(credit ? `使用重置机会，${expiry(credit)}` : '重置机会明细未知')" @click="choose(credit)">
       <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10a8 8 0 1 1 1 7M4 4v6h6" /><path d="m13 7-4 6h4l-2 5 6-8h-4z" /></svg>
     </AppButton>
-    <span v-if="count > 3">+{{ count - 3 }}次重置</span>
+    <span v-if="count > 3">+{{ count - 3 }}{{ t('次重置') }}</span>
   </div>
-  <p v-if="notice" class="account-card-meta" role="status">{{ notice }}</p>
-  <AppDialog :open="!!target" title="确认使用重置机会" size="compact" :busy="busy" @close="target = null">
-    <p>账号：{{ accountDisplayName(account) }}</p>
-    <p v-if="target">{{ expiry(target) }}</p>
-    <p>确认后消耗一次重置机会，并重置上游允许的额度窗口。</p>
-    <p v-if="error" class="account-panel-error" role="alert">{{ error }}</p>
-    <template #footer><AppButton :disabled="busy" @click="target = null">取消</AppButton><AppButton :busy="busy" @click="consume">确认使用一次</AppButton></template>
+  <p v-if="notice" class="account-card-meta" role="status">{{ t(notice) }}</p>
+  <AppDialog :open="!!target" :title="t('确认使用重置机会')" size="compact" :busy="busy" @close="target = null">
+    <p>{{ t('账号：') }}{{ accountDisplayName(account) }}</p>
+    <p v-if="target">{{ t(expiry(target)) }}</p>
+    <p>{{ t('确认后消耗一次重置机会，并重置上游允许的额度窗口。') }}</p>
+    <p v-if="error" class="account-panel-error" role="alert">{{ t(error) }}</p>
+    <template #footer><AppButton :disabled="busy" @click="target = null">{{ t('取消') }}</AppButton><AppButton :busy="busy" @click="consume">{{ t('确认使用一次') }}</AppButton></template>
   </AppDialog>
 </template>
 <script setup lang="ts">
+import { t } from '../../composables/useUiLanguage'
+
 import { useTransientNotice } from '../../composables/useTransientNotice'
 import { accountDisplayName } from '../../accountDisplay'
 import { computed, ref } from 'vue'

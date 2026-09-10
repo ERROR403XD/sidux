@@ -17,35 +17,37 @@
       >
         <div class="queued-row-content">
           <span class="queued-row-text" :title="getMessagePreview(msg)">{{ getMessagePreview(msg) }}</span>
-          <span class="queued-row-status">{{ msg.delivery ? deliveryStatusLabel(msg.delivery.status) : '等待加载发送状态' }}</span>
-          <span v-if="msg.delivery?.error" class="queued-row-error">{{ msg.delivery.error }}</span>
+          <span class="queued-row-status">{{ t(msg.delivery ? deliveryStatusLabel(msg.delivery.status) : '等待加载发送状态') }}</span>
+          <span v-if="msg.delivery?.error" class="queued-row-error">{{ t(msg.delivery.error) }}</span>
         </div>
         <div v-if="isQuestion(msg)" class="queued-row-actions">
-          <AppButton v-if="msg.delivery?.status === 'unknown'" @click="emit('reconcile', msg.id)">核对回答</AppButton>
-          <AppButton v-if="msg.delivery?.status === 'failed'" @click="emit('resume', msg.id)">重试回答</AppButton>
+          <AppButton v-if="msg.delivery?.status === 'unknown'" @click="emit('reconcile', msg.id)">{{ t('核对回答') }}</AppButton>
+          <AppButton v-if="msg.delivery?.status === 'failed'" @click="emit('resume', msg.id)">{{ t('重试回答') }}</AppButton>
         </div>
         <div v-else class="queued-row-actions">
-          <AppButton v-if="['queued', 'failed', 'editing'].includes(msg.delivery?.status ?? '')" @click="emit('edit', msg.id)">{{ msg.delivery?.status === 'editing' ? '继续编辑' : '编辑' }}</AppButton>
-          <AppButton v-if="msg.delivery?.status === 'queued'" title="发送引导消息，不中断当前任务" @click="emit('steer', msg.id)">引导</AppButton>
-          <AppButton v-if="msg.delivery?.status === 'unknown'" @click="emit('reconcile', msg.id)">核对结果</AppButton>
-          <AppButton v-if="msg.delivery?.status === 'failed'" @click="emit('resume', msg.id)">重新排队</AppButton>
-          <AppButton v-if="msg.delivery?.status === 'editing'" @click="emit('resume', msg.id)">取消编辑</AppButton>
-          <AppButton v-if="msg.delivery?.status === 'unknown'" variant="danger" @click="abandonId = msg.id">停止跟踪</AppButton>
-          <AppButton v-else-if="msg.delivery && msg.delivery.status !== 'sending'" variant="danger" @click="emit('delete', msg.id)">删除</AppButton>
+          <AppButton v-if="['queued', 'failed', 'editing'].includes(msg.delivery?.status ?? '')" @click="emit('edit', msg.id)">{{ t(msg.delivery?.status === 'editing' ? '继续编辑' : '编辑') }}</AppButton>
+          <AppButton v-if="msg.delivery?.status === 'queued'" :title="t('发送引导消息，不中断当前任务')" @click="emit('steer', msg.id)">{{ t('引导') }}</AppButton>
+          <AppButton v-if="msg.delivery?.status === 'unknown'" @click="emit('reconcile', msg.id)">{{ t('核对结果') }}</AppButton>
+          <AppButton v-if="msg.delivery?.status === 'failed'" @click="emit('resume', msg.id)">{{ t('重新排队') }}</AppButton>
+          <AppButton v-if="msg.delivery?.status === 'editing'" @click="emit('resume', msg.id)">{{ t('取消编辑') }}</AppButton>
+          <AppButton v-if="msg.delivery?.status === 'unknown'" variant="danger" @click="abandonId = msg.id">{{ t('停止跟踪') }}</AppButton>
+          <AppButton v-else-if="msg.delivery && msg.delivery.status !== 'sending'" variant="danger" @click="emit('delete', msg.id)">{{ t('删除') }}</AppButton>
         </div>
       </div>
     </div>
-    <AppDialog :open="Boolean(abandonId)" title="停止跟踪这条消息？" size="compact" @close="abandonId = ''">
-      <p>消息可能已经送达。停止跟踪不会中止已执行的任务；后续消息将可以继续发送。</p>
+    <AppDialog :open="Boolean(abandonId)" :title="t('停止跟踪这条消息？')" size="compact" @close="abandonId = ''">
+      <p>{{ t('消息可能已经送达。停止跟踪不会中止已执行的任务；后续消息将可以继续发送。') }}</p>
       <template #footer>
-        <AppButton @click="abandonId = ''">保留记录</AppButton>
-        <AppButton variant="danger" @click="confirmAbandon">停止跟踪</AppButton>
+        <AppButton @click="abandonId = ''">{{ t('保留记录') }}</AppButton>
+        <AppButton variant="danger" @click="confirmAbandon">{{ t('停止跟踪') }}</AppButton>
       </template>
     </AppDialog>
   </div>
 </template>
 
 <script setup lang="ts">
+import { t } from '../../composables/useUiLanguage'
+
 import { ref, watch } from 'vue'
 import { readQuestionReply } from '../../userQuestions'
 import { deliveryStatusLabel } from '../../delivery'
@@ -111,12 +113,12 @@ function resetDragState(): void {
 function isQuestion(message: StoredQueuedMessage): boolean { return Boolean(readQuestionReply(message.text).questionReply) }
 
 function getMessagePreview(message: StoredQueuedMessage): string {
-  if (isQuestion(message)) return '问题回答' 
+  if (isQuestion(message)) return t('问题回答')
   return message.text.trim() || [
-    message.imageUrls.length ? `${message.imageUrls.length} 张图片` : '',
-    message.fileAttachments.length ? `${message.fileAttachments.length} 个文件` : '',
-    message.skills.length ? `${message.skills.length} 个技能` : '',
-  ].filter(Boolean).join(' · ') || '空消息'
+    message.imageUrls.length ? t(`${message.imageUrls.length} 张图片`) : '',
+    message.fileAttachments.length ? t(`${message.fileAttachments.length} 个文件`) : '',
+    message.skills.length ? t(`${message.skills.length} 个技能`) : '',
+  ].filter(Boolean).join(' · ') || t('空消息')
 }
 </script>
 

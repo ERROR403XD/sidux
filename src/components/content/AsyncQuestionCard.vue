@@ -1,8 +1,8 @@
 <template>
-  <section class="async-question-card" :data-question-item="message.id" aria-label="问题">
+  <section class="async-question-card" :data-question-item="message.id" :aria-label="t('问题')">
     <div class="async-question-heading">
-      <strong>{{ answered || submitted ? '已回答' : '问题' }}</strong>
-      <AppButton v-if="!answered && !submitted && collapsed" @click="collapsed = false">回答</AppButton>
+      <strong>{{ t(answered || submitted ? '已回答' : '问题') }}</strong>
+      <AppButton v-if="!answered && !submitted && collapsed" @click="collapsed = false">{{ t('回答') }}</AppButton>
     </div>
     <template v-if="!answered && !submitted && !collapsed">
       <div v-for="(question, index) in message.questions" :key="index" class="async-question-field">
@@ -13,12 +13,12 @@
           :options="question.options.map(option => ({ value: option, label: option }))"
           :disabled="busy"
         />
-        <input :id="`${inputId}-${index}`" v-model="freeText[index]" class="app-input" :placeholder="question.options.length ? '自填答案' : '填写答案'" :disabled="busy" />
+        <input :id="`${inputId}-${index}`" v-model="freeText[index]" class="app-input" :placeholder="t(question.options.length ? '自填答案' : '填写答案')" :disabled="busy" />
       </div>
       <p v-if="error" class="async-question-error" role="alert">{{ error }}</p>
       <div class="async-question-actions">
-        <AppButton :disabled="busy" @click="collapsed = true">暂不回答</AppButton>
-        <AppButton :busy="busy" @click="submit">发送回答</AppButton>
+        <AppButton :disabled="busy" @click="collapsed = true">{{ t('暂不回答') }}</AppButton>
+        <AppButton :busy="busy" @click="submit">{{ t('发送回答') }}</AppButton>
       </div>
     </template>
     <p v-else class="async-question-summary">{{ message.questions?.map(question => question.title).join(' · ') }}</p>
@@ -26,6 +26,8 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '../../composables/useUiLanguage'
+
 import { ref, useId } from 'vue'
 import type { UiMessage } from '../../types/codex'
 import type { AsyncQuestionReply } from '../../userQuestions'

@@ -1,29 +1,29 @@
 <template>
   <div class="directory-hub">
     <header class="directory-header">
-      <div><a class="directory-back" href="#/settings">设置 / 扩展管理</a><h2 class="directory-title">插件 / 技能 / MCP</h2></div>
-      <AppButton :busy="loading" @click="refresh(true)">刷新</AppButton>
+      <div><a class="directory-back" href="#/settings">{{ t('设置 / 扩展管理') }}</a><h2 class="directory-title">{{ t('插件 / 技能 / MCP') }}</h2></div>
+      <AppButton :busy="loading" @click="refresh(true)">{{ t('刷新') }}</AppButton>
     </header>
-    <nav class="directory-tabs" aria-label="扩展分类">
-      <button v-for="tab in tabs" :key="tab.id" type="button" class="directory-tab" :class="{ 'is-active': activeTab === tab.id }" :aria-label="tab.label" :aria-pressed="activeTab === tab.id" :disabled="busy" @click="selectTab(tab.id)">
-        <strong>{{ tab.label }}</strong>
+    <nav class="directory-tabs" :aria-label="t('扩展分类')">
+      <button v-for="tab in tabs" :key="tab.id" type="button" class="directory-tab" :class="{ 'is-active': activeTab === tab.id }" :aria-label="t(tab.label)" :aria-pressed="activeTab === tab.id" :disabled="busy" @click="selectTab(tab.id)">
+        <strong>{{ t(tab.label) }}</strong>
       </button>
     </nav>
     <div class="directory-scope">
-      <div class="directory-scope-picker"><span>查看范围</span><AppSelect :model-value="props.cwd || ''" :options="scopeOptions" enable-search search-placeholder="搜索项目" :disabled="busy" @update:model-value="emit('scope-change', $event)" /></div>
-      <a v-if="props.threadId" class="directory-back" :href="`#/thread/${props.threadId}`">返回会话 {{ props.threadId.slice(-8) }}</a>
+      <div class="directory-scope-picker"><span>{{ t('查看范围') }}</span><AppSelect :model-value="props.cwd || ''" :options="scopeOptions" enable-search :search-placeholder="t('搜索项目')" :disabled="busy" @update:model-value="emit('scope-change', $event)" /></div>
+      <a v-if="props.threadId" class="directory-back" :href="`#/thread/${props.threadId}`">{{ t('返回会话') }} {{ props.threadId.slice(-8) }}</a>
     </div>
-    <p v-if="notice" class="directory-toast" role="status">{{ notice }}</p>
-    <p v-if="error" class="directory-error" role="alert">{{ error }}</p>
+    <p v-if="notice" class="directory-toast" role="status">{{ t(notice) }}</p>
+    <p v-if="error" class="directory-error" role="alert">{{ t(error) }}</p>
     <section v-if="activeTab === 'plugins'" class="directory-section">
       <div class="directory-toolbar">
-        <input v-model="search" class="directory-search" type="search" placeholder="搜索插件" aria-label="搜索插件" />
-        <AppSelect v-model="pluginFilter" :options="pluginFilterOptions" />
+        <input v-model="search" class="directory-search" type="search" :placeholder="t('搜索插件')" :aria-label="t('搜索插件')" />
+        <AppSelect v-model="pluginFilter" :options="pluginFilterOptions.map(option => ({ ...option, label: t(option.label) }))" />
       </div>
-      <p v-if="ready && supportsPlugins && !loading" class="directory-results-count">{{ filteredPlugins.length }} 个插件<span v-if="installedCount"> · 已安装 {{ installedCount }} 个</span></p>
-      <p v-if="!supportsPlugins && ready" class="directory-empty">当前 Codex CLI 未提供原版插件接口。可继续管理技能和 MCP。</p>
-      <p v-else-if="loading" class="directory-loading">读取插件…</p>
-      <p v-else-if="!visiblePlugins.length" class="directory-empty">{{ search || pluginFilter !== 'all' ? '没有匹配的插件，试试其他关键词或筛选条件。' : '暂无插件。配置原版插件市场后刷新即可查看。' }}</p>
+      <p v-if="ready && supportsPlugins && !loading" class="directory-results-count">{{ filteredPlugins.length }} {{ t('个插件') }}<span v-if="installedCount"> {{ t('· 已安装') }} {{ installedCount }} {{ t('个') }}</span></p>
+      <p v-if="!supportsPlugins && ready" class="directory-empty">{{ t('当前 Codex CLI 未提供原版插件接口。可继续管理技能和 MCP。') }}</p>
+      <p v-else-if="loading" class="directory-loading">{{ t('读取插件…') }}</p>
+      <p v-else-if="!visiblePlugins.length" class="directory-empty">{{ t(search || pluginFilter !== 'all' ? '没有匹配的插件，试试其他关键词或筛选条件。' : '暂无插件。配置原版插件市场后刷新即可查看。') }}</p>
       <div v-if="!loading" class="directory-grid">
         <button v-for="plugin in visiblePlugins" :key="plugin.id" type="button" class="directory-card" @click="openPluginDetail(plugin)">
           <div class="directory-card-top">
@@ -31,14 +31,14 @@
             <span v-else class="directory-card-fallback">{{ plugin.displayName.charAt(0) }}</span>
             <div class="directory-card-main"><strong :title="plugin.displayName">{{ plugin.displayName }}</strong><span class="directory-card-meta">{{ plugin.developerName || plugin.marketplaceDisplayName || plugin.marketplaceName }}</span></div>
           </div>
-          <p class="directory-card-description">{{ plugin.description || '查看技能、MCP 与连接要求' }}</p>
-          <div class="directory-card-footer"><div class="directory-card-tags"><span v-for="capability in plugin.capabilities" :key="capability" class="directory-chip">{{ capability }}</span></div><span class="directory-plugin-status" :class="{ 'is-installed': plugin.installed }">{{ plugin.installed ? (plugin.enabled ? '已启用' : '已停用') : (plugin.installPolicy === 'NOT_AVAILABLE' || plugin.availability === 'DISABLED_BY_ADMIN' ? '受限' : '可安装') }}</span></div>
+          <p class="directory-card-description">{{ plugin.description || t('查看技能、MCP 与连接要求') }}</p>
+          <div class="directory-card-footer"><div class="directory-card-tags"><span v-for="capability in plugin.capabilities" :key="capability" class="directory-chip">{{ capability }}</span></div><span class="directory-plugin-status" :class="{ 'is-installed': plugin.installed }">{{ t(plugin.installed ? (plugin.enabled ? '已启用' : '已停用') : (plugin.installPolicy === 'NOT_AVAILABLE' || plugin.availability === 'DISABLED_BY_ADMIN' ? '受限' : '可安装')) }}</span></div>
         </button>
       </div>
       <div v-if="filteredPlugins.length > 60" class="directory-pagination">
-        <AppButton :disabled="pluginPage <= 1" @click="pluginPage -= 1">上一页</AppButton>
-        <span>{{ pluginPage }} / {{ pluginPageCount }} · {{ filteredPlugins.length }} 个插件</span>
-        <AppButton :disabled="pluginPage >= pluginPageCount" @click="pluginPage += 1">下一页</AppButton>
+        <AppButton :disabled="pluginPage <= 1" @click="pluginPage -= 1">{{ t('上一页') }}</AppButton>
+        <span>{{ pluginPage }} / {{ pluginPageCount }} · {{ filteredPlugins.length }} {{ t('个插件') }}</span>
+        <AppButton :disabled="pluginPage >= pluginPageCount" @click="pluginPage += 1">{{ t('下一页') }}</AppButton>
       </div>
     </section>
     <section v-else class="directory-section">
@@ -52,11 +52,11 @@
         <template #before-installed>
           <div class="skills-embedded-section">
             <button class="skills-embedded-toggle" type="button" :aria-expanded="isMcpSectionOpen" @click="isMcpSectionOpen = !isMcpSectionOpen">
-              <span class="skills-embedded-title">MCP 连接 <span class="directory-count">{{ visibleMcpServers.length }}</span></span>
+              <span class="skills-embedded-title">{{ t('MCP 连接') }} <span class="directory-count">{{ visibleMcpServers.length }}</span></span>
               <span class="skills-embedded-chevron" :class="{ 'is-open': isMcpSectionOpen }">›</span>
             </button>
             <div v-if="isMcpSectionOpen" class="skills-embedded-body">
-              <div class="directory-mcp-toolbar"><p class="directory-scope-note">查看已配置服务、连接状态与可用工具。</p><AppButton v-if="supportsMcpReload" :busy="isReloadingMcps" @click="reloadMcps">重载配置</AppButton></div>
+              <div class="directory-mcp-toolbar"><p class="directory-scope-note">{{ t('查看已配置服务、连接状态与可用工具。') }}</p><AppButton v-if="supportsMcpReload" :busy="isReloadingMcps" @click="reloadMcps">{{ t('重载配置') }}</AppButton></div>
               <div v-if="!supportsMcps" class="directory-empty">
                 {{ t('MCP status APIs unavailable in this Codex CLI. Update Codex CLI to inspect MCP servers.') }}
               </div>
@@ -71,17 +71,17 @@
                       <div class="mcp-skill-info">
                         <div class="mcp-skill-header">
                           <span class="mcp-skill-name">{{ server.name }}</span>
-                          <span class="mcp-skill-badge" :class="mcpCardBadgeClass(server.authStatus)">{{ formatMcpAuthStatus(server.name) }}</span>
+                          <span class="mcp-skill-badge" :class="mcpCardBadgeClass(server.authStatus)">{{ t(formatMcpAuthStatus(server.name)) }}</span>
                         </div>
-                        <span class="mcp-skill-owner">{{ mcpRuntimeLabel(server.runtimeStatus) }}</span>
+                        <span class="mcp-skill-owner">{{ t(mcpRuntimeLabel(server.runtimeStatus)) }}</span>
                       </div>
                       <span class="mcp-skill-chevron" :class="{ 'is-open': expandedMcpNames.has(server.name) }">›</span>
                     </div>
-                    <p class="mcp-skill-meta">{{ server.toolCount }} 个工具<span v-if="server.resourceCount !== null"> · {{ server.resourceCount }} 项资源</span></p>
+                    <p class="mcp-skill-meta">{{ server.toolCount }} {{ t('个工具') }}<span v-if="server.resourceCount !== null"> · {{ server.resourceCount }} {{ t('项资源') }}</span></p>
                     <div v-if="expandedMcpNames.has(server.name)" class="directory-mcp-detail">
-                      <p v-if="mcpDetailError">{{ mcpDetailError }}</p>
-                      <p v-else-if="!server.detailsLoaded">读取工具与资源…</p>
-                      <p v-if="server.truncated">每类仅预览前 200 项</p>
+                      <p v-if="mcpDetailError">{{ t(mcpDetailError) }}</p>
+                      <p v-else-if="!server.detailsLoaded">{{ t('读取工具与资源…') }}</p>
+                      <p v-if="server.truncated">{{ t('每类仅预览前 200 项') }}</p>
                       <div v-if="server.tools.length > 0">
                         <h3 class="directory-mini-heading">{{ t('Tools') }}</h3>
                         <p class="directory-mini-list">{{ server.tools.map((tool) => tool.title || tool.name).join(', ') }}</p>
@@ -102,28 +102,28 @@
       </SkillsHub>
     </section>
 
-    <AppDialog :open="!!selectedPlugin" :title="selectedPlugin?.displayName || '插件'" :busy="busy" @close="closeDetail">
-      <p v-if="detailLoading">读取插件详情…</p>
+    <AppDialog :open="!!selectedPlugin" :title="selectedPlugin?.displayName || t('插件')" :busy="busy" @close="closeDetail">
+      <p v-if="detailLoading">{{ t('读取插件详情…') }}</p>
       <div v-if="detailError" class="directory-error" role="alert">
-        <p>{{ detailError }}</p>
+        <p>{{ t(detailError) }}</p>
         <p v-if="!detail" class="directory-plugin-description">{{ selectedPlugin?.description }}</p>
-        <AppButton v-if="selectedPlugin" :disabled="detailLoading || busy" @click="openPluginDetail(selectedPlugin)">重试</AppButton>
+        <AppButton v-if="selectedPlugin" :disabled="detailLoading || busy" @click="openPluginDetail(selectedPlugin)">{{ t('重试') }}</AppButton>
       </div>
       <template v-if="detail">
         <p class="directory-plugin-description">{{ detail.description || detail.summary.description }}</p>
-        <p v-if="unavailable" class="directory-error">{{ detail.summary.disabledReason || '此插件当前不可安装' }}</p>
-        <div v-if="detail.skills.length" class="directory-detail-group"><h3>技能</h3><p v-for="skill in detail.skills" :key="skill.path || skill.name"><strong>{{ skill.displayName || skill.name }}</strong> · {{ skill.shortDescription || skill.description }}</p></div>
-        <div v-if="detail.mcpServers.length" class="directory-detail-group"><h3>MCP</h3><p v-for="name in detail.mcpServers" :key="name">{{ name }} <AppButton v-if="shouldShowMcpLogin(name)" :busy="mcpLoginServerName === name" @click="loginMcpServer(name)">连接</AppButton></p></div>
-        <div v-if="detail.apps.length || authApps.length" class="directory-detail-group"><h3>服务连接</h3><p v-for="app in connectionApps" :key="app.id">{{ app.name }} <a v-if="app.installUrl" :href="pluginManagementUrl(app.installUrl)" target="_blank" rel="noopener noreferrer">{{ app.needsAuth ? '在 ChatGPT 中连接' : '在 ChatGPT 中管理' }}</a><span v-else> · {{ app.needsAuth ? '安装后按提示授权' : '由原版插件管理' }}</span></p></div>
-        <p class="directory-scope-note">安装或更改后，新会话会使用最新配置。</p>
+        <p v-if="unavailable" class="directory-error">{{ detail.summary.disabledReason || t('此插件当前不可安装') }}</p>
+        <div v-if="detail.skills.length" class="directory-detail-group"><h3>{{ t('技能') }}</h3><p v-for="skill in detail.skills" :key="skill.path || skill.name"><strong>{{ skill.displayName || skill.name }}</strong> · {{ skill.shortDescription || skill.description }}</p></div>
+        <div v-if="detail.mcpServers.length" class="directory-detail-group"><h3>MCP</h3><p v-for="name in detail.mcpServers" :key="name">{{ name }} <AppButton v-if="shouldShowMcpLogin(name)" :busy="mcpLoginServerName === name" @click="loginMcpServer(name)">{{ t('连接') }}</AppButton></p></div>
+        <div v-if="detail.apps.length || authApps.length" class="directory-detail-group"><h3>{{ t('服务连接') }}</h3><p v-for="app in connectionApps" :key="app.id">{{ app.name }} <a v-if="app.installUrl" :href="pluginManagementUrl(app.installUrl)" target="_blank" rel="noopener noreferrer">{{ t(app.needsAuth ? '在 ChatGPT 中连接' : '在 ChatGPT 中管理') }}</a><span v-else> · {{ t(app.needsAuth ? '安装后按提示授权' : '由原版插件管理') }}</span></p></div>
+        <p class="directory-scope-note">{{ t('安装或更改后，新会话会使用最新配置。') }}</p>
       </template>
       <template #footer>
         <template v-if="selectedPlugin?.installed">
-          <AppButton variant="danger" :busy="busy" @click="changePlugin('uninstall')">卸载</AppButton>
-          <AppButton :busy="busy" @click="changePlugin('toggle')">{{ selectedPlugin.enabled ? '停用' : '启用' }}</AppButton>
-          <AppButton v-if="selectedPlugin.enabled" :disabled="busy || !!props.tryInFlightKey || !detail" @click="tryPlugin">试用</AppButton>
+          <AppButton variant="danger" :busy="busy" @click="changePlugin('uninstall')">{{ t('卸载') }}</AppButton>
+          <AppButton :busy="busy" @click="changePlugin('toggle')">{{ t(selectedPlugin.enabled ? '停用' : '启用') }}</AppButton>
+          <AppButton v-if="selectedPlugin.enabled" :disabled="busy || !!props.tryInFlightKey || !detail" @click="tryPlugin">{{ t('试用') }}</AppButton>
         </template>
-        <AppButton v-else :busy="busy" :disabled="!detail || unavailable" @click="changePlugin('install')">安装</AppButton>
+        <AppButton v-else :busy="busy" :disabled="!detail || unavailable" @click="changePlugin('install')">{{ t('安装') }}</AppButton>
       </template>
     </AppDialog>
   </div>
@@ -149,7 +149,7 @@ const route = useRoute()
 const router = useRouter()
 const tabs = [{ id: 'plugins', label: '插件' }, { id: 'skills', label: '技能 / MCP' }] as const
 const activeTab = computed(() => route.query.tab === 'plugins' ? 'plugins' : 'skills')
-const scopeOptions = computed(() => [{ value: '', label: '全局' }, ...(props.projects || [])])
+const scopeOptions = computed(() => [{ value: '', label: t('全局') }, ...(props.projects || [])])
 const methods = ref(new Set<string>())
 const ready = ref(false)
 const loading = ref(false)

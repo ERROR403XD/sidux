@@ -1,18 +1,18 @@
 <template>
-  <button ref="anchor" class="model-reasoning-trigger" type="button" :disabled="disabled" :title="`${modelLabel} · ${effortLabel}`" aria-label="模型与推理强度" :aria-expanded="visible" @click="toggle">
-    <span>{{ shortModelLabel }}</span><small>{{ shortEffortLabel }}</small>
+  <button ref="anchor" class="model-reasoning-trigger" type="button" :disabled="disabled" :title="`${modelLabel} · ${t(effortLabel)}`" :aria-label="t('模型与推理强度')" :aria-expanded="visible" @click="toggle">
+    <span>{{ shortModelLabel }}</span><small>{{ t(shortEffortLabel) }}</small>
   </button>
   <AppPopover :open="visible" :anchor="anchor" :width="320" direction="up" align="end" panel-class="model-reasoning-popover" @close="close">
-    <header class="model-reasoning-heading"><strong>模型</strong><span>{{ shortModelLabel }}</span></header>
-    <input v-model="search" class="app-input model-reasoning-search" data-popover-autofocus placeholder="搜索模型" aria-label="搜索模型" />
-    <div class="model-reasoning-models" role="group" aria-label="可用模型">
+    <header class="model-reasoning-heading"><strong>{{ t('模型') }}</strong><span>{{ shortModelLabel }}</span></header>
+    <input v-model="search" class="app-input model-reasoning-search" data-popover-autofocus :placeholder="t('搜索模型')" :aria-label="t('搜索模型')" />
+    <div class="model-reasoning-models" role="group" :aria-label="t('可用模型')">
       <button v-for="model in filteredModels" :key="model.value" type="button" :aria-pressed="model.value === selectedModel" @click="selectModel(model.value)"><span>{{ model.label }}</span><span v-if="model.value === selectedModel">✓</span></button>
-      <p v-if="!filteredModels.length" class="model-reasoning-empty">暂无可选模型</p>
+      <p v-if="!filteredModels.length" class="model-reasoning-empty">{{ t('暂无可选模型') }}</p>
     </div>
     <div class="model-reasoning-effort">
       <header class="model-reasoning-heading">
-        <strong>推理强度</strong>
-        <output class="model-reasoning-current" aria-live="polite">{{ effortLabel }}</output>
+        <strong>{{ t('推理强度') }}</strong>
+        <output class="model-reasoning-current" aria-live="polite">{{ t(effortLabel) }}</output>
       </header>
       <div v-if="levels.length" class="model-reasoning-slider" :style="{ '--effort-progress': `${progress}%` }">
         <div class="model-reasoning-slider-track" aria-hidden="true">
@@ -22,8 +22,8 @@
         <input
           class="model-reasoning-range"
           type="range"
-          aria-label="推理强度"
-          :aria-valuetext="effortLabel"
+          :aria-label="t('推理强度')"
+          :aria-valuetext="t(effortLabel)"
           :min="0"
           :max="Math.max(1, levels.length - 1)"
           :step="1"
@@ -32,11 +32,13 @@
           @input="selectEffort"
         />
       </div>
-      <p v-if="!levels.length" class="model-reasoning-empty">此模型使用默认推理设置</p>
+      <p v-if="!levels.length" class="model-reasoning-empty">{{ t('此模型使用默认推理设置') }}</p>
     </div>
   </AppPopover>
 </template>
 <script setup lang="ts">
+import { t } from '../../composables/useUiLanguage'
+
 import { computed, ref } from 'vue'
 import AppPopover from '../common/AppPopover.vue'
 const props = defineProps<{
@@ -51,7 +53,7 @@ const emit = defineEmits<{ model: [value: string]; effort: [value: string]; 'ope
 const anchor = ref<HTMLElement | null>(null)
 const visible = ref(false)
 const search = ref('')
-const modelLabel = computed(() => props.models.find(model => model.value === props.selectedModel)?.label || props.selectedModel || '选择模型')
+const modelLabel = computed(() => props.models.find(model => model.value === props.selectedModel)?.label || props.selectedModel || t('选择模型'))
 const levels = computed(() => {
   const supported = props.efforts.filter(effort => effort.value)
   if (supported.length && !supported.some(level => level.value === props.defaultEffort)) {

@@ -1,17 +1,19 @@
 <template>
   <div class="account-quota-grid" :class="{ 'is-compact': compact }">
     <div v-for="(window, index) in windows" :key="index" class="account-quota-window">
-      <span>{{ duration(window.windowDurationMins ?? window.windowMinutes) }}</span>
-      <span class="account-quota-track" role="progressbar" :aria-valuenow="remaining(window.usedPercent)" aria-valuemin="0" aria-valuemax="100" :aria-label="`${duration(window.windowDurationMins ?? window.windowMinutes)} 剩余额度`" :style="{ '--quota-color': quotaColor(window.usedPercent) }">
+      <span>{{ t(duration(window.windowDurationMins ?? window.windowMinutes)) }}</span>
+      <span class="account-quota-track" role="progressbar" :aria-valuenow="remaining(window.usedPercent)" aria-valuemin="0" aria-valuemax="100" :aria-label="t(`${t(duration(window.windowDurationMins ?? window.windowMinutes))} 剩余额度`)" :style="{ '--quota-color': quotaColor(window.usedPercent) }">
         <span :style="{ width: `${remaining(window.usedPercent)}%` }" />
       </span>
       <strong>{{ remaining(window.usedPercent) }}%</strong>
-      <time :title="window.resetsAt ? `${formatLocalDateTime(window.resetsAt * 1000)} 重置` : '重置时间未知'">{{ window.resetsAt ? quotaResetTime(window.resetsAt, window.windowDurationMins ?? window.windowMinutes, now) : '—' }}</time>
+      <time :title="t(window.resetsAt ? `${formatLocalDateTime(window.resetsAt * 1000)} 重置` : '重置时间未知')">{{ window.resetsAt ? quotaResetTime(window.resetsAt, window.windowDurationMins ?? window.windowMinutes, now) : '—' }}</time>
     </div>
-    <small v-if="!windows.length">暂无用量</small>
+    <small v-if="!windows.length">{{ t('暂无用量') }}</small>
   </div>
 </template>
 <script setup lang="ts">
+import { t } from '../../composables/useUiLanguage'
+
 import { computed } from 'vue'
 import { useQuotaClock } from '../../composables/useQuotaClock'
 import type { UiRateLimitSnapshot, UiRateLimitWindow } from '../../types/codex'
