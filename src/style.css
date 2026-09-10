@@ -2711,3 +2711,5 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .model-reasoning-effort.is-unavailable .model-reasoning-slider { --effort-blue: var(--ui-muted); opacity: .4; }
 .model-reasoning-effort.is-unavailable .model-reasoning-range { cursor: not-allowed; }
 .model-reasoning-effort.is-unavailable .model-reasoning-slider-fill { width: 0; }
+
+.custom-connection-endpoints .account-plan-badge { margin-left: 0; }

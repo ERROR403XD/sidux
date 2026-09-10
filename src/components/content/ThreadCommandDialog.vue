@@ -1,5 +1,5 @@
 <template>
-  <AppDialog :open="true" :busy="working" :title="`/${request.name} · ${title}`" @close="close">
+  <AppDialog :open="true" :busy="working" :title="`/${request.name} · ${t(title)}`" @close="close">
     <div class="thread-command-dialog" :aria-busy="working || loading">
       <p v-if="error" class="thread-command-error" role="alert">{{ t(error) }}</p>
       <p v-if="feedback" class="thread-command-feedback" role="status">{{ t(feedback) }}</p>
