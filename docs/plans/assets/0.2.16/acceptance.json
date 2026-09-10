@@ -1,0 +1,292 @@
+{
+  "ui": [
+    {
+      "url": "http://127.0.0.1:4173",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "systemWidth": 16,
+      "background": "rgb(255, 255, 255)",
+      "renamePersists": true,
+      "directoriesPersist": true,
+      "saveFailureRetry": true,
+      "create": true,
+      "historyBlueDots": 0,
+      "errors": [],
+      "screenshot": "output/playwright/0216-project-1440-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:4173",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "systemWidth": 16,
+      "background": "rgb(24, 24, 27)",
+      "renamePersists": true,
+      "directoriesPersist": true,
+      "saveFailureRetry": true,
+      "create": true,
+      "historyBlueDots": 0,
+      "errors": [],
+      "screenshot": "output/playwright/0216-project-1440-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:4173",
+      "width": 768,
+      "height": 1024,
+      "theme": "light",
+      "systemWidth": 16,
+      "background": "rgb(255, 255, 255)",
+      "renamePersists": true,
+      "directoriesPersist": true,
+      "saveFailureRetry": true,
+      "create": true,
+      "historyBlueDots": 0,
+      "errors": [],
+      "screenshot": "output/playwright/0216-project-768-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:4173",
+      "width": 768,
+      "height": 1024,
+      "theme": "dark",
+      "systemWidth": 16,
+      "background": "rgb(24, 24, 27)",
+      "renamePersists": true,
+      "directoriesPersist": true,
+      "saveFailureRetry": true,
+      "create": true,
+      "historyBlueDots": 0,
+      "errors": [],
+      "screenshot": "output/playwright/0216-project-768-dark.png"
+    },
+    {
+      "url": "http://127.0.0.1:4173",
+      "width": 375,
+      "height": 812,
+      "theme": "light",
+      "systemWidth": 16,
+      "background": "rgb(255, 255, 255)",
+      "renamePersists": true,
+      "directoriesPersist": true,
+      "saveFailureRetry": true,
+      "create": true,
+      "historyBlueDots": 0,
+      "errors": [],
+      "screenshot": "output/playwright/0216-project-375-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:4173",
+      "width": 375,
+      "height": 812,
+      "theme": "dark",
+      "systemWidth": 16,
+      "background": "rgb(24, 24, 27)",
+      "renamePersists": true,
+      "directoriesPersist": true,
+      "saveFailureRetry": true,
+      "create": true,
+      "historyBlueDots": 0,
+      "errors": [],
+      "screenshot": "output/playwright/0216-project-375-dark.png"
+    },
+    {
+      "twoTerminals": true,
+      "completionAdds": true,
+      "refreshPersists": true,
+      "clickClearsBoth": true,
+      "noBackfillAfterReload": true
+    }
+  ],
+  "ui-candidate": [
+    {
+      "url": "http://127.0.0.1:59001",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "systemWidth": 16,
+      "background": "rgb(255, 255, 255)",
+      "renamePersists": true,
+      "directoriesPersist": true,
+      "saveFailureRetry": true,
+      "create": true,
+      "historyBlueDots": 0,
+      "errors": [],
+      "screenshot": "output/playwright/0216-project-1440-light-candidate.png"
+    },
+    {
+      "url": "http://127.0.0.1:59001",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "systemWidth": 16,
+      "background": "rgb(24, 24, 27)",
+      "renamePersists": true,
+      "directoriesPersist": true,
+      "saveFailureRetry": true,
+      "create": true,
+      "historyBlueDots": 0,
+      "errors": [],
+      "screenshot": "output/playwright/0216-project-1440-dark-candidate.png"
+    },
+    {
+      "twoTerminals": true,
+      "editFromThreadRoute": true,
+      "completionAdds": true,
+      "refreshPersists": true,
+      "clickClearsBoth": true,
+      "noBackfillAfterReload": true
+    }
+  ],
+  "api": {
+    "base": "http://127.0.0.1:4173",
+    "create": true,
+    "rename": true,
+    "deduplicate": true,
+    "agentsPreserved": true,
+    "invalidDoesNotChangeFileOrLabel": true,
+    "removeDirectories": true
+  },
+  "api-candidate": {
+    "base": "http://127.0.0.1:59001",
+    "create": true,
+    "rename": true,
+    "deduplicate": true,
+    "agentsPreserved": true,
+    "invalidDoesNotChangeFileOrLabel": true,
+    "removeDirectories": true
+  },
+  "preview": [
+    {
+      "url": "http://127.0.0.1:59001/",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "screenshot": "output/playwright/0216-preview-1440-dark.png",
+      "fixture": true
+    },
+    {
+      "url": "http://127.0.0.1:59001/",
+      "width": 375,
+      "height": 812,
+      "theme": "light",
+      "screenshot": "output/playwright/0216-preview-375-light.png",
+      "fixture": true
+    }
+  ],
+  "clone-ui": {
+    "url": "http://127.0.0.1:59001/",
+    "request": {
+      "url": "https://github.com/example/example",
+      "basePath": "/tmp/clone-parent"
+    },
+    "modalClosed": true,
+    "fixture": true
+  },
+  "candidate-artifacts": {
+    "version": "0.2.16",
+    "files": {
+      "dist/assets/ApiProxyPanel-Cw8b5qga.js": "86416df2fe5a5e7afafb27952494c3adc8b176884a9996cfcb5446ae749cbe10",
+      "dist/assets/AutomationsPanel-B3v-EZ63.js": "76e2b94e8987a61ff821290264c71edfae5a714831e04771bc1f584d0805e280",
+      "dist/assets/AutomationsPanel-BC2yQQb1.css": "7287fb79f5ec243c6c762537205f3b97bccf69daaafae9a43ec0eda8395958c6",
+      "dist/assets/DirectoryHub-CgvPOd8f.css": "5580089441330d1ec4dd1a08f5fe69fd41507e8ae64c0507ee920bb6b5cab031",
+      "dist/assets/DirectoryHub-JW6_qAjV.js": "189df2237cdf67fa096cae36e89ef08b78aa873e0dfc8de41f17d4e4c4df878c",
+      "dist/assets/ReviewPane-B4J_8kmo.js": "4668d7caaca3264d315109af38d1ec3dcaf551d430d9b6d3aacbadbc24af904b",
+      "dist/assets/ReviewPane-Bf0DO-uW.css": "86cc57d5566772694386ce6c97e7b9d9510b45cd625c915a42e8c8455581cc53",
+      "dist/assets/ThreadCommandDialog-C_7AJm3y.js": "a0543cbd09587d5cb9b442ab58d0d774bed7eb3bf61141e4987b80701862fc5a",
+      "dist/assets/ThreadConversation-BQ9M_Ua-.js": "6fddbfb97e1022278aa028a1e7e23cdafcd6e94eb547e72c586cd84a33a07407",
+      "dist/assets/ThreadConversation-CwexViBL.css": "68ee83d26d9f25cb530deb8f9501a4229772d10940cad293e1eede769f6f2bd2",
+      "dist/assets/ThreadTerminalPanel-Mu3fWVjX.css": "e813e1ab8f9be776b2cc180307e42232e96bfd18f616863e3a1240a49f0fbdc5",
+      "dist/assets/ThreadTerminalPanel-Qt8CigJR.js": "dbe7661ef2dca6176fea19f5db6cde96bad4e57d74f6f862bea56b9ead0c1b87",
+      "dist/assets/common-DEPjExR-.js": "9201c7b04cc783c8c7c1e6e71a40243ac7a9c5de26ec96a2f4f27c8fdeb80133",
+      "dist/assets/index-0lJU3hBn.js": "6d343594192eae28b9e11410beb9cd0a6d4c791a5f246c648d8f57af7df8417b",
+      "dist/assets/index-BxW7q12J.css": "b6c11a47a4767f52c5d1f919caae469aaa4eefd2fa0abaad30ec120ab601f975",
+      "dist/icons/apple-touch-icon.png": "64fbe48cc3852a74ceea4896eaba5fa08835078eadc32f87d995e1715e2dda5c",
+      "dist/icons/codexui-icon.svg": "913006d9ed761ab3e349deb7eaea75cc473657837dedb12934c1d346f71b3d63",
+      "dist/icons/maskable-512x512.png": "91c23b97b97101c699f6e7e8f3164638d5b551eccb03b8bc9c4596870ca855e7",
+      "dist/icons/pwa-192x192.png": "bcd7d9b1c33279efa6f4ac079c6ff6ec0436d6beffdf69aba23f3aa181ce5b7e",
+      "dist/icons/pwa-512x512.png": "ba28d1422c2f01fa76cf4f423c8c98f937375fba55d46abef956d3e32c4ec623",
+      "dist/icons/pwa-icon.svg": "f5876b447fc272caba34567415803a508703c76d8becf77d8d9574ea9e16138a",
+      "dist/icons/pwa-maskable.svg": "2b6264ea203116794043f981162a51eee86c6bb423b7a9aa8091e4ca90923190",
+      "dist/index.html": "4c90df3bcf9a6a96ef786b83e3942a9e2d69f128f3fb13773966bd34572a76e0",
+      "dist/manifest.webmanifest": "abb062c2bfb76d3c3c07ab8286ba51817541b51b6beae1eb67de978e332afb01",
+      "dist/sw.js": "dc0793fed9010bd766f2059142effcb79fc3c423eee1cc573111c6177d21910c",
+      "dist-cli/index.js": "20843b52a5acff5a74323b64f60de9e3c035622377523df0b709863a26de12ac",
+      "dist-cli/index.js.map": "60eefbd75488396e8593e00aef8992c1546ad9aca33e429deaab9637fcf1ff33"
+    }
+  },
+  "performance": {
+    "duplicateCounts": {
+      "threadList": 1,
+      "threadListFirstPage": 1,
+      "threadListCursor": 0,
+      "threadResume": 0,
+      "threadRead": 0,
+      "threadReadWithTurns": 0,
+      "threadReadDuplicateKeys": 0,
+      "skillsList": 1,
+      "rateLimitsRead": 1,
+      "providerModels": 1
+    },
+    "warnings": [],
+    "totalApiKB": 14.6,
+    "pageState": {
+      "threadLoadingText": "Loading threads...",
+      "threadLoadTimeoutMs": 15000,
+      "stillLoadingThreads": false
+    },
+    "completionRequest": [
+      {
+        "method": "GET",
+        "path": "/codex-api/thread-completions",
+        "rpc": "",
+        "cursor": "",
+        "threadId": "",
+        "status": 200,
+        "ms": 5.2,
+        "requestBytes": 0,
+        "responseBytes": 11,
+        "responseKB": 0
+      }
+    ]
+  },
+  "candidate": {
+    "version": "0.2.16",
+    "image": "sha256:fd4104de031a3de036c141323190216e9a10004f2b1478ddc31e338957b545d7",
+    "pty": "CANDIDATE_0216_PTY_OK",
+    "tests": 61,
+    "testFiles": 5,
+    "productionPID": 1567483,
+    "idle": "idle-check|liveExecutions=0|activeTurns=0|queued=0|pendingApprovals=0|apiConnections=0|apiActiveRequests=0|backgroundThreads=0|loadedThreads=0|pages=1"
+  },
+  "live-result": {
+    "model": "gpt-5.6-luna",
+    "threadId": "01a08a7b-d319-7521-bcf7-ec1f2ba94f7a",
+    "turnId": "01a08a7c-9b49-7a33-b22e-570a7e099dc4",
+    "status": "completed",
+    "output": "我会按项目指示逐个读取附加目录中的 `AGENTS.md` 和 `proof.txt`，仅进行读取，不修改文件或访问网络。\n/home/Code/codexapp/output/0216/live-7W2VWQ/tools one — 978a6687-f799-4c44-88f8-da0fd03e2d59\n\n/home/Code/codexapp/output/0216/live-7W2VWQ/资料二 — ddf46046-b385-4e6e-bb15-aee2748e1eae",
+    "markersFound": [
+      true,
+      true
+    ],
+    "directoriesFound": [
+      true,
+      true
+    ],
+    "toolCalls": 1
+  },
+  "live-blue": {
+    "threadId": "01a08a7b-d319-7521-bcf7-ec1f2ba94f7a",
+    "nativeCompletion": true,
+    "serverListAndWebsocketReal": true,
+    "clickAcknowledgedByRealServer": true,
+    "twoClientsCleared": true,
+    "reloadNoBackfill": true,
+    "screenshot": "output/playwright/0216-live-blue.png"
+  },
+  "live-cleanup": {
+    "threadArchived": true,
+    "projectRemoved": true,
+    "tempDirectoriesRemoved": true
+  }
+}
