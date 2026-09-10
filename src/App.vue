@@ -1373,6 +1373,7 @@ const {
   refreshAll,
   refreshSkills,
   selectThread,
+  markThreadAsRead,
   ensureThreadMessagesLoaded,
   loadOlderMessages,
   setThreadTerminalOpen,
@@ -2494,6 +2495,7 @@ function onSidebarSearchKeydown(event: KeyboardEvent): void {
 
 function onSelectThread(threadId: string): void {
   if (!threadId) return
+  markThreadAsRead(threadId)
   if (route.name === 'thread' && routeThreadId.value === threadId) return
   void router.push({ name: 'thread', params: { threadId } })
   if (isMobile.value) setSidebarCollapsed(true)

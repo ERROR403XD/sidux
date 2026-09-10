@@ -7,7 +7,6 @@ import {
   filterGroupsByWorkspaceRoots,
   findAdjacentThreadId,
   removeThreadFromGroups,
-  isThreadUnreadByLastRead,
   useDesktopState,
 } from './useDesktopState'
 import type { UiProjectGroup } from '../types/codex'
@@ -373,28 +372,6 @@ describe('workspace roots project persistence helpers', () => {
       active: ['/tmp/local-project'],
       projectOrder: ['remote-project-id', '/tmp/local-project'],
     })
-  })
-})
-
-describe('thread unread state helpers', () => {
-  const cutoffIso = '2026-05-01T12:00:00.000Z'
-
-  it('uses the initialization cutoff when a thread has no read state', () => {
-    expect(isThreadUnreadByLastRead('2026-05-01T11:59:59.000Z', undefined, cutoffIso)).toBe(false)
-    expect(isThreadUnreadByLastRead('2026-05-01T12:00:01.000Z', undefined, cutoffIso)).toBe(true)
-  })
-
-  it('uses per-thread read state instead of the global cutoff after a thread is read', () => {
-    expect(isThreadUnreadByLastRead(
-      '2026-05-01T12:30:00.000Z',
-      '2026-05-01T12:45:00.000Z',
-      cutoffIso,
-    )).toBe(false)
-    expect(isThreadUnreadByLastRead(
-      '2026-05-01T12:50:00.000Z',
-      '2026-05-01T12:45:00.000Z',
-      cutoffIso,
-    )).toBe(true)
   })
 })
 
@@ -1493,6 +1470,8 @@ it('does not let an in-flight older history snapshot swallow a newer completion'
     expect(row().unread).toBe(false)
     notify({ method: 'turn/completed', params: { threadId: 'live', turn: { id: 't2' } } })
     expect(row().inProgress).toBe(false)
+    expect(row().unread).toBe(false)
+    notify({ method: 'codexapp/completions/changed', params: { threadId: 'live', token: 't2' } })
     expect(row().unread).toBe(true)
     notify({ method: 'turn/started', params: { threadId: 'live', turn: { id: 't2' } } })
     expect(row().inProgress).toBe(false)

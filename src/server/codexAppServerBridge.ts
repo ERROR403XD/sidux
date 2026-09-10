@@ -1,3 +1,4 @@
+import { ThreadCompletionList } from './threadCompletionList.js'
 import { AccountResourcePool } from './accountResourcePool.js'
 import { resolveAccountSelection, type AccountExecutionLease } from './accountExecution.js'
 import { DirectoryMcpReader } from './directoryMcpReader.js'
@@ -5872,6 +5873,15 @@ export class AppServerProcess {
     }
   }
 
+  private completionList: ThreadCompletionList | null = null
+  get completions(): ThreadCompletionList {
+    return this.completionList ??= new ThreadCompletionList(join(getCodexHomeDir(), 'codexapp-thread-completions-v1.json'), (threadId, token) => {
+      for (const listener of this.notificationListeners) {
+        listener({ method: 'codexapp/completions/changed', params: { threadId, token } })
+      }
+    })
+  }
+
   notifyQueueChanged(threadId: string): void {
     this.activityRevision++
     // Queue changes do not invalidate thread history or live item caches.
@@ -7101,6 +7111,12 @@ function getSharedBridgeState(): SharedBridgeState {
     if (primary) void backendQueueProcessor.cancelAccountDeliveries().catch(() => undefined)
   }
   appServer.onNotification((notification) => {
+    if (notification.method === 'turn/completed') {
+      const params = asRecord(notification.params)
+      const threadId = readNonEmptyString(params?.threadId)
+      const turnId = readNonEmptyString(asRecord(params?.turn)?.id) || readNonEmptyString(params?.turnId)
+      void appServer.completions.complete(threadId, turnId).catch(() => console.error('Failed to persist completion list'))
+    }
     quotaResume.observe(notification)
     if (notification.method === 'account/rateLimits/updated') void appServer.observeAccountQuota(notification.params).catch(() => undefined)
     automationEngine.notification(notification)
@@ -8240,6 +8256,19 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         const data = await readProviderBackedModelIds(appServer)
         setJson(res, 200, data)
         return
+      }
+
+      if (url.pathname === '/codex-api/thread-completions') {
+        if (req.method === 'GET') {
+          setJson(res, 200, { data: await appServer.completions.read() })
+          return
+        }
+        if (req.method === 'POST') {
+          const payload = asRecord(await readJsonBody(req))
+          await appServer.completions.acknowledge(readNonEmptyString(payload?.threadId), readNonEmptyString(payload?.token))
+          setJson(res, 200, { ok: true })
+          return
+        }
       }
 
       if (req.method === 'GET' && url.pathname === '/codex-api/workspace-roots-state') {

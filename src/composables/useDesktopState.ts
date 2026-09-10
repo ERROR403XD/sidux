@@ -88,8 +88,6 @@ export function findAdjacentThreadId(threads: UiThread[], threadId: string): str
   return threads[targetIndex + 1]?.id ?? threads[targetIndex - 1]?.id ?? ''
 }
 
-const READ_STATE_STORAGE_KEY = 'codex-web-local.thread-read-state.v1'
-const UNREAD_CUTOFF_STORAGE_KEY = 'codex-web-local.thread-unread-cutoff.v1'
 const THREAD_TOKEN_USAGE_STORAGE_KEY = 'codex-web-local.thread-token-usage.v1'
 const THREAD_TERMINAL_OPEN_STORAGE_KEY = 'codex-web-local.thread-terminal-open.v1'
 const SELECTED_THREAD_STORAGE_KEY = 'codex-web-local.selected-thread-id.v1'
@@ -123,59 +121,6 @@ function isThreadNotFoundError(error: unknown): boolean {
   if (error instanceof CodexApiError && error.status === 404) return true
   const message = error instanceof Error ? error.message : String(error ?? '')
   return /\b404\b|thread.*not found|conversation.*not found|no such thread|no rollout found for thread id/i.test(message)
-}
-
-function loadReadStateMap(): Record<string, string> {
-  if (typeof window === 'undefined') return {}
-
-  try {
-    const raw = window.localStorage.getItem(READ_STATE_STORAGE_KEY)
-    if (!raw) return {}
-
-    const parsed = JSON.parse(raw) as unknown
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
-    return parsed as Record<string, string>
-  } catch {
-    return {}
-  }
-}
-
-function saveReadStateMap(state: Record<string, string>): void {
-  if (typeof window === 'undefined') return
-  window.localStorage.setItem(READ_STATE_STORAGE_KEY, JSON.stringify(state))
-}
-
-function loadUnreadCutoffIso(): string {
-  if (typeof window === 'undefined') return ''
-
-  const existing = window.localStorage.getItem(UNREAD_CUTOFF_STORAGE_KEY)
-  if (existing) return existing
-
-  const initialCutoff = new Date().toISOString()
-  window.localStorage.setItem(UNREAD_CUTOFF_STORAGE_KEY, initialCutoff)
-  return initialCutoff
-}
-
-function saveUnreadCutoffIso(cutoffIso: string): void {
-  if (typeof window === 'undefined') return
-  window.localStorage.setItem(UNREAD_CUTOFF_STORAGE_KEY, cutoffIso)
-}
-
-function isThreadUpdatedAfterCutoff(updatedAtIso: string, cutoffIso: string): boolean {
-  if (!updatedAtIso || !cutoffIso) return false
-  const updatedAtMs = new Date(updatedAtIso).getTime()
-  const cutoffMs = new Date(cutoffIso).getTime()
-  if (!Number.isFinite(updatedAtMs) || !Number.isFinite(cutoffMs)) return false
-  return updatedAtMs > cutoffMs
-}
-
-export function isThreadUnreadByLastRead(
-  updatedAtIso: string,
-  threadReadStateIso: string | undefined,
-  unreadCutoffIso: string,
-): boolean {
-  const effectiveLastReadIso = threadReadStateIso ?? unreadCutoffIso
-  return isThreadUpdatedAfterCutoff(updatedAtIso, effectiveLastReadIso)
 }
 
 function normalizeCollaborationMode(value: unknown): CollaborationModeKind {
@@ -1445,9 +1390,7 @@ export function useDesktopState() {
   function applyListedStatuses(groups: UiProjectGroup[], revisions: Map<string, number>): void {
     for (const thread of flattenThreads(groups)) {
       if ((revisions.get(thread.id) ?? 0) !== (threadStatusRevision.get(thread.id) ?? 0)) continue
-      const wasRunning = inProgressById.value[thread.id] === true
       setThreadInProgress(thread.id, thread.inProgress)
-      if (wasRunning && !thread.inProgress) markThreadUnreadByEvent(thread.id)
     }
   }
   type FileAttachment = { label: string; path: string; fsPath: string }
@@ -1457,7 +1400,31 @@ export function useDesktopState() {
   const queueStateError = ref('')
   const queueProcessingByThreadId = ref<Record<string, boolean>>({})
   let hasLoadedPersistedQueueState = false
-  const eventUnreadByThreadId = ref<Record<string, boolean>>({})
+  const eventUnreadByThreadId = ref<Record<string, string>>({})
+  let completionChangesDuringLoad: Record<string, string | null> | null = null
+  let completionLoad: Promise<void> | null = null
+  function loadCompletionList(): Promise<void> {
+    if (completionLoad) return completionLoad
+    completionChangesDuringLoad = Object.create(null)
+    completionLoad = fetch('/codex-api/thread-completions').then(async response => {
+      if (!response.ok) throw new Error('Failed to load completion list')
+      const { data } = await response.json()
+      const entries: Record<string, string> = Object.create(null)
+      for (const [id, token] of Object.entries(data ?? {})) {
+        if (typeof token === 'string') entries[id] = token
+      }
+      for (const [id, token] of Object.entries(completionChangesDuringLoad ?? {})) {
+        if (token) entries[id] = token
+        else delete entries[id]
+      }
+      eventUnreadByThreadId.value = entries
+      applyThreadFlags()
+    }).catch(() => {}).finally(() => {
+      completionChangesDuringLoad = null
+      completionLoad = null
+    })
+    return completionLoad
+  }
   const availableModelIds = ref<string[]>([])
   const availableModels = ref<ModelCapability[]>([])
   const modelCatalogError = ref('')
@@ -1526,8 +1493,6 @@ export function useDesktopState() {
   }
   const activeProviderId = ref('')
   const codexCliMissingError = ref('')
-  const readStateByThreadId = ref<Record<string, string>>(loadReadStateMap())
-  const unreadCutoffIso = ref(loadUnreadCutoffIso())
   const projectOrder = ref<string[]>(loadProjectOrder())
   const projectDisplayNameById = ref<Record<string, string>>(loadProjectDisplayNames())
   const loadedVersionByThreadId = ref<Record<string, string>>({})
@@ -2202,13 +2167,7 @@ export function useDesktopState() {
         const inProgress = inProgressById.value[thread.id] === true
         const pendingRequestState = readPendingRequestState(getThreadPendingRequests(thread.id))
         const isSelected = selectedThreadId.value === thread.id
-        const unreadByEvent = eventUnreadByThreadId.value[thread.id] === true
-        const unreadByTime = isThreadUnreadByLastRead(
-          thread.updatedAtIso,
-          readStateByThreadId.value[thread.id],
-          unreadCutoffIso.value,
-        )
-        const unread = !isSelected && !inProgress && (unreadByEvent || unreadByTime)
+        const unread = !isSelected && !inProgress && Boolean(eventUnreadByThreadId.value[thread.id])
 
         return {
           ...thread,
@@ -2314,7 +2273,6 @@ export function useDesktopState() {
     reportedModelByThreadId.value = pruneThreadStateMap(reportedModelByThreadId.value, activeThreadIds)
     threadModelProviderByThreadId.value = pruneThreadStateMap(threadModelProviderByThreadId.value, activeThreadIds)
     threadTokenUsageByThreadId.value = pruneThreadStateMap(threadTokenUsageByThreadId.value, activeThreadIds)
-    eventUnreadByThreadId.value = pruneThreadStateMap(eventUnreadByThreadId.value, activeThreadIds)
     inProgressById.value = pruneThreadStateMap(inProgressById.value, activeThreadIds)
     const nextPending: Record<string, UiServerRequest[]> = {}
     for (const [threadId, requests] of Object.entries(pendingServerRequestsByThreadId.value)) {
@@ -2326,18 +2284,19 @@ export function useDesktopState() {
   }
 
   function markThreadAsRead(threadId: string): void {
-    const thread = flattenThreads(sourceGroups.value).find((row) => row.id === threadId)
-    if (!thread) return
-
-    readStateByThreadId.value = {
-      ...readStateByThreadId.value,
-      [threadId]: new Date(Math.max(Date.now(), Date.parse(thread.updatedAtIso) || 0)).toISOString(),
-    }
-    saveReadStateMap(readStateByThreadId.value)
-    if (eventUnreadByThreadId.value[threadId]) {
-      eventUnreadByThreadId.value = omitKey(eventUnreadByThreadId.value, threadId)
-    }
-    applyThreadFlags()
+    const token = eventUnreadByThreadId.value[threadId]
+    if (!token) return
+    void fetch('/codex-api/thread-completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ threadId, token }),
+    }).then(response => {
+      if (response.ok && eventUnreadByThreadId.value[threadId] === token) {
+        eventUnreadByThreadId.value = omitKey(eventUnreadByThreadId.value, threadId)
+        if (completionChangesDuringLoad) completionChangesDuringLoad[threadId] = null
+        applyThreadFlags()
+      }
+    }).catch(() => {})
   }
 
   function setTurnSummaryForThread(threadId: string, summary: TurnSummaryState | null): void {
@@ -2452,17 +2411,6 @@ export function useDesktopState() {
       }
     }
     maybeUnblockInterruptForPersistedThread(threadId)
-  }
-
-  function markThreadUnreadByEvent(threadId: string): void {
-    if (!threadId) return
-    if (threadId === selectedThreadId.value) return
-    if (eventUnreadByThreadId.value[threadId] === true) return
-    eventUnreadByThreadId.value = {
-      ...eventUnreadByThreadId.value,
-      [threadId]: true,
-    }
-    applyThreadFlags()
   }
 
   function setTurnActivityForThread(threadId: string, activity: TurnActivityState | null): void {
@@ -3869,10 +3817,8 @@ export function useDesktopState() {
       const threadId = extractThreadIdFromNotification(notification)
       const status = readString(asRecord(params?.status)?.type) || readString(params?.status)
       if (threadId && ['active', 'inProgress', 'running', 'idle', 'notLoaded', 'systemError'].includes(status)) {
-        const wasRunning = inProgressById.value[threadId] === true
         const running = ['active', 'inProgress', 'running'].includes(status)
         setThreadInProgress(threadId, running)
-        if (wasRunning && !running) markThreadUnreadByEvent(threadId)
       }
     }
     const turnActivity = readTurnActivity(notification)
@@ -3902,9 +3848,7 @@ export function useDesktopState() {
       setTurnErrorForThread(startedTurn.threadId, null)
       setThreadInProgress(startedTurn.threadId, true)
       scheduleQueueStateRefresh(startedTurn.threadId)
-      if (eventUnreadByThreadId.value[startedTurn.threadId]) {
-        eventUnreadByThreadId.value = omitKey(eventUnreadByThreadId.value, startedTurn.threadId)
-      }
+
     }
 
     const completedTurn = readTurnCompletedInfo(notification)
@@ -3936,7 +3880,6 @@ export function useDesktopState() {
       }
       setThreadInProgress(completedTurn.threadId, false)
       setTurnActivityForThread(completedTurn.threadId, null)
-      markThreadUnreadByEvent(completedTurn.threadId)
       scheduleQueueStateRefresh(completedTurn.threadId)
     }
 
@@ -4506,7 +4449,6 @@ export function useDesktopState() {
         )
 
       if (canReuseLoadedMessages) {
-        markThreadAsRead(threadId)
         return
       }
 
@@ -4584,7 +4526,6 @@ export function useDesktopState() {
       if (snapshotIsCurrent && !inProgress) {
         clearCompletedTurnLiveState(threadId)
       }
-      markThreadAsRead(threadId)
       } catch (unknownError) {
         const message = unknownError instanceof Error ? unknownError.message : 'Unknown application error'
         if (selectedThreadId.value === threadId) {
@@ -5568,11 +5509,24 @@ export function useDesktopState() {
     void loadPendingServerRequestsFromBridge()
     let notificationReady = false
     stopNotificationStream = subscribeCodexNotifications((notification) => {
+      if (notification.method === 'codexapp/completions/changed') {
+        const params = asRecord(notification.params)
+        const threadId = readString(params?.threadId)
+        const token = typeof params?.token === 'string' ? params.token : null
+        if (threadId) {
+          if (completionChangesDuringLoad) completionChangesDuringLoad[threadId] = token
+          if (token) eventUnreadByThreadId.value = { ...eventUnreadByThreadId.value, [threadId]: token }
+          else eventUnreadByThreadId.value = omitKey(eventUnreadByThreadId.value, threadId)
+          applyThreadFlags()
+        }
+        return
+      }
       if (notification.method === 'codexapp/queue/changed') {
         void refreshQueueState().catch(() => {})
         return
       }
       if (notification.method === 'ready') {
+        void loadCompletionList()
         const reconnected = notificationReady
         if (notificationReady) {
           observeTaskNotification({ method: 'codexapp/reconnected', params: {} })
@@ -5820,6 +5774,7 @@ export function useDesktopState() {
     refreshAll,
     refreshSkills,
     selectThread,
+    markThreadAsRead,
     loadMessages,
     loadOlderMessages,
     ensureThreadMessagesLoaded,
