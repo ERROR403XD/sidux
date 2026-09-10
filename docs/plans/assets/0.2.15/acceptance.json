@@ -1,0 +1,490 @@
+{
+  "artifacts": {
+    "files": 27,
+    "allHashesEqual": true,
+    "version": "0.2.15",
+    "image": "sha256:1bef53429c77fd71e560d4b10967187655f8db39ce1cf35ee15bf6e8c45b86d3"
+  },
+  "ui": [
+    {
+      "url": "http://127.0.0.1:59001",
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "font": {
+        "size": "13px",
+        "family": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+      },
+      "rects": {
+        "field": {
+          "x": 359,
+          "y": 132.1875,
+          "w": 722,
+          "h": 54.515625
+        },
+        "picker": {
+          "x": 359,
+          "y": 153.515625,
+          "w": 621,
+          "h": 33.1875
+        },
+        "check": {
+          "x": 992,
+          "y": 150.703125,
+          "w": 89,
+          "h": 36
+        },
+        "font": "13px"
+      },
+      "styles": {
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(39, 39, 42)"
+      },
+      "searchRequests": 0,
+      "saved": 1,
+      "runRequests": 1,
+      "persisted": true,
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001",
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "font": {
+        "size": "13px",
+        "family": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+      },
+      "rects": {
+        "field": {
+          "x": 359,
+          "y": 132.1875,
+          "w": 722,
+          "h": 54.515625
+        },
+        "picker": {
+          "x": 359,
+          "y": 153.515625,
+          "w": 621,
+          "h": 33.1875
+        },
+        "check": {
+          "x": 992,
+          "y": 150.703125,
+          "w": 89,
+          "h": 36
+        },
+        "font": "13px"
+      },
+      "styles": {
+        "bg": "rgb(24, 24, 27)",
+        "color": "rgb(228, 228, 231)"
+      },
+      "searchRequests": 0,
+      "saved": 1,
+      "runRequests": 1,
+      "persisted": true,
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001",
+      "width": 768,
+      "height": 1024,
+      "theme": "light",
+      "font": {
+        "size": "16px",
+        "family": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+      },
+      "rects": {
+        "field": {
+          "x": 35,
+          "y": 140.1875,
+          "w": 698,
+          "h": 54.515625
+        },
+        "picker": {
+          "x": 35,
+          "y": 161.515625,
+          "w": 597,
+          "h": 33.1875
+        },
+        "check": {
+          "x": 644,
+          "y": 158.703125,
+          "w": 89,
+          "h": 36
+        },
+        "font": "13px"
+      },
+      "styles": {
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(39, 39, 42)"
+      },
+      "searchRequests": 0,
+      "saved": 1,
+      "runRequests": 1,
+      "persisted": true,
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001",
+      "width": 768,
+      "height": 1024,
+      "theme": "dark",
+      "font": {
+        "size": "16px",
+        "family": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+      },
+      "rects": {
+        "field": {
+          "x": 35,
+          "y": 140.1875,
+          "w": 698,
+          "h": 54.515625
+        },
+        "picker": {
+          "x": 35,
+          "y": 161.515625,
+          "w": 597,
+          "h": 33.1875
+        },
+        "check": {
+          "x": 644,
+          "y": 158.703125,
+          "w": 89,
+          "h": 36
+        },
+        "font": "13px"
+      },
+      "styles": {
+        "bg": "rgb(24, 24, 27)",
+        "color": "rgb(228, 228, 231)"
+      },
+      "searchRequests": 0,
+      "saved": 1,
+      "runRequests": 1,
+      "persisted": true,
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001",
+      "width": 375,
+      "height": 812,
+      "theme": "light",
+      "font": {
+        "size": "16px",
+        "family": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+      },
+      "rects": {
+        "field": {
+          "x": 21,
+          "y": 118.90625,
+          "w": 333,
+          "h": 96.515625
+        },
+        "picker": {
+          "x": 21,
+          "y": 140.234375,
+          "w": 333,
+          "h": 33.1875
+        },
+        "check": {
+          "x": 21,
+          "y": 179.421875,
+          "w": 333,
+          "h": 36
+        },
+        "font": "13px"
+      },
+      "styles": {
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(39, 39, 42)"
+      },
+      "searchRequests": 0,
+      "saved": 1,
+      "runRequests": 1,
+      "persisted": true,
+      "errors": []
+    },
+    {
+      "url": "http://127.0.0.1:59001",
+      "width": 375,
+      "height": 812,
+      "theme": "dark",
+      "font": {
+        "size": "16px",
+        "family": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+      },
+      "rects": {
+        "field": {
+          "x": 21,
+          "y": 118.90625,
+          "w": 333,
+          "h": 96.515625
+        },
+        "picker": {
+          "x": 21,
+          "y": 140.234375,
+          "w": 333,
+          "h": 33.1875
+        },
+        "check": {
+          "x": 21,
+          "y": 179.421875,
+          "w": 333,
+          "h": 36
+        },
+        "font": "13px"
+      },
+      "styles": {
+        "bg": "rgb(24, 24, 27)",
+        "color": "rgb(228, 228, 231)"
+      },
+      "searchRequests": 0,
+      "saved": 1,
+      "runRequests": 1,
+      "persisted": true,
+      "errors": []
+    }
+  ],
+  "projectManual": [
+    {
+      "kind": "cron",
+      "trigger": "manual",
+      "runId": "5507e0dd-ccfb-4b70-8b3d-7ff5bc2a79d8",
+      "threadId": "01a088e8-be5a-7e21-aaf3-56a57023f216",
+      "turnId": "01a088e8-c071-7033-bb69-a8c8eff3061a",
+      "status": "completed",
+      "errorCode": null,
+      "model": "gpt-5.6-luna",
+      "latencyMs": 21974,
+      "output": "我会仅读取指定的 `diary.md`，提炼上周日记内容，并将带有指定标记的摘要写入同目录 `result.txt`。\nAUTOMATION_0215_DIARY_OK\n\n上周日记主要内容：周一完成了书架整理；周日练习做了番茄炒蛋。\n\n已写入：[result.txt](/test-workspace/automation-0190/0215-validation/result.txt)",
+      "artifact": "AUTOMATION_0215_DIARY_OK\n上周日记主要内容：周一完成了书架整理；周日练习做了番茄炒蛋。\n",
+      "duplicateSameRun": true,
+      "source": "editor-button"
+    }
+  ],
+  "heartbeat": [
+    {
+      "kind": "heartbeat",
+      "trigger": "manual",
+      "runId": "18fcd865-f9fc-4e67-8bff-b79d1a2d047a",
+      "threadId": "01a088e8-be5a-7e21-aaf3-56a57023f216",
+      "turnId": "01a088ea-6dbf-7ee0-9a51-e29b0c7b85ca",
+      "status": "completed",
+      "errorCode": null,
+      "model": "gpt-5.6-luna",
+      "latencyMs": 2673,
+      "output": "AUTOMATION_0215_HEARTBEAT_OK",
+      "source": "detail-button"
+    },
+    {
+      "kind": "heartbeat",
+      "trigger": "schedule",
+      "runId": "868a54e8-7863-45c6-8c61-ca718c304099",
+      "threadId": "01a088e8-be5a-7e21-aaf3-56a57023f216",
+      "turnId": "01a088eb-113b-76b0-9944-65654ab33574",
+      "status": "completed",
+      "errorCode": null,
+      "model": "gpt-5.6-luna",
+      "latencyMs": 3244,
+      "output": "AUTOMATION_0215_HEARTBEAT_OK",
+      "source": "scheduler"
+    }
+  ],
+  "liveUi": [
+    {
+      "theme": "light",
+      "url": "http://127.0.0.1:59001/#/thread/01a088e8-be5a-7e21-aaf3-56a57023f216",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "responsePersistsAfterReload": true,
+      "screenshot": "output/playwright/0215-live-result-light.png"
+    },
+    {
+      "theme": "dark",
+      "url": "http://127.0.0.1:59001/#/thread/01a088e8-be5a-7e21-aaf3-56a57023f216",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "responsePersistsAfterReload": true,
+      "screenshot": "output/playwright/0215-live-result-dark.png"
+    }
+  ],
+  "authMatrix": [
+    {
+      "kind": "noauth",
+      "port": 59081,
+      "name": "codexapp-0215-noauth",
+      "hasCodexAuth": false,
+      "enabled": true,
+      "provider": "opencode-zen",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "invalid",
+      "port": 59082,
+      "name": "codexapp-0215-invalid",
+      "hasCodexAuth": true,
+      "enabled": false,
+      "provider": "openrouter",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "malformed",
+      "port": 59083,
+      "name": "codexapp-0215-malformed",
+      "hasCodexAuth": false,
+      "enabled": true,
+      "provider": "opencode-zen",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "provider",
+      "port": 59084,
+      "name": "codexapp-0215-provider",
+      "hasCodexAuth": false,
+      "enabled": true,
+      "provider": "opencode-zen",
+      "proxyInstalled": true,
+      "proxyEnabled": false,
+      "missingKeyStatus": 401
+    },
+    {
+      "kind": "provider-after",
+      "provider": "openrouter",
+      "enabled": true
+    }
+  ],
+  "authUi": [
+    {
+      "url": "http://127.0.0.1:59082/#/thread/01a088e9-4e1f-7f40-8deb-ebebddfabac5",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "invalidAuthPersistsAfterReload": true,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0215-auth-invalid-light.png"
+    },
+    {
+      "url": "http://127.0.0.1:59082/#/thread/01a088e9-4e1f-7f40-8deb-ebebddfabac5",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "invalidAuthPersistsAfterReload": true,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0215-auth-invalid-dark.png"
+    }
+  ],
+  "providerUi": [
+    {
+      "kind": "noauth",
+      "theme": "light",
+      "port": 59081,
+      "provider": "opencode-zen",
+      "enabled": true,
+      "hasCodexAuth": false,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0215-auth-noauth-light.png"
+    },
+    {
+      "kind": "noauth",
+      "theme": "dark",
+      "port": 59081,
+      "provider": "opencode-zen",
+      "enabled": true,
+      "hasCodexAuth": false,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0215-auth-noauth-dark.png"
+    },
+    {
+      "kind": "malformed",
+      "theme": "light",
+      "port": 59083,
+      "provider": "opencode-zen",
+      "enabled": true,
+      "hasCodexAuth": false,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0215-auth-malformed-light.png"
+    },
+    {
+      "kind": "malformed",
+      "theme": "dark",
+      "port": 59083,
+      "provider": "opencode-zen",
+      "enabled": true,
+      "hasCodexAuth": false,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0215-auth-malformed-dark.png"
+    },
+    {
+      "kind": "provider",
+      "theme": "light",
+      "port": 59084,
+      "provider": "openrouter",
+      "enabled": true,
+      "hasCodexAuth": false,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0215-auth-provider-light.png"
+    },
+    {
+      "kind": "provider",
+      "theme": "dark",
+      "port": 59084,
+      "provider": "openrouter",
+      "enabled": true,
+      "hasCodexAuth": false,
+      "duplicateLiveOverlays": 0,
+      "pageErrors": [],
+      "screenshot": "output/playwright/0215-auth-provider-dark.png"
+    }
+  ],
+  "performance": {
+    "targetUrl": "http://127.0.0.1:4173/",
+    "duplicateCounts": {
+      "threadList": 1,
+      "threadListFirstPage": 1,
+      "threadListCursor": 0,
+      "threadResume": 0,
+      "threadRead": 0,
+      "threadReadWithTurns": 0,
+      "threadReadDuplicateKeys": 0,
+      "skillsList": 1,
+      "rateLimitsRead": 1,
+      "providerModels": 1
+    },
+    "warnings": [],
+    "totalApiKB": 14.6,
+    "pageState": {
+      "threadLoadingText": "Loading threads...",
+      "threadLoadTimeoutMs": 15000,
+      "stillLoadingThreads": false
+    }
+  },
+  "tests": {
+    "files": 6,
+    "passed": 51,
+    "failed": 0,
+    "retryRegressionRerun": 5
+  }
+}
