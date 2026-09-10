@@ -585,6 +585,10 @@ export class ApiProxyGateway {
         json(res, 200, { data: await this.activation.snapshot() })
         return
       }
+      if (req.method === 'GET' && path === '/activation/history') {
+        json(res, 200, { data: await this.activation.historyPage(Number(url.searchParams.get('page') || 1)) })
+        return
+      }
       if (req.method === 'GET' && path === '/status') {
         await this.usage.ready
         const selectedId = await this.resolveAccount().catch(() => null)
