@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { DirectoryPluginCache, nextLocalPluginRefresh } from './directoryPluginCache'
@@ -49,4 +49,11 @@ describe('local plugin catalog', () => {
     expect(new Date(nextLocalPluginRefresh(before)).getHours()).toBe(2)
     expect(new Date(nextLocalPluginRefresh(new Date(2026, 8, 10, 2).getTime())).getDate()).toBe(11)
   })
+  it('keeps disk scopes bounded when multiple new projects refresh concurrently', async () => {
+    const { cache, directory } = await setup()
+    await Promise.all(Array.from({ length: 11 }, (_, i) => cache.read({ cwds: [`/initial/${i}`] })))
+    await Promise.all(Array.from({ length: 12 }, (_, i) => cache.read({ cwds: [`/new/${i}`] })))
+    expect((await readdir(directory)).filter(name => name.endsWith('.json'))).toHaveLength(12)
+  })
+
 })

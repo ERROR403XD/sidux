@@ -18,13 +18,18 @@ export function nextLocalPluginRefresh(after: number): number {
 export class DirectoryPluginCache {
   private entries = new Map<string, Entry>()
   private pending = new Map<string, Promise<PluginCatalog>>()
+  private writes: Promise<unknown> = Promise.resolve()
+  private retryAt = new Map<string, number>()
   private timer: NodeJS.Timeout | undefined
   private closed = false
   private readonly ready: Promise<void>
 
   constructor(private directory: string, private rpc: (params: unknown) => Promise<unknown>, private now = Date.now, schedule = true) {
     this.ready = this.restore()
-    if (schedule) this.schedule()
+    if (schedule) {
+      this.schedule()
+      void this.ready.then(() => this.entries.size ? undefined : this.refresh([])).catch(() => {})
+    }
   }
 
   private key(cwds: string[]): string {
@@ -51,7 +56,7 @@ export class DirectoryPluginCache {
     const key = this.key(cwds)
     const saved = this.entries.get(key)
     if (saved && params.forceRefetch !== true) {
-      if (this.now() >= nextLocalPluginRefresh(saved.updatedAt)) void this.refresh(cwds).catch(() => {})
+      if (this.now() >= nextLocalPluginRefresh(saved.updatedAt) && this.now() >= (this.retryAt.get(key) || 0)) void this.refresh(cwds).catch(() => {})
       return saved.catalog
     }
     return this.refresh(cwds)
@@ -62,6 +67,8 @@ export class DirectoryPluginCache {
     const pending = this.pending.get(key)
     if (pending) return pending
     if (this.closed || this.pending.size >= MAX_SCOPES) return Promise.reject(new Error('插件目录暂不可用'))
+    if (this.retryAt.size >= MAX_SCOPES && !this.retryAt.has(key)) this.retryAt.delete(this.retryAt.keys().next().value!)
+    this.retryAt.set(key, this.now() + 60000)
     const work = (async () => {
       const catalog = await this.rpc({ ...(cwds.length ? { cwds } : {}), forceRefetch: true }) as PluginCatalog
       if (!Array.isArray(catalog?.marketplaces)) throw new Error('插件目录响应无效')
@@ -71,7 +78,8 @@ export class DirectoryPluginCache {
         return saved ? { ...saved.catalog, marketplaceLoadErrors: catalog.marketplaceLoadErrors } : catalog
       }
       const entry: Entry = { version: 1, cwds, updatedAt: this.now(), catalog }
-      if (!this.closed) {
+      const write = this.writes.then(async () => {
+        if (this.closed) return
         if (!this.entries.has(key) && this.entries.size >= MAX_SCOPES) {
           const oldest = [...this.entries].sort((a, b) => a[1].updatedAt - b[1].updatedAt)[0]![0]
           this.entries.delete(oldest)
@@ -79,7 +87,9 @@ export class DirectoryPluginCache {
         }
         await privateJson(join(this.directory, `${key}.json`), entry)
         this.entries.set(key, entry)
-      }
+      })
+      this.writes = write.catch(() => {})
+      await write
       return catalog
     })().finally(() => this.pending.delete(key))
     this.pending.set(key, work)
