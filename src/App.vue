@@ -1019,6 +1019,7 @@
 </template>
 
 <script setup lang="ts">
+import { useTransientNotice } from './composables/useTransientNotice'
 import { accountDisplayName } from './accountDisplay'
 import AppDialog from './components/common/AppDialog.vue'
 import NotificationSettings from './components/settings/NotificationSettings.vue'
@@ -1596,7 +1597,9 @@ const removingAccountId = ref('')
 const confirmingRemoveAccountId = ref('')
 const hoveredAccountId = ref('')
 const accountActionError = ref('')
-const accountActionNotice = ref('')
+const accountActionNotice = useTransientNotice()
+watch(isSettingsOpen, open => { if (!open) accountActionNotice.value = '' })
+watch(() => route.fullPath, () => { accountActionNotice.value = '' })
 const SEND_WITH_ENTER_KEY = 'codex-web-local.send-with-enter.v1'
 const DARK_MODE_KEY = 'codex-web-local.dark-mode.v1'
 const DICTATION_CLICK_TO_TOGGLE_KEY = 'codex-web-local.dictation-click-to-toggle.v1'
@@ -2710,7 +2713,7 @@ async function onSwitchAccount(storageId: string): Promise<void> {
       includeSelectedThreadMessages: true,
     })
     await loadAccountsState({ silent: true })
-    accountActionNotice.value = t('Account switched. New requests use the selected account; the current project and conversation are unchanged.')
+    accountActionNotice.value = t('Account switched.')
   } catch (error) {
     accountActionError.value = error instanceof Error ? error.message : t('Failed to switch account')
   } finally {
@@ -2741,8 +2744,8 @@ function onAccountLoginCompleted(result: AccountLoginCompleteResult): void {
   stopPolling()
   startPolling()
   accountActionNotice.value = result.outcome === 'added'
-    ? t('Account added. The active quota source did not change.')
-    : t('Account sign-in refreshed without adding a duplicate.')
+    ? t('Account added.')
+    : t('Account sign-in refreshed.')
 }
 
 async function onRemoveAccount(storageId: string): Promise<void> {
@@ -2760,7 +2763,7 @@ async function onRemoveAccount(storageId: string): Promise<void> {
   try {
     const result = await removeAccount(storageId)
     removedAccountIds.add(storageId)
-    accountActionNotice.value = '账号已移除，关联连接已关闭；可重新添加账号。'
+    accountActionNotice.value = '账号已移除'
     applyAccountsSnapshot(result.accounts)
     stopPolling()
     startPolling()

@@ -15,6 +15,7 @@
   </AppDialog>
 </template>
 <script setup lang="ts">
+import { useTransientNotice } from '../../composables/useTransientNotice'
 import { accountDisplayName } from '../../accountDisplay'
 import { computed, ref } from 'vue'
 import AppButton from '../common/AppButton.vue'
@@ -36,7 +37,7 @@ const shown = computed(() => Array.from({ length: Math.min(3, count.value) }, (_
 const target = ref<ResetCredit | null>(null)
 const busy = ref(false)
 const error = ref('')
-const notice = ref('')
+const notice = useTransientNotice()
 let attempt = ''
 function expiry(credit: ResetCredit): string { return credit.expiresAt ? `到期：${formatLocalDateTime(credit.expiresAt * 1000)}` : '无到期时间' }
 function choose(credit: ResetCredit | null): void {
@@ -54,7 +55,12 @@ async function consume(): Promise<void> {
     const response = await fetch('/codex-api/accounts/reset-credit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ storageId: props.account.storageId, creditId: target.value.id, idempotencyKey: attempt, confirmed: true }) })
     const payload = await response.json()
     if (!response.ok) throw new Error(payload.message || '重置结果未确认，请核对额度后重试。')
-    notice.value = ({ reset: '额度已重置', alreadyRedeemed: '该次重置已完成', nothingToReset: '当前没有可重置的额度窗口', noCredit: '此重置机会已不可用' } as Record<string, string>)[payload.data?.outcome] || '结果未确认，请刷新账号核对。'
+    const outcome = ({ reset: '额度已重置', alreadyRedeemed: '该次重置已完成', nothingToReset: '当前没有可重置的额度窗口', noCredit: '此重置机会已不可用' } as Record<string, string>)[payload.data?.outcome]
+    if (!outcome) {
+      error.value = '结果未确认，请刷新账号核对。'
+      return
+    }
+    notice.value = outcome
     target.value = null
   } catch (cause) { error.value = cause instanceof Error ? cause.message : '重置结果未确认。' }
   finally {

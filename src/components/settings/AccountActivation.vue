@@ -19,6 +19,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import { useTransientNotice } from '../../composables/useTransientNotice'
 import { accountDisplayName } from '../../accountDisplay'
 import { computed, onMounted, ref } from 'vue'
 import AppButton from '../common/AppButton.vue'
@@ -31,7 +32,7 @@ const settings = ref<ActivationSettings>({ enabled: false, accountIds: [], times
 const error = ref('')
 const loading = ref(false)
 const saving = ref(false)
-const saved = ref(false)
+const saved = useTransientNotice()
 const recent = computed(() => snapshot.value?.runs.filter((run, index, rows) => rows.findIndex(row => row.accountId === run.accountId) === index) || [])
 const labels = { preparing: '准备中', sending: '发送中', sent: '发送成功', skipped: '已跳过', unknown: '结果未确认' }
 function formatPlanDate(at: number): string { return formatLocalDateTime(at) }
@@ -41,7 +42,7 @@ function setTimePart(index: number, part: number, event: Event): void {
   pieces[part] = input.value.replace(/\D/g, '').slice(0, 2)
   input.value = pieces[part]!
   settings.value.times[index] = pieces.join(':')
-  saved.value = false
+  saved.value = ''
 }
 function accountName(id: string): string { const account = props.accounts.find(row => row.storageId === id); return account ? accountDisplayName(account) : '已移除的账号' }
 async function request(init?: RequestInit): Promise<ActivationSnapshot> {
@@ -66,14 +67,14 @@ async function load(): Promise<void> {
 }
 async function save(): Promise<void> {
   saving.value = true
-  saved.value = false
+  saved.value = ''
   error.value = ''
   try {
     if (settings.value.times.some(time => !/^\d{1,2}:\d{1,2}$/.test(time))) throw new Error('请输入完整的小时和分钟。')
     const value = validateActivationSettings({ ...settings.value, timezone: displayTimeZone(), times: settings.value.times.map(time => time.split(':').map(part => part.padStart(2, '0')).join(':')) })
     snapshot.value = await request({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) })
     settings.value = { ...snapshot.value.settings, accountIds: [...snapshot.value.settings.accountIds], times: [...snapshot.value.settings.times] }
-    saved.value = true
+    saved.value = '已保存'
   } catch (cause) { error.value = cause instanceof Error ? cause.message : '保存失败' }
   finally { saving.value = false }
 }

@@ -21,7 +21,7 @@
         <p class="api-proxy-muted">当前实际 API 账号：{{ status.settings.enabled ? accountName(status.selectedStorageId || status.settings.accountStorageId || status.accounts.activeStorageId) : '未启用' }}</p>
         <p class="api-proxy-muted">切换前停止新接入并等待当前请求结束；等待超时保留原设置。空闲 WebSocket 会正常关闭，客户端随后重连。</p>
         <div class="api-proxy-actions">
-          <AppButton :busy="busy" @click="save(false)">保存并等待当前请求结束</AppButton>
+          <AppButton :busy="busy" @click="save(false)">保存</AppButton>
           <AppButton variant="danger" :disabled="busy" @click="forceDialog = true">中断活动连接并保存…</AppButton>
         </div>
       </section>
@@ -59,9 +59,7 @@
         <label>Base URL<input class="app-input" :value="baseUrl" readonly /></label>
         <label>模型<AppSelect v-model="model" :options="modelOptions" enable-search /></label>
         <pre class="api-proxy-config">{{ clientConfig }}</pre>
-        <p class="api-proxy-muted">将创建的 key 放入客户端环境变量 CODEXAPP_API_KEY。客户端不需要服务器账号的 auth.json。Claude Code 和聊天客户端专项适配暂未提供。</p>
-        <p class="api-proxy-muted">支持 Responses HTTP/SSE/WebSocket、模型列表、Codex 原生压缩和基础 Chat Completions；HTTP 续接需发送完整 input。</p>
-        <p class="api-proxy-muted">当前组件不支持 ultra 推理强度；以本出口返回的模型能力为准。</p>
+        <p class="api-proxy-muted api-proxy-endpoints">支持端点：<code>/v1/responses</code>（HTTP / SSE / WebSocket）、<code>/v1/responses/compact</code>、<code>/v1/models</code>、<code>/v1/chat/completions</code>。</p>
       </section>
       <section class="api-proxy-card">
         <div class="api-proxy-heading"><h2>活动连接</h2><AppButton :disabled="busy" @click="refresh(false)">刷新</AppButton></div>
@@ -74,7 +72,7 @@
           <tr v-for="entry in status.activity.recent.slice(0, 30)" :key="entry.id"><td>{{ keyName(entry.keyId) }}</td><td>{{ entry.transport }}</td><td>{{ entry.model || '—' }}</td><td>{{ date(entry.startedAt) }}</td><td>{{ entry.status }}</td></tr>
         </tbody></table></div></details>
       </section>
-      <p class="api-proxy-muted">CLIProxyAPI {{ status.componentVersion }} · 模型目录随组件版本固定 · 请求记录不保存提示词、回复或工具参数。</p>
+      <p class="api-proxy-muted">CLIProxyAPI {{ status.componentVersion }}</p>
     </template>
     <AppDialog :open="usageDialog" title="Token统计" panel-class="api-proxy-usage-dialog" @close="usageDialog = false">
       <div class="api-proxy-usage-filters">
