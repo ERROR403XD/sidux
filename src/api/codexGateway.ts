@@ -2220,7 +2220,37 @@ function normalizeDirectoryApp(value: unknown, catalogRank = 0): DirectoryAppInf
   }
 }
 
+type PluginPageCache = { rows: DirectoryPluginSummary[]; warnings: string[]; expiresAt: number }
+const pluginPageCache = new Map<string, PluginPageCache>()
+const pluginPageFlights = new Map<string, Promise<PluginPageCache>>()
 export async function listDirectoryPlugins(cwds?: string[], forceRefetch = false, onWarnings?: (messages: string[]) => void): Promise<DirectoryPluginSummary[]> {
+  const key = JSON.stringify([...(cwds || [])].sort())
+  const cached = pluginPageCache.get(key)
+  if (cached && !forceRefetch && Date.now() < cached.expiresAt) {
+    onWarnings?.(cached.warnings)
+    return cached.rows
+  }
+  let work = pluginPageFlights.get(key)
+  if (!work) {
+    work = (async () => {
+      let warnings: string[] = []
+      const rows = await fetchDirectoryPlugins(cwds, forceRefetch, value => { warnings = value })
+      const next = new Date()
+      next.setHours(2, 0, 0, 0)
+      if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1)
+      const result = { rows, warnings, expiresAt: next.getTime() }
+      if (pluginPageCache.size >= 12) pluginPageCache.delete(pluginPageCache.keys().next().value!)
+      pluginPageCache.set(key, result)
+      return result
+    })().finally(() => pluginPageFlights.delete(key))
+    pluginPageFlights.set(key, work)
+  }
+  const result = await work
+  onWarnings?.(result.warnings)
+  return result.rows
+}
+
+async function fetchDirectoryPlugins(cwds?: string[], forceRefetch = false, onWarnings?: (messages: string[]) => void): Promise<DirectoryPluginSummary[]> {
   const params: Record<string, unknown> = {}
   if (cwds && cwds.length > 0) params.cwds = cwds
   if (forceRefetch) params.forceRefetch = true
