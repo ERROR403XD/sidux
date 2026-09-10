@@ -1,6 +1,6 @@
 <template>
   <button ref="anchor" class="model-reasoning-trigger" type="button" :disabled="disabled" :title="`${modelLabel} · ${effortLabel}`" aria-label="模型与推理强度" :aria-expanded="visible" @click="toggle">
-    <span>{{ shortModelLabel }}</span><small>{{ shortEffortLabel }}</small><span aria-hidden="true" class="model-reasoning-chevron">⌄</span>
+    <span>{{ shortModelLabel }}</span><small>{{ shortEffortLabel }}</small>
   </button>
   <AppPopover :open="visible" :anchor="anchor" :width="320" direction="up" align="end" panel-class="model-reasoning-popover" @close="close">
     <header class="model-reasoning-heading"><strong>模型</strong><span>{{ shortModelLabel }}</span></header>

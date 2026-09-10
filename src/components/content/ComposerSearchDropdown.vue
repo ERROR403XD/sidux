@@ -9,7 +9,7 @@
       @click="onToggle"
     >
       <span class="search-dropdown-value">{{ displayLabel }}</span>
-      <IconTablerChevronDown class="search-dropdown-chevron" />
+      <IconTablerChevronDown v-if="!hideChevron" class="search-dropdown-chevron" />
     </button>
 
     <AppPopover
@@ -129,6 +129,7 @@ const props = defineProps<{
   placeholder?: string
   searchPlaceholder?: string
   disabled?: boolean
+  hideChevron?: boolean
   openDirection?: 'up' | 'down'
   createLabel?: string
   allowRemove?: boolean

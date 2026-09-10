@@ -229,7 +229,7 @@
 
         <span v-if="modelSettingsWarning || modelCatalogError" class="model-capability-warning" role="status">{{ modelSettingsWarning || modelCatalogError }}</span>
         <template v-if="!isDictationRecording">
-          <ComposerSearchDropdown
+          <ComposerSearchDropdown hide-chevron
             ref="commandSkillsRef"
             @open-change="onCommandSubmenuChange('skills', $event)"
             class="thread-composer-control"
@@ -269,7 +269,7 @@
             :aria-checked="isFastSelected"
             aria-label="Fast 快速模式"
             :title="fastModeHint"
-            :disabled="isComposerConfigDisabled || (!fastTier && !selectedSpeedMode) || fastIsOnlyDefault"
+            :disabled="isComposerConfigDisabled || fastControl.disabled"
             @click="toggleFastMode"
           >
             <IconTablerBolt class="thread-composer-fast-icon" aria-hidden="true" /> Fast
@@ -369,7 +369,7 @@
 
 <script setup lang="ts">
 import AppSelect from '../common/AppSelect.vue'
-import { effortOptions, tierOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
+import { fastModeControl, effortOptions, tierOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
 import { isOverlayEventInside } from '../../composables/overlayEvents'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ComposerCommandPicker from './ComposerCommandPicker.vue'
@@ -573,15 +573,12 @@ let lastActiveThreadId = ''
 const modelCapability = computed(() => props.modelCapabilities?.find(model => model.id === props.selectedModel))
 const reasoningOptions = computed(() => effortOptions(modelCapability.value))
 const serviceTierOptions = computed(() => tierOptions(modelCapability.value, props.selectedSpeedMode))
-const fastTier = computed(() => modelCapability.value?.serviceTiers?.find(tier => tier.value === 'priority' || /^fast$/i.test(tier.label)))
-const isFastSelected = computed(() => !!fastTier.value && (props.selectedSpeedMode || modelCapability.value?.defaultServiceTier) === fastTier.value.value)
-const standardTier = computed(() => modelCapability.value?.serviceTiers?.find(tier => /^(default|standard)$/i.test(tier.value)))
-const fastIsOnlyDefault = computed(() => isFastSelected.value && modelCapability.value?.defaultServiceTier === fastTier.value?.value && !standardTier.value)
-const fastModeHint = computed(() => fastIsOnlyDefault.value ? '该模型默认使用 Fast，目录未公布标准档位' : fastTier.value?.description || (props.selectedSpeedMode && !fastTier.value ? '已保存的速度档位不受支持；点击恢复模型默认速度' : '当前模型未公布 Fast 快速模式'))
+const fastControl = computed(() => fastModeControl(modelCapability.value, props.selectedSpeedMode))
+const isFastSelected = computed(() => fastControl.value.checked)
+const fastModeHint = computed(() => fastControl.value.hint)
 function toggleFastMode(): void {
-  if (isComposerConfigDisabled.value || fastIsOnlyDefault.value) return
-  const standard = modelCapability.value?.defaultServiceTier === fastTier.value?.value ? standardTier.value?.value || '' : ''
-  emit('update:selected-speed-mode', isFastSelected.value || !fastTier.value ? standard : fastTier.value.value)
+  if (isComposerConfigDisabled.value || fastControl.value.disabled) return
+  emit('update:selected-speed-mode', fastControl.value.nextValue)
 }
 const modelSettingsWarning = computed(() => modelSettingsProblem(modelCapability.value, props.selectedReasoningEffort, props.selectedSpeedMode, selectedImages.value.length > 0))
 const modelCapabilityDescription = computed(() => {

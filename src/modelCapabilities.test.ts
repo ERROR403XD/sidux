@@ -50,3 +50,16 @@ describe('model capabilities across saved settings and requests', () => {
     expect(normalizeToolSummary({ id: 'reasoning', type: 'reasoning' })).toBeNull()
   })
 })
+
+describe('fast mode controls shared by composer and automations', () => {
+  it('only enables advertised fast tiers and can clear unsupported saved tiers', async () => {
+    const { fastModeControl } = await import('./modelCapabilities')
+    expect(fastModeControl(model, '')).toMatchObject({ checked: false, disabled: false, nextValue: 'priority' })
+    expect(fastModeControl(model, 'priority')).toMatchObject({ checked: true, nextValue: '' })
+    expect(fastModeControl(undefined)).toMatchObject({ checked: false, disabled: true })
+    expect(fastModeControl(undefined, 'legacy')).toMatchObject({ disabled: false, nextValue: '' })
+    const defaultFast = { ...model, defaultServiceTier: 'priority' }
+    expect(fastModeControl(defaultFast)).toMatchObject({ checked: true, disabled: true })
+    expect(fastModeControl({ ...defaultFast, serviceTiers: [...model.serviceTiers!, { value: 'standard', label: 'Standard', description: '' }] })).toMatchObject({ checked: true, disabled: false, nextValue: 'standard' })
+  })
+})

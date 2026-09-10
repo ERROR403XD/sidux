@@ -721,6 +721,8 @@
               <AppButton
                 class="automation-target-mode"
                 :class="{ 'is-active': automationTargetMode === 'thread' }"
+                role="radio"
+                :aria-checked="automationTargetMode === 'thread'"
                 type="button"
                 @click="setAutomationTargetMode('thread')"
               >
@@ -729,6 +731,8 @@
               <AppButton
                 class="automation-target-mode"
                 :class="{ 'is-active': automationTargetMode === 'project' }"
+                role="radio"
+                :aria-checked="automationTargetMode === 'project'"
                 type="button"
                 @click="setAutomationTargetMode('project')"
               >
@@ -775,10 +779,20 @@
             <textarea v-model="automationDraft.prompt" class="automation-thread-textarea" rows="6" :placeholder="t('Describe what the automation should do')"></textarea>
           </label>
 
+          <p v-if="accountModelsError" role="alert">{{ accountModelsError }}</p>
           <div class="automation-model-fields">
-            <p v-if="accountModelsError" role="alert">{{ accountModelsError }}</p><div class="automation-thread-field"><span class="automation-thread-label">模型</span><AppSelect v-model="automationDraft.model" class="automation-model-picker automation-thread-dropdown" :options="automationModelOptions" enable-search search-placeholder="搜索模型" :disabled="isSavingAutomation || isRunningAutomation" /></div>
-            <div class="automation-thread-field"><span class="automation-thread-label">思考强度</span><AppSelect v-model="automationDraft.reasoningEffort" class="automation-effort-picker automation-thread-dropdown" :options="automationEffortOptions" :disabled="isSavingAutomation || isRunningAutomation" /></div>
-            <div class="automation-thread-field"><span class="automation-thread-label">服务档位</span><AppSelect v-model="automationDraft.serviceTier" class="automation-tier-picker automation-thread-dropdown" :options="automationTierOptions" :disabled="isSavingAutomation || isRunningAutomation" /></div>
+            <div class="automation-thread-field">
+              <span class="automation-thread-label">模型</span>
+              <AppSelect v-model="automationDraft.model" class="automation-model-picker automation-thread-dropdown" :options="automationModelOptions" enable-search search-placeholder="搜索模型" :disabled="isSavingAutomation || isRunningAutomation" />
+            </div>
+            <div class="automation-thread-field">
+              <span class="automation-thread-label">思考强度</span>
+              <AppSelect v-model="automationDraft.reasoningEffort" class="automation-effort-picker automation-thread-dropdown" :options="automationEffortOptions" :disabled="isSavingAutomation || isRunningAutomation" />
+            </div>
+            <label class="automation-fast-check" :title="automationFastControl.hint">
+              <input type="checkbox" :checked="automationFastControl.checked" :disabled="isSavingAutomation || isRunningAutomation || automationFastControl.disabled" @change="automationDraft.serviceTier = automationFastControl.nextValue" />
+              快速模式
+            </label>
           </div>
 
           <div class="automation-thread-field">
@@ -896,6 +910,7 @@
 </template>
 
 <script setup lang="ts">
+import { useTransientNotice } from '../../composables/useTransientNotice'
 import { accountDisplayName } from '../../accountDisplay'
 import { isOverlayEventInside } from '../../composables/overlayEvents'
 import { displayTimeZone, browserTimeZone, formatLocalDateTime } from '../../dateTime'
@@ -934,7 +949,7 @@ import { useUiLanguage } from '../../composables/useUiLanguage'
 import { useFeedbackDiagnostics } from '../../composables/useFeedbackDiagnostics'
 import { getPathLeafName, getPathParent, isAbsoluteLikePath, isProjectlessChatPath } from '../../pathUtils.js'
 import AppSelect from '../common/AppSelect.vue'
-import { normalizeModelCapability, tierOptions, effortOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
+import { normalizeModelCapability, fastModeControl, effortOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
 import SidebarMenuRow from './SidebarMenuRow.vue'
 import { reconcilePinnedThreadIds } from './pinnedThreadUtils'
 
@@ -1070,7 +1085,7 @@ const automationTargetPickerVisible = ref(false)
 const automationTargetMode = ref<AutomationTargetMode>('thread')
 const automationTargetValue = ref('')
 const automationDialogError = ref('')
-const automationDialogNotice = ref('')
+const automationDialogNotice = useTransientNotice()
 const projectAutomationActionError = ref('')
 const isSavingAutomation = ref(false)
 const isRunningAutomation = ref(false)
@@ -1120,7 +1135,7 @@ watch(() => [automationDialogVisible.value, automationDraft.value.accountStorage
 })
 const automationModelOptions = computed(() => [{ value: '', label: '跟随运行时默认模型' }, ...(automationDraft.value.accountStorageId ? accountModels.value.map(model => model.id) : props.models ?? []).map(value => ({ value, label: value }))])
 const automationModelCapability = computed(() => (automationDraft.value.accountStorageId ? accountModels.value : props.modelCapabilities)?.find(model => model.id === automationDraft.value.model))
-const automationTierOptions = computed(() => tierOptions(automationModelCapability.value, automationDraft.value.serviceTier))
+const automationFastControl = computed(() => fastModeControl(automationModelCapability.value, automationDraft.value.serviceTier))
 const automationEffortOptions = computed(() => effortOptions(automationModelCapability.value, automationDraft.value.reasoningEffort))
 const automationScheduleDraft = ref<AutomationScheduleDraft>({
   mode: 'daily',

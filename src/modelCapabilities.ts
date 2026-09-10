@@ -58,6 +58,20 @@ export function tierOptions(model: ModelCapability | null | undefined, selected 
   return [{ value: '', label: model?.defaultServiceTier ? `模型默认（${model.defaultServiceTier}）` : '标准速度' }, ...options]
 }
 
+export function fastModeControl(model: ModelCapability | null | undefined, selected = '') {
+  const fast = model?.serviceTiers?.find(tier => tier.value === 'priority' || /^fast$/i.test(tier.label))
+  const standard = model?.serviceTiers?.find(tier => /^(default|standard)$/i.test(tier.value))
+  const checked = !!fast && (selected || model?.defaultServiceTier) === fast.value
+  const onlyDefault = checked && model?.defaultServiceTier === fast?.value && !standard
+  const offValue = model?.defaultServiceTier === fast?.value ? standard?.value || '' : ''
+  return {
+    checked,
+    disabled: onlyDefault || (!fast && !selected),
+    nextValue: checked || !fast ? offValue : fast.value,
+    hint: onlyDefault ? '此模型仅提供快速模式' : !fast ? (selected ? '恢复默认速度' : '此模型未提供快速模式') : '快速模式',
+  }
+}
+
 export function modelSettingsProblem(model: ModelCapability | null | undefined, effort: string, tier: string, hasImages = false): string {
   if (effort && model?.efforts && !model.efforts.some(item => item.value === effort)) return `模型未公布思考强度 ${effort}，请重新选择或使用模型默认。`
   if (tier && model?.serviceTiers && !model.serviceTiers.some(item => item.value === tier)) return `模型未公布服务档位 ${tier}，请重新选择或使用标准速度。`
