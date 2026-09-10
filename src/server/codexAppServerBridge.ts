@@ -1,4 +1,5 @@
 import { getCustomConnectionStore, customRuntimeConfig } from './customConnectionStore.js'
+import { getWebUiBrandingStore } from './webUiBrandingStore.js'
 import { customConnectionModels } from '../customConnections.js'
 import { readProjectDirectories, saveProjectDirectories } from './projectDirectories.js'
 import { ThreadCompletionList } from './threadCompletionList.js'
@@ -7313,6 +7314,15 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
       }
 
       const url = new URL(req.url, 'http://localhost')
+      if (req.method === 'POST' && url.pathname === '/codex-api/webui-branding') {
+        try {
+          const input = asRecord(await readJsonBody(req)) || {}
+          setJson(res, 200, { data: await getWebUiBrandingStore().save(input) })
+        } catch (error) {
+          setJson(res, 400, { error: error instanceof Error ? error.message : '保存失败' })
+        }
+        return
+      }
       const connections = getCustomConnectionStore()
       await connections.ready
       const runtimeConnection = /^\/codex-api\/custom-connections\/runtime\/([a-f0-9]{64})\/(\d+)\/v1\/responses$/.exec(url.pathname)

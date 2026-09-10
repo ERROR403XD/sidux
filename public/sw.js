@@ -1,7 +1,7 @@
 const CACHE_NAME = 'codexweb-shell-v3'
 const APP_SHELL_PATHS = ['/', '/manifest.webmanifest']
 const STATIC_DESTINATIONS = new Set(['document', 'script', 'style', 'image', 'font'])
-const BYPASS_PREFIXES = ['/codex-api/', '/codex-local-image', '/codex-local-file', '/codex-local-browse/', '/codex-local-edit/']
+const BYPASS_PREFIXES = ['/codex-api/', '/codex-local-image', '/codex-local-file', '/codex-local-browse/', '/codex-local-edit/', '/webui-assets/', '/manifest.webmanifest', '/favicon.ico', '/apple-touch-icon.png', '/browserconfig.xml']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

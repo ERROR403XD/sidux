@@ -2,6 +2,7 @@ import { ApiProxyGateway } from './src/server/apiProxy/gateway';
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { createCodexBridgeMiddleware } from "./src/server/codexAppServerBridge";
+import { getWebUiBrandingStore } from "./src/server/webUiBrandingStore";
 import { createDirectoryListingHtml, createTextEditorHtml, decodeBrowsePath, getLocalDirectoryListing, isTextEditableFile, normalizeLocalPath } from "./src/server/localBrowseUi";
 import tailwindcss from "@tailwindcss/vite";
 import { spawnSync } from "node:child_process";
@@ -127,10 +128,14 @@ export default defineConfig({
     tailwindcss(),
     {
       name: "codex-bridge",
+      transformIndexHtml(html, context) { return context.server ? getWebUiBrandingStore().decorateHtml(html) : html; },
       configureServer(server) {
         process.env.CODEXUI_SERVER_PORT = String(server.config.server.port ?? 5173);
         const bridge = createCodexBridgeMiddleware();
         const apiProxy = new ApiProxyGateway();
+        server.middlewares.use((req, res, next) => {
+          void getWebUiBrandingStore().asset(req, res, `${server.config.root}/public/icons`).then(handled => { if (!handled) next(); }).catch(next);
+        });
         server.middlewares.use((req, res, next) => {
           const pathname = new URL(req.url || '/', 'http://localhost').pathname;
           if (pathname === '/v1' || pathname.startsWith('/v1/')) {

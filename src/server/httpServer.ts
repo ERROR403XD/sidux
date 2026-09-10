@@ -10,6 +10,7 @@ import { createAuthSession } from './authMiddleware.js'
 import { createDirectoryListingHtml, createTextEditorHtml, decodeBrowsePath, getLocalDirectoryListing, isTextEditableFile, normalizeLocalPath } from './localBrowseUi.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { createFrontendAssetsMiddleware, sendFrontendEntry } from './frontendAssets.js'
+import { getWebUiBrandingStore } from './webUiBrandingStore.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const distDir = join(__dirname, '..', 'dist')
@@ -83,6 +84,9 @@ export function createServer(options: ServerOptions = {}): ServerInstance {
     next()
   })
   const authSession = options.password ? createAuthSession(options.password) : null
+  app.use((req, res, next) => {
+    void getWebUiBrandingStore().asset(req, res, join(distDir, 'icons')).then(handled => { if (!handled) next() }).catch(next)
+  })
 
   // 1. Auth middleware (if password is set)
   if (authSession) {

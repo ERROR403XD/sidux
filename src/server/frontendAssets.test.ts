@@ -3,16 +3,18 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Server } from 'node:http'
 import express from 'express'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createFrontendAssetsMiddleware, sendFrontendEntry } from './frontendAssets'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup()
+  vi.unstubAllEnvs()
 })
 
 async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), 'codexapp-cache-'))
+  vi.stubEnv('CODEX_HOME', directory)
   cleanups.push(() => rm(directory, { recursive: true, force: true }))
   const entry = join(directory, 'index.html')
   const date = new Date(499162500000)

@@ -1,12 +1,13 @@
-import { extname } from 'node:path'
+import { extname, join } from 'node:path'
 import { readFile } from 'node:fs/promises'
 import express, { type Response } from 'express'
+import { getWebUiBrandingStore } from './webUiBrandingStore.js'
 
 // npm archives preserve file timestamps: size + mtime is not a version validator.
 const frontendFileOptions = { etag: false, lastModified: false, cacheControl: false }
 
 export async function sendFrontendEntry(response: Response, filePath: string) {
-  const contents = await readFile(filePath)
+  const contents = await getWebUiBrandingStore().decorateHtml(await readFile(filePath, 'utf8'))
   // Express sendFile overrides its etag option with the app setting. End the
   // small HTML response directly so existing API/file cache settings stay intact.
   response.setHeader('Cache-Control', 'no-store')
@@ -15,6 +16,9 @@ export async function sendFrontendEntry(response: Response, filePath: string) {
 
 export function createFrontendAssetsMiddleware(directory: string) {
   const router = express.Router()
+  router.get(['/', '/index.html'], (_request, response, next) => {
+    void sendFrontendEntry(response, join(directory, 'index.html')).catch(next)
+  })
   router.use(express.static(directory, {
     ...frontendFileOptions,
     setHeaders(response, filePath) {

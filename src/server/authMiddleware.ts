@@ -4,6 +4,7 @@ import type { IncomingMessage } from 'node:http'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import type { RequestHandler, Request, Response, NextFunction } from 'express'
+import { getWebUiBrandingStore } from './webUiBrandingStore.js'
 
 const TOKEN_COOKIE = 'portal_session'
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000
@@ -176,6 +177,8 @@ const LOGIN_PAGE_HTML = `<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Codex Web</title>
+<link rel="icon" type="image/png" href="/webui-assets/icon-32.png">
+<link rel="apple-touch-icon" href="/webui-assets/icon-180.png">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0a0a0a;color:#e5e5e5;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
@@ -191,6 +194,7 @@ button:hover{background:#2563eb}
 </head>
 <body>
 <div class="card">
+<img src="/webui-assets/icon-192.png" alt="" width="56" height="56" style="display:block;object-fit:contain;margin:0 auto 16px">
 <h1>Codex Web</h1>
 <form id="f">
 <label for="pw">Password</label>
@@ -287,7 +291,7 @@ export function createAuthSession(password: string): AuthSession {
 
     // No valid session — serve login page
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
-    res.status(200).send(LOGIN_PAGE_HTML)
+    void getWebUiBrandingStore().decorateHtml(LOGIN_PAGE_HTML).then(html => res.status(200).send(html)).catch(next)
   }
 
   return {
