@@ -2473,7 +2473,7 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .notification-settings .notification-check { display: flex; gap: 8px; align-items: center; }
 .notification-settings small { font-size: 11px; opacity: .75; overflow-wrap: anywhere; }
 .notification-settings textarea { width: 100%; resize: vertical; }
-.notification-hours { display: flex; flex: 0 1 136px; min-width: 0; gap: 6px; align-items: center; font-size: 12px; line-height: 20px; }
+.notification-hours { display: flex; flex: 1 1 136px; min-width: 0; gap: 6px; align-items: center; font-size: 12px; line-height: 20px; }
 .notification-hours .app-input { width: 56px; min-width: 0; height: 32px; flex: 1 1 56px; padding: 5px 4px; font-size: 12px; line-height: 20px; text-align: center; font-variant-numeric: tabular-nums; }
 .notification-hours > span { flex: 0 0 auto; font-size: 12px; }
 

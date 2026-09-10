@@ -49,11 +49,17 @@
       </div>
     </div>
 
-    <input v-model="installedFilter" class="app-input skills-installed-filter" type="search" :placeholder="t('筛选已安装技能')" :aria-label="t('筛选已安装技能')" />
-
     <p v-for="problem in discoveryErrors" :key="problem" class="skills-hub-error">{{ t(problem) }}</p>
     <div v-if="!isLoading && !error" class="skills-hub-section skills-installed-section">
       <DirectorySectionToggle :title="t('已安装技能')" :count="filteredInstalled.length" :open="isInstalledOpen" @toggle="isInstalledOpen = !isInstalledOpen" />
+      <input
+        v-if="isInstalledOpen"
+        v-model="installedFilter"
+        class="app-input skills-installed-filter"
+        type="search"
+        :placeholder="t('筛选已安装技能')"
+        :aria-label="t('筛选已安装技能')"
+      />
       <div v-if="isInstalledOpen" class="skills-hub-grid">
         <SkillCard
           v-for="skill in filteredInstalled"
