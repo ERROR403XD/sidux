@@ -82,6 +82,7 @@ export class TelegramNotificationQueue {
   stop(): void {
     this.stopped = true
     if (this.timer) clearTimeout(this.timer)
+    this.timer = undefined
   }
   async settled(): Promise<void> { await this.serial }
   start(): void {

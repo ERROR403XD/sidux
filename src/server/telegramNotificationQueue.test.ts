@@ -54,3 +54,28 @@ it('uses the saved timezone and treats equal boundaries as all day', () => {
   expect(inQuietHours({ ...defaultQuietHours, quietEnabled: true, timezone: 'UTC' }, now)).toBe(false)
   expect(inQuietHours({ ...defaultQuietHours, quietEnabled: true, quietStart: '08:00' }, now)).toBe(true)
 })
+
+it('reschedules pending notifications when the same bridge resumes during quiet hours', async () => {
+  vi.useFakeTimers()
+  let now = Date.parse('2026-09-10T15:00:00Z')
+  const send = vi.fn(async () => {})
+  const queue = new TelegramNotificationQueue({
+    settings: () => ({ ...defaultQuietHours, quietEnabled: true }),
+    enabled: () => true,
+    botId: () => 'fixture-bot',
+    send,
+    now: () => now,
+  })
+  try {
+    await queue.enqueue([123], 'night reply')
+    queue.stop()
+    queue.start()
+    await queue.settled()
+    now = Date.parse('2026-09-11T00:00:00Z')
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(send).toHaveBeenCalledExactlyOnceWith(123, 'night reply')
+  } finally {
+    queue.stop()
+    vi.useRealTimers()
+  }
+})
