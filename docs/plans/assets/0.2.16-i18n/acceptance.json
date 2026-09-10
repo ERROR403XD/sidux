@@ -1,0 +1,70 @@
+[
+  {
+    "base": "http://127.0.0.1:59001",
+    "width": 1440,
+    "height": 1000,
+    "theme": "light",
+    "screenshot": "output/playwright/0216-i18n-settings-1440-light.png",
+    "project": "output/playwright/0216-i18n-project-1440-light.png",
+    "assertions": [
+      "live language switch",
+      "English visible text scan",
+      "reload persistence",
+      "Chinese user project name preserved",
+      "project placeholders",
+      "Chinese switch back"
+    ],
+    "errors": []
+  },
+  {
+    "base": "http://127.0.0.1:59001",
+    "width": 1440,
+    "height": 1000,
+    "theme": "dark",
+    "screenshot": "output/playwright/0216-i18n-settings-1440-dark.png",
+    "project": "output/playwright/0216-i18n-project-1440-dark.png",
+    "assertions": [
+      "live language switch",
+      "English visible text scan",
+      "reload persistence",
+      "Chinese user project name preserved",
+      "project placeholders",
+      "Chinese switch back"
+    ],
+    "errors": []
+  },
+  {
+    "base": "http://127.0.0.1:59001",
+    "width": 375,
+    "height": 812,
+    "theme": "light",
+    "screenshot": "output/playwright/0216-i18n-settings-375-light.png",
+    "project": "output/playwright/0216-i18n-project-375-light.png",
+    "assertions": [
+      "live language switch",
+      "English visible text scan",
+      "reload persistence",
+      "Chinese user project name preserved",
+      "project placeholders",
+      "Chinese switch back"
+    ],
+    "errors": []
+  },
+  {
+    "base": "http://127.0.0.1:59001",
+    "width": 768,
+    "height": 1024,
+    "theme": "dark",
+    "screenshot": "output/playwright/0216-i18n-settings-768-dark.png",
+    "project": "output/playwright/0216-i18n-project-768-dark.png",
+    "assertions": [
+      "live language switch",
+      "English visible text scan",
+      "reload persistence",
+      "Chinese user project name preserved",
+      "project placeholders",
+      "Chinese switch back"
+    ],
+    "errors": []
+  }
+]

@@ -1,0 +1,33 @@
+{
+  "matched": true,
+  "count": 27,
+  "sha256": {
+    "dist/assets/ApiProxyPanel-BbipLPtt.js": "3e260cc2f08bac0638d9b1a92dd833f9ce6a49cf3ae00d4887767c7e4dbd21b4",
+    "dist/assets/AutomationsPanel-ClxIaL0B.css": "ed367bc715c40ad93af5154f7e303ef4e1528b0509e2a08c9e072e1ae621105c",
+    "dist/assets/AutomationsPanel-D07g7NJJ.js": "211d9a6d6eaa75d42ca385785c3bc8ec64c43c768ed57790714a2ebd03b99151",
+    "dist/assets/DirectoryHub-BizoLlr_.js": "5f3e92885e6b85f86dc3dfb07cec15cdd7d004c81c95801e918ea4a377b1f3e2",
+    "dist/assets/DirectoryHub-C8DBOAAE.css": "c5f590be43b45d39ee38e17043d091ab7303c2118c493e330574980f05d102e2",
+    "dist/assets/ReviewPane-Bf0DO-uW.css": "86cc57d5566772694386ce6c97e7b9d9510b45cd625c915a42e8c8455581cc53",
+    "dist/assets/ReviewPane-BhlntC3H.js": "8741879555bea03130c08e1ab7d976327c274b82efd30ea2d0113496022a61b9",
+    "dist/assets/ThreadCommandDialog-BrGiwtMD.js": "1eacc4edde0d9358cd2877178e05966da5ee28189cd45410bf674a8033872afd",
+    "dist/assets/ThreadConversation-Cc2T3pof.js": "e0ccf479b18565af29382e77cfad36826a46b4df5333b0179c5fe1252faa492d",
+    "dist/assets/ThreadConversation-CdCNmDDT.css": "cd54d9f353ef1710a9255cb4fbeb0c1c113a0912cad7574340285a48ca4d3857",
+    "dist/assets/ThreadTerminalPanel-Byr8v3r4.js": "b56afcdd07d0490b7f583f6adfa8da79b6b256df8558c73cbd84c2c1caa337e3",
+    "dist/assets/ThreadTerminalPanel-Mu3fWVjX.css": "e813e1ab8f9be776b2cc180307e42232e96bfd18f616863e3a1240a49f0fbdc5",
+    "dist/assets/common-DEPjExR-.js": "9201c7b04cc783c8c7c1e6e71a40243ac7a9c5de26ec96a2f4f27c8fdeb80133",
+    "dist/assets/index-5xTjj4U8.js": "531744e03ef67ebab750df6c23b9d38481a69f8b0c80c34202c2ee0403c5a0a1",
+    "dist/assets/index-DCHkACL8.css": "a01ae255ccc8635fa9299c5e43be5f5963834ff89a5712e0fb20c4a3c25c8ab1",
+    "dist/icons/apple-touch-icon.png": "64fbe48cc3852a74ceea4896eaba5fa08835078eadc32f87d995e1715e2dda5c",
+    "dist/icons/codexui-icon.svg": "913006d9ed761ab3e349deb7eaea75cc473657837dedb12934c1d346f71b3d63",
+    "dist/icons/maskable-512x512.png": "91c23b97b97101c699f6e7e8f3164638d5b551eccb03b8bc9c4596870ca855e7",
+    "dist/icons/pwa-192x192.png": "bcd7d9b1c33279efa6f4ac079c6ff6ec0436d6beffdf69aba23f3aa181ce5b7e",
+    "dist/icons/pwa-512x512.png": "ba28d1422c2f01fa76cf4f423c8c98f937375fba55d46abef956d3e32c4ec623",
+    "dist/icons/pwa-icon.svg": "f5876b447fc272caba34567415803a508703c76d8becf77d8d9574ea9e16138a",
+    "dist/icons/pwa-maskable.svg": "2b6264ea203116794043f981162a51eee86c6bb423b7a9aa8091e4ca90923190",
+    "dist/index.html": "0df9e432f395476c248777be8e63664b0a97209e7337df334042bd299c58cbbe",
+    "dist/manifest.webmanifest": "abb062c2bfb76d3c3c07ab8286ba51817541b51b6beae1eb67de978e332afb01",
+    "dist/sw.js": "dc0793fed9010bd766f2059142effcb79fc3c423eee1cc573111c6177d21910c",
+    "dist-cli/index.js": "20843b52a5acff5a74323b64f60de9e3c035622377523df0b709863a26de12ac",
+    "dist-cli/index.js.map": "60eefbd75488396e8593e00aef8992c1546ad9aca33e429deaab9637fcf1ff33"
+  }
+}

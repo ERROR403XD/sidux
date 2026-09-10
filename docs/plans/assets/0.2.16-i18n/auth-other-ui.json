@@ -1,0 +1,68 @@
+[
+  {
+    "kind": "noauth",
+    "theme": "light",
+    "port": 59091,
+    "provider": "opencode-zen",
+    "enabled": true,
+    "hasCodexAuth": false,
+    "duplicateLiveOverlays": 0,
+    "pageErrors": [],
+    "screenshot": "output/playwright/0216-i18n-auth-noauth-light.png"
+  },
+  {
+    "kind": "noauth",
+    "theme": "dark",
+    "port": 59091,
+    "provider": "opencode-zen",
+    "enabled": true,
+    "hasCodexAuth": false,
+    "duplicateLiveOverlays": 0,
+    "pageErrors": [],
+    "screenshot": "output/playwright/0216-i18n-auth-noauth-dark.png"
+  },
+  {
+    "kind": "malformed",
+    "theme": "light",
+    "port": 59093,
+    "provider": "opencode-zen",
+    "enabled": true,
+    "hasCodexAuth": false,
+    "duplicateLiveOverlays": 0,
+    "pageErrors": [],
+    "screenshot": "output/playwright/0216-i18n-auth-malformed-light.png"
+  },
+  {
+    "kind": "malformed",
+    "theme": "dark",
+    "port": 59093,
+    "provider": "opencode-zen",
+    "enabled": true,
+    "hasCodexAuth": false,
+    "duplicateLiveOverlays": 0,
+    "pageErrors": [],
+    "screenshot": "output/playwright/0216-i18n-auth-malformed-dark.png"
+  },
+  {
+    "kind": "provider",
+    "theme": "light",
+    "port": 59094,
+    "provider": "openrouter",
+    "enabled": true,
+    "hasCodexAuth": false,
+    "duplicateLiveOverlays": 0,
+    "pageErrors": [],
+    "screenshot": "output/playwright/0216-i18n-auth-provider-light.png"
+  },
+  {
+    "kind": "provider",
+    "theme": "dark",
+    "port": 59094,
+    "provider": "openrouter",
+    "enabled": true,
+    "hasCodexAuth": false,
+    "duplicateLiveOverlays": 0,
+    "pageErrors": [],
+    "screenshot": "output/playwright/0216-i18n-auth-provider-dark.png"
+  }
+]
