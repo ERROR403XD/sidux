@@ -12,6 +12,7 @@ import {
   startCodexLogin,
   startThreadTurn,
   switchAccount,
+  searchThreads,
 } from './codexGateway'
 
 it('shows runtime-only Apps without inventing catalog connectivity or install actions', () => {
@@ -407,4 +408,23 @@ describe('native plugin catalog isolation', () => {
 it('retains local display aliases without substituting routing identity during account normalization', () => {
   const account = normalizeAccountEntry({ accountId: 'identity', storageId: 'storage', email: 'original@example.test', alias: '本地别名', credentialRevision: 7 })
   expect(account).toMatchObject({ accountId: 'identity', storageId: 'storage', email: 'original@example.test', alias: '本地别名', credentialRevision: 7 })
+})
+
+
+it('passes the search scope and normalizes older matched metadata without extra thread reads', async () => {
+  const fetch = vi.fn(async () => new Response(JSON.stringify({ data: {
+    threadIds: ['old'], indexedThreadCount: 120,
+    threads: [{ id: 'old', name: 'Older match', cwd: '/tmp/project', preview: '', createdAt: 1, updatedAt: 2 }],
+  } })))
+  vi.stubGlobal('fetch', fetch)
+  try {
+    const signal = new AbortController().signal
+    const result = await searchThreads('key', 50, signal, 'body')
+    expect(fetch).toHaveBeenCalledExactlyOnceWith('/codex-api/thread-search', expect.objectContaining({
+      signal, body: JSON.stringify({ query: 'key', limit: 50, mode: 'body' }),
+    }))
+    expect(result.groups?.[0]?.threads[0]).toMatchObject({ id: 'old', title: 'Older match', cwd: '/tmp/project' })
+  } finally {
+    vi.unstubAllGlobals()
+  }
 })

@@ -36,7 +36,8 @@
               v-model="sidebarSearchQuery"
               class="sidebar-search-input"
               type="text"
-              :placeholder="t('Filter threads...')"
+              :placeholder="sidebarSearchMode === 'title' ? t('Search titles') : t('Search messages')"
+              :aria-label="t('Search threads')"
               maxlength="500"
               @keydown="onSidebarSearchKeydown"
             />
@@ -51,7 +52,17 @@
             </button>
           </div>
 
-          <p v-if="!isSidebarCollapsed && isSidebarSearchVisible && sidebarSearchQuery.trim()" class="sidebar-search-status" :title="threadSearchScope" role="status">{{ threadSearchStatus }}</p>
+          <div v-if="!isSidebarCollapsed && isSidebarSearchVisible" class="sidebar-search-options">
+            <AppSelect
+              class="sidebar-search-scope"
+              :model-value="sidebarSearchMode"
+              :options="[{ value: 'title', label: t('Title') }, { value: 'body', label: t('Body') }]"
+              :aria-label="t('Search scope')"
+              @update:model-value="setSidebarSearchMode"
+            />
+          </div>
+
+          <p v-if="!isSidebarCollapsed && isSidebarSearchVisible && sidebarSearchQuery.trim()" class="sidebar-search-status" :title="threadSearchScope" role="status">{{ threadSearchStatus }} <button v-if="threadSearchState === 'error'" type="button" class="sidebar-search-retry" @click="threadSearchVersion += 1">重试</button></p>
 
 
 
@@ -85,7 +96,7 @@
             </span>
           </button>
 
-          <SidebarThreadTree ref="sidebarThreadTreeRef" :groups="projectGroups" :accounts="accounts" :models="availableModelIds" :model-capabilities="availableModels" :goals="threadGoals" :quota-resume-marks="quotaResumeMarks" :quota-resume-error="quotaResumeError" @toggle-quota-resume="toggleQuotaResume" :project-display-name-by-id="projectDisplayNameById"
+          <SidebarThreadTree ref="sidebarThreadTreeRef" :groups="sidebarThreadGroups" :accounts="accounts" :models="availableModelIds" :model-capabilities="availableModels" :goals="threadGoals" :quota-resume-marks="quotaResumeMarks" :quota-resume-error="quotaResumeError" @toggle-quota-resume="toggleQuotaResume" :project-display-name-by-id="projectDisplayNameById"
             :project-git-repo-by-name="projectGitRepoByName"
             :project-cwd-by-name="projectCwdByName"
             v-if="!isSidebarCollapsed"
@@ -93,6 +104,7 @@
             :is-thread-list-fully-loaded="isThreadListFullyLoaded"
             :search-query="sidebarSearchQuery"
             :search-matched-thread-ids="serverMatchedThreadIds"
+            :search-state="threadSearchState"
             @select="onSelectThread"
             @archive="onArchiveThread" @start-new-thread="onStartNewThread" @rename-project="onRenameProject"
             @browse-thread-files="onBrowseThreadFiles"
@@ -518,7 +530,7 @@
                 <ComposerDropdown class="new-thread-folder-dropdown" :model-value="newThreadCwd"
                   :options="newThreadFolderOptions" :placeholder="t('Choose folder')"
                   :enable-search="true"
-                  :search-placeholder="t('Quick search project')"
+                  :search-placeholder="t('Search projects')"
                   :disabled="false" @update:model-value="onSelectNewThreadFolder" />
                 <p v-if="newThreadCwd" class="new-thread-folder-selected" :title="newThreadCwd">
                   {{ t('Selected folder') }}: {{ newThreadCwd }}
@@ -1019,6 +1031,7 @@
 </template>
 
 <script setup lang="ts">
+import type { UiProjectGroup } from './types/codex'
 import { useTransientNotice } from './composables/useTransientNotice'
 import { accountDisplayName } from './accountDisplay'
 import AppDialog from './components/common/AppDialog.vue'
@@ -1508,6 +1521,34 @@ const worktreeInitStatus = ref<{ phase: 'idle' | 'running' | 'error'; title: str
 let desktopSidebarCollapsed = loadSidebarCollapsed()
 const isSidebarCollapsed = ref(isMobile.value || desktopSidebarCollapsed)
 const sidebarSearchQuery = ref('')
+const sidebarSearchMode = ref<'title' | 'body'>('title')
+const serverSearchGroups = ref<UiProjectGroup[] | null>(null)
+const threadSearchState = ref<'loading' | 'ready' | 'error'>('ready')
+const sidebarThreadGroups = computed(() => {
+  if (!sidebarSearchQuery.value.trim() || !serverSearchGroups.value) return projectGroups.value
+  // Keep the complete loaded set so search filtering cannot prune unrelated pinned threads.
+  const matches = new Map(serverSearchGroups.value.flatMap(group => group.threads.map(thread => [thread.id, thread] as const)))
+  const groups = projectGroups.value.map(group => ({
+    ...group,
+    threads: group.threads.map(thread => {
+      const match = matches.get(thread.id)
+      matches.delete(thread.id)
+      return match ? { ...thread, title: match.title } : thread
+    }),
+  }))
+  for (const group of serverSearchGroups.value) {
+    const missing = group.threads.filter(thread => matches.has(thread.id))
+    if (!missing.length) continue
+    const existing = groups.find(row => row.projectName === group.projectName)
+    if (existing) existing.threads.push(...missing)
+    else groups.push({ ...group, threads: missing })
+  }
+  return groups
+})
+
+function setSidebarSearchMode(value: string): void {
+  if (value === 'title' || value === 'body') sidebarSearchMode.value = value
+}
 const isSidebarSearchVisible = ref(false)
 const sidebarScrollableRef = ref<HTMLElement | null>(null)
 const sidebarSearchInputRef = ref<HTMLInputElement | null>(null)
@@ -2207,7 +2248,7 @@ function updateVisualViewportState(): void {
   visualViewportOffsetTop.value = window.visualViewport?.offsetTop ?? 0
 }
 
-watch([sidebarSearchQuery, threadSearchVersion], ([value]) => {
+watch([sidebarSearchQuery, sidebarSearchMode, threadSearchVersion], ([value, mode]) => {
   const query = value.trim()
   threadSearchController?.abort()
   threadSearchController = null
@@ -2215,7 +2256,9 @@ watch([sidebarSearchQuery, threadSearchVersion], ([value]) => {
     clearTimeout(threadSearchTimer)
     threadSearchTimer = null
   }
-  serverMatchedThreadIds.value = null
+  serverMatchedThreadIds.value = query ? [] : null
+  serverSearchGroups.value = null
+  threadSearchState.value = query ? 'loading' : 'ready'
   threadSearchStatus.value = query ? '搜索中…' : ''
   threadSearchScope.value = ''
   if (!query) return
@@ -2224,20 +2267,27 @@ watch([sidebarSearchQuery, threadSearchVersion], ([value]) => {
   threadSearchController = controller
   threadSearchTimer = setTimeout(() => {
     threadSearchTimer = null
-    void searchThreads(query, 1000, controller.signal)
+    void searchThreads(query, 1000, controller.signal, mode)
       .then((result) => {
         if (controller.signal.aborted || threadSearchController !== controller) return
         serverMatchedThreadIds.value = result.threadIds
-        const titleScope = result.titleScopeComplete === false ? `最近 ${result.indexedThreadCount} 个标题/摘要` : `${result.indexedThreadCount} 个标题/摘要`
-        const bodyScope = `正文 ${result.bodyThreadCount ?? 0} 个会话（最近 ${result.bodyTurnLimit ?? 50} 回合）`
-        const incomplete = result.failedBodyCount ? `；${result.failedBodyCount} 个正文未能读取` : ''
-        threadSearchStatus.value = `${titleScope} · ${bodyScope}${incomplete}`
-        threadSearchScope.value = `仅非归档会话；正文覆盖最近 ${result.bodyThreadLimit ?? 100} 个会话，每个最多 20 万字符。${result.partialBodyCount ? ` ${result.partialBodyCount} 个会话的正文按范围截取。` : ''}`
+        serverSearchGroups.value = result.groups ?? null
+        threadSearchState.value = 'ready'
+        const partial = result.titleScopeComplete === false || (mode === 'body' && (
+          (result.bodyThreadCount ?? 0) < result.indexedThreadCount || Boolean(result.partialBodyCount) || Boolean(result.failedBodyCount)
+        ))
+        threadSearchStatus.value = `${result.threadIds.length} 个结果${partial ? ' · 部分范围' : ''}`
+        const titleScope = result.titleScopeComplete === false ? `最近 ${result.indexedThreadCount} 个会话的标题` : '非归档会话的标题'
+        threadSearchScope.value = mode === 'body'
+          ? `${titleScope}；正文搜索最近 ${result.bodyThreadLimit ?? 100} 个会话的用户消息和最终回复（每个最近 ${result.bodyTurnLimit ?? 50} 回合）。${result.failedBodyCount ? ` ${result.failedBodyCount} 个会话读取失败。` : ''}`
+          : titleScope
       })
       .catch((cause) => {
         if (controller.signal.aborted || threadSearchController !== controller) return
-        serverMatchedThreadIds.value = null
-        threadSearchStatus.value = cause instanceof Error ? cause.message : '正文搜索失败，请重试。'
+        serverMatchedThreadIds.value = []
+        threadSearchState.value = 'error'
+        threadSearchStatus.value = '搜索失败，请重试。'
+        threadSearchScope.value = cause instanceof Error ? cause.message : ''
       })
   }, 220)
 })

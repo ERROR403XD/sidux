@@ -1,8 +1,11 @@
+import { createThreadMatcher, type ThreadSearchMode } from '../threadSearchMatch.js'
+
 type ThreadRow = Record<string, unknown> & { id: string }
 type Body = { text: string; truncated: boolean }
 type Metadata = { rows: ThreadRow[]; complete: boolean; expires: number }
 export type ThreadSearchResult = {
   threadIds: string[]
+  threads: ThreadRow[]
   indexedThreadCount: number
   titleScopeComplete: boolean
   bodyThreadCount: number
@@ -122,17 +125,18 @@ export class ThreadSearch {
     return body
   }
 
-  private async scan(query: string, limit: number, signal: AbortSignal): Promise<ThreadSearchResult> {
+  private async scan(query: string, limit: number, signal: AbortSignal, mode: ThreadSearchMode): Promise<ThreadSearchResult> {
     const metadata = await this.list(signal)
     const titles = await this.dependencies.titles()
     abortIfNeeded(signal)
-    const matching = new Set<string>()
-    const q = query.toLocaleLowerCase()
+    const matching = new Map<string, number>()
+    const match = createThreadMatcher(query)
+    const titleOf = (row: ThreadRow): string => titles[row.id] || text(row.name) || text(row.title) || text(row.preview) || 'Untitled thread'
     for (const row of metadata.rows) {
-      const title = titles[row.id] || text(row.name) || text(row.title)
-      if (title.toLocaleLowerCase().includes(q) || text(row.preview).toLocaleLowerCase().includes(q)) matching.add(row.id)
+      const score = match(titleOf(row))
+      if (score) matching.set(row.id, score + 4)
     }
-    const rows = metadata.rows.slice(0, SEARCH_BODY_THREAD_LIMIT)
+    const rows = mode === 'body' ? metadata.rows.slice(0, SEARCH_BODY_THREAD_LIMIT) : []
     let offset = 0
     let bodyThreadCount = 0
     let partialBodyCount = 0
@@ -145,7 +149,8 @@ export class ThreadSearch {
           if (signal.aborted) return
           bodyThreadCount += 1
           if (body.truncated) partialBodyCount += 1
-          if (body.text.toLocaleLowerCase().includes(q)) matching.add(row.id)
+          const score = match(body.text)
+          if (score && !matching.has(row.id)) matching.set(row.id, score)
         } catch {
           failedBodyCount += 1
         }
@@ -154,8 +159,24 @@ export class ThreadSearch {
     // Do not release the next query while abandoned reads are still in flight.
     await Promise.allSettled(workers)
     abortIfNeeded(signal)
+    const matchedRows = metadata.rows
+      .filter(row => matching.has(row.id))
+      .sort((first, second) => matching.get(second.id)! - matching.get(first.id)!)
+      .slice(0, limit)
     return {
-      threadIds: metadata.rows.filter(row => matching.has(row.id)).slice(0, limit).map(row => row.id),
+      threadIds: matchedRows.map(row => row.id),
+      // Search can find threads before sidebar pagination reaches them. Never send turns or full previews.
+      threads: matchedRows.map(row => ({
+        id: row.id,
+        name: titleOf(row).slice(0, 500),
+        preview: '',
+        cwd: text(row.cwd),
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        status: row.status,
+        source: row.source,
+        isWorktree: row.isWorktree,
+      })),
       indexedThreadCount: metadata.rows.length,
       titleScopeComplete: metadata.complete,
       bodyThreadCount,
@@ -166,7 +187,7 @@ export class ThreadSearch {
     }
   }
 
-  async search(query: string, limit: number, signal: AbortSignal): Promise<ThreadSearchResult> {
+  async search(query: string, limit: number, signal: AbortSignal, mode: ThreadSearchMode = 'title'): Promise<ThreadSearchResult> {
     const previous = this.queue
     let release: () => void = () => {}
     const done = new Promise<void>(resolve => { release = resolve })
@@ -178,7 +199,7 @@ export class ThreadSearch {
       if (normalized.length > 500) throw new Error('搜索内容不能超过 500 个字符。')
       for (let attempt = 0; attempt < 2; attempt += 1) {
         const revision = this.revision
-        const result = await this.scan(normalized, Math.max(1, Math.min(1000, limit)), signal)
+        const result = await this.scan(normalized, Math.max(1, Math.min(1000, limit)), signal, mode)
         if (revision === this.revision) return result
       }
       throw new Error('会话仍在更新，请重试搜索。')
@@ -186,4 +207,55 @@ export class ThreadSearch {
       release()
     }
   }
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
+}
+
+export function extractThreadSearchText(threadReadPayload: unknown): string {
+  const payload = asRecord(threadReadPayload)
+  const thread = asRecord(payload?.thread)
+  const turns = Array.isArray(thread?.turns) ? thread.turns : []
+  const parts: string[] = []
+  const limit = 200_002
+  let length = 0
+  const append = (value: string): void => {
+    const tail = value.slice(-limit)
+    parts.push(tail)
+    length += tail.length + 1
+    while (parts.length > 1 && length - parts[0].length - 1 >= limit) {
+      length -= parts.shift()!.length + 1
+    }
+    if (length > limit && parts.length) {
+      parts[0] = parts[0].slice(length - limit)
+      length = limit
+    }
+  }
+
+  for (const turn of turns) {
+    const turnRecord = asRecord(turn)
+    const items = Array.isArray(turnRecord?.items) ? turnRecord.items : []
+    for (const item of items) {
+      const itemRecord = asRecord(item)
+      const type = typeof itemRecord?.type === 'string' ? itemRecord.type : ''
+      if (type === 'agentMessage' && itemRecord?.phase !== 'commentary' && typeof itemRecord?.text === 'string' && itemRecord.text.trim().length > 0) {
+        append(itemRecord.text.trim())
+        continue
+      }
+      if (type === 'userMessage') {
+        const content = Array.isArray(itemRecord?.content) ? itemRecord.content : []
+        for (const block of content) {
+          const blockRecord = asRecord(block)
+          if (blockRecord?.type === 'text' && typeof blockRecord.text === 'string' && blockRecord.text.trim().length > 0) {
+            append(blockRecord.text.trim())
+          }
+        }
+        continue
+      }
+
+    }
+  }
+
+  return parts.join('\n').trim()
 }

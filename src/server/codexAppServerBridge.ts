@@ -12,7 +12,7 @@ import { deliveryView } from '../delivery.js'
 import { DeliveryStore } from './deliveryStore.js'
 import { DeliveryService } from './deliveryService.js'
 import { inspectDelivery } from './deliveryHistory.js'
-import { ThreadSearch, SEARCH_BODY_TURN_LIMIT } from './threadSearch.js'
+import { ThreadSearch, SEARCH_BODY_TURN_LIMIT, extractThreadSearchText } from './threadSearch.js'
 import { ThreadHistory } from './threadHistory.js'
 import { AuthRecoveryRegistry } from '../authRecovery'
 import { MethodCatalog } from './runtimeCapabilities.js'
@@ -2404,57 +2404,6 @@ async function readProviderModelIdsForProvider(
   return readProviderBackedModelIds(appServer)
 }
 
-function extractThreadMessageText(threadReadPayload: unknown): string {
-  const payload = asRecord(threadReadPayload)
-  const thread = asRecord(payload?.thread)
-  const turns = Array.isArray(thread?.turns) ? thread.turns : []
-  const parts: string[] = []
-  const limit = 200_002
-  let length = 0
-  const append = (value: string): void => {
-    const tail = value.slice(-limit)
-    parts.push(tail)
-    length += tail.length + 1
-    while (parts.length > 1 && length - parts[0].length - 1 >= limit) {
-      length -= parts.shift()!.length + 1
-    }
-    if (length > limit && parts.length) {
-      parts[0] = parts[0].slice(length - limit)
-      length = limit
-    }
-  }
-
-  for (const turn of turns) {
-    const turnRecord = asRecord(turn)
-    const items = Array.isArray(turnRecord?.items) ? turnRecord.items : []
-    for (const item of items) {
-      const itemRecord = asRecord(item)
-      const type = typeof itemRecord?.type === 'string' ? itemRecord.type : ''
-      if (type === 'agentMessage' && typeof itemRecord?.text === 'string' && itemRecord.text.trim().length > 0) {
-        append(itemRecord.text.trim())
-        continue
-      }
-      if (type === 'userMessage') {
-        const content = Array.isArray(itemRecord?.content) ? itemRecord.content : []
-        for (const block of content) {
-          const blockRecord = asRecord(block)
-          if (blockRecord?.type === 'text' && typeof blockRecord.text === 'string' && blockRecord.text.trim().length > 0) {
-            append(blockRecord.text.trim())
-          }
-        }
-        continue
-      }
-      if (type === 'commandExecution') {
-        const command = typeof itemRecord?.command === 'string' ? itemRecord.command.trim() : ''
-        const output = typeof itemRecord?.aggregatedOutput === 'string' ? itemRecord.aggregatedOutput.trim() : ''
-        if (command) append(command)
-        if (output) append(output)
-      }
-    }
-  }
-
-  return parts.join('\n').trim()
-}
 
 function readNonEmptyString(value: unknown): string {
   return typeof value === 'string' && value.trim().length > 0 ? value : ''
@@ -7207,7 +7156,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
     },
     body: async thread => {
       const page = await history.page(thread.id, { metadata: { thread }, limit: SEARCH_BODY_TURN_LIMIT })
-      return { text: extractThreadMessageText(page.result), truncated: page.hasMoreOlder }
+      return { text: extractThreadSearchText(page.result), truncated: page.hasMoreOlder }
     },
     titles: async () => (await readMergedThreadTitleCache()).titles,
     version: async thread => {
@@ -9311,7 +9260,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         const cancel = () => { if (!res.writableEnded) controller.abort() }
         res.on('close', cancel)
         try {
-          const data = await search.search(query, limit, controller.signal)
+          const data = await search.search(query, limit, controller.signal, payload?.mode === 'body' ? 'body' : 'title')
           if (!controller.signal.aborted) setJson(res, 200, { data })
         } catch (cause) {
           if (!controller.signal.aborted) throw cause

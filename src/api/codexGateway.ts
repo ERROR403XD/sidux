@@ -1,3 +1,4 @@
+import type { ThreadSearchMode } from '../threadSearchMatch'
 import { normalizeResetCredits } from '../accountResetCredits'
 import { normalizeInstalledApps, readDirectoryPages, type InstalledDirectoryApp, type DirectoryMcpSnapshot } from '../directory'
 import { prepareWebDelivery, submitRememberedDelivery } from './deliveryOutbox'
@@ -258,6 +259,7 @@ export type GitRepositoryStatus = {
 
 
 export type ThreadSearchResult = {
+  groups?: UiProjectGroup[]
   threadIds: string[]
   indexedThreadCount: number
   titleScopeComplete?: boolean
@@ -3180,18 +3182,23 @@ export async function searchThreads(
   query: string,
   limit = 200,
   signal?: AbortSignal,
+  mode: ThreadSearchMode = 'title',
 ): Promise<ThreadSearchResult> {
   const response = await fetch('/codex-api/thread-search', {
     method: 'POST',
     signal,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, limit }),
+    body: JSON.stringify({ query, limit, mode }),
   })
-  const payload = (await response.json()) as { data?: ThreadSearchResult; error?: string }
+  const payload = (await response.json()) as { data?: ThreadSearchResult & { threads?: ThreadListResponse['data'] }; error?: string }
   if (!response.ok) {
     throw new Error(payload.error || 'Failed to search threads')
   }
-  return payload.data ?? { threadIds: [], indexedThreadCount: 0 }
+  const result = payload.data ?? { threadIds: [], indexedThreadCount: 0 }
+  return {
+    ...result,
+    groups: payload.data?.threads ? normalizeThreadGroupsV2({ data: payload.data.threads, nextCursor: null }) : undefined,
+  }
 }
 
 export async function configureTelegramBot(

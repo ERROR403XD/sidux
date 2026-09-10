@@ -16,7 +16,7 @@
         <span class="thread-tree-header">{{ t('Pinned') }}</span>
       </SidebarMenuRow>
 
-      <ul v-if="isPinnedSectionExpanded" class="thread-list">
+      <ul v-if="isPinnedSectionExpanded || isSearchActive" class="thread-list">
         <li
           v-for="thread in pinnedThreads"
           :key="thread.id"
@@ -175,10 +175,10 @@
         </template>
       </SidebarMenuRow>
 
-      <template v-if="isProjectsSectionExpanded">
+      <template v-if="isProjectsSectionExpanded || isSearchActive">
       <p v-if="projectAutomationActionError" class="thread-tree-action-error">{{ projectAutomationActionError }}</p>
 
-      <p v-if="isSearchActive && filteredGroups.length === 0" class="thread-tree-no-results">{{ t('No matching threads') }}</p>
+      <p v-if="isSearchActive && searchState !== 'loading' && searchState !== 'error' && filteredGroups.length === 0 && globalThreads.length === 0 && pinnedThreads.length === 0" class="thread-tree-no-results">{{ t('No matching threads') }}</p>
 
       <p v-else-if="isLoading && groups.length === 0" class="thread-tree-loading">{{ t('Loading threads...') }}</p>
 
@@ -519,8 +519,8 @@
         </template>
       </SidebarMenuRow>
 
-      <p v-if="isChatsSectionExpanded && chatThreads.length === 0" class="thread-tree-no-results">{{ t('No chats') }}</p>
-      <ul v-else-if="isChatsSectionExpanded" class="thread-list thread-list-global">
+      <p v-if="!isSearchActive && isChatsSectionExpanded && chatThreads.length === 0" class="thread-tree-no-results">{{ t('No chats') }}</p>
+      <ul v-else-if="isChatsSectionExpanded || isSearchActive" class="thread-list thread-list-global">
         <li
           v-for="thread in visibleChatThreads"
           :key="thread.id"
@@ -910,6 +910,7 @@
 </template>
 
 <script setup lang="ts">
+import { createThreadMatcher } from '../../threadSearchMatch'
 import { useTransientNotice } from '../../composables/useTransientNotice'
 import { accountDisplayName } from '../../accountDisplay'
 import { isOverlayEventInside } from '../../composables/overlayEvents'
@@ -969,6 +970,7 @@ const props = defineProps<{
   isThreadListFullyLoaded: boolean
   searchQuery: string
   searchMatchedThreadIds: string[] | null
+  searchState?: 'loading' | 'ready' | 'error'
 }>()
 
 function quotaResumeTitle(threadId: string): string {
@@ -1338,6 +1340,13 @@ const matchedThreadIdSet = computed(() => {
   if (!props.searchMatchedThreadIds) return null
   return new Set(props.searchMatchedThreadIds)
 })
+const searchRank = computed(() => new Map((props.searchMatchedThreadIds ?? []).map((id, index) => [id, index])))
+const matchSearchTitle = computed(() => createThreadMatcher(props.searchQuery))
+function compareSearchRank(first: UiThread, second: UiThread): number {
+  if (!isSearchActive.value) return 0
+  if (props.searchMatchedThreadIds) return (searchRank.value.get(first.id) ?? Infinity) - (searchRank.value.get(second.id) ?? Infinity)
+  return matchSearchTitle.value(second.title) - matchSearchTitle.value(first.title)
+}
 const pinnedThreadIdSet = computed(() => new Set(pinnedThreadIds.value))
 const optimisticallyArchivedThreadIdSet = computed(() => new Set(optimisticallyArchivedThreadIds.value))
 
@@ -1347,16 +1356,15 @@ function threadMatchesSearch(thread: UiThread): boolean {
   if (matchedThreadIdSet.value) {
     return matchedThreadIdSet.value.has(thread.id)
   }
-  const q = normalizedSearchQuery.value
-  return thread.title.toLowerCase().includes(q) || thread.preview.toLowerCase().includes(q)
+  return matchSearchTitle.value(thread.title) > 0
 }
 
 const filteredGroups = computed<UiProjectGroup[]>(() => {
   return props.groups.flatMap((group) => {
-    const threads = group.threads.filter((thread) => !isProjectlessChatPath(thread.cwd) && threadMatchesSearch(thread))
+    const threads = group.threads.filter((thread) => !isProjectlessChatPath(thread.cwd) && threadMatchesSearch(thread)).sort(compareSearchRank)
     if (threads.length > 0) return [{ ...group, threads }]
     return !isSearchActive.value && group.threads.length === 0 ? [{ ...group, threads }] : []
-  })
+  }).sort((first, second) => isSearchActive.value ? compareSearchRank(first.threads[0]!, second.threads[0]!) : 0)
 })
 
 const isChronologicalView = computed(() => threadViewMode.value === 'chronological')
@@ -1375,7 +1383,7 @@ const globalThreads = computed<UiThread[]>(() => {
   return rows.sort((first, second) => {
     const firstTimestamp = new Date(first.updatedAtIso || first.createdAtIso).getTime()
     const secondTimestamp = new Date(second.updatedAtIso || second.createdAtIso).getTime()
-    return secondTimestamp - firstTimestamp
+    return compareSearchRank(first, second) || secondTimestamp - firstTimestamp
   })
 })
 
@@ -1386,7 +1394,7 @@ const chatThreads = computed(() => {
     .sort((first, second) => {
       const firstTimestamp = new Date(first[timestampKey] || first.updatedAtIso || first.createdAtIso).getTime()
       const secondTimestamp = new Date(second[timestampKey] || second.updatedAtIso || second.createdAtIso).getTime()
-      return secondTimestamp - firstTimestamp
+      return compareSearchRank(first, second) || secondTimestamp - firstTimestamp
     })
 })
 
@@ -1530,7 +1538,8 @@ const pinnedThreads = computed(() =>
   pinnedThreadIds.value
     .map((threadId) => threadById.value.get(threadId) ?? hydratedPinnedThreadById.value[threadId] ?? null)
     .filter((thread): thread is UiThread => thread !== null)
-    .filter(threadMatchesSearch),
+    .filter(threadMatchesSearch)
+    .sort(compareSearchRank),
 )
 
 function togglePinnedSection(): void {
@@ -2996,6 +3005,7 @@ function projectGroupStyle(projectName: string): Record<string, string> | undefi
 }
 
 function projectThreads(group: UiProjectGroup): UiThread[] {
+  if (isSearchActive.value) return group.threads.filter(thread => !pinnedThreadIdSet.value.has(thread.id) && threadMatchesSearch(thread)).sort(compareSearchRank)
   return unpinnedThreadsByProjectName.value.get(group.projectName) ?? []
 }
 
