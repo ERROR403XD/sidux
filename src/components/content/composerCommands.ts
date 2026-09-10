@@ -44,8 +44,9 @@ export function findSlashToken(text: string, cursor: number, selectionEnd = curs
 export function buildComposerCommands(
   skills: { name: string; description?: string; path: string }[],
   prompts: { name: string; description?: string; path: string }[],
+  translate: (message: string) => string = message => message,
 ): ComposerCommand[] {
-  const raw: Omit<ComposerCommand, 'search'>[] = [
+  const raw: Array<Omit<ComposerCommand, 'search'> & { descriptionIsContent?: boolean }> = [
     { id: 'plan', name: '/plan', description: '切换到计划模式，先讨论实施方案', group: '命令', action: 'plan' },
     { id: 'default', name: '/default', description: '切换到默认模式，继续执行工作', group: '命令', action: 'default' },
     { id: 'model', name: '/model', description: '选择本次对话使用的模型', group: '命令', action: 'model' },
@@ -53,10 +54,13 @@ export function buildComposerCommands(
     ...APP_COMMANDS.map(command => ({ id: command.id, name: `/${command.id}`, description: command.description, group: '命令' as const, action: 'app' as const })),
     { id: 'mention', name: '/mention', description: '搜索并附加当前项目中的文件', group: '命令', action: 'mention' },
     { id: 'init', name: '/init', description: '准备项目 AGENTS.md 初始化指令，确认后发送', group: '命令', action: 'init' },
-    ...prompts.map((prompt) => ({ id: `prompt:${prompt.path}`, name: `/prompts:${prompt.name}`, description: prompt.description || '插入保存的提示词', group: '提示词' as const, action: 'prompt' as const, value: prompt.path })),
-    ...skills.map((skill) => ({ id: `skill:${skill.path}`, name: `/${skill.name}`, description: skill.description || '附加此技能', group: '技能' as const, action: 'skill' as const, value: skill.path })),
+    ...prompts.map((prompt) => ({ id: `prompt:${prompt.path}`, name: `/prompts:${prompt.name}`, description: prompt.description || '插入保存的提示词', descriptionIsContent: !!prompt.description, group: '提示词' as const, action: 'prompt' as const, value: prompt.path })),
+    ...skills.map((skill) => ({ id: `skill:${skill.path}`, name: `/${skill.name}`, description: skill.description || '附加此技能', descriptionIsContent: !!skill.description, group: '技能' as const, action: 'skill' as const, value: skill.path })),
   ]
-  return raw.map((row) => ({ ...row, search: `${row.name} ${row.description}`.toLocaleLowerCase() }))
+  return raw.map(({ descriptionIsContent, ...row }) => {
+    const description = descriptionIsContent ? row.description : translate(row.description)
+    return { ...row, description, search: `${row.name} ${row.description} ${description}`.toLocaleLowerCase() }
+  })
 }
 export function filterComposerCommands(commands: ComposerCommand[], query: string): ComposerCommand[] {
   const normalized = query.trim().toLocaleLowerCase()

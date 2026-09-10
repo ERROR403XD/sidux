@@ -5,7 +5,7 @@
       <div :id="listId" ref="optionsRoot" class="composer-command-options" role="listbox" @scroll="onScroll" :aria-label="t('斜杠命令')">
         <div :style="{ height: `${windowStart * rowHeight}px` }" aria-hidden="true"></div>
         <button v-for="({ command, index }) in windowCommands" :id="`${listId}-${index}`" :key="command.id" class="composer-command-option" :class="{ 'is-selected': index === selectedIndex }" role="option" :aria-selected="index === selectedIndex" :aria-setsize="commands.length" :aria-posinset="index + 1" type="button" tabindex="-1" @click="emit('choose', command)">
-          <span class="composer-command-text"><strong>{{ command.name }}</strong><span>{{ t(command.description) }}</span></span>
+          <span class="composer-command-text"><strong>{{ command.name }}</strong><span>{{ command.description }}</span></span>
           <small>{{ t(command.group) }}</small>
         </button>
         <div :style="{ height: `${Math.max(0, commands.length - windowStart - windowCommands.length) * rowHeight}px` }" aria-hidden="true"></div>

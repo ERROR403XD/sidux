@@ -48,3 +48,12 @@ describe('slash command input contract', () => {
     picker.update('/plan ', 6); picker.update('/plan /', 7); expect(picker.visible.value).toBe(true)
   })
 })
+
+
+it('searches translated built-in descriptions while preserving external descriptions', () => {
+  const translate = (message: string) => message === '切换到计划模式，先讨论实施方案' ? 'Discuss implementation in Plan mode' : message === '保存' ? 'Save' : message
+  const commands = buildComposerCommands([{ name: 'external', path: '/a', description: '保存' }], [], translate)
+  expect(filterComposerCommands(commands, 'discuss').map(row => row.name)).toEqual(['/plan'])
+  expect(filterComposerCommands(commands, '计划').map(row => row.name)).toEqual(['/plan'])
+  expect(commands.find(row => row.name === '/external')?.description).toBe('保存')
+})

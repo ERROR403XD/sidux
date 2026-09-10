@@ -602,7 +602,7 @@ const isPlanModeWaitingForModel = computed(() =>
 const commandModelRef = ref<{ open(): void; close(): void } | null>(null)
 const commandSkillsRef = ref<{ open(): void; close(): void } | null>(null)
 const commandListId = `composer-commands-${Math.random().toString(36).slice(2)}`
-const commandEntries = computed(() => buildComposerCommands(props.skills ?? [], savedPrompts.value))
+const commandEntries = computed(() => buildComposerCommands(props.skills ?? [], savedPrompts.value, t))
 const commandPicker = useComposerCommandPicker(commandEntries, applyComposerCommand)
 let isComposingInput = false
 let pastedInput = false
