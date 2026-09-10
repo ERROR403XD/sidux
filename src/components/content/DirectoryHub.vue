@@ -10,14 +10,14 @@
       </button>
     </nav>
     <div class="directory-scope">
-      <div class="directory-scope-picker"><span>查看范围</span><AppSelect :model-value="props.cwd || ''" :options="scopeOptions" enable-search :disabled="busy" @update:model-value="emit('scope-change', $event)" /></div>
+      <div class="directory-scope-picker"><span>查看范围</span><AppSelect :model-value="props.cwd || ''" :options="scopeOptions" enable-search search-placeholder="搜索项目" :disabled="busy" @update:model-value="emit('scope-change', $event)" /></div>
       <a v-if="props.threadId" class="directory-back" :href="`#/thread/${props.threadId}`">返回会话 {{ props.threadId.slice(-8) }}</a>
     </div>
     <p v-if="notice" class="directory-toast" role="status">{{ notice }}</p>
     <p v-if="error" class="directory-error" role="alert">{{ error }}</p>
     <section v-if="activeTab === 'plugins'" class="directory-section">
       <div class="directory-toolbar">
-        <input v-model="search" class="directory-search" type="search" placeholder="搜索插件名称或功能" aria-label="搜索插件" />
+        <input v-model="search" class="directory-search" type="search" placeholder="搜索插件" aria-label="搜索插件" />
         <AppSelect v-model="pluginFilter" :options="pluginFilterOptions" />
       </div>
       <p v-if="ready && supportsPlugins && !loading" class="directory-results-count">{{ filteredPlugins.length }} 个插件<span v-if="installedCount"> · 已安装 {{ installedCount }} 个</span></p>

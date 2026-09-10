@@ -10,7 +10,7 @@
         <label class="api-proxy-check"><input v-model="settings.enabled" type="checkbox" :disabled="busy || !status.installed" />启用 API 出口</label>
         <div class="api-proxy-fields">
           <label>API 使用账号
-            <AppSelect v-model="selectedAccount" :options="accountOptions" enable-search :disabled="busy" />
+            <AppSelect v-model="selectedAccount" :options="accountOptions" enable-search search-placeholder="搜索账号" :disabled="busy" />
           </label>
           <div><span class="api-proxy-label">WebUI 当前账号</span><p>{{ accountName(status.accounts.activeStorageId) }}</p></div>
           <label>全局并发<input v-model.number="settings.globalConcurrency" class="app-input" type="number" min="1" max="64" :disabled="busy" /></label>
@@ -40,7 +40,7 @@
           <div class="api-proxy-key-copy"><div class="api-proxy-key-title"><strong>{{ key.name }}</strong><span>••••{{ key.suffix }}</span><small>到期：{{ key.expiresAt ? date(key.expiresAt) : '无限' }}</small><span v-if="showInvalid">{{ keyLabel(key) }}</span></div>
             <small>最近使用：{{ date(key.lastUsedAt) }}</small>
             <div v-if="policyDrafts[key.id]" class="api-proxy-inline-policy">
-              <AppSelect v-model="policyDrafts[key.id]!.account" :options="keyAccountOptions" enable-search :disabled="busy || !!key.revokedAt" />
+              <AppSelect v-model="policyDrafts[key.id]!.account" :options="keyAccountOptions" enable-search search-placeholder="搜索账号" :disabled="busy || !!key.revokedAt" />
               <label class="api-proxy-check"><input v-model="policyDrafts[key.id]!.protected" type="checkbox" :disabled="busy || !!key.revokedAt" />受保护</label>
             </div>
 
@@ -75,7 +75,7 @@
     <AppDialog :open="usageDialog" title="Token统计" panel-class="api-proxy-usage-dialog" @close="usageDialog = false">
       <div class="api-proxy-usage-filters">
         <label>统计周期<AppSelect v-model="usageWindow" :options="usageWindows" /></label>
-        <label>API key<AppSelect v-model="usageKey" :options="usageKeyOptions" enable-search /></label>
+        <label>API key<AppSelect v-model="usageKey" :options="usageKeyOptions" enable-search search-placeholder="搜索 API key" /></label>
       </div>
       <p v-if="status?.usage?.error" class="api-proxy-error" role="alert">{{ status.usage.error }}</p>
       <div class="api-proxy-usage-total"><span>总 Token</span><strong>{{ selectedUsage.total.toLocaleString() }}</strong></div>
@@ -96,7 +96,7 @@
         <label>持续时间（天）
           <input v-model="keyDurationDays" class="app-input" type="number" min="1" step="1" placeholder="无限" :disabled="busy" />
         </label>
-        <label>使用账号<AppSelect v-model="keyAccountDraft" :options="keyAccountOptions" enable-search :disabled="busy" /></label>
+        <label>使用账号<AppSelect v-model="keyAccountDraft" :options="keyAccountOptions" enable-search search-placeholder="搜索账号" :disabled="busy" /></label>
         <label class="api-proxy-check"><input v-model="keyProtectedDraft" type="checkbox" :disabled="busy" />受保护</label>
         <p v-if="rotateTarget" class="api-proxy-muted">旧 key 将于 24 小时后到期，也可提前撤销。</p>
       </div>
@@ -109,7 +109,7 @@
     </AppDialog>
     <AppDialog :open="!!policyTarget" title="账号与额度保护" :busy="busy" size="compact" @close="policyTarget = null">
       <p v-if="error" class="api-proxy-error" role="alert">{{ error }}</p>
-      <label>使用账号<AppSelect v-model="keyAccountDraft" :options="keyAccountOptions" enable-search :disabled="busy" /></label>
+      <label>使用账号<AppSelect v-model="keyAccountDraft" :options="keyAccountOptions" enable-search search-placeholder="搜索账号" :disabled="busy" /></label>
       <label class="api-proxy-check"><input v-model="keyProtectedDraft" type="checkbox" :disabled="busy" />受保护</label>
       <p class="api-proxy-muted">保护值在账号设置中配置，受保护Key共享所选账号的预留额度。保存会断开此Key的旧连接。</p>
       <template #footer><AppButton :disabled="busy" @click="policyTarget = null">取消</AppButton><AppButton :busy="busy" @click="savePolicy">保存</AppButton></template>

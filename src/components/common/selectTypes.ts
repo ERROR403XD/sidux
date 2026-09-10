@@ -8,6 +8,7 @@ export type SelectOption = {
 export type AppSelectProps = {
   modelValue: string
   options: SelectOption[]
+  ariaLabel?: string
   placeholder?: string
   disabled?: boolean
   selectedPrefixIcon?: Component | null

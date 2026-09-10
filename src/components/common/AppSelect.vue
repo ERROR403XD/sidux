@@ -4,7 +4,7 @@
       class="composer-dropdown-trigger"
       type="button"
       :title="selectedLabel || placeholder"
-      :aria-label="selectedLabel || placeholder || 'Select option'"
+      :aria-label="ariaLabel || selectedLabel || placeholder || 'Select option'"
       aria-haspopup="listbox"
       :aria-expanded="isOpen"
       :disabled="disabled"
@@ -32,7 +32,7 @@
             class="app-input composer-dropdown-search-input"
             data-popover-autofocus
             type="text"
-            :placeholder="searchPlaceholder || 'Quick search projects'"
+            :placeholder="searchPlaceholder"
             :aria-label="searchPlaceholder || 'Search options'"
           />
         </div>

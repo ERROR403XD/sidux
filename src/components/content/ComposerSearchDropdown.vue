@@ -30,6 +30,7 @@
               class="search-dropdown-search"
               type="text"
               :placeholder="searchPlaceholder"
+              :aria-label="searchPlaceholder || t('Search options...')"
               @keydown.escape.prevent="isOpen = false"
               @keydown.enter.prevent="selectHighlighted"
               @keydown.arrow-down.prevent="moveHighlight(1)"

@@ -1,7 +1,7 @@
 <template>
   <div class="conversation-defaults">
     <h3>会话</h3>
-    <div class="sidebar-settings-row sidebar-settings-row--select"><span>默认模型</span><AppSelect :model-value="value.model" :options="modelOptions" enable-search @update:model-value="selectModel" /></div>
+    <div class="sidebar-settings-row sidebar-settings-row--select"><span>默认模型</span><AppSelect :model-value="value.model" :options="modelOptions" enable-search search-placeholder="搜索模型" @update:model-value="selectModel" /></div>
     <div class="sidebar-settings-row sidebar-settings-row--select"><span>默认思考强度</span><AppSelect :model-value="value.effort" :options="effortOptions(model, value.effort)" @update:model-value="save({ effort: $event })" /></div>
     <button class="sidebar-settings-row" type="button" role="switch" :aria-checked="!!value.tier" :disabled="!fastTier && !value.tier" @click="save({ tier: value.tier ? '' : fastTier })"><span>默认 Fast</span><span class="sidebar-settings-toggle" :class="{ 'is-on': !!value.tier }" /></button>
     <button class="sidebar-settings-row" type="button" role="switch" :aria-checked="remember" @click="emit('save', value, !remember)"><span>记住每个会话上次设置</span><span class="sidebar-settings-toggle" :class="{ 'is-on': remember }" /></button>

@@ -1,7 +1,7 @@
 <template>
   <AppDialog :open="open" title="搜索任务" panel-class="task-search-dialog" @close="emit('close')">
     <div class="task-search-controls">
-      <input v-model="query" class="app-input" aria-label="搜索任务" maxlength="200" placeholder="输入任务标题或正文" />
+      <input v-model="query" class="app-input" aria-label="搜索任务" maxlength="200" :placeholder="mode === 'title' ? '搜索标题' : '搜索正文'" />
       <AppSelect :model-value="mode" :options="[{ value: 'title', label: '标题' }, { value: 'body', label: '正文' }]" @update:model-value="setMode" />
     </div>
     <p class="task-search-scope">{{ query.trim() ? (mode === 'body' ? '搜索已索引正文' : '按任务标题搜索') : '最近的非归档任务' }} · 每页 20 条</p>
