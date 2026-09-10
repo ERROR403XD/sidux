@@ -2649,3 +2649,12 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
   color: var(--ui-text);
   text-decoration: underline;
 }
+
+/* Project editor uses the shared dialog in every route and theme. */
+.new-thread-project-field {
+  margin-top: 14px;
+}
+.project-directories-input {
+  resize: vertical;
+  min-height: 100px;
+}

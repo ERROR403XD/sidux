@@ -2921,7 +2921,7 @@ export async function setWorkspaceRootsState(nextState: WorkspaceRootsState): Pr
   cachedWorkspaceRootsState = cloneWorkspaceRootsState(nextState)
 }
 
-export async function openProjectRoot(path: string, options?: { createIfMissing?: boolean; label?: string }): Promise<string> {
+export async function openProjectRoot(path: string, options?: { createIfMissing?: boolean; label?: string; directories?: string[] }): Promise<string> {
   const response = await fetch('/codex-api/project-root', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -2929,6 +2929,7 @@ export async function openProjectRoot(path: string, options?: { createIfMissing?
       path,
       createIfMissing: options?.createIfMissing === true,
       label: options?.label ?? '',
+      directories: options?.directories,
     }),
   })
   const payload = (await response.json()) as unknown
@@ -3548,4 +3549,11 @@ export async function uploadFile(file: File): Promise<string | null> {
   } finally {
     clearTimeout(timeoutId)
   }
+}
+
+export async function getProjectDirectories(path: string): Promise<string[]> {
+  const response = await fetch(`/codex-api/project-directories?path=${encodeURIComponent(path)}`)
+  const payload = await response.json()
+  if (!response.ok) throw new Error(getErrorMessageFromPayload(payload, '读取项目工作目录失败'))
+  return payload.data
 }

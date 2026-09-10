@@ -1,3 +1,4 @@
+import { readProjectDirectories, saveProjectDirectories } from './projectDirectories.js'
 import { ThreadCompletionList } from './threadCompletionList.js'
 import { AccountResourcePool } from './accountResourcePool.js'
 import { resolveAccountSelection, type AccountExecutionLease } from './accountExecution.js'
@@ -8980,6 +8981,20 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         return
       }
 
+      if (req.method === 'GET' && url.pathname === '/codex-api/project-directories') {
+        const root = url.searchParams.get('path') ?? ''
+        if (!isAbsolute(root)) {
+          setJson(res, 400, { error: '工作目录必须填写绝对路径' })
+          return
+        }
+        try {
+          setJson(res, 200, { data: await readProjectDirectories(root) })
+        } catch (error) {
+          setJson(res, 400, { error: getErrorMessage(error, '读取项目工作目录失败') })
+        }
+        return
+      }
+
       if (req.method === 'POST' && url.pathname === '/codex-api/project-root') {
         const payload = asRecord(await readJsonBody(req))
         const rawPath = typeof payload?.path === 'string' ? payload.path.trim() : ''
@@ -9009,6 +9024,14 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           return
         }
 
+        if (payload && Object.hasOwn(payload, 'directories')) {
+          try {
+            await queueWorkspaceRootsMutation(() => saveProjectDirectories(normalizedPath, payload.directories))
+          } catch (error) {
+            setJson(res, 400, { error: getErrorMessage(error, '保存项目工作目录失败') })
+            return
+          }
+        }
         await persistWorkspaceRoot(normalizedPath, label)
         setJson(res, 200, { data: { path: normalizedPath } })
         return

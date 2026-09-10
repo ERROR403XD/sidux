@@ -335,7 +335,6 @@
                     :data-open-direction="projectMenuDirectionById[group.projectName] ?? 'down'"
                     @click.stop
                   >
-                    <template v-if="projectMenuMode === 'actions'">
                       <button class="project-menu-item" type="button" @click="onBrowseProjectFiles(group.projectName)">
                         {{ t('Browse files') }}
                       </button>
@@ -354,7 +353,7 @@
                         {{ t('New worktree') }}
                       </button>
                       <button class="project-menu-item" type="button" @click="openRenameProjectMenu(group)">
-                        {{ t('Rename project') }}
+                        编辑项目 / 工作目录
                       </button>
                       <button
                         class="project-menu-item project-menu-item-danger"
@@ -363,16 +362,8 @@
                       >
                         {{ t('Remove') }}
                       </button>
-                    </template>
-                    <template v-else>
-                      <label class="project-menu-label">{{ t('Project name') }}</label>
-                      <input
-                        v-model="projectRenameDraft"
-                        class="project-menu-input"
-                        type="text"
-                        @input="onProjectNameInput(group.projectName)"
-                      />
-                    </template>
+
+
                   </div>
                 </div>
 
@@ -962,7 +953,7 @@ const emit = defineEmits<{
   'save-project': [projectName: string]
   'request-project-git-status': [projectName: string]
   'create-project-worktree': [projectName: string]
-  'rename-project': [payload: { projectName: string; displayName: string }]
+  'edit-project': [projectName: string]
   'rename-thread': [payload: { threadId: string; title: string }]
   'remove-project': [projectName: string]
   'reorder-project': [payload: { projectName: string; toIndex: number }]
@@ -1036,8 +1027,6 @@ const openThreadMenuId = ref('')
 const projectMenuDirectionById = ref<Record<string, MenuDirection>>({})
 const threadMenuDirectionById = ref<Record<string, MenuDirection>>({})
 const openThreadMenuStyle = ref<Record<string, string>>({})
-const projectMenuMode = ref<'actions' | 'rename'>('actions')
-const projectRenameDraft = ref('')
 const renameThreadDialogVisible = ref(false)
 const renameThreadDialogThreadId = ref('')
 const renameThreadDraft = ref('')
@@ -2279,8 +2268,6 @@ function isProjectMenuOpen(projectName: string): boolean {
 
 function closeProjectMenu(): void {
   openProjectMenuId.value = ''
-  projectMenuMode.value = 'actions'
-  projectRenameDraft.value = ''
 }
 
 function toggleOrganizeMenu(): void {
@@ -2321,8 +2308,6 @@ function toggleProjectMenu(projectName: string): void {
   closeThreadMenu()
   isOrganizeMenuOpen.value = false
   openProjectMenuId.value = projectName
-  projectMenuMode.value = 'actions'
-  projectRenameDraft.value = getProjectDisplayName(projectName)
   requestProjectGitStatusAndUpdateMenuDirection(projectName)
 }
 
@@ -2330,8 +2315,6 @@ function openProjectContextMenu(projectName: string): void {
   closeThreadMenu()
   isOrganizeMenuOpen.value = false
   openProjectMenuId.value = projectName
-  projectMenuMode.value = 'actions'
-  projectRenameDraft.value = getProjectDisplayName(projectName)
   requestProjectGitStatusAndUpdateMenuDirection(projectName)
 }
 
@@ -2340,14 +2323,8 @@ function getProjectRenameDraftName(group: UiProjectGroup): string {
 }
 
 function openRenameProjectMenu(group: UiProjectGroup): void {
-  closeThreadMenu()
-  const projectName = group.projectName
-  openProjectMenuId.value = projectName
-  projectMenuMode.value = 'rename'
-  projectRenameDraft.value = getProjectRenameDraftName(group)
-  nextTick(() => {
-    updateProjectMenuDirection(projectName)
-  })
+  emit('edit-project', group.projectName)
+  closeProjectMenu()
 }
 
 function onBrowseProjectFiles(projectName: string): void {
@@ -2365,12 +2342,6 @@ function onCreateProjectWorktree(projectName: string): void {
   closeProjectMenu()
 }
 
-function onProjectNameInput(projectName: string): void {
-  emit('rename-project', {
-    projectName,
-    displayName: projectRenameDraft.value,
-  })
-}
 
 function onRemoveProject(projectName: string): void {
   const projectCwd = getProjectAutomationKey(projectName)

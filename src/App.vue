@@ -106,7 +106,7 @@
             :search-matched-thread-ids="serverMatchedThreadIds"
             :search-state="threadSearchState"
             @select="onSelectThread"
-            @archive="onArchiveThread" @start-new-thread="onStartNewThread" @rename-project="onRenameProject"
+            @archive="onArchiveThread" @start-new-thread="onStartNewThread" @edit-project="onEditProject"
             @browse-thread-files="onBrowseThreadFiles"
             @save-thread-project="onSaveThreadProject"
             @browse-project-files="onBrowseProjectFiles"
@@ -681,94 +681,6 @@
                     </div>
                   </div>
                 </Teleport>
-                <Teleport to="body">
-                  <div v-if="isProjectSetupModalOpen" class="new-thread-open-folder-overlay" v-modal-backdrop="onCloseProjectSetupModal">
-                    <div class="new-thread-project-modal" role="dialog" aria-modal="true" :aria-label="t('Create or clone project')" @keydown.esc.prevent="onCloseProjectSetupModal">
-                      <div class="new-thread-open-folder-header">
-                        <p class="new-thread-open-folder-title">{{ t('Create or clone project') }}</p>
-                        <button class="new-thread-open-folder-close" type="button" :disabled="isProjectSetupSubmitting" @click="onCloseProjectSetupModal">
-                          {{ t('Cancel') }}
-                        </button>
-                      </div>
-                      <div class="new-thread-project-mode-tabs" role="tablist" :aria-label="t('Project source')">
-                        <button
-                          class="new-thread-project-mode-tab"
-                          :class="{ 'is-active': projectSetupMode === 'create' }"
-                          type="button"
-                          role="tab"
-                          :aria-selected="projectSetupMode === 'create'"
-                          :disabled="isProjectSetupSubmitting"
-                          @click="projectSetupMode = 'create'"
-                        >
-                          {{ t('New project') }}
-                        </button>
-                        <button
-                          class="new-thread-project-mode-tab"
-                          :class="{ 'is-active': projectSetupMode === 'clone' }"
-                          type="button"
-                          role="tab"
-                          :aria-selected="projectSetupMode === 'clone'"
-                          :disabled="isProjectSetupSubmitting"
-                          @click="projectSetupMode = 'clone'"
-                        >
-                          {{ t('Clone from GitHub') }}
-                        </button>
-                      </div>
-                      <label class="new-thread-project-field">
-                        <span class="new-thread-open-folder-label">{{ projectSetupMode === 'create' ? t('Target folder') : t('Clone parent folder') }}</span>
-                        <input
-                          v-model="projectSetupDestination"
-                          class="new-thread-open-folder-path"
-                          type="text"
-                          :disabled="isProjectSetupSubmitting"
-                          :placeholder="projectSetupMode === 'create' ? t('Target folder') : t('Clone parent folder')"
-                        />
-                      </label>
-                      <label v-if="projectSetupMode === 'create'" class="new-thread-project-field">
-                        <span class="new-thread-open-folder-label">{{ t('Project name') }}</span>
-                        <input
-                          ref="projectSetupPrimaryInputRef"
-                          v-model="projectNameDraft"
-                          class="new-thread-open-folder-create-input"
-                          type="text"
-                          :disabled="isProjectSetupSubmitting"
-                          :placeholder="t('Project name')"
-                          @input="projectNameEdited = true"
-                          @keydown.enter.prevent="onSubmitProjectSetup"
-                        />
-                      </label>
-                      <label v-else-if="projectSetupMode === 'clone'" class="new-thread-project-field">
-                        <span class="new-thread-open-folder-label">{{ t('GitHub repository URL') }}</span>
-                        <input
-                          ref="projectSetupPrimaryInputRef"
-                          v-model="githubCloneUrlDraft"
-                          class="new-thread-open-folder-create-input"
-                          type="url"
-                          :disabled="isProjectSetupSubmitting"
-                          placeholder="https://github.com/owner/repo"
-                          @keydown.enter.prevent="onSubmitProjectSetup"
-                        />
-                      </label>
-                      <div v-if="projectSetupError" class="new-thread-open-folder-error visible-error-with-feedback">
-                        <span>{{ t(projectSetupError) }}</span>
-                        <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, projectSetupError)">{{ t('Send feedback') }}</a>
-                      </div>
-                      <div class="new-thread-project-modal-actions">
-                        <button class="new-thread-folder-action" type="button" :disabled="isProjectSetupSubmitting" @click="onCloseProjectSetupModal">
-                          {{ t('Cancel') }}
-                        </button>
-                        <button
-                          class="new-thread-folder-action new-thread-folder-action-primary"
-                          type="button"
-                          :disabled="!canSubmitProjectSetup || isProjectSetupSubmitting"
-                          @click="onSubmitProjectSetup"
-                        >
-                          {{ projectSetupSubmitLabel }}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </Teleport>
                 <ComposerRuntimeDropdown
                   v-if="isNewThreadCwdGitRepo"
                   class="new-thread-runtime-dropdown"
@@ -1014,6 +926,79 @@
     </div>
   </div>
   <AccountLoginDialog :open="isCodexLoginModalOpen" :intent="loginIntent" :target-storage-id="loginTargetStorageId" :target-label="loginTargetAccount ? accountDisplayName(loginTargetAccount) : ''" @close="isCodexLoginModalOpen = false" @completed="onAccountLoginCompleted" @resume="resumeAccountLogin" />
+  <AppDialog :open="isProjectSetupModalOpen" :title="projectEditingId ? '编辑项目' : t('Create or clone project')" :busy="isProjectSetupSubmitting" @close="onCloseProjectSetupModal">
+                      <div v-if="!projectEditingId" class="new-thread-project-mode-tabs" role="tablist" :aria-label="t('Project source')">
+                        <button
+                          class="new-thread-project-mode-tab"
+                          :class="{ 'is-active': projectSetupMode === 'create' }"
+                          type="button"
+                          role="tab"
+                          :aria-selected="projectSetupMode === 'create'"
+                          :disabled="isProjectSetupSubmitting"
+                          @click="projectSetupMode = 'create'"
+                        >
+                          {{ t('New project') }}
+                        </button>
+                        <button
+                          class="new-thread-project-mode-tab"
+                          :class="{ 'is-active': projectSetupMode === 'clone' }"
+                          type="button"
+                          role="tab"
+                          :aria-selected="projectSetupMode === 'clone'"
+                          :disabled="isProjectSetupSubmitting"
+                          @click="projectSetupMode = 'clone'"
+                        >
+                          {{ t('Clone from GitHub') }}
+                        </button>
+                      </div>
+                      <label class="new-thread-project-field">
+                        <span class="new-thread-open-folder-label">{{ projectSetupMode === 'create' ? t('Target folder') : t('Clone parent folder') }}</span>
+                        <input
+                          v-model="projectSetupDestination"
+                          class="new-thread-open-folder-path"
+                          type="text"
+                          :disabled="isProjectSetupSubmitting || Boolean(projectEditingId)"
+                          :placeholder="projectSetupMode === 'create' ? t('Target folder') : t('Clone parent folder')"
+                        />
+                      </label>
+                      <label v-if="projectSetupMode === 'create'" class="new-thread-project-field">
+                        <span class="new-thread-open-folder-label">{{ t('Project name') }}</span>
+                        <input
+                          ref="projectSetupPrimaryInputRef"
+                          v-model="projectNameDraft"
+                          class="new-thread-open-folder-create-input"
+                          type="text"
+                          :disabled="isProjectSetupSubmitting"
+                          :placeholder="t('Project name')"
+                          @input="projectNameEdited = true"
+                          @keydown.enter.prevent="onSubmitProjectSetup"
+                        />
+                      </label>
+                      <label v-else-if="projectSetupMode === 'clone'" class="new-thread-project-field">
+                        <span class="new-thread-open-folder-label">{{ t('GitHub repository URL') }}</span>
+                        <input
+                          ref="projectSetupPrimaryInputRef"
+                          v-model="githubCloneUrlDraft"
+                          class="new-thread-open-folder-create-input"
+                          type="url"
+                          :disabled="isProjectSetupSubmitting"
+                          placeholder="https://github.com/owner/repo"
+                          @keydown.enter.prevent="onSubmitProjectSetup"
+                        />
+                      </label>
+                      <label v-if="projectSetupMode === 'create'" class="new-thread-project-field">
+                        <span class="new-thread-open-folder-label">附加工作目录（每行一个绝对路径）</span>
+                        <textarea v-model="projectDirectoryDraft" class="new-thread-open-folder-path project-directories-input" rows="4" :disabled="isProjectSetupSubmitting || !projectDirectoriesLoaded" placeholder="/home/Code/another-project" />
+                      </label>
+                      <div v-if="projectSetupError" class="new-thread-open-folder-error visible-error-with-feedback">
+                        <span>{{ t(projectSetupError) }}</span>
+                        <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, projectSetupError)">{{ t('Send feedback') }}</a>
+                      </div>
+    <template #footer>
+      <AppButton :disabled="isProjectSetupSubmitting" @click="onCloseProjectSetupModal">{{ t('Cancel') }}</AppButton>
+      <AppButton :disabled="!canSubmitProjectSetup" :busy="isProjectSetupSubmitting" @click="onSubmitProjectSetup">{{ projectSetupSubmitLabel }}</AppButton>
+    </template>
+  </AppDialog>
   <AppDialog :open="Boolean(replaceQueueDraftId)" title="替换当前草稿？" size="compact" @close="replaceQueueDraftId = ''">
     <p>用这条队列消息替换输入框中的草稿。</p>
     <template #footer>
@@ -1048,6 +1033,7 @@ import { isOverlayEventInside } from './composables/overlayEvents'
 import { availableDisplayTimeZones, browserTimeZone, displayTimeZone, displayTimeZonePreference, formatLocalDateTime, setDisplayTimeZone, subscribeDisplayTimeZoneStorage } from './dateTime'
 import AppSelect from './components/common/AppSelect.vue'
 import { vModalBackdrop } from './composables/modalBackdrop'
+import { getProjectDirectories } from './api/codexGateway'
 import { projectDisplayName, projectSetupInput } from './composables/projectSetup'
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -1695,6 +1681,9 @@ const createFolderError = ref('')
 const isCreatingFolder = ref(false)
 const isProjectSetupModalOpen = ref(false)
 const projectSetupMode = ref<'create' | 'clone'>('create')
+const projectEditingId = ref('')
+const projectDirectoryDraft = ref('')
+const projectDirectoriesLoaded = ref(true)
 const projectSetupBaseDir = ref('')
 const projectCloneBaseDir = ref('')
 const projectNameEdited = ref(false)
@@ -1711,6 +1700,28 @@ const isProjectImporting = ref(false)
 const projectSetupError = ref('')
 const isProjectSetupSubmitting = ref(false)
 const projectSetupPrimaryInputRef = ref<HTMLInputElement | null>(null)
+watch(() => projectSetupBaseDir.value, (path, _previous, onCleanup) => {
+  if (projectEditingId.value) return
+  projectDirectoryDraft.value = ''
+  projectDirectoriesLoaded.value = false
+  let cancelled = false
+  const timer = setTimeout(async () => {
+    try {
+      const directories = path.trim() ? await getProjectDirectories(path.trim()) : []
+      if (cancelled) return
+      projectDirectoryDraft.value = directories.join('\n')
+      projectDirectoriesLoaded.value = true
+      projectSetupError.value = ''
+    } catch (error) {
+      if (!cancelled) projectSetupError.value = error instanceof Error ? error.message : '读取项目工作目录失败'
+    }
+  }, 300)
+  onCleanup(() => {
+    cancelled = true
+    clearTimeout(timer)
+  })
+})
+
 const projectImportInputRef = ref<HTMLInputElement | null>(null)
 const isExistingFolderPickerOpen = ref(false)
 const existingFolderPathInputRef = ref<HTMLInputElement | null>(null)
@@ -2061,6 +2072,7 @@ const canCreateFolder = computed(() => {
 })
 const isProjectNameDraftValid = computed(() => Boolean(projectNameDraft.value.trim()))
 const canSubmitProjectSetup = computed(() => {
+  if (projectSetupMode.value === 'create' && !projectDirectoriesLoaded.value) return false
   const baseDir = projectSetupDestination.value.trim()
   if (!baseDir) return false
   if (projectSetupMode.value === 'create') return isProjectNameDraftValid.value
@@ -2076,6 +2088,7 @@ const createFolderSubmitLabel = computed(() => {
   return 'Create'
 })
 const projectSetupSubmitLabel = computed(() => {
+  if (projectEditingId.value) return isProjectSetupSubmitting.value ? t('Saving…') : t('Save')
   if (isProjectSetupSubmitting.value) {
     if (projectSetupMode.value === 'clone') return t('Cloning…')
     return t('Creating…')
@@ -3108,8 +3121,28 @@ async function loadGitRepoStatus(cwdRaw: string): Promise<void> {
   }
 }
 
-function onRenameProject(payload: { projectName: string; displayName: string }): void {
-  renameProject(payload.projectName, payload.displayName)
+async function onEditProject(projectName: string): Promise<void> {
+  const group = projectGroups.value.find(entry => entry.projectName === projectName)
+  const root = resolvePreferredLocalCwd(projectName, group?.threads[0]?.cwd?.trim() ?? '')
+  if (!root) return
+  projectEditingId.value = projectName
+  projectNameEdited.value = true
+  projectSetupBaseDir.value = root
+  projectNameDraft.value = projectDisplayNameById.value[projectName] || projectDisplayName(root, workspaceRootOptionsState.value.labels)
+  projectSetupMode.value = 'create'
+  projectDirectoryDraft.value = ''
+  projectSetupError.value = ''
+  isProjectSetupModalOpen.value = true
+  isProjectSetupSubmitting.value = true
+  projectDirectoriesLoaded.value = false
+  try {
+    projectDirectoryDraft.value = (await getProjectDirectories(root)).join('\n')
+    projectDirectoriesLoaded.value = true
+  } catch (error) {
+    projectSetupError.value = error instanceof Error ? error.message : '读取项目工作目录失败'
+  } finally {
+    isProjectSetupSubmitting.value = false
+  }
 }
 
 function onRenameThread(payload: { threadId: string; title: string }): void {
@@ -3923,8 +3956,11 @@ function clearCommitReviewContext(): void {
 }
 
 async function onOpenProjectSetupModal(): Promise<void> {
+  projectEditingId.value = ''
+  projectDirectoryDraft.value = ''
+  projectDirectoriesLoaded.value = true
   projectNameEdited.value = false
-  projectSetupBaseDir.value = normalizeAbsolutePath(newThreadCwd.value)
+  projectSetupBaseDir.value = ''
   projectCloneBaseDir.value = await resolveProjectBaseDirectory()
   projectNameDraft.value = projectDisplayName(projectSetupBaseDir.value, workspaceRootOptionsState.value.labels)
   githubCloneUrlDraft.value = ''
@@ -3942,7 +3978,7 @@ function onCloseProjectSetupModal(): void {
 
 async function createProjectFromSetupModal(): Promise<string> {
   const input = projectSetupInput(normalizeAbsolutePath(projectSetupBaseDir.value), projectNameDraft.value)
-  return openProjectRoot(input.path, input.options)
+  return openProjectRoot(input.path, { ...input.options, createIfMissing: !projectEditingId.value, directories: projectDirectoryDraft.value.split('\n').map(path => path.trim()).filter(Boolean) })
 }
 
 async function cloneGithubRepositoryFromSetupModal(): Promise<string> {
@@ -3965,7 +4001,8 @@ async function onSubmitProjectSetup(): Promise<void> {
         : await createProjectFromSetupModal()
     if (!normalizedPath) return
 
-    newThreadCwd.value = normalizedPath
+    if (projectEditingId.value) renameProject(projectEditingId.value, projectNameDraft.value.trim())
+    else newThreadCwd.value = normalizedPath
     pinProjectToTop(getProjectOrderNameForPath(normalizedPath))
     await loadWorkspaceRootOptionsState()
     isProjectSetupModalOpen.value = false
