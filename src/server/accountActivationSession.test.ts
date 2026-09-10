@@ -20,7 +20,7 @@ describe('independent activation conversation', () => {
       launchedHome = options.env.CODEX_HOME
       expect(launchedHome).not.toBe(root)
       expect(options.cwd).toBe(join(launchedHome, 'empty'))
-      const script = `const rl=require('readline').createInterface({input:process.stdin});let reads=0;rl.on('line',line=>{const m=JSON.parse(line);if(!m.id)return;let result={};if(m.method==='account/read')result={account:{id:'fixed-account'}};if(m.method==='thread/start')result={thread:{id:'activation-thread'}};if(m.method==='turn/start')result={turn:{id:'activation-turn'}};if(m.method==='thread/read')result={thread:{turns:[{id:'activation-turn',status:++reads>1?'completed':'inProgress'}]}};process.stdout.write(JSON.stringify({id:m.id,result})+'\\n');});`
+      const script = `const rl=require('readline').createInterface({input:process.stdin});let reads=0;rl.on('line',line=>{const m=JSON.parse(line);if(!m.id)return;let result={};if(m.method==='account/read')result={account:{id:'fixed-account'}};if(m.method==='thread/start')result={thread:{id:'activation-thread'}};if(m.method==='turn/start')result={turn:{id:'activation-turn'}};if(m.method==='thread/read')result={thread:{turns:[{id:'activation-turn',status:++reads>2?'completed':reads===1?'interrupted':'inProgress',completedAt:null,error:null}]}};process.stdout.write(JSON.stringify({id:m.id,result})+'\\n');});`
       const proc = spawn(process.execPath, ['-e', script], options)
       const write = proc.stdin.write.bind(proc.stdin)
       proc.stdin.write = ((value: string, ...rest: any[]) => { const call = JSON.parse(value); calls.push(call); return write(value, ...rest) }) as typeof proc.stdin.write
@@ -34,7 +34,7 @@ describe('independent activation conversation', () => {
     expect(Date.now() - before).toBeGreaterThanOrEqual(25)
     expect(calls.find(call => call.method === 'account/login/start')?.params).toMatchObject({ type: 'chatgptAuthTokens', chatgptAccountId: 'fixed-account', accessToken: 'fixture-only' })
     expect(calls.find(call => call.method === 'turn/start')?.params.input).toEqual([{ type: 'text', text: 'hi', text_elements: [] }])
-    expect(calls.filter(call => call.method === 'thread/read')).toHaveLength(2)
+    expect(calls.filter(call => call.method === 'thread/read')).toHaveLength(3)
     expect(calls.some(call => /logout|rateLimitReset|switch/.test(call.method))).toBe(false)
     await session.dispose()
     expect(await readdir(join(root, 'sessions'))).toEqual([])

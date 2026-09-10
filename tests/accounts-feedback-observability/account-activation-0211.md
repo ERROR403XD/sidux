@@ -30,3 +30,18 @@
 预期：修改即时保存；空账号/空时刻允许编辑但无下次计划；多账号串行、每个时刻最多一次。每个激活会话使用自己的 CODEX_HOME 和空目录、指定外部凭据，仅发送 hi；完成后约两分钟关闭进程并删除整份临时会话目录。不会调用主账号切换、写 auth.json/accounts.json 或刷新 token；前台账号选择不会改变固定激活凭据。重启清理本调度器残留会话，不重复未知请求。
 
 清理：关闭计划，恢复测试前设置，检查 account-activation/sessions 为空、测试进程退出，主认证及选择状态与基线一致。若无法证明身份隔离，退回固定账号的 API 代理激活。
+
+
+## 0.2.17 激活上下文精简
+
+前提：安装 Codex CLI 0.153.4；仅使用测试提供方和隔离目录，不使用真实凭据。
+
+执行：
+
+```bash
+CODEXAPP_NATIVE_ACTIVATION_TEST=1 pnpm exec vitest run src/server/accountActivationSession.native.test.ts src/server/accountActivationSession.test.ts src/server/accountActivationScheduler.test.ts
+```
+
+原生回归在临时 Git 项目中写入一份很长的 AGENTS.md 哨兵，启动独立 CLI，使用账号 B 的测试凭据向本地 Responses SSE 发送 hi。确认空工作目录没有文件、上游用户输入仅为 hi，不含项目哨兵/环境说明/技能目录，输入 JSON 小于 9000 字符。账号 A 的认证与选择哨兵文件必须完全相同，发送一次并完成后退出进程、删除私有目录。基础 CLI 工具声明仍可能存在，不把样本 usage 或 JSON 大小当成真实计费 Token 数。
+
+测试清理等待为 25 ms；产品配置仍是完成后 120 秒。测试自动清理临时目录和监听端口；若失败，仅清理此次测试创建的资源。

@@ -31,7 +31,31 @@ export class AccountActivationSession {
     await mkdir(cwd)
     const command = this.options.command || resolveCodexCommand()
     if (!command) throw new Error('激活运行时不可用')
-    const invocation = getSpawnInvocation(command, ['app-server', '-c', 'model_provider="openai"', '-c', 'approval_policy="never"', '-c', 'sandbox_mode="read-only"', '-c', 'features.memories=false', '-c', 'features.apps=false'])
+    // An empty cwd can still inherit ancestor AGENTS.md and CLI tool/skill catalogs.
+    // These overrides belong only to this disposable process, never the main runtime.
+    const config = [
+      'model_provider="openai"',
+      'approval_policy="never"',
+      'sandbox_mode="read-only"',
+      'project_doc_max_bytes=0',
+      'include_environment_context=false',
+      'skills.max_context_tokens=1',
+      'web_search="disabled"',
+      'features.skip_host_skill_discovery=true',
+      'features.memories=false',
+      'features.apps=false',
+      'features.plugins=false',
+      'features.shell_tool=false',
+      'features.view_image=false',
+      'features.multi_agent=false',
+      'features.sleep_tool=false',
+      'features.goals=false',
+      'features.image_generation=false',
+      'features.browser_use=false',
+      'features.computer_use=false',
+      'features.code_mode_host=false',
+    ]
+    const invocation = getSpawnInvocation(command, ['app-server', ...config.flatMap(value => ['-c', value])])
     const activationEnv: NodeJS.ProcessEnv = { ...process.env, CODEX_HOME: this.home }
     delete activationEnv.OPENAI_API_KEY
     delete activationEnv.CODEX_API_KEY
@@ -87,10 +111,12 @@ export class AccountActivationSession {
     if (!turnId) throw new Error('激活回合未确认')
     while (true) {
       signal.throwIfAborted()
-      const result = await client.call('thread/read', { threadId, includeTurns: true }) as { thread?: { turns?: Array<{ id: string; status: string }> } }
+      const result = await client.call('thread/read', { threadId, includeTurns: true }) as { thread?: { turns?: Array<{ id: string; status: string; completedAt?: number | null; error?: unknown }> } }
       const turn = result.thread?.turns?.find(row => row.id === turnId)
       if (turn?.status === 'completed') break
-      if (turn && ['failed', 'interrupted'].includes(turn.status)) throw new Error('激活回合未完成')
+      // Before the live turn attaches, Codex can reconstruct an unfinished rollout
+      // as interrupted with no completion timestamp or error. Keep waiting for it.
+      if (turn && ['failed', 'interrupted'].includes(turn.status) && (turn.completedAt != null || turn.error != null)) throw new Error('激活回合未完成')
       await delay(this.options.pollMs ?? 2000, undefined, { signal })
     }
     await delay(this.options.cleanupDelayMs ?? 120000, undefined, { signal })
