@@ -353,7 +353,7 @@
                         {{ t('New worktree') }}
                       </button>
                       <button class="project-menu-item" type="button" @click="openRenameProjectMenu(group)">
-                        编辑项目 / 工作目录
+                        编辑项目
                       </button>
                       <button
                         class="project-menu-item project-menu-item-danger"
