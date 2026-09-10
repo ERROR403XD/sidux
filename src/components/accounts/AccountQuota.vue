@@ -23,9 +23,9 @@ const now = useQuotaClock()
 const props = defineProps<{ snapshot: UiRateLimitSnapshot; compact?: boolean }>()
 const windows = computed(() => [props.snapshot.primary, props.snapshot.secondary].filter((value): value is UiRateLimitWindow => value != null))
 function duration(minutes: number | null): string {
-  if (!minutes) return '限额'
-  if (minutes % 1440 === 0) return `${minutes / 1440}天限额`
-  if (minutes % 60 === 0) return `${minutes / 60}小时限额`
-  return `${minutes}分钟限额`
+  if (!minutes) return '—'
+  if (minutes % 1440 === 0) return minutes === 1440 ? t('1天') : t('{count}天', { count: minutes / 1440 })
+  if (minutes % 60 === 0) return minutes === 60 ? t('1小时') : t('{count}小时', { count: minutes / 60 })
+  return minutes === 1 ? t('1分钟') : t('{count}分钟', { count: minutes })
 }
 </script>

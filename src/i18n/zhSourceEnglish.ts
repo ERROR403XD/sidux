@@ -1,6 +1,12 @@
 // English translations for application UI messages originally authored in Chinese.
 // User content, saved prompts, and outbound notification templates are intentionally excluded.
 export const zhSourceEnglish: Record<string, string> = {
+  "1天": "1 day",
+  "1小时": "1 hour",
+  "1分钟": "1 minute",
+  "{count}天": "{count} days",
+  "{count}小时": "{count} hours",
+  "{count}分钟": "{count} minutes",
   "读取激活计划失败": "Failed to load the activation schedule",
   "同步激活计划时区失败，请重试。": "Failed to sync the activation schedule time zone. Please retry.",
   "显示时区保存失败。": "Failed to save the display time zone.",
