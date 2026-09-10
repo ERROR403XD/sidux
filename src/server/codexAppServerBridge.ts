@@ -7322,8 +7322,11 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
             setJson(res, 200, { data: await connections.test(input as any) })
             return
           }
-          releaseProviderChange = backendQueueProcessor.beginProviderChange()
           const id = readNonEmptyString(input.storageId)
+          // Adding a saved configuration does not change execution identity or auth.
+          // Keep provider admission checks for selection and existing connections.
+          const isNewConnection = url.pathname === '/codex-api/custom-connections' && !id
+          if (!isNewConnection) releaseProviderChange = backendQueueProcessor.beginProviderChange()
           if (!url.pathname.endsWith('/select') && id && getAccountAuthCoordinator().executions.snapshot().some(entry => entry.storageId === id && entry.busy)) throw new Error('连接正在使用，请等待任务完成')
           if (url.pathname.endsWith('/select')) await connections.select(id || null)
           else if (url.pathname.endsWith('/remove')) await connections.remove(id)
