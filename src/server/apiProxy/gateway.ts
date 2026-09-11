@@ -58,7 +58,7 @@ async function body(req: IncomingMessage, limit = MAX_BODY): Promise<Record<stri
 export class ApiProxyGateway {
   private readonly accountComponents = new AccountResourcePool<ProxyComponent>({
     capacity: 8,
-    idle: (_component, id) => !this.accountHasConnections(id),
+    idle: (component, id) => !component.hasReferences() && !this.accountHasConnections(id) && !this.coordinator.executions.busyAccounts().includes(id),
     dispose: component => component.stop(),
   })
   private readonly generationComponents = new WeakMap<ComponentGeneration, ProxyComponent>()
@@ -97,14 +97,29 @@ export class ApiProxyGateway {
       await this.coordinator.interruptProtectedUsage(account.storageId).catch(() => undefined)
     }
   }
-  private async prepareAccount(id: string, catalog = false): Promise<ComponentGeneration> {
+  private async prepareAccount(id: string, catalog = false, background = false): Promise<ComponentGeneration> {
     const component = await this.accountComponents.getOrCreate(id, () => this.accountComponents.size === 0 && !this.component.status().selectedStorageId
       ? this.component
-      : new ProxyComponent(join(this.store.directory, 'accounts', id), this.coordinator))
+      : new ProxyComponent(join(this.store.directory, 'accounts', id), this.coordinator), !background)
     if (!component) throw new ProxyError('account_capacity', '并行账号数已达8个，请等待连接结束。', 503)
     const generation = await component.prepare(id, { catalog })
     this.generationComponents.set(generation, component)
     return generation
+  }
+  async prepareActivation(id: string, signal: AbortSignal) {
+    signal.throwIfAborted()
+    await this.checkProtection(id)
+    signal.throwIfAborted()
+    const generation = await this.prepareAccount(id, false, true)
+    signal.throwIfAborted()
+    const release = this.owner(generation).hold(generation)
+    return {
+      url: `${generation.url}/v1/responses`,
+      headers: { Authorization: `Bearer ${generation.key}`, 'Content-Type': 'application/json' },
+      revision: generation.revision,
+      storageId: generation.storageId,
+      release,
+    }
   }
   private invalidateKeys(matches: (keyId: string) => boolean): void {
     for (const key of this.store.listKeys()) {

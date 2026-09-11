@@ -45,6 +45,7 @@ export class AccountExecutionRegistry {
     const id = this.nextId++
     const entry: Entry = { ...input, id, protected: input.protected === true, busy: input.busy !== false, controller: new AbortController() }
     this.entries.set(id, entry)
+    if (entry.busy && entry.kind !== 'activation') this.yieldActivations(entry.storageId)
     return {
       storageId: input.storageId,
       signal: entry.controller.signal,
@@ -52,8 +53,20 @@ export class AccountExecutionRegistry {
         if (entry.controller.signal.aborted) throw new AccountExecutionError('account_disconnected', '执行连接已关闭，请重新发起请求。')
         this.assertAvailable(input.storageId)
       },
-      setBusy: busy => { entry.busy = busy },
+      setBusy: busy => {
+        entry.busy = busy
+        if (busy && entry.kind !== 'activation') this.yieldActivations(entry.storageId)
+      },
       release: () => { this.entries.delete(id) },
+    }
+  }
+  private yieldActivations(storageId: string): void {
+    for (const [id, entry] of this.entries) {
+      if (entry.storageId !== storageId || entry.kind !== 'activation') continue
+      this.entries.delete(id)
+      entry.controller.abort()
+      try { entry.disconnect() }
+      catch { /* Optional activation cannot block normal work. */ }
     }
   }
   revoke(storageId: string): void {

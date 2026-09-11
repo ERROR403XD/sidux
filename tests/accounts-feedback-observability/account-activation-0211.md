@@ -62,3 +62,19 @@ CODEXAPP_NATIVE_ACTIVATION_TEST=1 pnpm exec vitest run src/server/accountActivat
 验证：`CODEXAPP_NATIVE_ACTIVATION_TEST=1 pnpm exec vitest run src/server/accountActivationAdmission.test.ts src/server/accountActivationScheduler.test.ts src/server/accountActivationSession.test.ts src/server/accountActivationSession.native.test.ts`。
 
 清理/回滚：测试清理私有目录和进程；真实计划不改。撤回代码时保留激活去重记录及历史。其他设备/独立 CLI 的忙碌状态无法由本实例执行注册表直接检测；真实云端窗口是否启动须另行使用合格账号验收，不能将模拟回合成功视为云端证明。
+
+
+## 0.2.17 最小 API 与附加任务优先级（2026-09-11）
+
+此节替代前述 CLI 激活流程。前置：隔离候选、虚构账号、固定时钟及本地 HTTP SSE 样本。保持真实计划不变。
+
+1. 合格账号到时通过内部固定账号代理发送一个最小 Responses 请求，用户输入 hi，tools=[]、store=false、low、default；无 previous_response_id、项目说明和会话目录。普通 API key 默认账号、开关不改变目标账号。代理满 8 个账号且无法直接复用时跳过，不驱逐已有组件。
+2. 检查 response.completed 且 response.status=completed、有效 id 才记 sent；仅 HTTP 200、response.created、[DONE]、断流、失败、超限响应均不能记完成。每次只发送一次；不得将模拟 usage 当作真实计费。
+3. 同账号普通会话/API/自动化开始，或空闲连接变为 busy 时，激活取消，普通连接保持有效；其他账号的激活不受影响。移除账号中止固定连接，凭据版本变化拒绝发送。终止共享组件不属于激活清理动作。
+4. 请求完成先持久化 sent 并释放 lease/ref，再刷新目标额度。状态分为同步失败、账号忙碌跳过、窗口已确认/未确认；同步失败与未知窗口都不重新生成。模拟 quota refresh 超时，不超过 5 秒等待后继续下一账号；已启动的协调器刷新沿用原来的超时及版本保护，可能稍后完成。
+5. 正式参数：请求 20 秒、单次准备/发送 60 秒、清理等待 2 秒；完成后不等 120 秒。模拟永久不返回的 send/dispose/prepare、关闭计划、关闭服务、迟到 prepare：均不挂住后续计划，迟到资源释放，无自动重发。持久化/单写者失败仍停止激活调度，不能绕过去重保护。
+6. 单账号失败不能设置全局调度错误。激活不记录普通 API key 使用量、不因生成失败主动修改共享代理退避；真实组件准备故障仍遵循组件自身保护。
+
+验证命令：`pnpm exec vitest run src/server/accountActivationRequest.test.ts src/server/accountActivationRuntime.test.ts src/server/accountActivationScheduler.test.ts src/server/accountActivationAdmission.test.ts src/server/accountExecution.test.ts src/server/apiProxy/gateway.test.ts`。含真实本地 HTTP 测试、逐字节 CRLF SSE、固定凭据版本、抢占、账号移除、额度同步失败、无会话目录及主选择不变。
+
+清理：关闭测试容器，确认测试端口消失，保留候选 59001/开发 4173。回滚代码时保留原 activation state/history/claims，不能重新发送旧时刻。旧 sessions 目录不再参与启动，历史遗留文件不自动删除。真实云端窗口效果留待符合准入条件的正常计划确认。

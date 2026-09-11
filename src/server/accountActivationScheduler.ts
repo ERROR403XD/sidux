@@ -6,6 +6,17 @@ import { AccountActivationHistory, activationHistoryCutoff, activationRunDate } 
 import { activationClock, nextActivationAt, validateActivationSettings, type ActivationSettings, type ActivationRun, type ActivationSnapshot } from '../accountActivation.js'
 export type ActivationCheck = { allowed: boolean; reason: string; stamp: string }
 export type ActivationWorker = { send: (signal: AbortSignal) => Promise<void>; dispose: () => Promise<void> }
+export function activationBounded<T>(work: Promise<T>, signal: AbortSignal, late?: (value: T) => void): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(new Error('激活已中止或超时，不自动重发'))
+    signal.addEventListener('abort', abort, { once: true })
+    if (signal.aborted) abort()
+    work.then(value => {
+      if (signal.aborted) late?.(value)
+      else resolve(value)
+    }, reject).finally(() => signal.removeEventListener('abort', abort))
+  })
+}
 type State = { version: 1; settings: ActivationSettings; runs: ActivationRun[]; claims: Record<string, number> }
 export class AccountActivationScheduler {
   readonly ready: Promise<void>
@@ -17,6 +28,7 @@ export class AccountActivationScheduler {
   private flight: Promise<void> | null = null
   private writes: Promise<unknown> = Promise.resolve()
   private closed = false
+  private activeAbort: AbortController | null = null
   private readonly lease: AutomationStore
   private readonly abort = new AbortController()
   private readonly history: AccountActivationHistory
@@ -26,6 +38,10 @@ export class AccountActivationScheduler {
     initialize?: () => Promise<void>
     prepare: (accountId: string, signal: AbortSignal) => Promise<ActivationWorker>
     accountExists: (accountId: string) => Promise<boolean>
+    afterSend?: (accountId: string) => Promise<string>
+    timeoutMs?: number
+    cleanupMs?: number
+    syncMs?: number
     model: string
   }, private now = Date.now, start = true) {
     this.lease = new AutomationStore(join(directory, 'writer'))
@@ -79,6 +95,7 @@ export class AccountActivationScheduler {
     for (const id of settings.accountIds) if (!await this.dependencies.accountExists(id)) throw new Error('所选账号已移除，请重新选择')
     const previous = this.state.settings
     this.revision += 1
+    this.activeAbort?.abort()
     this.state.settings = settings
     this.nextAt = nextActivationAt(settings, this.now())
     try { await this.write() } catch (error) {
@@ -121,29 +138,44 @@ export class AccountActivationScheduler {
       await this.write(run) // claim before any network operation; crash cannot cause replay.
       let worker: ActivationWorker | undefined
       let dispatched = false
+      const activeAbort = new AbortController()
+      this.activeAbort = activeAbort
+      const signal = AbortSignal.any([this.abort.signal, activeAbort.signal, AbortSignal.timeout(this.dependencies.timeoutMs ?? 60000)])
       try {
-        const signal = AbortSignal.any([this.abort.signal, AbortSignal.timeout(30 * 60000)])
         if (this.dependencies.busy(accountId)) throw new Error('账号正在使用或凭据正在变更，本次跳过')
-        const before = await this.dependencies.check(accountId, 'before')
+        const before = await activationBounded(this.dependencies.check(accountId, 'before'), signal)
         if (!before.allowed) throw new Error(before.reason)
-        worker = await this.dependencies.prepare(accountId, signal)
+        worker = await activationBounded(this.dependencies.prepare(accountId, signal), signal, late => { void late.dispose().catch(() => {}) })
         run.status = 'sending'
         await this.write(run)
-        const after = await this.dependencies.check(accountId, 'after')
+        const after = await activationBounded(this.dependencies.check(accountId, 'after'), signal)
         // No await between the final synchronous admission check and starting fetch.
         if (!after.allowed || after.stamp !== before.stamp || this.dependencies.busy(accountId)) throw new Error(after.reason || '准备期间账号状态或连接发生变化')
         if (this.closed || revision !== this.revision || signal.aborted) throw new Error('计划已变更或准备超时')
         dispatched = true
-        await worker.send(signal)
+        await activationBounded(worker.send(signal), signal)
         run.status = 'sent'
-        run.reason = '激活完成，会话已清理'
+        run.reason = '请求已完成；额度待同步'
       } catch (error) {
         run.status = dispatched ? 'unknown' : 'skipped'
         // Dependencies return only fixed diagnostic strings, never upstream credential-bearing bodies.
         run.reason = error instanceof Error && error.name !== 'AbortError' ? error.message : '激活已中止，不自动重发'
       } finally {
-        await worker?.dispose().catch(() => { this.error = '临时激活进程未能清理，已停止后续执行' })
+        activeAbort.abort()
+        this.activeAbort = null
+        if (worker) {
+          await activationBounded(worker.dispose(), AbortSignal.timeout(this.dependencies.cleanupMs ?? 2000)).catch(() => {
+            run.reason = '激活资源释放异常；本次不重发，继续后续计划'
+          })
+        }
         run.finishedAt = this.now()
+        await this.write(run)
+      }
+      // Persist generation completion and release its lease before optional quota work.
+      if (run.status === 'sent' && this.dependencies.afterSend && !this.closed && revision === this.revision) {
+        const syncSignal = AbortSignal.any([this.abort.signal, AbortSignal.timeout(this.dependencies.syncMs ?? 5000)])
+        try { run.reason = await activationBounded(this.dependencies.afterSend(accountId), syncSignal) }
+        catch { run.reason = '请求已完成；额度同步失败，不重发' }
         await this.write(run)
       }
     }

@@ -456,3 +456,33 @@ it('keeps an active stream open on alias or notice saves and enforces only a cha
   await vi.waitFor(() => expect(f.upstreamClosed()).toBe(true))
   await stream.body?.cancel().catch(() => undefined)
 })
+
+it('internal activation pins its account independently of API keys and default-route changes', async () => {
+  const f = await fixture()
+  await f.gateway.store.saveSettings({ ...f.gateway.store.settings, enabled: false, accountStorageId: 'account' })
+  const before = await readFile(join(f.gateway.store.directory, 'state.json'), 'utf8')
+  const transport = await f.gateway.prepareActivation('fixed', new AbortController().signal)
+  expect(transport.storageId).toBe('fixed')
+  expect(transport.revision).toBe(1)
+  expect(transport.url).toContain('/v1/responses')
+  expect(f.requests).toEqual([])
+  expect(await readFile(join(f.gateway.store.directory, 'state.json'), 'utf8')).toBe(before)
+  transport.release()
+})
+
+it('aborted internal preparation never acquires a generation reference', async () => {
+  const f = await fixture()
+  const abort = new AbortController()
+  abort.abort()
+  await expect(f.gateway.prepareActivation('fixed', abort.signal)).rejects.toThrow()
+  expect(f.gateway.component.hold).not.toHaveBeenCalled()
+})
+
+it('optional activation respects long-window quota reserved for normal protected tasks', async () => {
+  const f = await fixture()
+  f.setAccountState({activeStorageId:'account',accounts:[{storageId:'fixed',protectionPercent:10,quotaStatus:'ready',quotaUpdatedAtIso:new Date().toISOString(),quotaSnapshot:{primary:{windowMinutes:300,usedPercent:0},secondary:{windowMinutes:10080,usedPercent:95}}}]})
+  const prepare = vi.mocked(ProxyComponent.prototype.prepare)
+  prepare.mockClear()
+  await expect(f.gateway.prepareActivation('fixed',new AbortController().signal)).rejects.toThrow('受保护任务')
+  expect(prepare).not.toHaveBeenCalled()
+})

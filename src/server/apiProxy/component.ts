@@ -150,6 +150,9 @@ export class ProxyComponent {
       throw error
     }
   }
+  hasReferences(): boolean {
+    return [...this.generations].some(generation => generation.references > 0)
+  }
   hold(generation: ComponentGeneration): () => void {
     generation.references++
     let released = false
