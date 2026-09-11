@@ -169,6 +169,7 @@ const isMutating = ref(false)
 const loadError = ref('')
 const selectedAutomationId = ref(props.selectedAutomationId ?? '')
 const selectedRowKey = ref('')
+const rowOrder = ref(new Map<string, number>())
 
 const threadTitleById = computed(() => {
   const map = new Map<string, string>()
@@ -221,6 +222,11 @@ const automationRows = computed<AutomationRow[]>(() => {
     }
   }
   return rows.sort((first, second) => {
+    const firstPosition = rowOrder.value.get(first.rowKey)
+    const secondPosition = rowOrder.value.get(second.rowKey)
+    if (firstPosition !== undefined && secondPosition !== undefined) return firstPosition - secondPosition
+    if (firstPosition !== undefined) return -1
+    if (secondPosition !== undefined) return 1
     const firstStatusRank = first.automation.status === 'ACTIVE' ? 0 : 1
     const secondStatusRank = second.automation.status === 'ACTIVE' ? 0 : 1
     if (firstStatusRank !== secondStatusRank) return firstStatusRank - secondStatusRank
@@ -293,6 +299,10 @@ async function loadAutomations(): Promise<void> {
     runtime.value = runtimeState
     threadAutomations.value = threadMap
     projectAutomations.value = projectMap
+    if (!isMutating.value) {
+      rowOrder.value = new Map()
+      rowOrder.value = new Map(automationRows.value.map((row, index) => [row.rowKey, index]))
+    }
   } catch (error) {
     loadError.value = error instanceof Error ? error.message : 'Failed to load automations'
   } finally {
