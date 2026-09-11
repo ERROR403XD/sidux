@@ -631,7 +631,6 @@
                     :has-more-persisted-above="hasMoreOlderMessages"
                     :is-loading-persisted-above="isLoadingOlderMessages"
                     :load-earlier-messages="loadOlderMessages"
-                    :answer-questions="answerAsyncQuestions"
                     @open-task="onOpenRelatedTask"
                     @fork-thread="onForkThreadFromMessage"
                     @rollback="onRollback"
@@ -683,6 +682,12 @@
                     :request-count="selectedThreadServerRequests.length"
                     :has-queue-above="selectedThreadQueuedMessages.length > 0"
                     @respond-server-request="onRespondServerRequest"
+                  />
+                  <AsyncQuestionDock
+                    :key="selectedThreadId"
+                    :messages="messages"
+                    :thread-id="selectedThreadId"
+                    :answer="answerAsyncQuestions"
                   />
                   <ThreadComposer
                     v-if="!selectedThreadPendingRequest || isAsyncUserInputRequest(selectedThreadPendingRequest)"
@@ -891,6 +896,7 @@ import { useRoute, useRouter } from 'vue-router'
 import DesktopLayout from './components/layout/DesktopLayout.vue'
 import SidebarThreadTree from './components/sidebar/SidebarThreadTree.vue'
 import ContentHeader from './components/content/ContentHeader.vue'
+import AsyncQuestionDock from './components/content/AsyncQuestionDock.vue'
 import ThreadComposer from './components/content/ThreadComposer.vue'
 import ThreadGoalCard from './components/content/ThreadGoalCard.vue'
 import ThreadTasksPanel from './components/content/ThreadTasksPanel.vue'
@@ -1677,6 +1683,7 @@ const pageTitle = computed(() => {
 })
 const filteredMessages = computed(() =>
   messages.value.filter((message) => {
+    if (message.questions?.length) return false
     const type = normalizeMessageType(message.messageType, message.role)
     if (type === 'worked') return true
     if (type === 'turnActivity.live' || type === 'turnError.live' || type === 'agentReasoning.live') return false

@@ -40,6 +40,7 @@ const props = defineProps<{
   answered: boolean
   answer: (reply: AsyncQuestionReply) => Promise<void>
 }>()
+const emit = defineEmits<{ submitted: [] }>()
 const inputId = useId()
 const selected = ref(props.message.questions?.map(question => question.options[0] ?? '') ?? [])
 const freeText = ref<string[]>([])
@@ -60,6 +61,7 @@ async function submit(): Promise<void> {
   try {
     await props.answer({ threadId: props.threadId, itemId: props.message.id, turnId: props.message.turnId ?? '', questionOrdinal: props.message.questionOrdinal, answers })
     submitted.value = true
+    emit('submitted')
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : '回答发送失败，请重试。'
   } finally {

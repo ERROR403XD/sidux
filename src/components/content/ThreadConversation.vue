@@ -263,15 +263,7 @@
                 </a>
               </div>
 
-              <AsyncQuestionCard
-                v-if="message.questions?.length && answerQuestions"
-                :key="`${activeThreadId}:${renderKey(message)}`"
-                :message="message"
-                :thread-id="activeThreadId"
-                :answered="answeredQuestionRefs.has(questionRefKey({ itemId: message.id, turnId: message.turnId ?? '', questionOrdinal: message.questionOrdinal }))"
-                :answer="answerQuestions"
-              />
-              <article v-else-if="message.text.length > 0" class="message-card" :data-role="message.role">
+              <article v-if="message.text.length > 0" class="message-card" :data-role="message.role">
                 <div v-if="message.isAutomationRun" class="automation-message-label">
                   <span>Sent via automation</span>
                   <code v-if="message.automationDisplayName">{{ message.automationDisplayName }}</code>
@@ -943,8 +935,6 @@
 <script setup lang="ts">
 import { messageRenderKey } from '../../messageIdentity'
 import SubtaskEventCard from './SubtaskEventCard.vue'
-import AsyncQuestionCard from './AsyncQuestionCard.vue'
-import { questionRefKey, type AsyncQuestionReply } from '../../userQuestions'
 import { formatLocalDateTime } from '../../dateTime'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { UiFileChange, UiLiveOverlay, UiMessage, UiPlanStep, UiServerRequest } from '../../types/codex'
@@ -1347,7 +1337,6 @@ const props = defineProps<{
   hasMorePersistedAbove?: boolean
   isLoadingPersistedAbove?: boolean
   loadEarlierMessages?: (threadId: string) => Promise<void>
-  answerQuestions?: (reply: AsyncQuestionReply) => Promise<void>
 }>()
 
 const emit = defineEmits<{
@@ -1357,7 +1346,6 @@ const emit = defineEmits<{
   implementPlan: [payload: { turnId: string }]
 }>()
 
-const answeredQuestionRefs = computed(() => new Set(props.messages.flatMap(message => message.questionReply ? [questionRefKey(message.questionReply)] : [])))
 const conversationListRef = ref<HTMLElement | null>(null)
 const bottomAnchorRef = ref<HTMLElement | null>(null)
 const modalImageUrl = ref('')
