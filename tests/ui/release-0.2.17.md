@@ -10,3 +10,5 @@ Prerequisites: isolated runtime, synthetic conversations and automations, light/
 6. Save notification quiet hours and appearance preferences; reload and verify persistence. Use only synthetic branding and credentials.
 
 Cleanup: remove synthetic tasks and conversations, restore preferences, and stop only the isolated test instance.
+
+7. Open the plugin directory in light/dark themes at desktop, tablet and phone widths. Expect Refresh after the filter, aligned with the right edge of the list or empty state, including after wrapping. Each click should trigger one plugin refresh request. Restore the original theme and viewport after testing.
