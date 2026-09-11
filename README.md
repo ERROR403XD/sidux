@@ -5,7 +5,22 @@
 [![Release](https://img.shields.io/github/v/release/ERROR403XD/codexapp)](https://github.com/ERROR403XD/codexapp/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-CodexApp 是基于 Codex app-server 的自托管 Web 界面，让你在桌面、平板和手机浏览器中管理项目、会话、账号与自动化任务。当前发布基线为 **0.2.16**。这是社区维护的独立项目，与 OpenAI 官方产品没有隶属关系。
+CodexApp 是基于 Codex app-server 的自托管 Web 界面，让你在桌面、平板和手机浏览器中管理项目、会话、账号与自动化任务。当前发布基线为 **0.2.17**。这是社区维护的独立项目，与 OpenAI 官方产品没有隶属关系。
+
+## 使用边界与政策遵循
+
+> **禁止利用多账号切换，以自动流转、自动轮换、手动切换、故障转移、请求分摊、代理转发或任何其他形式绕过 OpenAI 的额度、速率、使用或访问限制。** 多账号功能仅用于符合适用条款的账号管理与工作上下文切换，不构成额外使用权或无限额度承诺。
+
+使用本项目接入 OpenAI 服务，必须遵循适用于你的地区、产品和账号的 [OpenAI 使用条款](https://openai.com/policies/terms-of-use/)、[使用政策](https://openai.com/policies/usage-policies/)及适用的 [服务协议](https://openai.com/policies/services-agreement/)。其他供应方同样以其条款和授权为准。以下是本项目的使用要求，不替代官方政策，也不表示 OpenAI 已审核、批准或背书本项目或其集成方式。
+
+- **账号与凭据**：仅接入你有权使用且接入方式获供应方允许的账号；不得共享个人账号、租售账号访问权，或违规买卖、转让凭据/API key。管理员授权、持有凭据或本地白名单不自动赋予账号共享或转售权。
+- **额度与恢复**：额度耗尽或被限流时，应暂停受限请求，等待官方恢复，或使用官方允许的升级、增购等方式；不得换账号、换 key、换端点、跨实例并发或反复重试来规避限制。额度显示、预留、通知、重置提示及续接不能创造、合并或重置官方额度；恢复使用须以供应方实际恢复或授权为前提。
+- **API 代理与第三方集成**：接口兼容、技术可连接或 MIT 许可证不等于供应方授权。启用前须确认该账号、订阅和接入方式允许此用途；不得将个人订阅包装为未经授权的共享/转售 API、额度池或限流绕过服务。无法确认授权时不要启用该集成。
+- **自动化、Goal、队列与工具权限**：定时执行、自动续接、插件、终端和审批设置均须遵守服务限制及安全措施；不得规避拒绝、安全防护、封禁或访问限制，也不得通过无人值守运行放大滥用。本地工具权限不改变 OpenAI 的授权边界。
+- **内容、隐私与输出**：仅提交有权处理的代码、文件、语音和个人数据；不得用于恶意网络活动、诈骗、垃圾信息、侵犯隐私、危害未成年人或其他政策禁止的用途。使用或分享输出前按场景核验，并遵守披露、人工审核及专业人士参与等适用要求。
+- **部署与桥接**：Web 访问、Telegram 白名单、代理 key 和私有网络只控制本项目入口，不代表获得向其他人提供上游账号访问的许可。通过桥接、插件或供应方发送内容前，确认数据授权及接收方的数据处理规则。
+
+这些声明不保证所有运行路径已在代码层强制执行上述要求，也不能使违规行为合规。若某项功能、配置或使用方式与适用政策冲突，应停止该用法并关闭相关功能；以最新官方条款及实际授权为准。
 
 ## 项目来源与上游安全事件
 
@@ -13,7 +28,7 @@ CodexApp 是基于 Codex app-server 的自托管 Web 界面，让你在桌面、
 
 **上游曾被公开报告在 npm 发布包中加入窃取用户 Codex auth 的代码。** [Issue #198](https://github.com/friuns2/codex-mobile/issues/198) 报告称，发布包在 CLI 启动时读取 `~/.codex/auth.json` 并将认证内容发送至第三方端点，而相应代码不存在于其 GitHub 源码中。
 
-因此，本项目从 GitHub 源码版本接续开发，不以被报告投毒的 npm 发布包为开发基线；此处“未投毒的 GitHub 版本”指未包含该报告所述发布包注入代码的源码基线，不代表对所有历史代码和依赖作出绝对安全保证。本分支保留可追溯的 Git 历史，发行包从本仓库源码构建。事件细节以所链接的公开报告为准，不将其扩展为未经独立核实的结论。
+因此，本项目从 GitHub 源码版本接续开发，不以被报告投毒的 npm 发布包为开发基线；此处“未投毒的 GitHub 版本”指未包含该报告所述发布包注入代码的源码基线，不代表对所有历史代码和依赖作出绝对安全保证。本分支保留上游来源，并以审核后的源码快照发布，发行包从本仓库源码构建。事件细节以所链接的公开报告为准，不将其扩展为未经独立核实的结论。
 
 **请使用本仓库的源码或 [GitHub Releases](https://github.com/ERROR403XD/codexapp/releases)。** 包名和命令仍保留 `codexapp` 以兼容现有部署，但本次 GitHub 发布不代表 npm 同名包由本仓库控制；不要用 `npx codexapp` 或 `npm install -g codexapp` 获取本分支。
 
@@ -29,31 +44,18 @@ CodexApp 是基于 Codex app-server 的自托管 Web 界面，让你在桌面、
 
 | 功能 | 说明 |
 | --- | --- |
-| 多账号管理 | 独立保存账号认证，提供账号别名、状态、切换与执行归属协调；忙碌状态下保护切换。 |
-| 额度管理 | 显示额度窗口与重置时间，支持额度预留、恢复通知、重置机会提示及额度恢复后的会话续接；实际重置受账号资格限制。 |
-| API 代理 | 提供受 API key 控制的 OpenAI 兼容接口，包括 `/v1/models`、`/v1/responses`、`/v1/chat/completions`；支持账号路由、key 管理与使用记录。需要额外安装代理组件。 |
-| 自动化 | 持久化调度、时区、模型/推理强度与账号设置、执行历史和任务状态。服务必须保持运行。 |
+| 多账号管理 | 独立保存账号认证，提供账号别名、状态、切换与执行归属协调；忙碌状态下保护切换。不得以自动流转、手动切换或其他形式绕过额度限制。 |
+| 额度管理 | 显示额度窗口与重置时间，支持额度预留、恢复通知、重置机会提示及额度恢复后的会话续接；仅可在官方额度恢复或获准重置后续接，须遵循账号资格和使用限制。 |
+| API 代理 | 提供受 API key 控制的 OpenAI 兼容接口，包括 `/v1/models`、`/v1/responses`、`/v1/chat/completions`；支持账号路由、key 管理与使用记录。需要额外安装代理组件；须先确认供应方允许该接入用途，禁止未经授权的共享、转售或额度池。 |
+| 自动化 | 持久化调度、时区、模型/推理强度与账号设置、执行历史和任务状态。服务必须保持运行；调度与重试须遵守限流和使用政策。 |
 | Goal 与命令 | 目标卡片、预算与进度展示、可搜索斜杠命令；依赖运行时支持的原生能力。 |
-| 发送队列与恢复 | 忙碌时排队、明确的插话操作、队列持久化及续接投递去重，改进故障反馈。 |
+| 发送队列与恢复 | 忙碌时排队、明确的插话操作、队列持久化及续接投递去重，改进故障反馈；不得借续接或重试绕过限制或安全拒绝。 |
 | 项目附加工作目录 | 统一创建/编辑项目，将附加目录指引写入项目 `AGENTS.md`，保留其他内容；不是多根文件树，也不会自动增加容器挂载。 |
-| 完成列表 | 新回合完成后显示蓝点，服务端持久化并跨客户端同步，点击后清除；不根据历史更新时间推算未读。 |
+| 完成列表 | 新回合在用户未查看时完成后显示蓝点，服务端持久化并跨客户端同步，点击后清除；不根据历史更新时间推算未读。 |
 | 双语与界面 | 设置、账号、API 代理、自动化和项目窗口等中文/英文切换，语言偏好持久化；不翻译用户内容。 |
 | 部署维护 | 移除内置隧道与启动时强制登录，增加严格端口绑定、两阶段发布切换和缓存恢复。 |
 
-0.2.16 重点包括完成列表、项目附加目录、双语补全、统一术语、额度标签和自动主题图标；其余为本分支持续积累的功能。
-
-## 界面预览
-
-下图来自 0.2.16 隔离验收，使用示例数据。
-
-![桌面深色项目编辑](docs/plans/assets/0.2.16-i18n/0216-i18n-project-1440-dark.png)
-
-<details>
-<summary>手机浅色界面</summary>
-
-![手机项目编辑](docs/plans/assets/0.2.16-i18n/0216-i18n-project-375-light.png)
-
-</details>
+0.2.17 新增自定义连接管理与可选账号定时激活，改进插件目录加载、通知设置和 WebUI 外观设置；自动化任务支持列表开关，切换后保持当前排序至刷新。正在查看的会话完成时不再产生蓝点，修复图片消息重复显示，未回答的提问固定在输入框上方，自动主题使用显示器图标。定时激活默认关闭，遵守前台优先、忙碌跳过与请求数量限制。
 
 ## 环境要求
 
@@ -68,7 +70,7 @@ CodexApp 是基于 Codex app-server 的自托管 Web 界面，让你在桌面、
 ### 从本仓库源码构建
 
 ```bash
-git clone --branch v0.2.16 https://github.com/ERROR403XD/codexapp.git
+git clone --branch v0.2.17 https://github.com/ERROR403XD/codexapp.git
 cd codexapp
 pnpm install --frozen-lockfile
 pnpm run build
@@ -79,11 +81,11 @@ node dist-cli/index.js --port 5900 --strict-port --no-open
 
 ### 使用本仓库 Release 安装包
 
-从 [v0.2.16](https://github.com/ERROR403XD/codexapp/releases/tag/v0.2.16) 下载 `codexapp-0.2.16.tgz` 和 `SHA256SUMS`，在下载目录执行：
+从 [v0.2.17](https://github.com/ERROR403XD/codexapp/releases/tag/v0.2.17) 下载 `codexapp-0.2.17.tgz` 和 `SHA256SUMS`，在下载目录执行：
 
 ```bash
 sha256sum -c SHA256SUMS
-npm install -g ./codexapp-0.2.16.tgz
+npm install -g ./codexapp-0.2.17.tgz
 codexapp --port 5900 --strict-port --no-open
 ```
 
@@ -100,7 +102,7 @@ codexapp --port 5900 --strict-port --no-open
 | `--no-password` | 关闭 Web 密码，仅适合有其他访问控制的可信环境。 |
 | `CODEX_HOME` | 指定独立认证、会话与应用状态目录；未设置时使用 Codex 默认目录。 |
 
-完整参数运行 `node dist-cli/index.js --help` 或安装后的 `codexapp --help`。权限和审批策略应按实际任务设置。
+完整参数运行 `node dist-cli/index.js --help` 或安装后的 `codexapp --help`。权限和审批策略应按实际任务设置；这些设置仅控制本地执行，不解除供应方的安全措施或使用限制。
 
 服务监听 `0.0.0.0`，可通过主机局域网地址访问。请按网络环境配置防火墙、访问密码或自行管理的私有网络/反向代理。麦克风、语音等浏览器能力可能需要 HTTPS 安全上下文。项目文件和工具实际在服务所在主机执行。
 
@@ -112,11 +114,11 @@ CODEXAPP_API_PROXY_BINARY="$PWD/output/api-proxy-component/cli-proxy-api" \
   node dist-cli/index.js --port 5900 --strict-port --no-open
 ```
 
-脚本按 [组件清单](resources/api-proxy/manifest.json) 下载固定版本 CLIProxyAPI 并校验摘要。进入 API 代理页面配置账号、创建 key，再使用页面提供的端点和示例。代理组件为单独的 MIT 项目，保留其许可证；它不包含在 Web/CLI 的 npm tarball 中。
+脚本按 [组件清单](resources/api-proxy/manifest.json) 下载固定版本 CLIProxyAPI 并校验摘要。确认符合上文使用边界且供应方允许该用途后，进入 API 代理页面配置账号、创建 key，再使用页面提供的端点和示例。本地代理 key 不是 OpenAI 官方 API key，也不赋予额外额度或转售权。代理组件为单独的 MIT 项目，保留其许可证；它不包含在 Web/CLI 的 npm tarball 中。
 
 ### 可选 Telegram 桥接
 
-通过环境变量配置 `TELEGRAM_BOT_TOKEN`、`TELEGRAM_ALLOWED_USER_IDS`（逗号分隔的允许用户 ID）和可选 `TELEGRAM_DEFAULT_CWD`。未设置用户白名单时拒绝入站消息。支持 `/start`、`/threads`、`/newthread`、`/thread <threadId>`、`/current`、`/history`、`/status`、`/whoami`、`/help`。请在本机配置凭据，不写入仓库或问题报告。
+通过环境变量配置 `TELEGRAM_BOT_TOKEN`、`TELEGRAM_ALLOWED_USER_IDS`（逗号分隔的允许用户 ID）和可选 `TELEGRAM_DEFAULT_CWD`。未设置用户白名单时拒绝入站消息。支持 `/start`、`/threads`、`/newthread`、`/thread <threadId>`、`/current`、`/history`、`/status`、`/whoami`、`/help`。请在本机配置凭据，不写入仓库或问题报告。白名单用户仍须具备适用条款要求的使用权，不得借桥接共享个人账号或规避访问限制。
 
 ## 数据与升级
 
@@ -133,9 +135,9 @@ pnpm run build
 pnpm run test:unit
 ```
 
-前端使用 Vue 3 / TypeScript / Vite；Node.js / Express 通过 WebSocket 与 RPC 对接 Codex app-server，终端使用 xterm.js / node-pty。开发入口为 `src/`、`scripts/`，测试索引为 [tests.md](tests.md)，版本验收与设计见 [docs/plans](docs/plans)。
+前端使用 Vue 3 / TypeScript / Vite；Node.js / Express 通过 WebSocket 与 RPC 对接 Codex app-server，终端使用 xterm.js / node-pty。开发入口为 `src/`、`scripts/`，测试索引为 [tests.md](tests.md)，公开验收说明见 [docs/RELEASE-0.2.17.md](docs/RELEASE-0.2.17.md)。
 
-0.2.16 已有隔离候选、真实目录读取、跨客户端完成列表、双语及浅深主题的验收记录，详见 [功能验收](docs/plans/20260910-0011-codexapp-0.2.16完成列表与项目多目录开发验收.md) 与 [双语验收](docs/plans/20260910-0012-codexapp-0.2.16中英文界面补全与验收.md)。模拟故障测试不等于所有供应方、真实额度重置或通知渠道均已实测。
+发布验证范围与限制见 [0.2.17 发布说明](docs/RELEASE-0.2.17.md)。私人环境的会话、路径、截图及验收原始记录不随仓库分发。
 
 ## 常见问题
 

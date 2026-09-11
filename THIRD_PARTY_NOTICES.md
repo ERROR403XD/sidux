@@ -26,13 +26,13 @@ Copyright (c) 2025.9-present Router-For.ME
 
 本项目以独立可执行组件集成 CLIProxyAPI，提供应用侧账号路由、key 管理、界面与网关适配。安装脚本获取固定版本预构建文件，不修改其二进制，校验压缩包与可执行文件 SHA-256，并在组件目录保留 LICENSE 和 manifest.json。 / CodexApp integrates CLIProxyAPI as a separate executable, adding application-side routing, key management, UI, and gateway adaptation. The installer obtains a pinned prebuilt binary without modifying it, verifies archive and executable SHA-256 hashes, and preserves LICENSE and manifest.json alongside it.
 
-本次 GitHub 的 `codexapp-0.2.16.tgz` 不包含 CLIProxyAPI 二进制，包含本声明、许可证与来源清单。源码安装时可显式下载该组件。若另行分发包含组件的 Docker 镜像、部署目录或压缩包，须一并保留该组件的版权及完整 MIT 许可；现有组件安装与宿主发布脚本按此布局复制。 / The GitHub `codexapp-0.2.16.tgz` excludes the CLIProxyAPI binary but includes this notice, its license, and source manifest. Source users can install the component explicitly. Any Docker image, deployment directory, or archive redistributing the component must retain its copyright and full MIT notice; existing component installation and host release scripts preserve this layout.
+本次 GitHub 的 `codexapp-0.2.17.tgz` 不包含 CLIProxyAPI 二进制，包含本声明、许可证与来源清单。源码安装时可显式下载该组件。若另行分发包含组件的 Docker 镜像、部署目录或压缩包，须一并保留该组件的版权及完整 MIT 许可；现有组件安装与宿主发布脚本按此布局复制。 / The GitHub `codexapp-0.2.17.tgz` excludes the CLIProxyAPI binary but includes this notice, its license, and source manifest. Source users can install the component explicitly. Any Docker image, deployment directory, or archive redistributing the component must retain its copyright and full MIT notice; existing component installation and host release scripts preserve this layout.
 
 MIT 许可允许使用、修改与分发，要求保留相应版权和许可声明，并按原文提供无担保条款。以随附完整许可为准。集成不表示 CLIProxyAPI 作者、OpenAI 或其他供应方为 CodexApp 背书，也不授予额外模型访问权限。 / MIT permits use, modification, and redistribution subject to retaining its copyright and permission notice, with the warranty disclaimer in the full license. The accompanying license governs. Integration implies no endorsement by CLIProxyAPI authors, OpenAI, or other providers, and grants no additional model access.
 
 ## Lucide SunMoon
 
-跟随系统主题使用 [Lucide SunMoon](https://lucide.dev/icons/sun-moon) SVG，描边与显示尺寸适配本项目。 / The system theme control uses the Lucide SunMoon SVG, with stroke and display size adapted to this project.
+源码保留 [Lucide SunMoon](https://lucide.dev/icons/sun-moon) SVG，描边与显示尺寸适配本项目。 / The source retains the Lucide SunMoon SVG, with stroke and display size adapted to this project.
 
 ```text
 ISC License
