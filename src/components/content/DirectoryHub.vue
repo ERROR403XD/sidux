@@ -18,8 +18,8 @@
     <section v-if="activeTab === 'plugins'" class="directory-section">
       <div class="directory-toolbar">
         <input v-model="search" class="directory-search" type="search" :placeholder="t('搜索插件')" :aria-label="t('搜索插件')" />
-        <AppButton :busy="loading" @click="refresh(true)">{{ t('刷新') }}</AppButton>
         <AppSelect v-model="pluginFilter" :options="pluginFilterOptions.map(option => ({ ...option, label: t(option.label) }))" />
+        <AppButton class="directory-refresh" :busy="loading" @click="refresh(true)">{{ t('刷新') }}</AppButton>
       </div>
       <p v-if="ready && supportsPlugins && !loading" class="directory-results-count">{{ filteredPlugins.length }} {{ t('个插件') }}<span v-if="installedCount"> {{ t('· 已安装') }} {{ installedCount }} {{ t('个') }}</span></p>
       <p v-if="!supportsPlugins && ready" class="directory-empty">{{ t('当前 Codex CLI 未提供原版插件接口。可继续管理技能和 MCP。') }}</p>
@@ -401,6 +401,7 @@ onBeforeUnmount(() => {
 .directory-section { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .directory-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .directory-toolbar > .app-select { flex: 0 0 145px; }
+.directory-refresh { margin-left: auto; flex-shrink: 0; }
 .directory-search { min-width: 0; flex: 1 1 180px; width: auto; height: 40px; padding: 9px 12px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); background: var(--ui-field); color: var(--ui-text); font-size: 13px; }
 .directory-search:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 1px; }
 .directory-results-count { margin: 0; color: var(--ui-muted); font-size: 12px; }

@@ -75,3 +75,10 @@ The `#/skills` route shows a full Skills & Apps directory with Plugins, Apps, Co
 - Uninstall any plugin installed only for this test
 
 ---
+
+## 刷新按钮右对齐
+
+前置：打开应用的插件页，分别使用浅色与深色主题。
+操作：检查搜索栏、插件筛选和刷新按钮，缩窄窗口至工具栏换行。
+预期：顺序为搜索、筛选、刷新；刷新按钮位于最右侧，右边缘与下方插件卡片区域或空态区域对齐；换行后仍靠右，刷新行为和忙碌状态不变。
+清理：恢复原窗口尺寸和主题，无测试数据需要删除。
