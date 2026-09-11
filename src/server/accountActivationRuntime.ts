@@ -1,6 +1,7 @@
 import { mkdir, readdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { AccountAuthCoordinator } from './accountAuthCoordinator.js'
+import { checkActivationAccount, isActivationAccountBusy } from './accountActivationAdmission.js'
 import type { ApiProxyGateway } from './apiProxy/gateway.js'
 import { AccountActivationScheduler } from './accountActivationScheduler.js'
 import { AccountActivationSession } from './accountActivationSession.js'
@@ -9,7 +10,7 @@ const ACTIVATION_MODEL = 'gpt-5.6-luna'
 export function createAccountActivationRuntime(coordinator: AccountAuthCoordinator, _gateway: ApiProxyGateway) {
   const directory = join(coordinator.store.codexHome, 'account-activation')
   const sessions = join(directory, 'sessions')
-  const busy = (id: string) => coordinator.blocksApiAccount(id) || coordinator.isAccountRefreshInProgress(id)
+  const busy = (id: string) => isActivationAccountBusy(coordinator, id)
   return new AccountActivationScheduler(directory, {
     model: ACTIVATION_MODEL,
     initialize: async () => {
@@ -20,12 +21,7 @@ export function createAccountActivationRuntime(coordinator: AccountAuthCoordinat
     },
     accountExists: async id => (await coordinator.store.readState()).accounts.some(row => row.storageId === id),
     busy,
-    check: async id => {
-      const state = await coordinator.store.readState()
-      const account = state.accounts.find(row => row.storageId === id)
-      const reason = !account ? '账号已移除' : busy(id) ? '账号凭据正在变更' : !['ready', 'stale'].includes(account.authStatus) ? '账号认证状态不可用' : ''
-      return { allowed: !reason, reason, stamp: JSON.stringify([id, account?.credentialRevision]) }
-    },
+    check: (id, phase) => checkActivationAccount(coordinator, id, phase === 'before'),
     prepare: async (id, signal) => {
       const credential = await coordinator.getApiCredential(id, { allowRefresh: false })
       const session = new AccountActivationSession(sessions, credential, { model: ACTIVATION_MODEL, signal })

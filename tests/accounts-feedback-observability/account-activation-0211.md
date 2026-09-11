@@ -23,6 +23,8 @@
 
 ## 0.2.17 替代路径
 
+2026-09-11 起，额度读取与忙碌判断以文末“到时跳过条件”为准；旧版 API 反代步骤仅作历史回归参考。
+
 前提：隔离 59001，以样本凭据与模拟 app-server 验证，不读取生产认证文件。
 
 操作：选择两个账号与每日时刻，打开开关；修改时间后离开设置并返回、刷新。模拟到时、凭据短暂变更、首个回合耗时超过一分钟、服务重启及前台主账号切换。
@@ -45,3 +47,18 @@ CODEXAPP_NATIVE_ACTIVATION_TEST=1 pnpm exec vitest run src/server/accountActivat
 原生回归在临时 Git 项目中写入一份很长的 AGENTS.md 哨兵，启动独立 CLI，使用账号 B 的测试凭据向本地 Responses SSE 发送 hi。确认空工作目录没有文件、上游用户输入仅为 hi，不含项目哨兵/环境说明/技能目录，输入 JSON 小于 9000 字符。账号 A 的认证与选择哨兵文件必须完全相同，发送一次并完成后退出进程、删除私有目录。基础 CLI 工具声明仍可能存在，不把样本 usage 或 JSON 大小当成真实计费 Token 数。
 
 测试清理等待为 25 ms；产品配置仍是完成后 120 秒。测试自动清理临时目录和监听端口；若失败，仅清理此次测试创建的资源。
+
+
+## 0.2.17 到时跳过条件（2026-09-11）
+
+前置：使用隔离目录、虚构时钟、模拟额度与执行注册表；保持真实定时计划不变。
+
+1. 到时分别注册目标账号的 busy primary、automation、api 执行：应直接记录 skipped，不读额度、不创建激活进程；忙碌结束后同一时刻不得补发。空闲连接和本次 activation lease 不阻止激活。
+2. 返回新鲜额度：明确 windowMinutes=300 且 usedPercent=0 才允许发送；主/次窗口顺序不影响判断。没有 300 分钟窗口、仅周额度、usedPercent=0.01/1/100/NaN、未知额度全部跳过；不使用显示四舍五入后的 100%。
+3. 模拟刷新失败、退避返回旧缓存、quotaStatus=error：固定可读原因，不能携带上游错误/凭据，不发送生成请求。额度刷新复用现有账号协调器，可执行正常目标账号凭据刷新；不切换主账号。
+4. 准备后改变额度、启动前台任务、改变 credentialRevision：发送前复查应拒绝；测试自身激活 lease 不能导致全部任务自我判忙。准备失败时临时进程和目录照常清理。
+5. 合格账号每次一组额度刷新，准备后读取本地最新状态而非再次请求额度；实际发送仍为固定凭据的独立 CLI hi 会话。失败结果不重放，其他账号依次处理。
+
+验证：`CODEXAPP_NATIVE_ACTIVATION_TEST=1 pnpm exec vitest run src/server/accountActivationAdmission.test.ts src/server/accountActivationScheduler.test.ts src/server/accountActivationSession.test.ts src/server/accountActivationSession.native.test.ts`。
+
+清理/回滚：测试清理私有目录和进程；真实计划不改。撤回代码时保留激活去重记录及历史。其他设备/独立 CLI 的忙碌状态无法由本实例执行注册表直接检测；真实云端窗口是否启动须另行使用合格账号验收，不能将模拟回合成功视为云端证明。

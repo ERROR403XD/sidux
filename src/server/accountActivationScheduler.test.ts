@@ -43,14 +43,19 @@ describe('account activation scheduling and admission', () => {
     expect(f.send).toHaveBeenCalledTimes(2)
     expect((await f.service.snapshot()).runs.every(run => run.status === 'sent')).toBe(true)
   })
-  it('waits for credential changes without querying quota or switching the foreground account', async () => {
+  it('skips busy accounts without waiting, reading quota or replaying the slot', async () => {
     const f = await fixture()
     await f.service.configure(settings)
     f.setBusy(true)
     f.setNow('2026-09-08T08:00:00Z')
     await f.service.tick()
-    expect(f.dependencies.wait).toHaveBeenCalledOnce()
-    expect(f.send).toHaveBeenCalledOnce()
+    expect(f.dependencies.wait).not.toHaveBeenCalled()
+    expect(f.dependencies.check).not.toHaveBeenCalled()
+    expect(f.send).not.toHaveBeenCalled()
+    f.setBusy(false)
+    await f.service.tick()
+    expect(f.send).not.toHaveBeenCalled()
+    expect((await f.service.snapshot()).runs[0].status).toBe('skipped')
   })
   it('serializes accounts even when completion exceeds the original one-minute slot', async () => {
     const f = await fixture()

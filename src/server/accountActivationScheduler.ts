@@ -1,6 +1,5 @@
 import { mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { setTimeout as delay } from 'node:timers/promises'
 import { AutomationStore } from './automationStore.js'
 import { privateJson } from './apiProxy/store.js'
 import { AccountActivationHistory, activationHistoryCutoff, activationRunDate } from './accountActivationHistory.js'
@@ -22,10 +21,9 @@ export class AccountActivationScheduler {
   private readonly abort = new AbortController()
   private readonly history: AccountActivationHistory
   constructor(private directory: string, private dependencies: {
-    check: (accountId: string) => Promise<ActivationCheck>
+    check: (accountId: string, phase: 'before' | 'after') => Promise<ActivationCheck>
     busy: (accountId: string) => boolean
     initialize?: () => Promise<void>
-    wait?: (signal: AbortSignal) => Promise<void>
     prepare: (accountId: string, signal: AbortSignal) => Promise<ActivationWorker>
     accountExists: (accountId: string) => Promise<boolean>
     model: string
@@ -125,17 +123,13 @@ export class AccountActivationScheduler {
       let dispatched = false
       try {
         const signal = AbortSignal.any([this.abort.signal, AbortSignal.timeout(30 * 60000)])
-        while (this.dependencies.busy(accountId)) {
-          if (this.closed || revision !== this.revision) throw new Error('计划已变更')
-          if (this.dependencies.wait) await this.dependencies.wait(signal)
-          else await delay(5000, undefined, { signal })
-        }
-        const before = await this.dependencies.check(accountId)
+        if (this.dependencies.busy(accountId)) throw new Error('账号正在使用或凭据正在变更，本次跳过')
+        const before = await this.dependencies.check(accountId, 'before')
         if (!before.allowed) throw new Error(before.reason)
         worker = await this.dependencies.prepare(accountId, signal)
         run.status = 'sending'
         await this.write(run)
-        const after = await this.dependencies.check(accountId)
+        const after = await this.dependencies.check(accountId, 'after')
         // No await between the final synchronous admission check and starting fetch.
         if (!after.allowed || after.stamp !== before.stamp || this.dependencies.busy(accountId)) throw new Error(after.reason || '准备期间账号状态或连接发生变化')
         if (this.closed || revision !== this.revision || signal.aborted) throw new Error('计划已变更或准备超时')
