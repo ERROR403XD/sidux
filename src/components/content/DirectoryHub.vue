@@ -399,9 +399,9 @@ onBeforeUnmount(() => {
 .directory-scope-picker :deep(.app-select) { width: 240px; max-width: 100%; min-width: 0; }
 .directory-scope > p { flex: 1 1 260px; line-height: 1.6; }
 .directory-section { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.directory-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.directory-toolbar > .app-select { flex: 0 0 145px; }
-.directory-refresh { margin-left: auto; flex-shrink: 0; }
+.directory-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; }
+.directory-toolbar > .app-select { width: auto; }
+.directory-refresh { min-width: 64px; }
 .directory-search { min-width: 0; flex: 1 1 180px; width: auto; height: 40px; padding: 9px 12px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); background: var(--ui-field); color: var(--ui-text); font-size: 13px; }
 .directory-search:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 1px; }
 .directory-results-count { margin: 0; color: var(--ui-muted); font-size: 12px; }
@@ -459,7 +459,6 @@ onBeforeUnmount(() => {
   .directory-tab span { font-size: 11px; }
   .directory-scope-picker { width: 100%; }
   .directory-scope-picker :deep(.app-select) { width: auto; flex: 1; }
-  .directory-toolbar > .app-select { flex-basis: 115px; }
   .skills-embedded-section, .directory-section :deep(.skills-search-panel), .directory-section :deep(.skills-hub-section) { padding: 14px; }
   .directory-mcp-toolbar { align-items: flex-start; }
   .directory-mcp-toolbar > .app-button { flex-shrink: 0; }
