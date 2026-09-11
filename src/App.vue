@@ -1254,7 +1254,9 @@ const {
   stopPolling,
   primeSelectedThread,
   rollbackSelectedThread,
-} = useDesktopState()
+} = useDesktopState({
+  isThreadVisible: (threadId) => route.name === 'thread' && routeThreadId.value === threadId,
+})
 
 const route = useRoute()
 const router = useRouter()

@@ -1350,7 +1350,7 @@ export function filterGroupsByWorkspaceRoots(
   return orderGroupsByWorkspaceProjectOrder(filteredGroups, rootsState, duplicateLeafNames)
 }
 
-export function useDesktopState() {
+export function useDesktopState(options: { isThreadVisible?: (threadId: string) => boolean } = {}) {
   const webPreferences = useWebConversationPreferences(typeof window !== 'undefined' ? window.localStorage : undefined)
   const webPreferenceState = webPreferences.state
   const webPreferenceError = webPreferences.error
@@ -2283,9 +2283,12 @@ export function useDesktopState() {
     pendingServerRequestsByThreadId.value = nextPending
   }
 
+  const completionAcknowledgements = new Map<string, string>()
+
   function markThreadAsRead(threadId: string): void {
     const token = eventUnreadByThreadId.value[threadId]
-    if (!token) return
+    if (!token || completionAcknowledgements.get(threadId) === token) return
+    completionAcknowledgements.set(threadId, token)
     void fetch('/codex-api/thread-completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2296,7 +2299,9 @@ export function useDesktopState() {
         if (completionChangesDuringLoad) completionChangesDuringLoad[threadId] = null
         applyThreadFlags()
       }
-    }).catch(() => {})
+    }).catch(() => {}).finally(() => {
+      if (completionAcknowledgements.get(threadId) === token) completionAcknowledgements.delete(threadId)
+    })
   }
 
   function setTurnSummaryForThread(threadId: string, summary: TurnSummaryState | null): void {
@@ -5518,6 +5523,11 @@ export function useDesktopState() {
           if (token) eventUnreadByThreadId.value = { ...eventUnreadByThreadId.value, [threadId]: token }
           else eventUnreadByThreadId.value = omitKey(eventUnreadByThreadId.value, threadId)
           applyThreadFlags()
+          if (token && selectedThreadId.value === threadId
+            && typeof document !== 'undefined' && document.visibilityState === 'visible'
+            && options.isThreadVisible?.(threadId)) {
+            markThreadAsRead(threadId)
+          }
         }
         return
       }
