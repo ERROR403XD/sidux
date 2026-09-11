@@ -196,3 +196,11 @@ describe('async question persistence', () => {
     expect(message).toMatchObject({ id: 'async-question', turnId: 'turn-1', delivery: 'async', questions: [{ title: 'Scope?', options: ['UI', 'All'] }, { title: 'Notes?', options: [] }] })
   })
 })
+
+it('retains native user clientId for delivery reconciliation with image attachments', () => {
+  const response = threadReadResponseWithContent([{
+    type: 'userMessage', id: 'native-user', clientId: 'delivery-image',
+    content: [{ type: 'text', text: '看这张图片', text_elements: [] }, { type: 'localImage', path: '/tmp/图片.png' }],
+  } as unknown as ThreadReadResponse['thread']['turns'][number]['items'][number]])
+  expect(normalizeThreadMessagesV2(response)[0]).toMatchObject({ clientUserMessageId: 'delivery-image', text: '看这张图片' })
+})

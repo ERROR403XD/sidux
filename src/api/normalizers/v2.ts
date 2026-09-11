@@ -435,7 +435,10 @@ function toUiMessages(item: ThreadItem): UiMessage[] {
         skills: parsed.skills.length > 0 ? parsed.skills : undefined,
         fileAttachments: parsed.fileAttachments.length > 0 ? parsed.fileAttachments : undefined,
         messageType: item.type,
-        clientUserMessageId: typeof (item as Record<string, unknown>).clientUserMessageId === 'string' ? (item as Record<string, unknown>).clientUserMessageId as string : undefined,
+        clientUserMessageId: typeof (item as Record<string, unknown>).clientId === 'string'
+          ? (item as Record<string, unknown>).clientId as string
+          : typeof (item as Record<string, unknown>).clientUserMessageId === 'string'
+            ? (item as Record<string, unknown>).clientUserMessageId as string : undefined,
         isAutomationRun: parsed.isAutomationRun,
         automationDisplayName: parsed.automationDisplayName,
         automationRun: parsed.automationRun,

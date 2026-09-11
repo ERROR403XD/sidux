@@ -1609,3 +1609,35 @@ describe('completion read acknowledgement while viewing a conversation', () => {
     state.stopPolling()
   })
 })
+
+describe('image delivery optimistic reconciliation', () => {
+  it.each(['matching', 'absent', 'different', 'different-ordinal'])('reconciles image echoes with identity=%s', async (identity) => {
+    installTestWindow()
+    let notify!: (event: { method: string; params: unknown }) => void
+    gatewayMocks.subscribeCodexNotifications.mockImplementation(handler => { notify = handler; return vi.fn() })
+    gatewayMocks.getPendingServerRequests.mockResolvedValue([])
+    const empty = { messages: [], inProgress: false, activeTurnId: '', turnIndexByTurnId: {}, hasMoreOlder: false }
+    gatewayMocks.resumeThread.mockResolvedValue(empty)
+    gatewayMocks.getThreadDetail.mockResolvedValue(empty)
+    gatewayMocks.startThreadTurn.mockResolvedValue('image-turn')
+    const state = useDesktopState()
+    state.primeSelectedThread('image-thread')
+    state.startPolling()
+    await state.loadMessages('image-thread')
+    await state.sendMessageToSelectedThread('看图片', ['http://127.0.0.1:4173/codex-local-image?path=%2Ftmp%2Fimage.png'])
+    const deliveryId = gatewayMocks.startThreadTurn.mock.calls.at(-1)?.[10].id
+    expect(state.messages.value.filter(row => row.role === 'user')).toHaveLength(1)
+    gatewayMocks.getThreadDetail.mockResolvedValue({ ...empty, inProgress: true, activeTurnId: 'image-turn', messages: [{
+      id: 'native-image', role: 'user', text: '看图片', turnId: 'image-turn', userMessageOrdinal: identity === 'different-ordinal' ? 1 : 0,
+      images: ['/codex-local-image?path=%2Ftmp%2Fimage.png'], fileAttachments: [{ label: 'image.png', path: '/tmp/image.png', fsPath: '/tmp/image.png' }],
+      clientUserMessageId: identity === 'matching' ? deliveryId : identity === 'different' ? 'another-delivery' : undefined, messageType: 'userMessage',
+    }] })
+    notify({ method: 'turn/completed', params: { threadId: 'image-thread', turn: { id: 'image-turn', status: 'completed' } } })
+    await state.loadMessages('image-thread')
+    const users = state.messages.value.filter(row => row.role === 'user')
+    expect(users).toHaveLength(identity === 'different' || identity === 'different-ordinal' ? 2 : 1)
+    expect(users.some(row => row.id === 'native-image')).toBe(true)
+    expect(gatewayMocks.startThreadTurn).toHaveBeenCalledTimes(1)
+    state.stopPolling()
+  })
+})

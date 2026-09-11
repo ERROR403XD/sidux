@@ -701,11 +701,25 @@ function hasOptimisticUserMessages(messages: UiMessage[]): boolean {
   return messages.some(isOptimisticUserMessage)
 }
 
+function comparableImageSource(value: string): string {
+  try {
+    const url = new URL(value, 'http://localhost')
+    if (url.pathname === '/codex-local-image') return url.searchParams.get('path') || value
+  } catch {}
+  return value
+}
+
+// Local images also become file chips in the native echo; they are not extra attachments.
+function nonImageAttachmentPaths(message: UiMessage): string[] {
+  const imagePaths = new Set((message.images ?? []).map(comparableImageSource))
+  return (message.fileAttachments ?? []).map(file => file.path).filter(path => !imagePaths.has(path))
+}
+
 function hasEquivalentUserMessage(target: UiMessage, messages: UiMessage[]): boolean {
   if (target.role !== 'user') return false
   const targetText = normalizeMessageText(target.text)
-  const targetImages = Array.isArray(target.images) ? target.images : []
-  const targetFileCount = Array.isArray(target.fileAttachments) ? target.fileAttachments.length : 0
+  const targetImages = (target.images ?? []).map(comparableImageSource)
+  const targetFiles = nonImageAttachmentPaths(target)
   const targetSkillCount = Array.isArray(target.skills) ? target.skills.length : 0
 
   return messages.some((message) => {
@@ -714,13 +728,13 @@ function hasEquivalentUserMessage(target: UiMessage, messages: UiMessage[]): boo
     if (target.clientUserMessageId && message.clientUserMessageId) return target.clientUserMessageId === message.clientUserMessageId
     if (target.userMessageOrdinal !== undefined && message.userMessageOrdinal !== undefined && target.userMessageOrdinal !== message.userMessageOrdinal) return false
     const messageText = normalizeMessageText(message.text)
-    const messageImages = Array.isArray(message.images) ? message.images : []
-    const messageFileCount = Array.isArray(message.fileAttachments) ? message.fileAttachments.length : 0
+    const messageImages = (message.images ?? []).map(comparableImageSource)
+    const messageFiles = nonImageAttachmentPaths(message)
     const messageSkillCount = Array.isArray(message.skills) ? message.skills.length : 0
     return (
       messageText === targetText &&
       areStringArraysEqual(messageImages, targetImages) &&
-      messageFileCount === targetFileCount &&
+      areStringArraysEqual(messageFiles, targetFiles) &&
       messageSkillCount === targetSkillCount
     )
   })
