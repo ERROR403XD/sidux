@@ -15,7 +15,7 @@
         >
           {{ t('New automation') }}
         </button>
-        <button class="automations-refresh" type="button" :disabled="isLoading" @click="loadAutomations">
+        <button class="automations-refresh" type="button" :disabled="isLoading || isMutating" @click="loadAutomations">
           {{ isLoading ? t('Refreshing...') : t('Refresh') }}
         </button>
       </div>
@@ -45,24 +45,28 @@
           role="button"
           tabindex="0"
           @click="selectAutomationRow(row)"
-          @keydown.enter.prevent="selectAutomationRow(row)"
-          @keydown.space.prevent="selectAutomationRow(row)"
+          @keydown.enter.self.prevent="selectAutomationRow(row)"
+          @keydown.space.self.prevent="selectAutomationRow(row)"
         >
           <span class="automation-row-icon" :data-status="row.automation.status">
             <IconTablerPlayerStopFilled v-if="row.automation.status === 'PAUSED'" />
             <IconTablerBolt v-else />
           </span>
           <span class="automation-row-main">
-            <span class="automation-row-title">{{ row.automation.name }}</span>
-            <span class="automation-row-meta">{{ t(row.scopeLabel) }} • {{ row.targetLabel }}</span>
+            <span class="automation-row-title" :title="row.automation.name">{{ row.automation.name }}</span>
+            <span class="automation-row-meta">{{ row.targetLabel }}</span>
           </span>
           <span class="automation-row-side">
-            <span class="automation-row-status" :data-status="row.automation.status">{{ t(statusLabel(row.automation.status)) }}</span>
-            <span class="automation-row-schedule">{{ t(row.scheduleLabel) }}</span>
+            <span v-if="row.automation.status === 'ACTIVE' && row.automation.nextRunAtMs" class="automation-row-schedule" :title="row.scheduleLabel">{{ t(row.scheduleLabel) }}</span>
           </span>
-          <button class="automation-edit-button" type="button" @click.stop="emitEditAutomation(row)">
-            {{ t('Edit') }}
-          </button>
+          <AppSwitch
+            class="automation-row-toggle"
+            :model-value="row.automation.status === 'ACTIVE'"
+            :disabled="isMutating || isLoading"
+            :aria-label="row.automation.name"
+            @click.stop
+            @update:model-value="setAutomationEnabled(row, $event)"
+          />
         </div>
       </section>
 
@@ -73,10 +77,12 @@
             <IconTablerBolt v-else />
           </span>
           <div class="automation-detail-title-wrap">
-            <h2>{{ selectedRow.automation.name }}</h2>
-            <span>{{ t(selectedRow.scopeLabel) }}</span>
+            <h2 :title="selectedRow.automation.name">{{ selectedRow.automation.name }}</h2>
           </div>
-          <button class="automation-detail-edit" type="button" @click="emitEditAutomation(selectedRow)">
+          <AppButton variant="danger" :disabled="isMutating || isLoading" @click="removeAutomation(selectedRow)">
+            {{ t('Remove') }}
+          </AppButton>
+          <button class="automation-detail-edit" type="button" :disabled="isMutating || isLoading" @click="emitEditAutomation(selectedRow)">
             {{ t('Edit') }}
           </button>
         </div>
@@ -104,11 +110,6 @@
           <div><dt>{{ t('服务档位') }}</dt><dd>{{ t(selectedRow.automation.serviceTier || '跟随模型默认') }}</dd></div>
         </dl>
 
-        <section class="automation-detail-prompt">
-          <h3>{{ t('Prompt') }}</h3>
-          <p>{{ selectedRow.automation.prompt }}</p>
-        </section>
-
         <AutomationRunHistory :key="selectedRow.rowKey" :automation="selectedRow.automation" :target="selectedRow.targetTitle" />
       </aside>
     </div>
@@ -117,13 +118,15 @@
 
 <script setup lang="ts">
 import { formatLocalDateTime } from '../../dateTime'
+import AppButton from '../common/AppButton.vue'
+import AppSwitch from '../common/AppSwitch.vue'
 import AutomationRunHistory from './AutomationRunHistory.vue'
 import { getAutomationRuntime, type AutomationRuntimeStatus } from '../../api/automationGateway'
 import { useUiLanguage } from '../../composables/useUiLanguage'
 const { t } = useUiLanguage()
 
 import { computed, onMounted, ref, watch } from 'vue'
-import { getProjectAutomationMap, getThreadAutomationMap } from '../../api/codexGateway'
+import { deleteProjectAutomation, deleteThreadAutomation, upsertProjectAutomation, upsertThreadAutomation, getProjectAutomationMap, getThreadAutomationMap } from '../../api/codexGateway'
 import type { UiProjectGroup, UiThreadAutomation, UiThreadAutomationStatus } from '../../types/codex'
 import IconTablerBolt from '../icons/IconTablerBolt.vue'
 import IconTablerPlayerStopFilled from '../icons/IconTablerPlayerStopFilled.vue'
@@ -139,6 +142,7 @@ const emit = defineEmits<{
   (event: 'select-automation', id: string): void
   (event: 'edit-automation', payload: AutomationEditRequest): void
   (event: 'create-automation'): void
+  (event: 'automations-updated', maps: { thread: Record<string, UiThreadAutomation[]>; project: Record<string, UiThreadAutomation[]> }): void
 }>()
 
 type AutomationRow = {
@@ -161,6 +165,7 @@ const threadAutomations = ref<Record<string, UiThreadAutomation[]>>({})
 const projectAutomations = ref<Record<string, UiThreadAutomation[]>>({})
 const runtime = ref<AutomationRuntimeStatus | null>(null)
 const isLoading = ref(false)
+const isMutating = ref(false)
 const loadError = ref('')
 const selectedAutomationId = ref(props.selectedAutomationId ?? '')
 const selectedRowKey = ref('')
@@ -295,6 +300,49 @@ async function loadAutomations(): Promise<void> {
   }
 }
 
+async function mutateAutomation(action: () => Promise<unknown>): Promise<void> {
+  if (isMutating.value || isLoading.value) return
+  isMutating.value = true
+  loadError.value = ''
+  try {
+    await action()
+    await loadAutomations()
+    if (!loadError.value) {
+      emit('automations-updated', { thread: threadAutomations.value, project: projectAutomations.value })
+    }
+  } catch (error) {
+    loadError.value = error instanceof Error ? error.message : 'Failed to save automation'
+  } finally {
+    isMutating.value = false
+  }
+}
+
+async function setAutomationEnabled(row: AutomationRow, enabled: boolean): Promise<void> {
+  const automation = row.automation
+  const input = {
+    id: automation.id,
+    name: automation.name,
+    prompt: automation.prompt,
+    rrule: automation.rrule,
+    status: enabled ? 'ACTIVE' as const : 'PAUSED' as const,
+    timezone: automation.timezone,
+    accountStorageId: automation.accountStorageId,
+    protected: automation.protected,
+    model: automation.model,
+    reasoningEffort: automation.reasoningEffort,
+    serviceTier: automation.serviceTier,
+  }
+  await mutateAutomation(() => row.scope === 'project'
+    ? upsertProjectAutomation({ ...input, projectName: row.targetTitle })
+    : upsertThreadAutomation({ ...input, threadId: row.targetTitle }))
+}
+
+async function removeAutomation(row: AutomationRow): Promise<void> {
+  await mutateAutomation(() => row.scope === 'project'
+    ? deleteProjectAutomation(row.targetTitle, row.automation.id)
+    : deleteThreadAutomation(row.targetTitle, row.automation.id))
+}
+
 function statusLabel(status: UiThreadAutomationStatus): string {
   return status === 'PAUSED' ? t('Paused') : t('Active')
 }
@@ -425,22 +473,13 @@ function getPathLeaf(path: string): string {
 }
 
 .automation-row-side {
-  @apply flex min-w-24 flex-col items-end gap-0.5 text-right;
-}
-
-.automation-row-status {
-  @apply text-xs font-medium text-emerald-700;
-}
-
-.automation-row-status[data-status='PAUSED'] {
-  @apply text-zinc-500;
+  @apply flex min-w-0 flex-col items-end gap-0.5 text-right;
 }
 
 .automation-row-schedule {
   @apply max-w-36 truncate text-xs text-zinc-500;
 }
 
-.automation-edit-button,
 .automation-detail-edit {
   @apply h-7 shrink-0 rounded-md border border-zinc-200 bg-white px-2 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50;
 }
@@ -458,18 +497,14 @@ function getPathLeaf(path: string): string {
     align-items: flex-start;
     text-align: left;
   }
-  .automation-row-title {
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-  .automation-edit-button {
+  .automation-row-toggle {
     grid-column: 3;
     grid-row: 1 / span 2;
   }
 }
 
-.automation-detail-edit {
-  @apply ml-auto;
+.automation-row-toggle {
+  gap: 0;
 }
 
 .automation-detail {
@@ -492,15 +527,11 @@ function getPathLeaf(path: string): string {
 }
 
 .automation-detail-title-wrap {
-  @apply flex min-w-0 flex-col gap-0.5;
+  @apply flex min-w-0 flex-1 flex-col gap-0.5;
 }
 
 .automation-detail-title-wrap h2 {
   @apply m-0 truncate text-base font-semibold text-zinc-950;
-}
-
-.automation-detail-title-wrap span {
-  @apply text-xs font-medium uppercase tracking-[0.14em] text-zinc-500;
 }
 
 .automation-detail-grid {
@@ -517,19 +548,6 @@ function getPathLeaf(path: string): string {
 
 .automation-detail-grid dd {
   @apply m-0 truncate text-sm text-zinc-900;
-}
-
-.automation-detail-prompt {
-  @apply flex flex-col gap-2;
-}
-
-.automation-detail-prompt h3 {
-  @apply m-0 text-xs font-medium uppercase tracking-[0.14em] text-zinc-500;
-}
-
-.automation-detail-prompt p {
-  overflow-wrap: anywhere;
-  @apply m-0 whitespace-pre-wrap rounded-lg bg-zinc-50 p-3 text-sm leading-6 text-zinc-800;
 }
 
 .automations-empty {

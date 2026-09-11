@@ -251,6 +251,7 @@
               @select-automation="onSelectAutomationInPanel"
               @edit-automation="onEditAutomationFromPanel"
               @create-automation="onCreateAutomationFromPanel"
+              @automations-updated="sidebarThreadTreeRef?.setAutomationMaps($event)"
             />
           </template>
           <template v-else-if="isApiProxyRoute"><ApiProxyPanel /></template>
@@ -1259,6 +1260,7 @@ const route = useRoute()
 const router = useRouter()
 const { isMobile } = useMobile()
 type SidebarThreadTreeExposed = {
+  setAutomationMaps: (maps: { thread: Record<string, UiThreadAutomation[]>; project: Record<string, UiThreadAutomation[]> }) => void
   openAutomationEditorFromPanel: (payload: AutomationEditRequest) => void
   openAutomationCreatorFromPanel: () => void
 }

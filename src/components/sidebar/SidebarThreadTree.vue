@@ -2208,7 +2208,13 @@ function getProjectDisplayName(projectName: string): string {
   return props.projectDisplayNameById[projectName] ?? projectName
 }
 
+function setAutomationMaps(maps: { thread: Record<string, UiThreadAutomation[]>; project: Record<string, UiThreadAutomation[]> }): void {
+  automationByThreadId.value = maps.thread
+  automationByProjectName.value = maps.project
+}
+
 defineExpose({
+  setAutomationMaps,
   openAutomationEditorFromPanel,
   openAutomationCreatorFromPanel,
 })
