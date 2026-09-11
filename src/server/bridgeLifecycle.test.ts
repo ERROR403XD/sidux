@@ -16,10 +16,10 @@ it('keeps the new middleware usable when Vite closes the old server, and release
   const cleanup = vi.fn(async () => { stopped = true })
   const subscribers = new Set<unknown>()
   const state = {
-    disposed: false, owners: 0, disposal: null, version: 'shared-runtime-0214-isolated-accounts-v1',
+    disposed: false, owners: 0, disposal: null, version: 'shared-runtime-0217-settings-history-quiet-v1',
     appServer: { dispose: vi.fn(), rpc: vi.fn(), onNotification: (listener: unknown) => { subscribers.add(listener); return () => subscribers.delete(listener) } },
     terminalManager: { dispose: vi.fn() },
-    telegramBridge: { stop: vi.fn() },
+    telegramBridge: { stop: vi.fn(), settleNotifications: vi.fn(async () => {}) },
     methodCatalog: { snapshot: vi.fn() },
     backendQueueProcessor: { dispose: cleanup, readState: async () => { if (stopped) throw new Error('发送服务已停止'); return {} } },
     automationEngine: { dispose: vi.fn(async () => {}) },
