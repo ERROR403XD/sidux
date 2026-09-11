@@ -141,7 +141,7 @@
               <small v-else>{{ t(activeAccount ? (activeAccount.quotaStatus === 'loading' ? '正在读取用量…' : '暂无用量数据') : '尚未添加账号') }}</small>
             </button>
           </div>
-          <AppPopover :open="isSettingsOpen" :anchor="settingsAreaRef" :width="400" direction="up" panel-class="account-popover" @close="isSettingsOpen = false">
+          <AppPopover :open="isSettingsOpen" :anchor="settingsAreaRef" :width="400" direction="up" avoid-anchor-overlap panel-class="account-popover" @close="isSettingsOpen = false">
             <div class="account-popover-content">
               <div class="account-popover-scroll">
                 <AccountPanel :accounts="displayAccounts" :busy="isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
@@ -257,8 +257,8 @@
           <template v-else-if="isSettingsRoute"><SettingsPanel>
 <template #accounts><AccountPanel :accounts="displayAccounts" :busy="isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
   @reload="loadAccountsState()" @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount" />
-<AccountActivation :key="displayTimeZonePreference" :accounts="accounts" />
-<CustomConnections @changed="onCustomConnectionsChanged" /></template>
+<CustomConnections @changed="onCustomConnectionsChanged" />
+<AccountActivation :key="displayTimeZonePreference" :accounts="accounts" /></template>
 <template #general><div class="settings-form-grid"><ConversationDefaults :value="webDefaultChoice" :remember="webPreferenceState.remember" :models="availableModels" :provider="webDefaultsProvider" :error="webPreferenceError" @save="configureWebDefaults" />              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the interface language for the app.')">
                 <span class="sidebar-settings-label">{{ t('UI language') }}</span>
                 <AppSelect

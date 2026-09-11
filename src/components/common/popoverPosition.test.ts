@@ -25,4 +25,9 @@ describe('shared popover viewport positioning', () => {
     expect(positionPopover({ ...base, align: 'end', direction: 'down', viewportHeight: 600 }))
       .toMatchObject({ left: '256px', top: '412px' })
   })
+  it('reserves the anchor when a tall account panel opens above it', () => {
+    expect(positionPopover({ ...base, avoidAnchorOverlap: true, viewportWidth: 375, viewportHeight: 812, height: 1200 }))
+      .toMatchObject({ top: '8px', maxHeight: '484px' })
+  })
+
 })

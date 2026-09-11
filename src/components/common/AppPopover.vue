@@ -25,6 +25,7 @@ const props = withDefaults(defineProps<{
   anchor: HTMLElement | null
   width?: number
   matchAnchorWidth?: boolean
+  avoidAnchorOverlap?: boolean
   direction?: 'up' | 'down'
   align?: 'start' | 'end'
   panelClass?: string
@@ -53,6 +54,7 @@ function updatePosition(): void {
     viewportHeight: window.innerHeight,
     direction: props.direction,
     align: props.align,
+    avoidAnchorOverlap: props.avoidAnchorOverlap,
   })
   position.value.zIndex = nestedOverlayLayer(props.anchor, Number(getComputedStyle(document.documentElement).getPropertyValue('--ui-layer-popover')) || 16010)
 }
@@ -118,7 +120,7 @@ watch(() => props.open, async (open, _previous, onCleanup) => {
   }
 }, { immediate: true })
 
-watch(() => [props.width, props.matchAnchorWidth, props.direction, props.align, props.anchor], () => {
+watch(() => [props.width, props.matchAnchorWidth, props.direction, props.align, props.avoidAnchorOverlap, props.anchor], () => {
   if (props.open) schedulePosition()
 })
 onBeforeUnmount(detach)
