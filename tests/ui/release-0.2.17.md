@@ -11,4 +11,4 @@ Prerequisites: isolated runtime, synthetic conversations and automations, light/
 
 Cleanup: remove synthetic tasks and conversations, restore preferences, and stop only the isolated test instance.
 
-7. Open the plugin directory in light/dark themes at desktop, tablet and phone widths. Expect Refresh after the filter, aligned with the right edge of the list or empty state, including after wrapping. Each click should trigger one plugin refresh request. Restore the original theme and viewport after testing.
+7. Open the plugin directory in light/dark themes at desktop, tablet and phone widths. Expect Refresh after the filter, aligned with the right edge of the list or empty state, with a minimum 64px button width, content-sized filter, 10px gaps and flexible search width. Each click should trigger one plugin refresh request. Restore the original theme and viewport after testing.

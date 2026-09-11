@@ -55,7 +55,7 @@ This fork therefore continues development from the GitHub source, rather than th
 | Bilingual interface | Chinese/English settings, accounts, API proxy, automations, and project dialogs with persistent language preferences; user content is not translated. |
 | Deployment | Removed built-in tunneling and mandatory startup login; strict ports, two-phase release switching, and cache recovery. |
 
-The plugin refresh button sits at the far right of the toolbar, aligned with the list below.
+The wider plugin refresh button aligns with the list right edge; the filter fits its content and the search field fills the remaining space with consistent control gaps.
 
 Version 0.2.17 adds custom connections and optional scheduled account activation, improves plugin loading, notification settings, and WebUI appearance settings. Automation switches preserve row order until refresh. Viewed conversations no longer receive a completion dot; image-message echoes are deduplicated; unanswered questions stay above the composer; system theme uses a monitor icon. Scheduled activation is disabled by default, prioritizes foreground work, skips busy accounts, and bounds requests.
 

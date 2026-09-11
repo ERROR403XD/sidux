@@ -2,7 +2,7 @@
 
 ## 更新 / Changes
 
-- 本版本已更新：插件页刷新按钮右对齐，安装包与源码标签同步替换。 / This release has been updated: align plugin Refresh with the right edge of the list; package and source tag are replaced together.
+- 本版本已更新：插件页刷新按钮加宽至至少64px，筛选器按内容宽度显示，搜索框填满剩余宽度，控件间隔10px；安装包与源码标签同步替换。 / This release has been updated: widen plugin Refresh to at least 64px, fit the filter to its content, and fill remaining width with search using 10px gaps; package and source tag are replaced together.
 
 - 自定义连接管理与供应方能力适配。 / Custom connection management and provider capability handling.
 - 可选账号定时激活：默认关闭、前台优先、忙碌跳过、限制请求数量，保存有限历史。使用仍须遵循 README 中的使用边界。 / Optional scheduled account activation: disabled by default, foreground priority, busy-account skips, bounded requests and history. README usage restrictions apply.
@@ -27,7 +27,7 @@
 - The lifecycle test fixture was updated to match the current shared-runtime version and notification shutdown interface.
 - Isolated package installation passed. On Node.js 24, `node -e "process.argv=['node','codexapp','--help'];require('./dist-cli/index.js')"` returned CLI help with exit 0; this entry exposes a CLI, not library exports. The installed `node-pty` produced `RELEASE_PTY_OK`.
 - Privacy checks covered 815 source files and all 37 package entries, with no findings for the checked private-path, credential, runtime-file and symlink patterns. Published asset downloads must also pass SHA-256 verification.
-- Refresh alignment was verified at 1440×1000, 768×1024 and 375×812 in light/dark themes: zero-pixel right-edge difference and one plugin request per click. This CSS/template change adds no listeners or network calls.
+- Refresh alignment was verified at 1440×1000, 768×1024 and 375×812 in light/dark themes: zero-pixel right-edge difference, minimum 64px button width, 10px control gaps and one plugin request per click. This CSS/template change adds no listeners or network calls.
 - Earlier candidate validation covered the changed UI in light/dark themes and synthetic image/question flows. This packaging pass does not claim a new live-provider or cross-platform acceptance run.
 
 ## 性能与范围 / Performance and scope
