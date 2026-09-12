@@ -35,7 +35,7 @@
           >
             <template #left>
               <span class="thread-left-stack">
-                <span v-if="shouldShowThreadIndicator(thread)" class="thread-status-indicator" :data-state="getThreadState(thread)" />
+                <span v-if="shouldShowThreadIndicator(thread)" class="thread-status-indicator" :data-state="getThreadState(thread)" :title="threadIndicatorTitle(thread)" />
                 <button
                   class="thread-delete-button"
                   type="button"
@@ -204,7 +204,7 @@
               <span
                 v-if="shouldShowThreadIndicator(thread)"
                 class="thread-status-indicator"
-                :data-state="getThreadState(thread)"
+                :data-state="getThreadState(thread)" :title="threadIndicatorTitle(thread)"
               />
               <button
                 class="thread-delete-button"
@@ -401,7 +401,7 @@
                     <span
                       v-if="shouldShowThreadIndicator(thread)"
                       class="thread-status-indicator"
-                      :data-state="getThreadState(thread)"
+                      :data-state="getThreadState(thread)" :title="threadIndicatorTitle(thread)"
                     />
                     <button
                       class="thread-delete-button"
@@ -532,7 +532,7 @@
                 <span
                   v-if="shouldShowThreadIndicator(thread)"
                   class="thread-status-indicator"
-                  :data-state="getThreadState(thread)"
+                  :data-state="getThreadState(thread)" :title="threadIndicatorTitle(thread)"
                 />
                 <button
                   class="thread-delete-button"
@@ -611,6 +611,8 @@
         :data-open-direction="getThreadMenuDirection(openThreadMenuThread.id)"
         @click.stop
       >
+        <button v-if="interruptions?.[openThreadMenuThread.id]?.length" class="thread-menu-item" type="button" :disabled="ignoringProblems" @click="emit('ignore-thread-problems', openThreadMenuThread.id)">{{ t('忽略全部问题') }}</button>
+        <p v-if="interruptionError" class="sidebar-filter-error" role="alert">{{ t(interruptionError) }}</p>
         <button class="thread-menu-item" type="button" @click="emit('toggle-quota-resume', openThreadMenuThread.id)">{{ t(quotaResumeMarks?.[openThreadMenuThread.id] ? '取消额度恢复续跑' : '额度恢复后继续') }}</button>
         <button class="thread-menu-item" type="button" @click="openAutomationDialog(openThreadMenuThread.id)">
           {{ threadHasAutomation(openThreadMenuThread.id) ? t('Manage automations…') : t('Add automation…') }}
@@ -926,11 +928,16 @@ import AppSelect from '../common/AppSelect.vue'
 import { normalizeModelCapability, reasoningUnavailable, fastModeControl, effortOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
 import SidebarMenuRow from './SidebarMenuRow.vue'
 import { reconcilePinnedThreadIds } from './pinnedThreadUtils'
+import { threadInterruptionDot as problemDot, type ThreadInterruptionSnapshot, type ThreadInterruption } from '../../threadInterruption'
 
 const props = defineProps<{
   groups: UiProjectGroup[]
   statusFilter?: SidebarThreadFilter
   retainedThreadId?: string
+  activeRetainedIds?: ReadonlySet<string>
+  interruptions?: ThreadInterruptionSnapshot
+  ignoringProblems?: boolean
+  interruptionError?: string
   quotaInterrupted?: Record<string, boolean | null>
   filterLoading?: boolean
   accounts?: { storageId: string; alias?: string; email: string | null; accountId: string }[]
@@ -960,6 +967,7 @@ const { recordVisibleFailure } = useFeedbackDiagnostics()
 const emit = defineEmits<{
   'move-conversation-project': [payload: { cwd: string; projectId: string | null }]
   'toggle-quota-resume': [threadId: string]
+  'ignore-thread-problems': [threadId: string]
   select: [threadId: string]
   archive: [threadId: string]
   'start-new-thread': [projectName: string]
@@ -1327,7 +1335,7 @@ watch([isPinnedSectionExpanded, isProjectsSectionExpanded, isChatsSectionExpande
 const isStatusFilterActive = computed(() => !!props.statusFilter && props.statusFilter !== 'all')
 
 function threadMatchesStatus(thread: UiThread): boolean {
-  return matchesSidebarThreadFilter(thread, props.statusFilter || 'all', props.retainedThreadId || '', props.quotaInterrupted || {})
+  return matchesSidebarThreadFilter(thread, props.statusFilter || 'all', props.retainedThreadId || '', props.quotaInterrupted || {}, props.activeRetainedIds)
 }
 
 const normalizedSearchQuery = computed(() => props.searchQuery.trim().toLowerCase())
@@ -3003,17 +3011,29 @@ function hasThreads(group: UiProjectGroup): boolean {
 }
 
 function shouldShowThreadIndicator(thread: UiThread): boolean {
-  return Boolean(thread.pendingRequestState) || thread.inProgress || thread.unread
+  return Boolean(thread.pendingRequestState) || thread.inProgress || thread.unread || Boolean(threadInterruptionDot(thread))
 }
 
 function threadRequestLabel(thread: UiThread): string {
   return thread.pendingRequestState === 'approval' ? t('Awaiting approval') : t('Awaiting response')
 }
 
-function getThreadState(thread: UiThread): 'awaiting-approval' | 'awaiting-response' | 'working' | 'unread' | 'idle' {
+function threadInterruptionDot(thread: UiThread): ThreadInterruption['kind'] | undefined {
+  return problemDot(props.interruptions?.[thread.id])
+}
+
+function threadIndicatorTitle(thread: UiThread): string | undefined {
+  if (thread.inProgress || thread.pendingRequestState) return undefined
+  const kind = threadInterruptionDot(thread)
+  return kind === 'quota' ? t('额度不足') : kind === 'error' ? t('会话异常中断') : undefined
+}
+
+function getThreadState(thread: UiThread): 'awaiting-approval' | 'awaiting-response' | 'working' | 'unread' | 'idle' | ThreadInterruption['kind'] {
   if (thread.pendingRequestState === 'approval') return 'awaiting-approval'
   if (thread.pendingRequestState === 'response') return 'awaiting-response'
   if (thread.inProgress) return 'working'
+  const interruption = threadInterruptionDot(thread)
+  if (interruption) return interruption
   if (thread.unread) return 'unread'
   return 'idle'
 }
@@ -3441,7 +3461,9 @@ onBeforeUnmount(() => {
   @apply opacity-100 pointer-events-auto;
 }
 
-.thread-status-indicator[data-state='unread'] {
+.thread-status-indicator[data-state='unread'],
+.thread-status-indicator[data-state='error'],
+.thread-status-indicator[data-state='quota'] {
   width: 6.6667px;
   height: 6.6667px;
   @apply bg-blue-600;
@@ -3459,6 +3481,10 @@ onBeforeUnmount(() => {
   @apply bg-sky-500;
 }
 
+.thread-row:hover .thread-status-indicator[data-state='error'],
+.thread-row:hover .thread-status-indicator[data-state='quota'],
+.thread-row:focus-within .thread-status-indicator[data-state='error'],
+.thread-row:focus-within .thread-status-indicator[data-state='quota'],
 .thread-row:hover .thread-status-indicator[data-state='unread'],
 .thread-row:hover .thread-status-indicator[data-state='working'],
 .thread-row:hover .thread-status-indicator[data-state='awaiting-approval'],

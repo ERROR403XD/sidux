@@ -114,7 +114,7 @@
           <p v-if="!isSidebarCollapsed && sidebarFilter === 'interrupted' && sidebarFilterError" class="sidebar-filter-error" role="alert">
             {{ t(sidebarFilterError) }} <button type="button" @click="refreshSidebarFilter">{{ t('重试') }}</button>
           </p>
-          <SidebarThreadTree :status-filter="sidebarFilter" :retained-thread-id="retainedThreadId" :quota-interrupted="sidebarInterrupted" :filter-loading="sidebarFilterLoading" ref="sidebarThreadTreeRef" :groups="sidebarThreadGroups" :accounts="executionAccounts" :models="availableModelIds" :model-capabilities="availableModels" :goals="threadGoals" :quota-resume-marks="quotaResumeMarks" :quota-resume-error="quotaResumeError" @toggle-quota-resume="toggleQuotaResume" :project-display-name-by-id="projectDisplayNameById"
+          <SidebarThreadTree :status-filter="sidebarFilter" :retained-thread-id="retainedThreadId" :active-retained-ids="sidebarActiveSession.retainedIds" :interruptions="sidebarProblems" :ignoring-problems="sidebarIgnoringProblems" :interruption-error="sidebarProblemError" @ignore-thread-problems="ignoreThreadProblems" :quota-interrupted="sidebarInterrupted" :filter-loading="sidebarFilterLoading" ref="sidebarThreadTreeRef" :groups="sidebarThreadGroups" :accounts="executionAccounts" :models="availableModelIds" :model-capabilities="availableModels" :goals="threadGoals" :quota-resume-marks="quotaResumeMarks" :quota-resume-error="quotaResumeError" @toggle-quota-resume="toggleQuotaResume" :project-display-name-by-id="projectDisplayNameById"
             :project-git-repo-by-name="projectGitRepoByName"
             :project-cwd-by-name="projectCwdByName"
             v-if="!isSidebarCollapsed"
@@ -1414,7 +1414,7 @@ const sidebarThreadGroups = computed(() => {
   return groups
 })
 
-const { filter: sidebarFilter, retainedThreadId, interrupted: sidebarInterrupted, loading: sidebarFilterLoading, error: sidebarFilterError, refresh: refreshSidebarFilter, retainBeforeSelect } = useSidebarThreadFilter(sidebarThreadGroups, selectedThreadId)
+const { filter: sidebarFilter, retainedThreadId, activeSession: sidebarActiveSession, problems: sidebarProblems, problemError: sidebarProblemError, ignoringProblems: sidebarIgnoringProblems, ignoreThreadProblems, interrupted: sidebarInterrupted, loading: sidebarFilterLoading, error: sidebarFilterError, refresh: refreshSidebarFilter, retainBeforeSelect } = useSidebarThreadFilter(sidebarThreadGroups, selectedThreadId)
 const sidebarFilterOptions = computed(() => [
   { value: 'active', label: t('活跃') },
   { value: 'unread', label: t('未读') },

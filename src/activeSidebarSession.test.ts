@@ -1,0 +1,51 @@
+import { describe, expect, it } from 'vitest'
+import { ActiveSidebarSession } from './activeSidebarSession'
+
+const row = (id: string, inProgress = false, unread = false) => ({ id, inProgress, unread })
+describe('one activation of the Active filter', () => {
+  it('starts with running rows only and retains all completions regardless of blue-dot timing or cause', () => {
+    const session = new ActiveSidebarSession()
+    session.reset(true, [row('old', false, true), row('running', true), row('manual', true)], '')
+    expect([...session.retainedIds]).toEqual(['running', 'manual'])
+    session.update([row('old', false, true), row('running'), row('manual')], '')
+    expect([...session.retainedIds]).toEqual(['running', 'manual'])
+    session.update([row('old', false, true), row('running', false, true), row('manual')], '')
+    expect([...session.retainedIds]).toEqual(['running', 'manual'])
+    session.update([row('running'), row('manual')], 'running')
+    expect(session.retainedIds.has('running')).toBe(true)
+    session.update([row('running'), row('manual')], 'manual')
+    expect([...session.retainedIds]).toEqual(['manual'])
+    session.update([row('running'), row('manual')], '')
+    expect(session.retainedIds.size).toBe(0)
+  })
+  it('keeps a selected manual stop until leaving, while switching away from a running row retains it', () => {
+    const session = new ActiveSidebarSession()
+    session.reset(true, [row('a', true), row('b', true)], 'a')
+    session.update([row('a', true), row('b', true)], 'b')
+    session.update([row('a'), row('b')], 'b')
+    expect([...session.retainedIds]).toEqual(['a', 'b'])
+    session.update([row('a'), row('b')], 'a')
+    expect([...session.retainedIds]).toEqual(['a'])
+  })
+  it('resets at off/on, incorporates later runs, and removes deleted rows without a historical scan', () => {
+    const session = new ActiveSidebarSession()
+    session.reset(true, [row('a', true), row('b')], '')
+    session.update([row('a', false, true), row('b')], '')
+    session.reset(false, [], '')
+    session.reset(true, [row('a', false, true), row('b')], '')
+    expect(session.retainedIds.size).toBe(0)
+    session.started('b') // Even a start/end pair in one render tick is retained.
+    expect([...session.retainedIds]).toEqual(['b'])
+    session.update([row('a', true)], '')
+    expect([...session.retainedIds]).toEqual(['a'])
+  })
+  it('honours an unread acknowledgement from another window without dropping a new run', () => {
+    const session = new ActiveSidebarSession()
+    session.reset(true, [row('a', true)], '')
+    session.update([row('a', false, true)], '')
+    session.update([row('a')], '')
+    expect(session.retainedIds.size).toBe(0)
+    session.update([row('a', true)], '')
+    expect([...session.retainedIds]).toEqual(['a'])
+  })
+})

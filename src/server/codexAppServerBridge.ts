@@ -3,6 +3,7 @@ import { VirtualProjectStore } from './virtualProjects.js'
 import { createDirectoryListingHtml } from './localBrowseUi.js'
 import { isVirtualProjectId, type VirtualProject } from '../projectOrganization.js'
 import { IgnoredQuotaErrors } from './ignoredQuotaErrors.js'
+import { ThreadInterruptionList } from './threadInterruptionList.js'
 import { SidebarThreadStatusReader } from './sidebarThreadStatusReader.js'
 import { getCustomConnectionStore, customRuntimeConfig } from './customConnectionStore.js'
 import { getWebUiBrandingStore } from './webUiBrandingStore.js'
@@ -5976,6 +5977,20 @@ export class AppServerProcess {
     }
   }
 
+  private ignoredErrorMarks: IgnoredQuotaErrors | null = null
+  get ignoredErrors(): IgnoredQuotaErrors {
+    return this.ignoredErrorMarks ??= new IgnoredQuotaErrors(getCodexHomeDir())
+  }
+
+  private interruptionList: ThreadInterruptionList | null = null
+  get interruptions(): ThreadInterruptionList {
+    return this.interruptionList ??= new ThreadInterruptionList(getCodexHomeDir(), this.ignoredErrors, (threadId, issues) => {
+      for (const listener of this.notificationListeners) {
+        listener({ method: 'codexapp/interruptions/changed', params: { threadId, issues } })
+      }
+    })
+  }
+
   private completionList: ThreadCompletionList | null = null
   get completions(): ThreadCompletionList {
     return this.completionList ??= new ThreadCompletionList(join(getCodexHomeDir(), 'codexapp-thread-completions-v1.json'), (threadId, token) => {
@@ -7280,6 +7295,9 @@ function getSharedBridgeState(): SharedBridgeState {
       const turnId = readNonEmptyString(asRecord(params?.turn)?.id) || readNonEmptyString(params?.turnId)
       void appServer.completions.complete(threadId, turnId).catch(() => console.error('Failed to persist completion list'))
     }
+    if (['turn/started', 'turn/completed', 'turn/cancelled', 'error', 'thread/status/changed'].includes(notification.method)) {
+      void appServer.interruptions.observe(notification.method, notification.params).catch(() => console.error('Failed to persist conversation problem indicators'))
+    }
     quotaResume.observe(notification)
     if (notification.method === 'account/rateLimits/updated') void appServer.observeAccountQuota(notification.params).catch(() => undefined)
     automationEngine.notification(notification)
@@ -7324,7 +7342,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
     (method, params) => callRpcWithArchiveRecovery(appServer, method, params),
     async () => (await methodCatalog.snapshot()).features,
   )
-  const ignoredQuotaErrors = new IgnoredQuotaErrors(getCodexHomeDir())
+  const ignoredQuotaErrors = appServer.ignoredErrors
   const sidebarThreadStatus = new SidebarThreadStatusReader(async (method, params) => {
     const result = asRecord(await appServer.rpc(method, params))
     const turns = Array.isArray(result?.data) ? result.data : null
@@ -7334,8 +7352,11 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
     // never become a quota interruption because of an earlier retry error.
     if (turn && ['failed', 'interrupted'].includes(String(turn.status)) && !turn.error) {
       const merged = asRecord(mergeStreamTurnErrorsIntoThreadResult(appServer, { thread: { id: params.threadId, turns } }))
-      return { data: asRecord(merged?.thread)?.turns }
+      const enriched = asRecord(merged?.thread)?.turns as { id?: string; status?: string; error?: unknown }[]
+      if (enriched?.[0]) await appServer.interruptions.record(String(params.threadId), enriched[0])
+      return { data: enriched }
     }
+    if (turn) await appServer.interruptions.record(String(params.threadId), turn)
     return result
   }, Date.now, 8000, (threadId, turnId) => ignoredQuotaErrors.has(threadId, turnId))
   const unsubscribeHistory = appServer.onNotification(({ method, params }) => {
@@ -9560,6 +9581,10 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         setJson(res, 200, { data: await quotaResume.snapshot() })
         return
       }
+      if (req.method === 'GET' && url.pathname === '/codex-api/thread-interruptions') {
+        setJson(res, 200, { data: await appServer.interruptions.snapshot() })
+        return
+      }
       if (url.pathname === '/codex-api/ignored-quota-errors' && ['GET', 'POST'].includes(req.method || '')) {
         const input = req.method === 'POST' ? asRecord(await readJsonBody(req)) : null
         const threadId = readNonEmptyString(input?.threadId) || url.searchParams.get('threadId') || ''
@@ -9569,6 +9594,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         }
         if (req.method === 'POST') {
           await ignoredQuotaErrors.set(threadId, readNonEmptyString(input?.turnId), input!.ignored as boolean)
+          await appServer.interruptions.publish(threadId)
           appServer.notifyQuotaErrorIgnored(threadId)
         }
         setJson(res, 200, { data: await ignoredQuotaErrors.list(threadId) })

@@ -1,4 +1,4 @@
-import { isFinalQuotaInterruption } from '../sidebarThreadFilter.js'
+import { classifyThreadInterruption } from '../threadInterruption.js'
 
 type Rpc = (method: string, params: Record<string, unknown>) => Promise<unknown>
 type Entry = { at: number; interrupted: boolean; version: string }
@@ -36,7 +36,7 @@ export class SidebarThreadStatusReader {
         if (!Array.isArray(response.data) || response.data.length > 1) throw new Error('Invalid final turn metadata')
         const turn = response.data[0] as { id?: string; status?: string } | undefined
         if (turn && (!turn.id || !['inProgress', 'completed', 'failed', 'interrupted'].includes(turn.status || ''))) throw new Error('Unknown final turn status')
-        const interrupted = isFinalQuotaInterruption(turn) && !(await this.ignored(id, turn!.id!))
+        const interrupted = Boolean(classifyThreadInterruption(turn)) && !(await this.ignored(id, turn!.id!))
         if (this.revisions.get(id) !== 0) return null
         this.cache.delete(id)
         this.cache.set(id, { at: this.now(), interrupted, version })

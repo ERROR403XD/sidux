@@ -608,7 +608,7 @@
                   </template>
                 </div>
                 <button
-                  v-if="isTurnErrorMessage(message) && message.turnId && isFinalQuotaInterruption({ status: 'failed', error: message.text })"
+                  v-if="isTurnErrorMessage(message) && message.turnId"
                   type="button"
                   class="quota-error-ignore"
                   :aria-pressed="ignoredQuotaTurns.includes(message.turnId)"
@@ -950,7 +950,6 @@ import { conversationDeliveryLabel } from '../../conversationDelivery'
 import { messageRenderKey } from '../../messageIdentity'
 import SubtaskEventCard from './SubtaskEventCard.vue'
 import { formatLocalDateTime } from '../../dateTime'
-import { isFinalQuotaInterruption } from '../../sidebarThreadFilter'
 import { useIgnoredQuotaErrors } from '../../composables/useIgnoredQuotaErrors'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { UiFileChange, UiLiveOverlay, UiMessage, UiPlanStep, UiServerRequest } from '../../types/codex'
@@ -1349,7 +1348,7 @@ const props = defineProps<{
   loadEarlierMessages?: (threadId: string) => Promise<void>
 }>()
 
-const { ignored: ignoredQuotaTurns, pending: quotaIgnorePending, error: quotaIgnoreError, toggle: toggleQuotaError } = useIgnoredQuotaErrors(computed(() => props.messages.some(message => isTurnErrorMessage(message) && message.turnId && isFinalQuotaInterruption({ status: 'failed', error: message.text })) ? props.activeThreadId : ''))
+const { ignored: ignoredQuotaTurns, pending: quotaIgnorePending, error: quotaIgnoreError, toggle: toggleQuotaError } = useIgnoredQuotaErrors(computed(() => props.messages.some(message => isTurnErrorMessage(message) && message.turnId) ? props.activeThreadId : ''))
 
 const emit = defineEmits<{
   openTask: [threadId: string]

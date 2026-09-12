@@ -1,0 +1,72 @@
+{
+  "base": "http://127.0.0.1:4173",
+  "cases": [
+    "initial unread excluded; completions and both errors retained with equal-size blue/red/yellow dots",
+    "tablet/mobile sidebar remount keeps active retention and dots; problem menu stays inside viewport in both themes",
+    "selected manual stop and normal completion stay until switching conversations",
+    "read does not clear error; active off/on discards all finished rows despite persistent problems",
+    "both errors survive reload and match Interrupted; per-turn ignore/undo and thread menu ignore survive reload; failed save preserves red dot"
+  ],
+  "screenshots": [
+    {
+      "path": "output/playwright/0219-sidebar-active-light.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "dark": false
+    },
+    {
+      "path": "output/playwright/0219-sidebar-active-dark.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "dark": true
+    },
+    {
+      "path": "output/playwright/0219-sidebar-active-768-light.png",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "dark": false
+    },
+    {
+      "path": "output/playwright/0219-sidebar-active-768-dark.png",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "dark": true
+    },
+    {
+      "path": "output/playwright/0219-sidebar-active-375-light.png",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "dark": false
+    },
+    {
+      "path": "output/playwright/0219-sidebar-active-375-dark.png",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "dark": true
+    }
+  ],
+  "performance": {
+    "rows": 5000,
+    "samples": 100,
+    "medianMs": 0.20000028610229492,
+    "p95Ms": 0.5999999046325684
+  },
+  "unitPassed": 793,
+  "unitFailed": 0,
+  "finalTargetedPassed": 26,
+  "bridgeAndAccountPassed": 18,
+  "snapshotReads": 4,
+  "newNativeExecutionRequests": 0
+}

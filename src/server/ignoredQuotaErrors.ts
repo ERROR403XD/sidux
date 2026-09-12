@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { privateJson } from './apiProxy/store.js'
 
-/** UI acknowledgements only; never changes quota, delivery or resume scheduling. */
+/** Per-turn UI acknowledgements for quota and other failures. The legacy filename stays compatible; no execution or scheduling changes. */
 export class IgnoredQuotaErrors {
   private marks: Record<string, string[]> = Object.create(null)
   private ready: Promise<void>

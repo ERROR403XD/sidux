@@ -16,19 +16,20 @@ function mount() {
   vi.useFakeTimers()
   vi.stubGlobal('window', new EventTarget())
   vi.stubGlobal('document', Object.assign(new EventTarget(), { visibilityState: 'visible' }))
-  let notify!: (n: any) => void
-  gateway.subscribeCodexNotifications.mockImplementation(fn => { notify = fn; return () => {} })
+  const listeners = new Set<(n: any) => void>()
+  gateway.subscribeCodexNotifications.mockImplementation(fn => { listeners.add(fn); return () => listeners.delete(fn) })
   const groups = ref<UiProjectGroup[]>([{ projectName: 'project', threads: ['a', 'b'].map(id => ({ id, unread: true, inProgress: false, updatedAtIso: 'now' } as UiThread)) }])
   const selected = ref('')
   let state!: ReturnType<typeof useSidebarThreadFilter>
   const app = renderer.createApp(defineComponent({ setup() { state = useSidebarThreadFilter(groups, selected); return () => null } }))
   app.mount({})
+  listeners.forEach(fn => fn({ method: 'ready', params: {} }))
   unmount = () => app.unmount()
-  return { groups, selected, state, notify: (method: string, params: unknown) => notify({ method, params }) }
+  return { groups, selected, state, notify: (method: string, params: unknown) => listeners.forEach(fn => fn({ method, params })) }
 }
 describe('sidebar selection lifetime', () => {
   it('retains a clicked blue-dot row through acknowledgement until another conversation is selected', async () => {
-    const fetcher = vi.fn()
+    const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: {} }) })
     vi.stubGlobal('fetch', fetcher)
     const { groups, selected, state } = mount()
     state.filter.value = 'unread'
@@ -50,11 +51,16 @@ describe('sidebar selection lifetime', () => {
     expect(state.retainedThreadId.value).toBe('')
     state.filter.value = 'active'
     await vi.advanceTimersByTimeAsync(200)
-    expect(fetcher).not.toHaveBeenCalled()
+    expect(fetcher.mock.calls.map(call => call[0])).toEqual(['/codex-api/thread-interruptions'])
   })
   it('ignores late quota results after a new turn or leaving the filter', async () => {
     let finish!: (v: unknown) => void
-    const fetcher = vi.fn().mockImplementationOnce(() => new Promise(r => { finish = r })).mockResolvedValue({ ok: true, json: async () => ({ data: { a: false, b: false } }) })
+    let statusReads = 0
+    const fetcher = vi.fn(url => {
+      if (url === '/codex-api/thread-interruptions') return Promise.resolve({ ok: true, json: async () => ({ data: {} }) })
+      if (++statusReads === 1) return new Promise(r => { finish = r })
+      return Promise.resolve({ ok: true, json: async () => ({ data: { a: false, b: false } }) })
+    })
     vi.stubGlobal('fetch', fetcher)
     const { state, notify } = mount()
     state.filter.value = 'interrupted'
@@ -68,7 +74,7 @@ describe('sidebar selection lifetime', () => {
     await nextTick()
     notify('turn/completed', { threadId: 'a' })
     await vi.advanceTimersByTimeAsync(200)
-    expect(fetcher).toHaveBeenCalledTimes(2)
+    expect(statusReads).toBe(2)
   })
 })
 
@@ -79,7 +85,7 @@ it.each(['active', 'interrupted'] as const)('retains the selected %s match after
   groups.value[0]!.threads[0]!.inProgress = filter === 'active'
   selected.value = 'a'
   state.filter.value = filter
-  if (filter === 'interrupted') state.interrupted.value = { a: true }
+  if (filter === 'interrupted') notify('codexapp/interruptions/changed', { threadId: 'a', issues: [{ turnId: 'test', kind: 'quota' }] })
   await nextTick()
   expect(state.retainedThreadId.value).toBe('a')
   if (filter === 'active') groups.value[0]!.threads[0]!.inProgress = false

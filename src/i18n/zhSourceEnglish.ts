@@ -17,6 +17,8 @@ export const zhSourceEnglish: Record<string, string> = {
   '筛选会话': 'Filter conversations',
   '活跃': 'Active',
   '忽略': 'Ignore',
+  '忽略全部问题': 'Ignore all problems',
+  '会话异常中断': 'Conversation interrupted by an error',
   '已忽略': 'Ignored',
   '取消忽略': 'Undo ignore',
   '未读': 'Unread',
