@@ -53,7 +53,7 @@
 ## 0.2.19 封测：开发页面与安装包分别验证引导显示
 
 - 前提：4173 为当前工作树的独立 Vite，59001 为已准备的固定安装包；使用 `scripts/test-steering-visibility-ui.cjs` 的合成会话与接口，不能读取或投递真实用户内容。
-- 操作：先运行 `node scripts/test-steering-visibility-ui.cjs`；再运行 `UI_BASE_URL=http://127.0.0.1:59001 UI_SOURCE_PERF=0 UI_REPORT_PATH=output/0219-final/sealed-steering-packaged-ui.json node scripts/test-steering-visibility-ui.cjs`。
+- 操作：先运行 `node scripts/test-steering-visibility-ui.cjs`；再运行 `UI_BASE_URL=http://127.0.0.1:59001 UI_SOURCE_PERF=0 UI_SCREENSHOT_LABEL=packaged UI_REPORT_PATH=output/0219-final/sealed-steering-packaged-ui.json node scripts/test-steering-visibility-ui.cjs`。
 - 期望：两者都完成提交挂起、切换、刷新、失败读取、未知/失败/确认、原生回显去重及 TestChat href/title/text；只有开发服务运行源码微基准。安装包没有 `/src` 端点，跳过该采样不跳过任何界面断言。
 - 失败诊断：保留页面错误、console 和请求失败路径；加载恢复页不计通过，不用空白截图冒充正文保存成功。
 - 清理：关闭脚本自有浏览器上下文，测试状态随上下文销毁；不改变账号、发送队列、实际会话或生产服务。

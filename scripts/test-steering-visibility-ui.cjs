@@ -4,6 +4,8 @@ const fs = require('node:fs/promises')
 
 async function main() {
   const base = process.env.UI_BASE_URL || 'http://127.0.0.1:4173'
+  const screenshotLabel = process.env.UI_SCREENSHOT_LABEL || ''
+  assert.match(screenshotLabel, /^[a-z0-9-]*$/)
   const browser = await chromium.launch({ executablePath: '/snap/bin/chromium', headless: true, args: ['--no-sandbox'] })
   const report = { base, cases: [], requests: [], errors: [], screenshots: [] }
   const liveId = '11111111-1111-4111-8111-111111111111'
@@ -132,7 +134,7 @@ async function main() {
       for (const dark of [false, true]) {
         await page.evaluate(value => document.documentElement.classList.toggle('dark', value), dark)
         await page.waitForTimeout(2200)
-        const screenshot = `output/playwright/0219-steering-${viewport.width}-${dark ? 'dark' : 'light'}.png`
+        const screenshot = `output/playwright/0219-steering-${screenshotLabel ? screenshotLabel + '-' : ''}${viewport.width}-${dark ? 'dark' : 'light'}.png`
         await page.screenshot({ path: screenshot, fullPage: true })
         report.screenshots.push(screenshot)
         assert.equal(await row().count(), 1)
@@ -143,8 +145,9 @@ async function main() {
     const href = await guide.getAttribute('href')
     report.testChat = { hrefOk: new URL(href, base).pathname === '/codex-local-browse/tmp/steering-guide.md', titleOk: (await guide.getAttribute('title')) === '/tmp/steering-guide.md', textOk: (await guide.innerText()) === 'guide' }
     assert.ok(Object.values(report.testChat).every(Boolean))
-    await page.screenshot({ path: 'output/playwright/testchat-steering-visibility-cjs.png', fullPage: true })
-    report.screenshots.push('output/playwright/testchat-steering-visibility-cjs.png')
+    const testChatScreenshot = `output/playwright/testchat-steering-visibility${screenshotLabel ? '-' + screenshotLabel : ''}-cjs.png`
+    await page.screenshot({ path: testChatScreenshot, fullPage: true })
+    report.screenshots.push(testChatScreenshot)
     // Disappearance from queue is not disappearance from conversation; an immutable
     // receipt bridges late native history and never causes a new submission.
     queue = {}
