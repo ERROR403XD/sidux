@@ -1,3 +1,4 @@
+import { IgnoredQuotaErrors } from './ignoredQuotaErrors.js'
 import { SidebarThreadStatusReader } from './sidebarThreadStatusReader.js'
 import { getCustomConnectionStore, customRuntimeConfig } from './customConnectionStore.js'
 import { getWebUiBrandingStore } from './webUiBrandingStore.js'
@@ -5503,6 +5504,7 @@ export class AppServerProcess {
     return boundedQuotaRead(promise)
   }
   quotaBlocked: (threadId: string, turnId: string) => Promise<void> = async () => {}
+  notifyQuotaErrorIgnored(threadId: string): void { this.emitNotification({ method: 'thread/quotaErrorIgnored/changed', params: { threadId } }) }
   notifyQuotaResumeChanged(): void { this.emitNotification({ method: 'thread/quotaResume/changed', params: {} }) }
   async observeAccountQuota(payload: unknown): Promise<void> {
     this.quotaReadCache = null
@@ -7247,6 +7249,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
     (method, params) => callRpcWithArchiveRecovery(appServer, method, params),
     async () => (await methodCatalog.snapshot()).features,
   )
+  const ignoredQuotaErrors = new IgnoredQuotaErrors(getCodexHomeDir())
   const sidebarThreadStatus = new SidebarThreadStatusReader(async (method, params) => {
     const result = asRecord(await appServer.rpc(method, params))
     const turns = Array.isArray(result?.data) ? result.data : null
@@ -7259,11 +7262,15 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
       return { data: asRecord(merged?.thread)?.turns }
     }
     return result
-  })
+  }, Date.now, 8000, (threadId, turnId) => ignoredQuotaErrors.has(threadId, turnId))
   const unsubscribeHistory = appServer.onNotification(({ method, params }) => {
     const value = asRecord(params)
     const threadId = readNonEmptyString(value?.threadId) || readNonEmptyString(value?.thread_id) || readNonEmptyString(asRecord(value?.thread)?.id)
     if (threadId) {
+      if (method === 'thread/quotaErrorIgnored/changed') {
+        sidebarThreadStatus.invalidate(threadId)
+        return
+      }
       history.invalidate(threadId)
       if (['turn/started', 'turn/completed', 'turn/cancelled', 'thread/status/changed'].includes(method)) sidebarThreadStatus.invalidate(threadId)
     }
@@ -9427,6 +9434,20 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           await quotaResume.set(input.threadId, input.enabled)
         }
         setJson(res, 200, { data: await quotaResume.snapshot() })
+        return
+      }
+      if (url.pathname === '/codex-api/ignored-quota-errors' && ['GET', 'POST'].includes(req.method || '')) {
+        const input = req.method === 'POST' ? asRecord(await readJsonBody(req)) : null
+        const threadId = readNonEmptyString(input?.threadId) || url.searchParams.get('threadId') || ''
+        if (!/^[a-zA-Z0-9-]{1,200}$/.test(threadId) || (req.method === 'POST' && (typeof input?.ignored !== 'boolean' || !/^[a-zA-Z0-9-]{1,200}$/.test(readNonEmptyString(input?.turnId))))) {
+          setJson(res, 400, { error: '忽略标记参数无效' })
+          return
+        }
+        if (req.method === 'POST') {
+          await ignoredQuotaErrors.set(threadId, readNonEmptyString(input?.turnId), input!.ignored as boolean)
+          appServer.notifyQuotaErrorIgnored(threadId)
+        }
+        setJson(res, 200, { data: await ignoredQuotaErrors.list(threadId) })
         return
       }
       if (req.method === 'POST' && url.pathname === '/codex-api/sidebar-thread-status') {

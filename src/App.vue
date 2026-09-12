@@ -1415,7 +1415,7 @@ const sidebarThreadGroups = computed(() => {
 
 const { filter: sidebarFilter, retainedUnreadId, interrupted: sidebarInterrupted, loading: sidebarFilterLoading, error: sidebarFilterError, refresh: refreshSidebarFilter, retainBeforeRead } = useSidebarThreadFilter(sidebarThreadGroups, selectedThreadId)
 const sidebarFilterOptions = computed(() => [
-  { value: 'active', label: t('活跃中') },
+  { value: 'active', label: t('活跃') },
   { value: 'unread', label: t('未读') },
   { value: 'interrupted', label: t('中断') },
 ] as const)

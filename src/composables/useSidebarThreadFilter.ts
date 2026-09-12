@@ -78,7 +78,7 @@ export function useSidebarThreadFilter(groups: Ref<UiProjectGroup[]>, selectedId
   })
   const unsubscribe = subscribeCodexNotifications(notification => {
     if (notification.method === 'ready') { schedule(); return }
-    if (!['turn/started', 'turn/completed', 'turn/cancelled', 'thread/status/changed'].includes(notification.method)) return
+    if (!['turn/started', 'turn/completed', 'turn/cancelled', 'thread/status/changed', 'thread/quotaErrorIgnored/changed'].includes(notification.method)) return
     const params = notification.params as { threadId?: string; thread_id?: string }
     const id = params?.threadId || params?.thread_id
     if (!id) return

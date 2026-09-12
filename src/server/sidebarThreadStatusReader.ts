@@ -11,7 +11,7 @@ export class SidebarThreadStatusReader {
   private revisions = new Map<string, number>()
   private queue: Promise<unknown> = Promise.resolve()
 
-  constructor(private rpc: Rpc, private now = Date.now, private timeoutMs = 8000) {}
+  constructor(private rpc: Rpc, private now = Date.now, private timeoutMs = 8000, private ignored: (threadId: string, turnId: string) => Promise<boolean> = async () => false) {}
 
   invalidate(id: string): void {
     this.cache.delete(id)
@@ -36,8 +36,8 @@ export class SidebarThreadStatusReader {
         if (!Array.isArray(response.data) || response.data.length > 1) throw new Error('Invalid final turn metadata')
         const turn = response.data[0] as { id?: string; status?: string } | undefined
         if (turn && (!turn.id || !['inProgress', 'completed', 'failed', 'interrupted'].includes(turn.status || ''))) throw new Error('Unknown final turn status')
+        const interrupted = isFinalQuotaInterruption(turn) && !(await this.ignored(id, turn!.id!))
         if (this.revisions.get(id) !== 0) return null
-        const interrupted = isFinalQuotaInterruption(turn)
         this.cache.delete(id)
         this.cache.set(id, { at: this.now(), interrupted, version })
         if (this.cache.size > 2000) this.cache.delete(this.cache.keys().next().value!)

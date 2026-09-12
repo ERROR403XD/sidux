@@ -607,6 +607,16 @@
                     </button>
                   </template>
                 </div>
+                <button
+                  v-if="isTurnErrorMessage(message) && message.turnId && isFinalQuotaInterruption({ status: 'failed', error: message.text })"
+                  type="button"
+                  class="quota-error-ignore"
+                  :aria-pressed="ignoredQuotaTurns.includes(message.turnId)"
+                  :title="t(ignoredQuotaTurns.includes(message.turnId) ? '取消忽略' : '忽略')"
+                  :disabled="quotaIgnorePending"
+                  @click="toggleQuotaError(message.turnId)"
+                >{{ t(ignoredQuotaTurns.includes(message.turnId) ? '已忽略' : '忽略') }}</button>
+                <span v-if="isTurnErrorMessage(message) && quotaIgnoreError" role="alert">{{ t(quotaIgnoreError) }}</span>
                 <a
                   v-if="isTurnErrorMessage(message)"
                   class="turn-error-feedback"
@@ -936,6 +946,8 @@
 import { messageRenderKey } from '../../messageIdentity'
 import SubtaskEventCard from './SubtaskEventCard.vue'
 import { formatLocalDateTime } from '../../dateTime'
+import { isFinalQuotaInterruption } from '../../sidebarThreadFilter'
+import { useIgnoredQuotaErrors } from '../../composables/useIgnoredQuotaErrors'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { UiFileChange, UiLiveOverlay, UiMessage, UiPlanStep, UiServerRequest } from '../../types/codex'
 import { updateThreadFileChanges } from '../../api/codexGateway'
@@ -1332,6 +1344,8 @@ const props = defineProps<{
   isLoadingPersistedAbove?: boolean
   loadEarlierMessages?: (threadId: string) => Promise<void>
 }>()
+
+const { ignored: ignoredQuotaTurns, pending: quotaIgnorePending, error: quotaIgnoreError, toggle: toggleQuotaError } = useIgnoredQuotaErrors(computed(() => props.messages.some(message => isTurnErrorMessage(message) && message.turnId && isFinalQuotaInterruption({ status: 'failed', error: message.text })) ? props.activeThreadId : ''))
 
 const emit = defineEmits<{
   openTask: [threadId: string]

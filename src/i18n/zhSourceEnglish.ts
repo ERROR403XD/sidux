@@ -2,7 +2,10 @@
 // User content, saved prompts, and outbound notification templates are intentionally excluded.
 export const zhSourceEnglish: Record<string, string> = {
   '筛选会话': 'Filter conversations',
-  '活跃中': 'Active',
+  '活跃': 'Active',
+  '忽略': 'Ignore',
+  '已忽略': 'Ignored',
+  '取消忽略': 'Undo ignore',
   '未读': 'Unread',
   '会话状态读取失败，请重试': 'Could not load conversation status. Retry.',
   '部分会话状态未能确认，请重试': 'Some conversation statuses could not be verified. Retry.',

@@ -2873,3 +2873,23 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .sidebar-filter-tag:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 2px; }
 .sidebar-filter-error { margin: 4px 8px; color: var(--ui-danger); font-size: 12px; }
 .sidebar-filter-error button { text-decoration: underline; }
+
+.quota-error-ignore {
+  flex-shrink: 0;
+  align-self: flex-start;
+  padding: 2px 8px;
+  margin-right: 8px;
+  border: 1px solid var(--ui-border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ui-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.quota-error-ignore[aria-pressed="true"] {
+  color: var(--ui-text);
+  border-color: currentColor;
+}
+.quota-error-ignore:disabled { opacity: .5; cursor: wait; }
+
+.quota-error-ignore:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 2px; }
