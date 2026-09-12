@@ -9,12 +9,28 @@ import { describe, expect, it } from 'vitest'
 const exec = promisify(execFile)
 
 describe('candidate replacement', () => {
-  it.each(['build', 'busy', 'background', 'invalid', 'start', 'success'])('preserves service boundaries for %s', async (scenario) => {
+  it.each(['build', 'busy', 'background', 'invalid', 'activation', 'freeze-response-lost', 'start', 'success'])('preserves service boundaries for %s', async (scenario) => {
     const root = await mkdtemp(join(tmpdir(), 'codexapp-deploy-test-'))
     const bin = join(root, 'bin')
     const scripts = join(root, 'scripts')
     const log = join(root, 'calls')
+    let activationFrozen = false
     const server = createServer((request, response) => {
+      if (request.url === '/codex-api/api-proxy/activation/activity') {
+        response.end(JSON.stringify({ data: { ready: true, draining: activationFrozen, activeCount: scenario === 'activation' ? 1 : 0 } }))
+        return
+      }
+      if (request.url === '/codex-api/api-proxy/activation/drain') {
+        let raw = ''
+        request.on('data', chunk => { raw += chunk })
+        request.on('end', () => {
+          activationFrozen = JSON.parse(raw).draining
+          // The write took effect even though the caller did not receive success.
+          if (scenario === 'freeze-response-lost' && activationFrozen) response.statusCode = 503
+          response.end(JSON.stringify({ data: { ready: true, draining: activationFrozen, activeCount: 0 } }))
+        })
+        return
+      }
       if (request.url === '/codex-api/runtime/activity') { response.statusCode = 404; response.end('{}'); return }
       response.setHeader('Content-Type', 'application/json')
       if (request.url?.startsWith('/codex-api/automation-runtime')) {
@@ -62,10 +78,11 @@ describe('candidate replacement', () => {
         env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, CODEXAPP_REPLACE_DEV: '1', CODEXAPP_MULTI_ACCOUNT_CONTAINER: 'fixture-only', CODEXAPP_MULTI_ACCOUNT_PORT: String(address.port), DEPLOY_TEST_LOG: log, DEPLOY_TEST_SCENARIO: scenario },
       }).then(() => 0, error => error.code)
       const calls = await readFile(log, 'utf8')
-      if (scenario === 'build' || scenario === 'busy' || scenario === 'background' || scenario === 'invalid') {
+      if (['build', 'busy', 'background', 'invalid', 'activation', 'freeze-response-lost'].includes(scenario)) {
         expect(result).not.toBe(0)
         expect(calls).not.toContain('docker stop')
         expect(calls).not.toContain('docker rm')
+        expect(activationFrozen).toBe(false)
       } else {
         expect(calls.indexOf('docker build')).toBeLessThan(calls.indexOf('docker stop'))
         if (scenario === 'start') {

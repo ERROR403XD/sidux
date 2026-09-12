@@ -14,6 +14,7 @@ BACKUP_NAME="${CONTAINER_NAME}-previous-$$"
 existing=0
 drained=0
 api_drained=0
+activation_drained=0
 stopped=0
 renamed=0
 finished=0
@@ -38,6 +39,9 @@ cleanup() {
   fi
   if [[ "$finished" != 1 && "$api_drained" == 1 ]]; then
     curl --fail --silent --max-time 10 -X POST -H 'Content-Type: application/json' --data '{"draining":false}' "$BASE_URL/codex-api/api-proxy/drain" >/dev/null || true
+  fi
+  if [[ "$finished" != 1 && "$activation_drained" == 1 ]]; then
+    curl --fail --silent --max-time 10 -X POST -H 'Content-Type: application/json' --data '{"draining":false}' "$BASE_URL/codex-api/api-proxy/activation/drain" >/dev/null || true
   fi
   if [[ -n "$pack_dir" ]]; then rm -rf "$pack_dir"; fi
   exit "$result"
@@ -66,6 +70,14 @@ docker build -t "$IMAGE_NAME" -f "${CODEXAPP_MULTI_ACCOUNT_DOCKERFILE:-$ROOT_DIR
 docker volume create "$CODEX_HOME_VOLUME" >/dev/null
 
 if [[ "$existing" == 1 ]]; then
+  if [[ "${CODEXAPP_LEGACY_API_PROXY:-0}" != 1 ]]; then
+    activation_status="$(curl --silent --show-error --max-time 10 -o /dev/null -w '%{http_code}' "$BASE_URL/codex-api/api-proxy/activation/activity")"
+    if [[ "$activation_status" != 404 ]]; then
+      [[ "$activation_status" == 200 ]] || { echo "Cannot inspect activation (HTTP $activation_status)." >&2; exit 1; }
+      activation_drained=1
+      curl --fail --silent --show-error --max-time 10 -X POST -H 'Content-Type: application/json' --data '{"draining":true}' "$BASE_URL/codex-api/api-proxy/activation/drain" >/dev/null
+    fi
+  fi
   drained=1
   runtime="$(curl --fail --silent --show-error --max-time 40 -X POST -H 'Content-Type: application/json' --data '{"draining":true}' "$BASE_URL/codex-api/automation-runtime/drain")"
   printf '%s' "$runtime" | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{const d=JSON.parse(s).data;if(d?.ready!==true||d.draining!==true||d.activeCount!==0||d.queuedCount!==0)process.exit(1)})'
