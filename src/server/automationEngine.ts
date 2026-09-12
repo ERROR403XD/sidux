@@ -53,6 +53,8 @@ export class AutomationEngine {
   private chain: Promise<unknown> = Promise.resolve()
   private saving: Promise<unknown> = Promise.resolve()
   private readonly dispatches = new Map<string, Promise<void>>()
+  private readonly inspections = new Map<string, Promise<void>>()
+  private readonly inspectionVersions = new WeakMap<AutomationRun, number>()
   private timer: ReturnType<typeof setInterval> | null = null
   private pendingTick = false
   private stopped = false
@@ -186,6 +188,7 @@ export class AutomationEngine {
     this.lastScan = this.now()
   }
   private finish(run: AutomationRun, status: AutomationRun['status'], error?: string, errorCode?: string) {
+    this.inspectionVersions.set(run, (this.inspectionVersions.get(run) ?? 0) + 1)
     this.runtime.releaseAccount?.(run.runId)
     run.status = status; run.finishedAt = this.now(); run.error = error ?? null; run.errorCode = errorCode ?? null
   }
@@ -257,6 +260,7 @@ export class AutomationEngine {
     if (this.pendingTick || !this.ready || this.stopped || this.error) return Promise.resolve()
     this.pendingTick = true
     const started: Promise<void>[] = []
+    const inspected: Promise<void>[] = []
     return this.serial(async () => {
       if (this.stopped) return
       const now = this.now()
@@ -288,23 +292,38 @@ export class AutomationEngine {
         if (changed) await this.persist()
         if (now - this.lastInspect >= 30000) {
           this.lastInspect = now
-          for (const run of this.state.runs.filter(isActiveAutomationRun)) { if (!this.dispatches.has(run.runId)) { await this.reconcile(run); await this.persist() } }
-        }
-        if (!this.runtime.accountBusy()) {
-          for (const run of this.state.runs.filter((row) => row.status === 'queued' && (!row.retryAfter || row.retryAfter <= now))) {
-            if (this.state.runs.filter(isActiveAutomationRun).length >= 4) break
-            if (this.state.runs.some(other => isActiveAutomationRun(other) && other.automationId === run.automationId && other.target === run.target)) continue
-            if (this.runtime.accountBusy() || this.stopped) break
-            run.status = 'starting'
-            await this.persist()
-            const flight = this.dispatch(run).catch(() => { this.error = '运行记录保存失败，调度已暂停'; this.ready = false })
-              .finally(() => { this.dispatches.delete(run.runId) })
-            this.dispatches.set(run.runId, flight)
-            started.push(flight)
+          for (const run of this.state.runs.filter(isActiveAutomationRun)) {
+            if (!this.dispatches.has(run.runId)) inspected.push(this.inspectInBackground(run))
           }
         }
+        await this.dispatchQueued(now, started)
       } catch (error) { this.error = error instanceof Error ? error.message : '调度器停止'; this.ready = false }
-    }).finally(() => { this.pendingTick = false }).then(async () => { await Promise.all(started) })
+    }).finally(() => { this.pendingTick = false }).then(async () => {
+      await Promise.all(inspected)
+      // Reuse slots freed by this inspection pass without delaying initial
+      // dispatch or holding manual requests and notifications behind reads.
+      if (inspected.length) await this.serial(() => this.dispatchQueued(this.now(), started)).catch(error => {
+        this.error = error instanceof Error ? error.message : '调度器停止'
+        this.ready = false
+      })
+      await Promise.all(started)
+    })
+  }
+  private async dispatchQueued(now: number, started: Promise<void>[]): Promise<void> {
+    if (!this.ready || this.stopped || this.error) return
+    if (!this.runtime.accountBusy()) {
+      for (const run of this.state.runs.filter((row) => row.status === 'queued' && (!row.retryAfter || row.retryAfter <= now))) {
+        if (this.state.runs.filter(isActiveAutomationRun).length >= 4) break
+        if (this.state.runs.some(other => isActiveAutomationRun(other) && other.automationId === run.automationId && other.target === run.target)) continue
+        if (this.runtime.accountBusy() || this.stopped) break
+        run.status = 'starting'
+        await this.persist()
+        const flight = this.dispatch(run).catch(() => { this.error = '运行记录保存失败，调度已暂停'; this.ready = false })
+          .finally(() => { this.dispatches.delete(run.runId) })
+        this.dispatches.set(run.runId, flight)
+        started.push(flight)
+      }
+    }
   }
   private async dispatch(run: AutomationRun) {
     const record = this.definitions.get(run.automationId)?.record
@@ -379,28 +398,96 @@ export class AutomationEngine {
     }
     await this.persist()
   }
+  private inspectionGuard(run: AutomationRun): () => boolean {
+    const version = this.inspectionVersions.get(run) ?? 0
+    const { revision, status, threadId, turnId, submittedAt } = run
+    return () => !this.stopped && this.state.runs.includes(run) && isActiveAutomationRun(run)
+      && (this.inspectionVersions.get(run) ?? 0) === version
+      && run.revision === revision && run.status === status && run.threadId === threadId
+      && run.turnId === turnId && run.submittedAt === submittedAt
+  }
+  private inspectInBackground(run: AutomationRun): Promise<void> {
+    const existing = this.inspections.get(run.runId)
+    if (existing) return existing
+    if (!run.submittedAt || !run.threadId || this.inspections.size >= 4) return Promise.resolve()
+    const current = this.inspectionGuard(run)
+    // The adapter receives a snapshot, never the mutable scheduling record.
+    const snapshot = structuredClone(run)
+    const request = Promise.resolve().then(() => this.runtime.inspect(snapshot))
+    let settled = false
+    const work = (async () => {
+      let result: AutomationInspection
+      try { result = await bounded(request) }
+      catch (error) {
+        await this.serial(async () => {
+          if (!current()) return
+          this.inspectionFailed(run, error, false)
+          await this.persist()
+        })
+        return
+      }
+      let interrupt: AutomationRun | null = null
+      let stillCurrent: (() => boolean) | null = null
+      await this.serial(async () => {
+        if (!current()) return
+        if (this.applyInspection(run, result, false)) {
+          interrupt = structuredClone(run)
+          stillCurrent = this.inspectionGuard(run)
+        }
+        await this.persist()
+      })
+      if (interrupt) {
+        let failure: unknown
+        try { await bounded(this.runtime.interrupt(interrupt)) }
+        catch (error) { failure = error }
+        await this.serial(async () => {
+          if (!stillCurrent?.()) return
+          if (failure) this.inspectionFailed(run, failure, false)
+          else {
+            run.errorCode = 'RUN_TIMEOUT'
+            run.error = '运行已超时，已请求中止，等待上游确认'
+          }
+          await this.persist()
+        })
+      }
+    })().catch(() => { this.error = '运行记录写入失败，调度已停止'; this.ready = false })
+    const flight = work.finally(() => {
+      if (settled) this.inspections.delete(run.runId)
+      else void request.then(
+        () => { this.inspections.delete(run.runId) },
+        () => { this.inspections.delete(run.runId) },
+      )
+    })
+    void request.then(() => { settled = true }, () => { settled = true })
+    this.inspections.set(run.runId, flight)
+    return flight
+  }
+  private applyInspection(run: AutomationRun, result: AutomationInspection, restart: boolean): boolean {
+    if (result.turnId) run.turnId = result.turnId
+    if (result.status === 'unknown') {
+      if (restart || this.now() - run.submittedAt! > 120000) this.finish(run, 'interrupted', '无法确认提交结果，请检查会话后再决定是否重试', 'SUBMISSION_UNKNOWN')
+    } else if (['completed', 'failed', 'interrupted'].includes(result.status)) {
+      const info = result.status === 'failed' ? automationError(result.error ?? '') : null
+      this.finish(run, result.status as AutomationRun['status'], info?.error, info?.errorCode)
+    } else {
+      run.status = result.status as 'running' | 'waiting_input'
+      return this.now() - run.submittedAt! > Number(process.env.CODEXAPP_AUTOMATION_TIMEOUT_MS || 3600000)
+    }
+    return false
+  }
+  private inspectionFailed(run: AutomationRun, error: unknown, restart: boolean): void {
+    if (restart || this.now() - run.submittedAt! > 3600000) this.finish(run, 'interrupted', '上游状态无法核对，请检查执行会话', automationError(error).errorCode)
+  }
   private async reconcile(run: AutomationRun, restart = false) {
     if (!run.submittedAt || !run.threadId) { if (restart) this.finish(run, 'interrupted', '服务在提交前退出，请按需重试', 'SERVICE_RESTARTED'); return }
     try {
-      const result = await bounded(this.runtime.inspect(run))
-      if (result.turnId) run.turnId = result.turnId
-      if (result.status === 'unknown') {
-        if (restart || this.now() - run.submittedAt > 120000) this.finish(run, 'interrupted', '无法确认提交结果，请检查会话后再决定是否重试', 'SUBMISSION_UNKNOWN')
-        return
+      const result = await bounded(this.runtime.inspect(structuredClone(run)))
+      if (this.applyInspection(run, result, restart)) {
+        await bounded(this.runtime.interrupt(run))
+        run.errorCode = 'RUN_TIMEOUT'
+        run.error = '运行已超时，已请求中止，等待上游确认'
       }
-      if (['completed', 'failed', 'interrupted'].includes(result.status)) {
-        const info = result.status === 'failed' ? automationError(result.error ?? '') : null
-        this.finish(run, result.status as AutomationRun['status'], info?.error, info?.errorCode)
-      } else {
-        run.status = result.status as 'running' | 'waiting_input'
-        if (this.now() - run.submittedAt > Number(process.env.CODEXAPP_AUTOMATION_TIMEOUT_MS || 3600000)) {
-          await bounded(this.runtime.interrupt(run))
-          run.errorCode = 'RUN_TIMEOUT'; run.error = '运行已超时，已请求中止，等待上游确认'
-        }
-      }
-    } catch (error) {
-      if (restart || this.now() - run.submittedAt > 3600000) this.finish(run, 'interrupted', '上游状态无法核对，请检查执行会话', automationError(error).errorCode)
-    }
+    } catch (error) { this.inspectionFailed(run, error, restart) }
   }
   notification(notification: { method: string; params: unknown }) {
     if (!this.ready || this.stopped) return
@@ -409,11 +496,12 @@ export class AutomationEngine {
     if (!threadId || !/^(turn\/|server\/request)/u.test(notification.method)) return
     void this.serial(async () => {
       const run = this.state.runs.find((row) => isActiveAutomationRun(row) && row.threadId === threadId)
-      if (!run) return
+      if (!run || !['turn/completed', 'server/request', 'server/request/resolved'].includes(notification.method)) return
+      if (notification.method === 'turn/completed' && run.turnId && params.turn?.id !== run.turnId) return
+      this.inspectionVersions.set(run, (this.inspectionVersions.get(run) ?? 0) + 1)
       if (notification.method === 'turn/completed') {
-        if (run.turnId && params.turn?.id !== run.turnId) return
         // Read and correlate the run marker if the start response was lost.
-        if (!run.turnId) await this.reconcile(run)
+        if (!run.turnId) { void this.inspectInBackground(run); return }
         else if (params.turn?.status === 'completed' && !params.turn.error) this.finish(run, 'completed')
         else { const info = automationError((params.turn?.error as { message?: string })?.message ?? ''); this.finish(run, params.turn?.status === 'interrupted' ? 'interrupted' : 'failed', info.error, info.errorCode) }
       } else if (notification.method === 'server/request') run.status = 'waiting_input'

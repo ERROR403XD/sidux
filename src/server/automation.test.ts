@@ -276,3 +276,66 @@ it('keeps the acquired default account fixed when a different primary is removed
   await f.engine.cancelAccount(selected, false, [run.runId])
   expect(f.engine.runs('test').data.find(row => row.runId === run.runId)?.status).toBe('cancelled')
 })
+
+it.each(['completed', 'cancelled'] as const)('allows manual/drain/notifications during slow inspection and discards its result after %s', async terminal => {
+  const f = await fixture({ rule: 'FREQ=DAILY' })
+  const released = vi.fn()
+  f.runtime.releaseAccount = released
+  const run = await f.engine.manual('test', f.home, 'first')
+  await f.engine.tick()
+  let resolve!: (value: AutomationInspection) => void
+  const held = new Promise<AutomationInspection>(done => { resolve = done })
+  vi.mocked(f.runtime.inspect).mockReturnValue(held)
+  f.advance(30_000)
+  const tick = f.engine.tick()
+  try {
+    await vi.waitFor(() => expect(f.runtime.inspect).toHaveBeenCalledOnce())
+    // These mutations must finish while inspect is still unresolved.
+    let responsive = false
+    const manual = f.engine.manual('test', f.home, 'waiting')
+    void manual.then(() => { responsive = true })
+    await vi.waitFor(() => expect(responsive).toBe(true))
+    let drained = false
+    void f.engine.drain().then(() => { drained = true })
+    await vi.waitFor(() => expect(drained).toBe(true))
+    await expect(f.engine.manual('test', f.home, 'blocked')).rejects.toThrow('交接')
+    if (terminal === 'completed') {
+      f.engine.notification({ method: 'turn/completed', params: { threadId: 'thread-1', turn: { id: 'turn-1', status: 'completed' } } })
+    } else await f.engine.cancelAccount('removed', false, [run.runId])
+    await f.engine.refresh()
+    expect(f.engine.runs('test').data.find(row => row.runId === run.runId)?.status).toBe(terminal)
+    const releases = released.mock.calls.filter(([id]) => id === run.runId).length
+    resolve({ status: 'running', turnId: 'stale-turn' })
+    await tick
+    expect(f.engine.runs('test').data.find(row => row.runId === run.runId)).toMatchObject({ status: terminal, turnId: 'turn-1' })
+    expect(released.mock.calls.filter(([id]) => id === run.runId)).toHaveLength(releases)
+    await f.engine.drain(false)
+    expect(f.engine.snapshot().draining).toBe(false)
+  } finally { resolve({ status: 'unknown' }); await tick }
+})
+
+it('keeps approval transitions and single-flight reads intact while slow inspection is outside the queue', async () => {
+  const f = await fixture({ rule: 'FREQ=DAILY' })
+  await f.engine.manual('test', f.home, 'approval-race')
+  await f.engine.tick()
+  let resolve!: (value: AutomationInspection) => void
+  vi.mocked(f.runtime.inspect).mockReturnValue(new Promise(done => { resolve = done }))
+  f.advance(30_000)
+  const first = f.engine.tick()
+  let second: Promise<void> | undefined
+  try {
+    await vi.waitFor(() => expect(f.runtime.inspect).toHaveBeenCalledOnce())
+    f.engine.notification({ method: 'server/request', params: { threadId: 'thread-1' } })
+    await f.engine.refresh()
+    expect(f.engine.runs('test').data[0]?.status).toBe('waiting_input')
+    f.advance(30_000)
+    second = f.engine.tick()
+    await f.engine.refresh()
+    expect(f.runtime.inspect).toHaveBeenCalledOnce()
+    resolve({ status: 'running', turnId: 'turn-1' })
+    await Promise.all([first, second])
+    expect(f.engine.runs('test').data[0]?.status).toBe('waiting_input')
+    expect(f.runtime.interrupt).not.toHaveBeenCalled()
+    expect(f.runtime.start).toHaveBeenCalledOnce()
+  } finally { resolve({ status: 'unknown' }); await Promise.all([first, second]) }
+})
