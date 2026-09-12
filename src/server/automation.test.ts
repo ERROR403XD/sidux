@@ -339,3 +339,34 @@ it('keeps approval transitions and single-flight reads intact while slow inspect
     expect(f.runtime.start).toHaveBeenCalledOnce()
   } finally { resolve({ status: 'unknown' }); await Promise.all([first, second]) }
 })
+
+it('dispatches an independent fixed account while another run inspection is stalled', async () => {
+  const f = await fixture({ rule: 'FREQ=DAILY' })
+  const second = parseAutomationToml(await readFile(f.path, 'utf8'))!
+  second.id = 'independent'
+  second.accountStorageId = 'b'.repeat(64)
+  await mkdir(join(f.home, 'automations', second.id))
+  await writeFile(join(f.home, 'automations', second.id, 'automation.toml'), serializeAutomationToml(second))
+  f.runtime.acquireAccount = vi.fn(async () => true)
+  f.runtime.accountStorageId = () => 'b'.repeat(64)
+  const first = await f.engine.manual('test', f.home, 'inspected-run')
+  await f.engine.tick()
+  let release!: (value: AutomationInspection) => void
+  vi.mocked(f.runtime.inspect).mockReturnValue(new Promise(resolve => { release = resolve }))
+  f.advance(30_000)
+  const tick = f.engine.tick()
+  let nextTick: Promise<void> | undefined
+  try {
+    await vi.waitFor(() => expect(f.runtime.inspect).toHaveBeenCalledOnce())
+    const other = await f.engine.manual('independent', f.home, 'independent-request')
+    nextTick = f.engine.tick()
+    await vi.waitFor(() => expect(f.runtime.start).toHaveBeenCalledTimes(2))
+    expect(f.runtime.acquireAccount).toHaveBeenLastCalledWith(other.runId, expect.objectContaining({ accountStorageId: 'b'.repeat(64) }))
+    await f.engine.cancelAccount('a'.repeat(64), false, [first.runId])
+    release({ status: 'running', turnId: 'old' })
+    await Promise.all([tick, nextTick])
+    expect(f.engine.runs('independent').data[0]).toMatchObject({ runId: other.runId, status: 'running', executionAccountStorageId: 'b'.repeat(64) })
+    expect(f.runtime.interrupt).not.toHaveBeenCalled()
+    expect(f.engine.snapshot().activeCount).toBe(1)
+  } finally { release({ status: 'unknown' }); await Promise.all([tick, nextTick]) }
+})
