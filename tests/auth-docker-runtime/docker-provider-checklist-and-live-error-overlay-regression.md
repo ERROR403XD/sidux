@@ -26,7 +26,7 @@ Docker provider/auth checklist execution and live error overlay de-duplication.
 - Provider switching is scoped to the selected provider and does not require changing the model dropdown directly.
 - Invalid/expired auth stays on the Codex provider path and renders the final auth failure as a persisted chat error.
 - A new live error is still visible when an older persisted turn error exists, but the same live error is suppressed after that exact error has persisted.
-- Feedback mailto diagnostics include recent diagnostics, visible page text, and the visible auth error.
+- Feedback opens a previewable minimal report. It excludes visible page text, raw auth errors, paths and credentials; copying or sharing is a separate user action.
 - Malformed auth is treated as unusable auth and falls back to Zen.
 
 #### Rollback/Cleanup

@@ -50,3 +50,10 @@
 显示缓存 `codexapp.delivery-view.v1.*` 仅保存 UI 记录，永不用于决定是否投递；既有 `codexapp.delivery.v2.*`、服务端发送状态与租约仍是投递事实。回执 GET 最多 100 个 ID，仅查询当前需核对的会话，合并同会话并发；不读取账号、不 resume、不 reconcile、不写队列。原生证据出现后清除对应显示缓存。退出测试浏览器即可清理虚构 UI 数据，降级不需要迁移投递状态。
 
 性能证据：2026-09-13 Chromium，在实际页面加载完成后，对 5,000 条历史与 100 条显示中的投递做 100 次投影；中位数 0.30ms、p95 0.50ms，无显示投递时复用原数组。结果保存在 `output/0219-final/steering-ui.json`。该数字只度量前端合并函数，不代表真实上游发送延迟或整页帧时间。浏览器脚本中引导变更请求恰好一次，无 turn/start、turn/interrupt 或账号切换请求。
+## 0.2.19 封测：开发页面与安装包分别验证引导显示
+
+- 前提：4173 为当前工作树的独立 Vite，59001 为已准备的固定安装包；使用 `scripts/test-steering-visibility-ui.cjs` 的合成会话与接口，不能读取或投递真实用户内容。
+- 操作：先运行 `node scripts/test-steering-visibility-ui.cjs`；再运行 `UI_BASE_URL=http://127.0.0.1:59001 UI_SOURCE_PERF=0 UI_REPORT_PATH=output/0219-final/sealed-steering-packaged-ui.json node scripts/test-steering-visibility-ui.cjs`。
+- 期望：两者都完成提交挂起、切换、刷新、失败读取、未知/失败/确认、原生回显去重及 TestChat href/title/text；只有开发服务运行源码微基准。安装包没有 `/src` 端点，跳过该采样不跳过任何界面断言。
+- 失败诊断：保留页面错误、console 和请求失败路径；加载恢复页不计通过，不用空白截图冒充正文保存成功。
+- 清理：关闭脚本自有浏览器上下文，测试状态随上下文销毁；不改变账号、发送队列、实际会话或生产服务。

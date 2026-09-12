@@ -77,6 +77,10 @@ async function main() {
     })
     page = await context.newPage()
     page.on('pageerror', error => report.errors.push(error.message))
+    page.on('console', entry => {
+      if (entry.type() === 'error') console.error('Browser console:', entry.text())
+    })
+    page.on('requestfailed', request => console.error('Browser request failed:', new URL(request.url()).pathname, request.failure()?.errorText))
     const row = () => page.locator('.conversation-item[data-role="user"]').filter({ hasText: 'TestChat-steer-0219' })
     const notify = async params => {
       await page.waitForFunction(() => window.__streams.length >= 2 && window.__streams.every(stream => typeof stream.onmessage === 'function'))
@@ -162,29 +166,36 @@ async function main() {
     assert.equal(report.requests.filter(request => request.path === 'thread-queue-state' && request.operation === 'steer').length, 1)
     assert.ok(!report.requests.some(request => ['delivery', 'accounts/switch'].includes(request.path) || ['turn/start', 'turn/interrupt'].includes(request.rpc)))
     assert.deepEqual(report.errors, [])
-    report.presentationPerformance = await page.evaluate(async () => {
-      const { useConversationDeliveries } = await import('/src/composables/useConversationDeliveries.ts')
-      const tracker = useConversationDeliveries()
-      const native = Array.from({ length: 5000 }, (_, index) => ({ id: `p-${index}`, role: index % 2 ? 'assistant' : 'user', text: 'history', turnId: `t-${index}` }))
-      for (let index = 0; index < 100; index++) tracker.begin('performance-only', { id: `bench-${index}`, text: 'pending', imageUrls: [], skills: [], fileAttachments: [], collaborationMode: 'default' })
-      for (let index = 0; index < 10; index++) tracker.project('performance-only', native)
-      const samples = []
-      for (let index = 0; index < 100; index++) {
-        const started = performance.now()
-        const result = tracker.project('performance-only', native)
-        if (result.length !== 5100) throw new Error('Invalid performance fixture')
-        samples.push(performance.now() - started)
-      }
-      samples.sort((a, b) => a - b)
-      return { historyMessages: 5000, visibleDeliveries: 100, samples: 100, medianMs: samples[50], p95Ms: samples[95], noDeliveriesReusesHistory: tracker.project('no-deliveries', native) === native }
-    })
+    if (process.env.UI_SOURCE_PERF === '0') {
+      // Installed bundles have no /src module endpoint. All UI assertions above
+      // still run; the source-only microbenchmark is measured on Vite separately.
+      report.presentationPerformance = { measured: false, reason: 'Source microbenchmark runs separately on the development server' }
+    } else {
+      report.presentationPerformance = await page.evaluate(async () => {
+        const { useConversationDeliveries } = await import('/src/composables/useConversationDeliveries.ts')
+        const tracker = useConversationDeliveries()
+        const native = Array.from({ length: 5000 }, (_, index) => ({ id: `p-${index}`, role: index % 2 ? 'assistant' : 'user', text: 'history', turnId: `t-${index}` }))
+        for (let index = 0; index < 100; index++) tracker.begin('performance-only', { id: `bench-${index}`, text: 'pending', imageUrls: [], skills: [], fileAttachments: [], collaborationMode: 'default' })
+        for (let index = 0; index < 10; index++) tracker.project('performance-only', native)
+        const samples = []
+        for (let index = 0; index < 100; index++) {
+          const started = performance.now()
+          const result = tracker.project('performance-only', native)
+          if (result.length !== 5100) throw new Error('Invalid performance fixture')
+          samples.push(performance.now() - started)
+        }
+        samples.sort((a, b) => a - b)
+        return { historyMessages: 5000, visibleDeliveries: 100, samples: 100, medianMs: samples[50], p95Ms: samples[95], noDeliveriesReusesHistory: tracker.project('no-deliveries', native) === native }
+      })
+    }
+    report.passed = true
   } catch (error) {
     if (page) await page.screenshot({ path: 'output/playwright/0219-steering-failure.png', fullPage: true }).catch(() => {})
     throw error
   } finally {
     releaseSteer?.()
     await fs.mkdir('output/0219-final', { recursive: true })
-    await fs.writeFile('output/0219-final/steering-ui.json', JSON.stringify(report, null, 2))
+    await fs.writeFile(process.env.UI_REPORT_PATH || 'output/0219-final/steering-ui.json', JSON.stringify(report, null, 2))
     await browser.close()
   }
 }
