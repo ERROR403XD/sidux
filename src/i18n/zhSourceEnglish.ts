@@ -377,7 +377,7 @@ export const zhSourceEnglish: Record<string, string> = {
   "跟随模型默认": "Use model default",
   "命令": "Command",
   "斜杠命令": "Slash commands",
-  "没有匹配命令，继续输入或按原方式发送": "No matching commands. Keep typing or send as usual",
+  "无匹配命令": "No matching commands",
   "↑↓ 选择 · Enter 确认 · Esc 收起": "↑↓ Select · Enter Confirm · Esc Close",
   "也可直接输入文字": "You can also type a message directly",
   "无法读取待确认提交": "Could not read pending submissions",

@@ -9,7 +9,7 @@
           <small>{{ t(command.group) }}</small>
         </button>
         <div :style="{ height: `${Math.max(0, commands.length - windowStart - windowCommands.length) * rowHeight}px` }" aria-hidden="true"></div>
-        <div v-if="!commands.length" class="composer-command-empty">{{ t('没有匹配命令，继续输入或按原方式发送') }}</div>
+        <div v-if="!commands.length" class="composer-command-empty">{{ t('无匹配命令') }}</div>
       </div>
       <div class="composer-command-footer">{{ t('↑↓ 选择 · Enter 确认 · Esc 收起') }}</div>
     </div>
