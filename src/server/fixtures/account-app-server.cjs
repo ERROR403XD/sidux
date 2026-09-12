@@ -8,7 +8,7 @@ let account = 'none'
 try { account = JSON.parse(readFileSync(process.env.CODEX_HOME + '/auth.json', 'utf8')).tokens.account_id } catch {}
 const configuredProviderArg = process.argv.find(arg => arg.startsWith('model_provider='))
 const configuredProvider = configuredProviderArg ? JSON.parse(configuredProviderArg.slice('model_provider='.length)) : 'openai'
-if (configuredProvider.startsWith('custom_')) account = 'custom'
+if (/^custom_[a-f0-9]{64}$/.test(configuredProvider)) account = 'custom'
 const threads = new Map()
 const loaded = new Set()
 const refreshReplies = new Map()
@@ -28,7 +28,7 @@ createInterface({ input: process.stdin }).on('line', line => {
   if (!method || id === undefined) return
   let result = {}
   if (method === 'account/login/start') {
-    if (configuredProvider.startsWith('custom_')) { send({ id, error: { message: 'custom_runtime_must_not_login' } }); return }
+    if (/^custom_[a-f0-9]{64}$/.test(configuredProvider)) { send({ id, error: { message: 'custom_runtime_must_not_login' } }); return }
     account = p.chatgptAccountId
   }
   if (method === 'account/read') result = { account: { id: account, email: account + '@example.test' }, pid: process.pid }
@@ -45,13 +45,14 @@ createInterface({ input: process.stdin }).on('line', line => {
   if (method === 'thread/loaded/list') result = { data: [...loaded], nextCursor: null }
   if (method === 'thread/backgroundTerminals/list') result = { data: [], nextCursor: null }
   if (method === 'thread/unsubscribe') result = { status: loaded.has(p.threadId) ? 'unsubscribed' : 'notLoaded' }
-  if (method === 'thread/resume') {
+  if (method === 'thread/resume' || method === 'thread/fork') {
     const thread = JSON.parse(readFileSync(process.env.CODEX_HOME + '/fixture-thread-' + p.threadId + '.json', 'utf8'))
     // Native Codex does not persist a resumable rollout until the first turn.
     if (!thread.turns.length) { send({ id, error: { message: 'no rollout found for thread id ' + p.threadId } }); return }
     const provider = p.modelProvider || thread.modelProvider || configuredProvider
     if (provider !== configuredProvider) { send({ id, error: { message: 'failed to load configuration: Model provider `' + provider + '` not found' } }); return }
     thread.modelProvider = provider
+    if (method === 'thread/fork') { thread.id = randomUUID(); save(thread) }
     threads.set(thread.id, thread)
     loaded.add(thread.id)
     result = { thread }

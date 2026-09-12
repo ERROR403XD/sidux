@@ -27,3 +27,13 @@
 5. 运行 `pnpm exec vitest run src/server/accountRuntimeIntegration.test.ts`，确认显式恢复、发送前隐式恢复、自定义自动化与普通账号并发隔离通过。
 
 清理：恢复原连接选择；保留验收会话供复核，确认后归档。停止本次专用测试容器，不改生产服务和认证。
+
+## 0.2.18 跨账号恢复矩阵
+
+前提：运行环境有 node_modules；全部使用临时 home、合成认证、IPC fixture，不修改服务或真实账号。
+
+执行 `pnpm exec vitest run src/server/providerResumeMatrix.test.ts src/server/accountRuntimeIntegration.test.ts src/server/accountTaskRouting.test.ts src/server/accountAuthCoordinator.test.ts src/server/customConnectionStore.test.ts`。
+
+预期：普通账号 A/B、Responses 自定义连接 A/B、旧 Zen、旧 OpenRouter、旧自定义端点，共 7 个出口、49 个有向组合，每组验证显式恢复、分支、直接发送前隐式恢复（147 个路径）；历史由源出口创建并完成首回合，目标 worker 的 provider 与选择一致，普通账号发送使用目标身份。既有测试继续验证事务切换、忙碌阻塞、回滚、自定义自动化隔离。此矩阵直接设置隔离存储中的选择状态，验证恢复路由，不代表真实 HTTP 切换入口或各厂商远端请求均做过验收。
+
+清理：脚本等待自身子进程退出后删除临时 home，无真实云端费用。Chat-only 连接按既有规则禁止作为会话出口；移除连接、失效凭据、目标模型不支持等错误不属于此 provider 注册修复。
