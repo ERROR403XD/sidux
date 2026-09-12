@@ -486,3 +486,28 @@ it('optional activation respects long-window quota reserved for normal protected
   await expect(f.gateway.prepareActivation('fixed',new AbortController().signal)).rejects.toThrow('受保护任务')
   expect(prepare).not.toHaveBeenCalled()
 })
+
+it('keeps publication activation freeze separate from account switching, normal API drain, and fixed outlet streams', async () => {
+  const f = await fixture()
+  await f.gateway.activation.ready
+  const fixed = 'f'.repeat(64)
+  f.setAccountState({ activeStorageId: 'account', accounts: [{ storageId: 'account' }, { storageId: fixed }] })
+  await f.gateway.store.updateKey(f.second.key.id, { accountStorageId: fixed })
+  const controller = new AbortController()
+  try {
+    const stream = await fetch(f.base + '/v1/responses', { method: 'POST', headers: f.headers(f.second.secret), body: JSON.stringify({ model: 'slow', stream: true }), signal: controller.signal })
+    expect(stream.status).toBe(200)
+    f.setOperation({ kind: 'switch', storageId: 'other' })
+    const frozen = await f.post('/codex-api/api-proxy/activation/drain', { draining: true })
+    expect(frozen.status).toBe(200)
+    expect(f.gateway.activation.releaseActivity().draining).toBe(true)
+    expect(f.gateway.activity.draining).toBe(false)
+    expect([...f.gateway.activity.entries.values()].some(entry => entry.keyId === f.second.key.id && entry.busy)).toBe(true)
+    expect((await f.post('/v1/responses', { model: 'fixture' }, f.second.secret)).status).toBe(200)
+    expect((await f.post('/v1/responses', { model: 'fixture' })).status).toBe(503)
+    expect((await f.post('/codex-api/api-proxy/activation/drain', { draining: false })).status).toBe(200)
+    expect(f.gateway.activation.releaseActivity().draining).toBe(false)
+    f.setOperation(null)
+    expect((await f.post('/v1/responses', { model: 'fixture' })).status).toBe(200)
+  } finally { controller.abort() }
+})

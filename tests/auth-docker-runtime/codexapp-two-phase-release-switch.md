@@ -126,3 +126,11 @@ Validate `scripts/codexapp-release-switch.sh`: prepare an immutable release whil
 3. 清理后运行精确路径 check；有活跃回合或 API 请求时应阻塞。全局 backgroundThreads=skipped-busy 必须标为未检查，不因为本会话后台列表为空就改为零。
 
 清理：只移除本次临时验证服务；保留 prepared 目录及候选数据卷。记录可在独立终端执行的精确路径复查命令，prepare 不执行 activate。
+
+## 0.2.19：自动激活的发布准入与迟到工作
+
+- 前置：隔离 home 与模拟激活上游；正常 API 流、固定账号流和默认账号均用 fixture，不能扣真实额度。
+- 操作：分别挂起激活的额度检查、准备、发送、清理；读取 `/codex-api/api-proxy/activation/activity`。发布脚本先 POST `/activation/drain` 冻结，再检查空闲；模拟交接失败并撤销冻结。让准备超时后迟到返回资源。
+- 预期：未结束的底层工作与迟到清理均阻止发布；冻结不改变计划持久设置。解除后后续计划恢复。固定账号 API 流不断开，普通切换/额度保护及默认出口的原有拒绝规则不变；旧版本缺失统计标为 unsupported，不能声称检查了激活。
+- 清理：对同一隔离服务 POST `{"draining":false}` 到激活、API、自动化各自的 drain 入口；释放 fixture，停止自有测试进程。只读 check 不改变准入状态。
+- 性能：仅发布检查新增两次小型只读请求；不计入普通 API 请求/用量。激活执行增加有界 Promise 跟踪，超时后未结束的工作继续被看见；无新轮询、无账号刷新次数增加。

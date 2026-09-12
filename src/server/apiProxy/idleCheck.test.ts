@@ -2,9 +2,10 @@ import { createRequire } from 'node:module'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 const { checkIdle } = createRequire(import.meta.url)('../../../scripts/check-codexapp-idle.cjs')
 afterEach(() => vi.unstubAllGlobals())
-function responses(api: unknown, activity?: unknown) {
+function responses(api: unknown, activity?: unknown, activation?: unknown) {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
     const path = new URL(url).pathname
+    if (path === '/codex-api/api-proxy/activation/activity') return activation === undefined ? new Response('{}', { status: 404 }) : new Response(JSON.stringify({ data: typeof activation === 'function' ? activation() : activation }));
     if (path === '/codex-api/runtime/activity') return activity === undefined ? new Response('{}', { status: 404 }) : new Response(JSON.stringify({ data: activity }));
     const payload = path === '/codex-api/automation-runtime' ? { data: { ready: true, activeCount: 0, queuedCount: 0 } }
       : path === '/codex-api/thread-queue-state' ? { data: {} }
@@ -40,6 +41,7 @@ describe('native background activity before cutover', () => {
     const calls: string[] = []
     vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
       const path = new URL(url).pathname
+      if (path === '/codex-api/api-proxy/activation/activity') return new Response('{}', { status: 404 });
       if (path === '/codex-api/runtime/activity') return new Response('{}', { status: 404 });
       const request = path === '/codex-api/rpc' ? JSON.parse(String(init?.body)) : null
       calls.push(request?.method || path)
@@ -95,4 +97,19 @@ it('blocks a received turn that has not reached the thread catalog yet', async (
 it('fails closed on a malformed live activity snapshot', async () => {
   responses({}, { activeTurnThreadIds: [], pendingOperationCount: 'unknown' })
   await expect(checkIdle('http://fixture')).rejects.toThrow('live runtime activity')
+})
+
+const emptyApi = { data: { settings: { enabled: false }, activity: { connections: 0, activeRequests: 0 } } }
+it('counts activation independently of ordinary API requests and reports older servers as unsupported', async () => {
+  responses(emptyApi, undefined, { ready: true, draining: false, activeCount: 1 })
+  expect(await checkIdle('http://fixture')).toMatchObject({ idle: false, activationCount: 1, apiActiveRequests: 0 })
+  responses(emptyApi)
+  expect(await checkIdle('http://fixture')).toMatchObject({ idle: true, activationCount: null })
+})
+it('fails closed on unavailable activation and rechecks work started during inventory', async () => {
+  responses(emptyApi, undefined, { ready: false, draining: false, activeCount: 0 })
+  await expect(checkIdle('http://fixture')).rejects.toThrow('activation activity')
+  let reads = 0
+  responses(emptyApi, undefined, () => ({ ready: true, draining: false, activeCount: reads++ }))
+  expect(await checkIdle('http://fixture')).toMatchObject({ idle: false, activationCount: 1 })
 })

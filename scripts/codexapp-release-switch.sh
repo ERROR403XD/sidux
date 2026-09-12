@@ -25,8 +25,13 @@ DROPIN_SNAPSHOT_READY=0
 TEST_CONTAINER_WAS_RUNNING=0
 SCHEDULER_DRAINED=0
 API_PROXY_DRAINED=0
+ACTIVATION_DRAINED=0
 
 resume_scheduler_on_exit() {
+  if [[ "$ACTIVATION_DRAINED" == "1" ]]; then
+    curl --fail --silent --show-error --max-time 10 -X POST -H 'Content-Type: application/json' \
+      --data '{"draining":false}' "$PRODUCTION_URL/codex-api/api-proxy/activation/drain" >/dev/null || true
+  fi
   if [[ "$API_PROXY_DRAINED" == "1" ]]; then
     curl --silent --show-error --max-time 10 -X POST -H 'Content-Type: application/json' \
       --data '{"draining":false}' "$PRODUCTION_URL/codex-api/api-proxy/drain" >/dev/null || true
@@ -67,6 +72,18 @@ try {
   process.exit(readFileSync(entry, 'utf8').includes('/codex-api/api-proxy') ? 1 : 0)
 } catch { process.exit(1) }
 NODE
+}
+
+drain_activation_for_cutover() {
+  if running_release_has_no_api_proxy; then return 0; fi
+  local status
+  status="$(curl --silent --show-error --max-time 10 -o /dev/null -w '%{http_code}' "$PRODUCTION_URL/codex-api/api-proxy/activation/activity")"
+  if [[ "$status" == "404" ]]; then return 0; fi
+  [[ "$status" == "200" ]] || die "Cannot inspect activation (HTTP $status)."
+  # Set before POST so a lost response is also recovered by the exit trap.
+  ACTIVATION_DRAINED=1
+  curl --fail --silent --show-error --max-time 10 -X POST -H 'Content-Type: application/json' \
+    --data '{"draining":true}' "$PRODUCTION_URL/codex-api/api-proxy/activation/drain" >/dev/null
 }
 
 drain_api_proxy_for_cutover() {
@@ -476,6 +493,7 @@ activate_release() {
   release="$(validate_release "$requested")"
   check_runtime_boundary
   systemctl is-active --quiet "$SERVICE_NAME" || die "$SERVICE_NAME must be active before cutover."
+  drain_activation_for_cutover
   drain_scheduler_for_cutover
   drain_api_proxy_for_cutover
   check_idle_runtime
@@ -535,6 +553,7 @@ rollback_release() {
   previous_transaction="$(read_first_line "$active_transaction/previous-transaction" || true)"
   check_runtime_boundary
   systemctl is-active --quiet "$SERVICE_NAME" || die "$SERVICE_NAME must be active before rollback."
+  drain_activation_for_cutover
   drain_scheduler_for_cutover
   drain_api_proxy_for_cutover
   check_idle_runtime

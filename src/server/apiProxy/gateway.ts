@@ -596,6 +596,10 @@ export class ApiProxyGateway {
         json(res, 200, { data: await this.notifications.snapshot() })
         return
       }
+      if (req.method === 'GET' && path === '/activation/activity') {
+        json(res, 200, { data: this.activation.releaseActivity() })
+        return
+      }
       if (req.method === 'GET' && path === '/activation') {
         json(res, 200, { data: await this.activation.snapshot() })
         return
@@ -676,6 +680,12 @@ export class ApiProxyGateway {
         await this.store.updateKey(id, input as Parameters<ProxyStore['updateKey']>[1])
         if (input.interrupt === true || input.accountStorageId !== undefined || input.protected !== undefined) this.activity.abortKey(id)
         json(res, 200, { ok: true })
+        return
+      }
+      if (path === '/activation/drain') {
+        if (typeof input.draining !== 'boolean') throw new ProxyError('invalid_request', 'draining 必须为布尔值。')
+        this.activation.setReleaseDraining(input.draining)
+        json(res, 200, { data: this.activation.releaseActivity() })
         return
       }
       if (path === '/drain') {

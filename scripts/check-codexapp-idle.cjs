@@ -19,6 +19,19 @@ async function checkIdle(baseUrl, { legacyScheduler = false, legacyApiProxy = fa
       || !Number.isInteger(data.pendingOperationCount) || data.pendingOperationCount < 0) throw new Error('Invalid live runtime activity; idle status is unknown');
     return data.activeTurnThreadIds.length + data.pendingOperationCount;
   }
+  async function activationActivity() {
+    if (legacyApiProxy) return null;
+    const payload = await readJson('/codex-api/api-proxy/activation/activity', undefined, true);
+    // 0.2.18 and earlier do not expose this inventory; report that explicitly.
+    if (payload === null) return null;
+    const data = payload?.data;
+    if (data?.ready !== true || typeof data.draining !== 'boolean'
+      || !Number.isInteger(data.activeCount) || data.activeCount < 0) {
+      throw new Error('Invalid activation activity; idle status is unknown');
+    }
+    return data.activeCount;
+  }
+  let activationCount = await activationActivity();
   let liveActivityCount = await liveActivity();
   if (!legacyScheduler) {
     const { data } = await readJson('/codex-api/automation-runtime');
@@ -67,7 +80,7 @@ async function checkIdle(baseUrl, { legacyScheduler = false, legacyApiProxy = fa
     if (cursor) cursors.add(cursor);
   } while (cursor && pages < 20);
   if (cursor) throw new Error('Thread inventory exceeded the bounded 2000-thread idle check');
-  const busy = !!(liveActivityCount || activeTurns || queuedCount || pending.length || apiConnections || apiActiveRequests);
+  const busy = !!(activationCount || liveActivityCount || activeTurns || queuedCount || pending.length || apiConnections || apiActiveRequests);
   let backgroundCheck = 'skipped-busy';
   let backgroundThreads = null;
   let loadedThreads = 0;
@@ -115,14 +128,16 @@ async function checkIdle(baseUrl, { legacyScheduler = false, legacyApiProxy = fa
     }
   }
   liveActivityCount = Math.max(liveActivityCount, await liveActivity());
-  return { liveActivityCount, activeTurns, queuedCount, pendingCount: pending.length, pages, apiConnections, apiActiveRequests, backgroundCheck, backgroundThreads, loadedThreads, idle: !busy && !backgroundThreads && !liveActivityCount };
+  const lastActivationCount = await activationActivity();
+  if (lastActivationCount !== null) activationCount = Math.max(activationCount ?? 0, lastActivationCount);
+  return { activationCount, liveActivityCount, activeTurns, queuedCount, pendingCount: pending.length, pages, apiConnections, apiActiveRequests, backgroundCheck, backgroundThreads, loadedThreads, idle: !busy && !backgroundThreads && !liveActivityCount && !activationCount };
 }
 
 module.exports = { checkIdle };
 if (require.main === module) {
   checkIdle(process.env.CODEXAPP_IDLE_CHECK_URL, { legacyScheduler: process.env.CODEXAPP_LEGACY_SCHEDULER === '1', legacyApiProxy: process.env.CODEXAPP_LEGACY_API_PROXY === '1' })
     .then(result => {
-      console.log(`idle-check|liveExecutions=${result.liveActivityCount}|activeTurns=${result.activeTurns}|queued=${result.queuedCount}|pendingApprovals=${result.pendingCount}|apiConnections=${result.apiConnections}|apiActiveRequests=${result.apiActiveRequests}|backgroundThreads=${result.backgroundThreads ?? result.backgroundCheck}|loadedThreads=${result.loadedThreads}|pages=${result.pages}`);
+      console.log(`idle-check|activation=${result.activationCount ?? 'unsupported'}|liveExecutions=${result.liveActivityCount}|activeTurns=${result.activeTurns}|queued=${result.queuedCount}|pendingApprovals=${result.pendingCount}|apiConnections=${result.apiConnections}|apiActiveRequests=${result.apiActiveRequests}|backgroundThreads=${result.backgroundThreads ?? result.backgroundCheck}|loadedThreads=${result.loadedThreads}|pages=${result.pages}`);
       if (!result.idle) process.exitCode = 3;
     })
     .catch(error => { console.error(error.message); process.exitCode = 1; });

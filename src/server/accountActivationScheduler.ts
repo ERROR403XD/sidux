@@ -28,6 +28,10 @@ export class AccountActivationScheduler {
   private flight: Promise<void> | null = null
   private writes: Promise<unknown> = Promise.resolve()
   private closed = false
+  private initialized = false
+  private releaseDraining = false
+  private ticking = 0
+  private pendingWork = new Set<Promise<unknown>>()
   private activeAbort: AbortController | null = null
   private readonly lease: AutomationStore
   private readonly abort = new AbortController()
@@ -63,6 +67,7 @@ export class AccountActivationScheduler {
     await this.dependencies.initialize?.()
     // Startup deliberately chooses the next future slot; there is no backfill.
     this.nextAt = nextActivationAt(this.state.settings, this.now())
+    this.initialized = true
     if (start) {
       this.timer = setInterval(() => { void this.tick().catch(() => { this.error = '激活调度状态保存失败，已停止执行' }) }, 10000)
       this.timer.unref()
@@ -77,6 +82,22 @@ export class AccountActivationScheduler {
     })
     this.writes = work.catch(() => {})
     return work
+  }
+  // Publication has its own admission flag. Account switches and API settings
+  // must not alter normal activation admission or freeze unrelated outlets.
+  releaseActivity() {
+    return {
+      ready: this.initialized && !this.closed && !this.error,
+      draining: this.releaseDraining,
+      activeCount: this.ticking + Number(this.flight !== null) + this.pendingWork.size,
+    }
+  }
+  setReleaseDraining(draining: boolean): void {
+    this.releaseDraining = draining
+  }
+  private track<T>(work: Promise<T>): Promise<T> {
+    this.pendingWork.add(work)
+    return work.finally(() => { this.pendingWork.delete(work) })
   }
   async snapshot(): Promise<ActivationSnapshot> {
     await this.ready
@@ -107,28 +128,33 @@ export class AccountActivationScheduler {
   }
   async tick(): Promise<void> {
     await this.ready
-    if (this.closed || this.error) return
-    await this.lease.renew()
-    await this.history.prune()
-    const cutoff = activationHistoryCutoff(this.now())
-    if (this.state.runs.some(run => activationRunDate(run) < cutoff)) {
-      this.state.runs = this.state.runs.filter(run => activationRunDate(run) >= cutoff)
-      await this.write()
+    if (this.closed || this.error || this.releaseDraining) return
+    this.ticking += 1
+    try {
+      await this.lease.renew()
+      await this.history.prune()
+      const cutoff = activationHistoryCutoff(this.now())
+      if (this.state.runs.some(run => activationRunDate(run) < cutoff)) {
+        this.state.runs = this.state.runs.filter(run => activationRunDate(run) >= cutoff)
+        await this.write()
+      }
+      if (this.flight || this.releaseDraining || this.closed) return
+      const at = this.nextAt
+      if (at === null || this.now() < at) return
+      const settings = structuredClone(this.state.settings)
+      this.nextAt = nextActivationAt(settings, this.now())
+      const revision = this.revision
+      const work = this.execute(settings, at, revision).finally(() => { this.flight = null })
+      this.flight = work
+      await work
+    } finally {
+      this.ticking -= 1
     }
-    if (this.flight) return
-    const at = this.nextAt
-    if (at === null || this.now() < at) return
-    const settings = structuredClone(this.state.settings)
-    this.nextAt = nextActivationAt(settings, this.now())
-    const revision = this.revision
-    const work = this.execute(settings, at, revision).finally(() => { this.flight = null })
-    this.flight = work
-    return work
   }
   private async execute(settings: ActivationSettings, at: number, revision: number): Promise<void> {
     const clock = activationClock(settings.timezone)(at)
     for (const accountId of settings.accountIds) {
-      if (this.closed || this.error || revision !== this.revision) break
+      if (this.closed || this.error || this.releaseDraining || revision !== this.revision) break
       const key = JSON.stringify([accountId, settings.timezone, clock.date, clock.time])
       if (this.state.claims[key]) continue
       const run: ActivationRun = { key, accountId, scheduledAt: at, status: 'preparing', reason: '' }
@@ -143,17 +169,17 @@ export class AccountActivationScheduler {
       const signal = AbortSignal.any([this.abort.signal, activeAbort.signal, AbortSignal.timeout(this.dependencies.timeoutMs ?? 60000)])
       try {
         if (this.dependencies.busy(accountId)) throw new Error('账号正在使用或凭据正在变更，本次跳过')
-        const before = await activationBounded(this.dependencies.check(accountId, 'before'), signal)
+        const before = await activationBounded(this.track(this.dependencies.check(accountId, 'before')), signal)
         if (!before.allowed) throw new Error(before.reason)
-        worker = await activationBounded(this.dependencies.prepare(accountId, signal), signal, late => { void late.dispose().catch(() => {}) })
+        worker = await activationBounded(this.track(this.dependencies.prepare(accountId, signal)), signal, late => { void this.track(late.dispose()).catch(() => {}) })
         run.status = 'sending'
         await this.write(run)
-        const after = await activationBounded(this.dependencies.check(accountId, 'after'), signal)
+        const after = await activationBounded(this.track(this.dependencies.check(accountId, 'after')), signal)
         // No await between the final synchronous admission check and starting fetch.
         if (!after.allowed || after.stamp !== before.stamp || this.dependencies.busy(accountId)) throw new Error(after.reason || '准备期间账号状态或连接发生变化')
-        if (this.closed || revision !== this.revision || signal.aborted) throw new Error('计划已变更或准备超时')
+        if (this.closed || this.releaseDraining || revision !== this.revision || signal.aborted) throw new Error('计划已变更或准备超时')
         dispatched = true
-        await activationBounded(worker.send(signal), signal)
+        await activationBounded(this.track(worker.send(signal)), signal)
         run.status = 'sent'
         run.reason = '请求已完成；额度待同步'
       } catch (error) {
@@ -164,7 +190,7 @@ export class AccountActivationScheduler {
         activeAbort.abort()
         this.activeAbort = null
         if (worker) {
-          await activationBounded(worker.dispose(), AbortSignal.timeout(this.dependencies.cleanupMs ?? 2000)).catch(() => {
+          await activationBounded(this.track(worker.dispose()), AbortSignal.timeout(this.dependencies.cleanupMs ?? 2000)).catch(() => {
             run.reason = '激活资源释放异常；本次不重发，继续后续计划'
           })
         }
@@ -174,7 +200,7 @@ export class AccountActivationScheduler {
       // Persist generation completion and release its lease before optional quota work.
       if (run.status === 'sent' && this.dependencies.afterSend && !this.closed && revision === this.revision) {
         const syncSignal = AbortSignal.any([this.abort.signal, AbortSignal.timeout(this.dependencies.syncMs ?? 5000)])
-        try { run.reason = await activationBounded(this.dependencies.afterSend(accountId), syncSignal) }
+        try { run.reason = await activationBounded(this.track(this.dependencies.afterSend(accountId)), syncSignal) }
         catch { run.reason = '请求已完成；额度同步失败，不重发' }
         await this.write(run)
       }

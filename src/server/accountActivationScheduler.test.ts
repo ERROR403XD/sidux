@@ -177,3 +177,62 @@ describe('optional activation failures do not stall scheduling', () => {
     expect(f.dispose).toHaveBeenCalledOnce()
   })
 })
+
+it('freezes only publication admission, counts preparation and cleanup, and resumes after unfreeze', async () => {
+  let prepared!: () => void
+  let cleaned!: () => void
+  const preparation = new Promise<void>(resolve => { prepared = resolve })
+  const cleanup = new Promise<void>(resolve => { cleaned = resolve })
+  const send = vi.fn(async () => {})
+  const dispose = vi.fn(() => cleanup)
+  const f = await fixture({ prepare: async () => { await preparation; return { send, dispose } } })
+  await f.service.configure(settings)
+  f.setNow('2026-09-08T08:00:00Z')
+  const tick = f.service.tick()
+  try {
+    await vi.waitFor(() => expect(f.service.releaseActivity().activeCount).toBeGreaterThan(0))
+    // Wait for the actual prepare phase, not merely the bookkeeping at tick start.
+    await vi.waitFor(async () => expect((await f.service.snapshot()).runs[0]?.status).toBe('preparing'))
+    f.service.setReleaseDraining(true)
+    prepared()
+    await vi.waitFor(() => expect(dispose).toHaveBeenCalledOnce())
+    expect(send).not.toHaveBeenCalled()
+    expect(f.service.releaseActivity()).toMatchObject({ ready: true, draining: true })
+    expect(f.service.releaseActivity().activeCount).toBeGreaterThan(0)
+    cleaned()
+    await tick
+    expect(f.service.releaseActivity().activeCount).toBe(0)
+    f.setNow('2026-09-08T13:00:00Z')
+    await f.service.tick()
+    expect(send).not.toHaveBeenCalled()
+    f.service.setReleaseDraining(false)
+    await f.service.tick()
+    expect(send).toHaveBeenCalledOnce()
+    expect((await f.service.snapshot()).settings).toEqual(settings)
+  } finally {
+    prepared()
+    cleaned()
+    await tick
+  }
+})
+
+it('keeps timed-out preparation visible until the late resource has actually been disposed', async () => {
+  let resolvePrepare!: (worker: { send: () => Promise<void>; dispose: () => Promise<void> }) => void
+  let clean!: () => void
+  const cleanup = new Promise<void>(resolve => { clean = resolve })
+  const prepare = vi.fn(() => new Promise<{ send: () => Promise<void>; dispose: () => Promise<void> }>(resolve => { resolvePrepare = resolve }))
+  const f = await fixture({ prepare, timeoutMs: 50 })
+  await f.service.configure(settings)
+  f.setNow('2026-09-08T08:00:00Z')
+  await f.service.tick()
+  expect(prepare).toHaveBeenCalledOnce()
+  f.service.setReleaseDraining(true)
+  expect(f.service.releaseActivity().activeCount).toBe(1)
+  const dispose = vi.fn(() => cleanup)
+  resolvePrepare({ send: f.send, dispose })
+  await vi.waitFor(() => expect(dispose).toHaveBeenCalledOnce())
+  expect(f.service.releaseActivity().activeCount).toBe(1)
+  clean()
+  await vi.waitFor(() => expect(f.service.releaseActivity().activeCount).toBe(0))
+  expect(f.send).not.toHaveBeenCalled()
+})
