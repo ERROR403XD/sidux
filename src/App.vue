@@ -1,5 +1,6 @@
 <template>
   <FeedbackReportDialog />
+  <OperationToastHost />
   <DesktopLayout :is-sidebar-collapsed="isSidebarCollapsed" @close-sidebar="setSidebarCollapsed(true)">
     <template #sidebar>
       <section class="sidebar-root">
@@ -156,7 +157,7 @@
           <AppPopover :open="isSettingsOpen" :anchor="settingsAreaRef" :width="400" direction="up" avoid-anchor-overlap panel-class="account-popover" @close="isSettingsOpen = false">
             <div class="account-popover-content">
               <div class="account-popover-scroll">
-                <AccountPanel :accounts="displayAccounts" :busy="isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
+                <AccountPanel :accounts="displayAccounts" :busy="isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
                   @reload="loadAccountsState()" @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount" />
                 <CustomConnections @changed="onCustomConnectionsChanged" />
               </div>
@@ -268,7 +269,7 @@
           </template>
           <template v-else-if="isApiProxyRoute"><ApiProxyPanel /></template>
           <template v-else-if="isSettingsRoute"><SettingsPanel>
-<template #accounts><AccountPanel :accounts="displayAccounts" :busy="isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :notice="accountActionNotice" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
+<template #accounts><AccountPanel :accounts="displayAccounts" :busy="isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
   @reload="loadAccountsState()" @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount" />
 <CustomConnections @changed="onCustomConnectionsChanged" />
 <AccountActivation :key="displayTimeZonePreference" :accounts="accounts" /></template>
@@ -354,7 +355,6 @@
         <p v-if="telegramConfigError" class="account-panel-error" role="alert">{{ t(telegramConfigError) }}</p>
         <AppButton :busy="isTelegramSaving" @click="saveTelegramConfig()">{{ t('保存Telegram设置') }}</AppButton>
         <AppButton :disabled="isTelegramSaving || !telegramNotificationsEnabledDraft" @click="testTelegramNotification">{{ t('发送测试通知') }}</AppButton>
-        <span v-if="telegramNotice" role="status">{{ t(telegramNotice) }}</span>
       </div>
       <div class="notification-quiet">
         <AppSwitch v-model="telegramQuietDraft.quietEnabled" :disabled="isTelegramSaving" @change="saveTelegramQuietHours">{{ t('免打扰') }}</AppSwitch>
@@ -578,7 +578,6 @@
               </div>
 
               <div class="composer-with-queue">
-                <DismissibleNotice :key="composerThreadContextId" :message="commandActionError" class="composer-runtime-error" />
                 <div v-if="codexCliMissingError" class="composer-runtime-error" role="alert">
                   <span>{{ t(codexCliMissingError) }}</span>
                   <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, codexCliMissingError)">{{ t('Send feedback') }}</a>
@@ -652,7 +651,6 @@
                 </div>
 
                 <div class="composer-with-queue">
-                <DismissibleNotice :key="composerThreadContextId" :message="commandActionError" class="composer-runtime-error" />
                   <p v-if="selectedAuthRecovery" class="thread-auth-recovery" role="status">
                     {{ t(selectedAuthRecovery.phase === 'started' ? '正在恢复凭据' : '凭据恢复已结束') }}
                     <span v-if="selectedAuthRecovery.message"> · {{ t(selectedAuthRecovery.message) }}</span>
@@ -661,10 +659,8 @@
                     <span>{{ t(codexCliMissingError) }}</span>
                     <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, codexCliMissingError)">{{ t('Send feedback') }}</a>
                   </div>
-                  <DismissibleNotice :key="`selectedThreadQueueError-${selectedThreadId}`" :message="selectedThreadQueueError" class="composer-runtime-error" />
-                  <DismissibleNotice :key="`threadHistoryActionError-${selectedThreadId}`" :message="threadHistoryActionError" class="composer-runtime-error" />
+                  <p v-if="queueStateError" class="composer-runtime-error" role="alert">{{ t(queueStateError) }}</p>
                   <DeliveryOutbox :thread-id="selectedThreadId" :queue="selectedThreadQueuedMessages" @settled="onDeliveryAcknowledged" />
-                  <DismissibleNotice :key="`queueDraftError-${selectedThreadId}`" :message="queueDraftError" class="composer-runtime-error" />
                   <div v-if="editingQueuedMessageState" class="queue-edit-notice" role="status">
                     <span>{{ t('正在编辑队列消息') }}</span>
                     <AppButton @click="resumeQueuedMessage(editingQueuedMessageState.messageId)">{{ t('取消编辑') }}</AppButton>
@@ -877,7 +873,6 @@ import { useCustomConnections } from './composables/useCustomConnections'
 import { invalidateModelCatalog } from './api/modelCatalog'
 import AppSwitch from './components/common/AppSwitch.vue'
 import type { UiProjectGroup } from './types/codex'
-import { useTransientNotice } from './composables/useTransientNotice'
 import { accountDisplayName } from './accountDisplay'
 import AppDialog from './components/common/AppDialog.vue'
 import NotificationSettings from './components/settings/NotificationSettings.vue'
@@ -912,7 +907,8 @@ import DesktopLayout from './components/layout/DesktopLayout.vue'
 import SidebarThreadTree from './components/sidebar/SidebarThreadTree.vue'
 import ContentHeader from './components/content/ContentHeader.vue'
 import AsyncQuestionDock from './components/content/AsyncQuestionDock.vue'
-import DismissibleNotice from './components/common/DismissibleNotice.vue'
+import OperationToastHost from './components/common/OperationToastHost.vue'
+import { notifyOperation, clearOperationToasts } from './composables/useOperationToast'
 import FeedbackReportDialog from './components/content/FeedbackReportDialog.vue'
 import ThreadComposer from './components/content/ThreadComposer.vue'
 import ThreadGoalCard from './components/content/ThreadGoalCard.vue'
@@ -1031,7 +1027,7 @@ async function onDisplayTimeZoneChange(value: string): Promise<void> {
     if (!telegramResponse.ok) throw new Error('显示时区保存失败。')
     setDisplayTimeZone(value)
   } catch (cause) {
-    displayTimeZoneError.value = cause instanceof Error ? cause.message : '显示时区保存失败。'
+    notifyOperation(cause instanceof Error ? cause.message : '显示时区保存失败。')
   } finally {
     isSavingDisplayTimeZone.value = false
   }
@@ -1252,7 +1248,7 @@ const {
   sendMessageToNewThread,
   interruptSelectedThreadTurn,
   selectedThreadQueuedMessages,
-  selectedThreadQueueError,
+  queueStateError,
   removeQueuedMessage,
   beginQueuedMessageEdit,
   updateQueuedMessage,
@@ -1330,6 +1326,7 @@ const queueDraftEdits = ref<Record<string, QueueDraftEdit>>(loadQueueDraftEdits(
 const editingQueuedMessageState = computed(() => queueDraftEdits.value[selectedThreadId.value] ?? null)
 const replaceQueueDraftId = ref('')
 const queueDraftError = ref('')
+watch(queueDraftError, message => { if (message) notifyOperation(message, 'error', selectedThreadId.value || undefined) }, { flush: 'sync' })
 
 function loadQueueDraftEdits(): Record<string, QueueDraftEdit> {
   try {
@@ -1432,6 +1429,7 @@ const serverMatchedThreadIds = ref<string[] | null>(null)
 const threadSearchStatus = ref('')
 const threadSearchScope = ref('')
 const threadHistoryActionError = ref('')
+watch(threadHistoryActionError, message => { if (message) notifyOperation(message, 'error', selectedThreadId.value || undefined) }, { flush: 'sync' })
 watch(() => selectedThreadId.value, () => { threadHistoryActionError.value = '' })
 let threadSearchController: AbortController | null = null
 let threadSearchTimer: ReturnType<typeof setTimeout> | null = null
@@ -1513,9 +1511,6 @@ const removingAccountId = ref('')
 const confirmingRemoveAccountId = ref('')
 const hoveredAccountId = ref('')
 const accountActionError = ref('')
-const accountActionNotice = useTransientNotice()
-watch(isSettingsOpen, open => { if (!open) accountActionNotice.value = '' })
-watch(() => route.fullPath, () => { accountActionNotice.value = '' })
 const SEND_WITH_ENTER_KEY = 'codex-web-local.send-with-enter.v1'
 const DARK_MODE_KEY = 'codex-web-local.dark-mode.v1'
 const DICTATION_CLICK_TO_TOGGLE_KEY = 'codex-web-local.dictation-click-to-toggle.v1'
@@ -1564,7 +1559,6 @@ const customEndpointKey = ref('')
 const customEndpointWireApi = ref<'responses' | 'chat'>('responses')
 const openRouterWireApi = ref<'responses' | 'chat'>('responses')
 const opencodeZenKey = ref('')
-const telegramNotice = useTransientNotice()
 const telegramBotTokenDraft = ref('')
 const telegramNotificationsEnabledDraft = ref(false)
 const telegramQuietDraft = ref({ quietEnabled: false, quietStart: '22:00', quietEnd: '08:00' })
@@ -2321,7 +2315,7 @@ async function saveTelegramConfig(showNotice = true): Promise<boolean> {
 
   isTelegramSaving.value = true
   telegramConfigError.value = ''
-  telegramNotice.value = ''
+
   try {
     await configureTelegramBot(botToken, allowedUserIds, telegramNotificationsEnabledDraft.value, { ...telegramQuietDraft.value, timezone: displayTimeZone() })
     telegramAllowedUserIdsDraft.value = allowedUserIds.map((value) => String(value)).join('\n')
@@ -2329,10 +2323,10 @@ async function saveTelegramConfig(showNotice = true): Promise<boolean> {
       refreshTelegramConfig(),
       refreshTelegramStatus(),
     ])
-    if (showNotice) telegramNotice.value = '已保存'
+    if (showNotice) notifyOperation('已保存', 'success')
     return true
   } catch (error) {
-    telegramConfigError.value = error instanceof Error ? error.message : t('Failed to connect Telegram bot')
+    notifyOperation(error instanceof Error ? error.message : t('Failed to connect Telegram bot'))
     void refreshTelegramStatus()
     return false
   } finally {
@@ -2352,7 +2346,7 @@ async function saveTelegramQuietHours(): Promise<void> {
     const payload = await response.json()
     if (!response.ok) throw new Error(payload.error || '保存失败')
   } catch (error) {
-    telegramConfigError.value = error instanceof Error ? error.message : '保存失败'
+    notifyOperation(error instanceof Error ? error.message : '保存失败')
   } finally {
     isTelegramSaving.value = false
   }
@@ -2362,14 +2356,14 @@ async function testTelegramNotification(): Promise<void> {
   if (!telegramNotificationsEnabledDraft.value || !await saveTelegramConfig(false)) return
   isTelegramSaving.value = true
   telegramConfigError.value = ''
-  telegramNotice.value = ''
+
   try {
     const response = await fetch('/codex-api/telegram/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: uiLanguage.value }) })
     const payload = await response.json()
     if (!response.ok) throw new Error(payload.error || '测试通知发送失败。')
-    telegramNotice.value = '通知已发送'
+    notifyOperation('通知已发送', 'success')
   } catch (error) {
-    telegramConfigError.value = error instanceof Error ? error.message : '测试通知发送失败。'
+    notifyOperation(error instanceof Error ? error.message : '测试通知发送失败。')
   } finally {
     isTelegramSaving.value = false
   }
@@ -2661,7 +2655,7 @@ async function loadAccountsState(options: { silent?: boolean } = {}): Promise<vo
 async function onRefreshAccounts(): Promise<void> {
   if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value) return
   accountActionError.value = ''
-  accountActionNotice.value = ''
+
   hoveredAccountId.value = ''
   confirmingRemoveAccountId.value = ''
   isRefreshingAccounts.value = true
@@ -2674,7 +2668,7 @@ async function onRefreshAccounts(): Promise<void> {
     }
 
   } catch (error) {
-    accountActionError.value = error instanceof Error ? error.message : t('Failed to refresh accounts')
+    notifyOperation(error instanceof Error ? error.message : t('Failed to refresh accounts'))
   } finally {
     isRefreshingAccounts.value = false
   }
@@ -2683,13 +2677,13 @@ async function onRefreshAccounts(): Promise<void> {
 async function onRefreshAccountQuota(storageId: string): Promise<void> {
   if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || refreshingAccountId.value) return
   accountActionError.value = ''
-  accountActionNotice.value = ''
+
   refreshingAccountId.value = storageId
   try {
     const result = await refreshAccountQuota(storageId)
     applyAccountsSnapshot(result.accounts)
   } catch (error) {
-    accountActionError.value = error instanceof Error ? error.message : t('Failed to refresh account quota')
+    notifyOperation(error instanceof Error ? error.message : t('Failed to refresh account quota'))
   } finally {
     refreshingAccountId.value = ''
   }
@@ -2698,7 +2692,7 @@ async function onRefreshAccountQuota(storageId: string): Promise<void> {
 async function onSwitchAccount(storageId: string): Promise<void> {
   if (isSwitchingAccounts.value || isStartingCodexLogin.value) return
   accountActionError.value = ''
-  accountActionNotice.value = ''
+
   hoveredAccountId.value = ''
   confirmingRemoveAccountId.value = ''
   isSwitchingAccounts.value = true
@@ -2720,9 +2714,9 @@ async function onSwitchAccount(storageId: string): Promise<void> {
       awaitAncillaryRefreshes: true,
     })
     await loadAccountsState({ silent: true })
-    accountActionNotice.value = t('Account switched.')
+    notifyOperation('账号已切换', 'success')
   } catch (error) {
-    accountActionError.value = error instanceof Error ? error.message : t('Failed to switch account')
+    notifyOperation(error instanceof Error ? error.message : t('Failed to switch account'))
   } finally {
     isSwitchingAccounts.value = false
   }
@@ -2731,7 +2725,7 @@ async function onSwitchAccount(storageId: string): Promise<void> {
 function onStartCodexLogin(intent: 'add' | 'reauth', targetStorageId = ''): void {
   if (isSwitchingAccounts.value) return
   accountActionError.value = ''
-  accountActionNotice.value = ''
+
   loginIntent.value = intent
   loginTargetStorageId.value = targetStorageId
   isCodexLoginModalOpen.value = true
@@ -2750,9 +2744,7 @@ function onAccountLoginCompleted(result: AccountLoginCompleteResult): void {
   loginTargetStorageId.value = ''
   stopPolling()
   startPolling()
-  accountActionNotice.value = result.outcome === 'added'
-    ? t('Account added.')
-    : t('Account sign-in refreshed.')
+  notifyOperation(result.outcome === 'added' ? t('Account added.') : t('Account sign-in refreshed.'), 'success')
 }
 
 async function onRemoveAccount(storageId: string): Promise<void> {
@@ -2770,7 +2762,7 @@ async function onRemoveAccount(storageId: string): Promise<void> {
   try {
     const result = await removeAccount(storageId)
     removedAccountIds.add(storageId)
-    accountActionNotice.value = '账号已移除'
+    notifyOperation('账号已移除', 'success')
     applyAccountsSnapshot(result.accounts)
     stopPolling()
     startPolling()
@@ -2781,7 +2773,7 @@ async function onRemoveAccount(storageId: string): Promise<void> {
     }
     void loadAccountsState({ silent: true })
   } catch (error) {
-    accountActionError.value = error instanceof Error ? error.message : t('Failed to remove account')
+    notifyOperation(error instanceof Error ? error.message : t('Failed to remove account'))
   } finally {
     removingAccountId.value = ''
   }
@@ -2793,12 +2785,16 @@ function onArchiveThread(threadId: string): void {
 
 async function onForkThread(threadId: string): Promise<void> {
   const nextThreadId = await forkThreadById(threadId)
-  if (!nextThreadId) return
+  if (!nextThreadId) {
+    notifyOperation(desktopError.value || '无法创建分支。', 'error', threadId)
+    return
+  }
   if (!isHomeRoute.value) {
     await router.push({ name: 'thread', params: { threadId: nextThreadId } })
   } else {
     await router.replace({ name: 'thread', params: { threadId: nextThreadId } })
   }
+  notifyOperation('分支已创建', 'success', nextThreadId)
   if (isMobile.value) setSidebarCollapsed(true)
 }
 
@@ -2972,7 +2968,7 @@ async function exportProjectZipForCwd(targetCwd: string): Promise<void> {
     projectZipExportStatus.value = { phase: 'idle', loaded: 0, total: null, blob: null, fileName: '', error: '' }
     if (error instanceof DOMException && error.name === 'AbortError') return
     const message = error instanceof Error ? error.message : 'Failed to export project.'
-    window.alert(message)
+    notifyOperation(message)
   }
 }
 
@@ -2989,7 +2985,7 @@ async function onCreateProjectWorktree(projectName: string): Promise<void> {
   const normalizedWorktreeName = worktreeName.trim()
   if (!normalizedWorktreeName) return
   if (normalizedWorktreeName.includes('/') || normalizedWorktreeName.includes('\\') || normalizedWorktreeName === '.' || normalizedWorktreeName === '..') {
-    window.alert('Worktree name must be a single folder name.')
+    notifyOperation('Worktree name must be a single folder name.')
     return
   }
 
@@ -3012,7 +3008,7 @@ async function onCreateProjectWorktree(projectName: string): Promise<void> {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to create worktree.'
-    window.alert(message)
+    notifyOperation(message)
   }
 }
 
@@ -3155,6 +3151,7 @@ async function onForkThreadFromMessage(payload: { threadId: string; turnId: stri
   if (selectedThreadId.value !== forkedThreadId) {
     await selectThread(forkedThreadId)
   }
+  notifyOperation('分支已创建', 'success', forkedThreadId)
   if (isMobile.value) setSidebarCollapsed(true)
 }
 
@@ -3520,7 +3517,11 @@ async function onInsertTaskExcerpt(text: string) {
 watch(() => selectedThreadId.value, () => { isTaskSearchOpen.value = false })
 const appCommandRequest = ref<AppCommandRequest | null>(null)
 const commandActionError = ref('')
-watch(composerThreadContextId, () => { commandActionError.value = '' })
+watch(commandActionError, message => { if (message) notifyOperation(message, 'error', selectedThreadId.value || undefined) }, { flush: 'sync' })
+watch(composerThreadContextId, (_next, previous) => {
+  commandActionError.value = ''
+  if (previous) clearOperationToasts(previous)
+}, { flush: 'sync' })
 const commandContextSummary = computed(() => {
   if (isHomeRoute.value) return '新会话尚无上下文用量'
   const usage = selectedThreadTokenUsage.value
@@ -3968,7 +3969,7 @@ async function onSubmitProjectSetup(): Promise<void> {
     await loadWorkspaceRootOptionsState()
     isProjectSetupModalOpen.value = false
   } catch (error) {
-    projectSetupError.value = error instanceof Error ? error.message : 'Failed to create or clone project.'
+    notifyOperation(error instanceof Error ? error.message : 'Failed to create or clone project.')
   } finally {
     isProjectSetupSubmitting.value = false
   }
@@ -4002,7 +4003,7 @@ async function finishProjectImport(
     await refreshDefaultProjectName()
   } catch (error) {
     const message = error instanceof Error ? error.message : fallbackMessage
-    window.alert(message)
+    notifyOperation(message)
   } finally {
     isProjectImporting.value = false
     if (input) input.value = ''
@@ -4553,7 +4554,7 @@ async function onProviderChange(provider: string): Promise<void> {
     providerError.value = ''
     await refreshAll({ includeSelectedThreadMessages: false, providerChanged: true, awaitAncillaryRefreshes: true })
   } catch (err) {
-    providerError.value = err instanceof Error ? err.message : 'Failed to switch provider'
+    notifyOperation(err instanceof Error ? err.message : 'Failed to switch provider')
   } finally {
     freeModeLoading.value = false
   }
@@ -4572,7 +4573,7 @@ async function saveCustomEndpoint(): Promise<void> {
     freeModeEnabled.value = true
     await refreshAll({ includeSelectedThreadMessages: false, providerChanged: true, awaitAncillaryRefreshes: true })
   } catch (err) {
-    providerError.value = err instanceof Error ? err.message : 'Failed to save custom endpoint'
+    notifyOperation(err instanceof Error ? err.message : 'Failed to save custom endpoint')
   } finally {
     freeModeCustomKeySaving.value = false
   }
@@ -4594,7 +4595,7 @@ async function setOpenRouterWireApi(nextWireApi: 'responses' | 'chat'): Promise<
     await refreshAll({ includeSelectedThreadMessages: false, providerChanged: true, awaitAncillaryRefreshes: true })
   } catch (err) {
     openRouterWireApi.value = previousWireApi
-    providerError.value = err instanceof Error ? err.message : 'Failed to save OpenRouter API format'
+    notifyOperation(err instanceof Error ? err.message : 'Failed to save OpenRouter API format')
   } finally {
     freeModeCustomKeySaving.value = false
   }
@@ -4614,7 +4615,7 @@ async function saveOpencodeZen(): Promise<void> {
     freeModeEnabled.value = true
     await refreshAll({ includeSelectedThreadMessages: false, providerChanged: true, awaitAncillaryRefreshes: true })
   } catch (err) {
-    providerError.value = err instanceof Error ? err.message : 'Failed to save OpenCode Zen config'
+    notifyOperation(err instanceof Error ? err.message : 'Failed to save OpenCode Zen config')
   } finally {
     freeModeCustomKeySaving.value = false
   }

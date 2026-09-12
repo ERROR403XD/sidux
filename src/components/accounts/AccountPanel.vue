@@ -58,7 +58,7 @@ defineProps<{
   accounts: UiAccountEntry[]
   busy: boolean
   error: string
-  notice: string
+  notice?: string
   confirmingRemoveId: string
   disabled: (account: UiAccountEntry) => boolean
   status: (account: UiAccountEntry) => string

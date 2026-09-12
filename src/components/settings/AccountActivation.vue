@@ -47,6 +47,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { notifyOperation } from '../../composables/useOperationToast'
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { t } from '../../composables/useUiLanguage'
 import { accountDisplayName } from '../../accountDisplay'
@@ -138,7 +139,7 @@ async function save(): Promise<void> {
   try {
     value = validateActivationSettings({ ...settings.value, timezone: displayTimeZone(), times: settings.value.times.map(time => /^\d{1,2}:\d{1,2}$/.test(time) ? time.split(':').map(part => part.padStart(2, '0')).join(':') : time) })
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : '时间格式应为 HH:mm'
+    notifyOperation(cause instanceof Error ? cause.message : '时间格式应为 HH:mm')
     return
   }
   const serialized = JSON.stringify(value)
@@ -150,7 +151,7 @@ async function save(): Promise<void> {
     const next = await request({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: serialized, keepalive: true })
     lastSaved = serialized
     if (before === revision) snapshot.value = next
-  } catch (cause) { error.value = cause instanceof Error ? cause.message : '保存失败' }
+  } catch (cause) { notifyOperation(cause instanceof Error ? cause.message : '保存失败') }
   finally {
     saving.value = false
     if (before !== revision) void save()

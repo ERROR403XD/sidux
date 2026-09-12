@@ -13,7 +13,6 @@
       <div class="directory-scope-picker"><span>{{ t('查看范围') }}</span><AppSelect :model-value="props.cwd || ''" :options="scopeOptions" enable-search :search-placeholder="t('搜索项目')" :disabled="busy" @update:model-value="emit('scope-change', $event)" /></div>
       <a v-if="props.threadId" class="directory-back" :href="`#/thread/${props.threadId}`">{{ t('返回会话') }} {{ props.threadId.slice(-8) }}</a>
     </div>
-    <p v-if="notice" class="directory-toast" role="status">{{ t(notice) }}</p>
     <p v-if="error" class="directory-error" role="alert">{{ t(error) }}</p>
     <section v-if="activeTab === 'plugins'" class="directory-section">
       <div class="directory-toolbar">
@@ -128,7 +127,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { useTransientNotice } from '../../composables/useTransientNotice'
+import { notifyOperation } from '../../composables/useOperationToast'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppButton from '../common/AppButton.vue'
@@ -156,7 +155,6 @@ const ready = ref(false)
 const loading = ref(false)
 const busy = ref(false)
 const error = ref('')
-const notice = useTransientNotice()
 const search = ref('')
 const pluginFilter = ref('all')
 const pluginFilterOptions = [{ value: 'all', label: '全部插件' }, { value: 'installed', label: '已安装' }, { value: 'available', label: '未安装' }]
@@ -287,8 +285,8 @@ async function loginMcpServer(name: string): Promise<void> {
     const result = await startDirectoryMcpLogin(name)
     if (!result.authorizationUrl) throw new Error('未返回授权地址')
     window.open(result.authorizationUrl, '_blank', 'noopener,noreferrer')
-    notice.value = '已打开授权页面'
-  } catch (failure) { error.value = formatDirectoryError(failure, '连接失败') }
+    notifyOperation('已打开授权页面', 'success')
+  } catch (failure) { notifyOperation(formatDirectoryError(failure, '连接失败')) }
   finally { mcpLoginServerName.value = '' }
 }
 async function reloadMcps(): Promise<void> {
@@ -296,8 +294,8 @@ async function reloadMcps(): Promise<void> {
   try {
     await reloadDirectoryMcpServers()
     await loadMcps()
-    notice.value = 'MCP 配置已重载。'
-  } catch (failure) { error.value = formatDirectoryError(failure, 'MCP 重载失败') }
+    notifyOperation('MCP 配置已重载。', 'success')
+  } catch (failure) { notifyOperation(formatDirectoryError(failure, 'MCP 重载失败')) }
   finally { isReloadingMcps.value = false }
 }
 async function openPluginDetail(plugin: DirectoryPluginSummary): Promise<void> {
@@ -340,8 +338,8 @@ async function changePlugin(action: 'install' | 'uninstall' | 'toggle'): Promise
     if (action === 'uninstall') closeDetail()
     else if (updated) await openPluginDetail(updated)
     authApps.value = connections
-    notice.value = '插件设置已保存'
-  } catch (failure) { detailError.value = formatDirectoryError(failure, '插件操作失败') }
+    notifyOperation('插件设置已保存', 'success')
+  } catch (failure) { notifyOperation(formatDirectoryError(failure, '插件操作失败')) }
   finally { busy.value = false }
 }
 function tryPlugin(): void {

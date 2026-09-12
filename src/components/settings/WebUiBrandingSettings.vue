@@ -21,6 +21,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import { notifyOperation } from '../../composables/useOperationToast'
 import { computed, ref, watch } from 'vue'
 import AppButton from '../common/AppButton.vue'
 import AppSelect from '../common/AppSelect.vue'
@@ -44,7 +45,7 @@ async function save(input: Record<string, unknown>): Promise<void> {
     const payload = await response.json()
     if (!response.ok) throw new Error(payload.error || '保存失败')
     applyWebUiBranding(payload.data)
-  } catch (cause) { error.value = cause instanceof Error ? cause.message : '保存失败' }
+  } catch (cause) { notifyOperation(cause instanceof Error ? cause.message : '保存失败') }
   finally { busy.value = false }
 }
 async function uploadLogo(): Promise<void> {
@@ -77,7 +78,7 @@ async function uploadLogo(): Promise<void> {
       icons[name] = canvas.toDataURL('image/png').split(',')[1]!
     }
     await save({ icons })
-  } catch (cause) { error.value = cause instanceof Error ? cause.message : '无法读取Logo' }
+  } catch (cause) { notifyOperation(cause instanceof Error ? cause.message : '无法读取Logo') }
   finally {
     convertingLogo.value = false
     if (url) URL.revokeObjectURL(url)

@@ -5,7 +5,6 @@
     </AppButton>
     <span v-if="count > 3">+{{ count - 3 }}{{ t('次重置') }}</span>
   </div>
-  <p v-if="notice" class="account-card-meta" role="status">{{ t(notice) }}</p>
   <AppDialog :open="!!target" :title="t('确认使用重置机会')" size="compact" :busy="busy" @close="target = null">
     <p>{{ t('账号：') }}{{ accountDisplayName(account) }}</p>
     <p v-if="target">{{ t(expiry(target)) }}</p>
@@ -15,9 +14,9 @@
   </AppDialog>
 </template>
 <script setup lang="ts">
+import { notifyOperation } from '../../composables/useOperationToast'
 import { t } from '../../composables/useUiLanguage'
 
-import { useTransientNotice } from '../../composables/useTransientNotice'
 import { accountDisplayName } from '../../accountDisplay'
 import { computed, ref } from 'vue'
 import AppButton from '../common/AppButton.vue'
@@ -39,7 +38,6 @@ const shown = computed(() => Array.from({ length: Math.min(3, count.value) }, (_
 const target = ref<ResetCredit | null>(null)
 const busy = ref(false)
 const error = ref('')
-const notice = useTransientNotice()
 let attempt = ''
 function expiry(credit: ResetCredit): string { return credit.expiresAt ? `到期：${formatLocalDateTime(credit.expiresAt * 1000)}` : '无到期时间' }
 function choose(credit: ResetCredit | null): void {
@@ -47,7 +45,7 @@ function choose(credit: ResetCredit | null): void {
   attempt = requestUuid()
   target.value = credit
   error.value = ''
-  notice.value = ''
+
 }
 async function consume(): Promise<void> {
   if (!target.value || busy.value) return
@@ -59,12 +57,12 @@ async function consume(): Promise<void> {
     if (!response.ok) throw new Error(payload.message || '重置结果未确认，请核对额度后重试。')
     const outcome = ({ reset: '额度已重置', alreadyRedeemed: '该次重置已完成', nothingToReset: '当前没有可重置的额度窗口', noCredit: '此重置机会已不可用' } as Record<string, string>)[payload.data?.outcome]
     if (!outcome) {
-      error.value = '结果未确认，请刷新账号核对。'
+      notifyOperation('结果未确认，请刷新账号核对。')
       return
     }
-    notice.value = outcome
+    notifyOperation(outcome, ['reset', 'alreadyRedeemed'].includes(payload.data?.outcome) ? 'success' : 'error')
     target.value = null
-  } catch (cause) { error.value = cause instanceof Error ? cause.message : '重置结果未确认。' }
+  } catch (cause) { notifyOperation(cause instanceof Error ? cause.message : '重置结果未确认。') }
   finally {
     busy.value = false
     emit('changed')

@@ -1,6 +1,19 @@
 // English translations for application UI messages originally authored in Chinese.
 // User content, saved prompts, and outbound notification templates are intentionally excluded.
 export const zhSourceEnglish: Record<string, string> = {
+  '自动化已加入队列': 'Automation queued',
+  '自动化已移除': 'Automation removed',
+  '自动化已保存': 'Automation saved',
+  '自动化已更新': 'Automation updated',
+  '连接已移除': 'Connection removed',
+  '连接已保存': 'Connection saved',
+  '连接测试成功': 'Connection test succeeded',
+  '目标已暂停': 'Goal paused',
+  '目标已继续': 'Goal resumed',
+  '目标已清除': 'Goal cleared',
+  '目标已保存': 'Goal saved',
+  '账号已切换': 'Account switched',
+  '分支已创建': 'Branch created',
   '筛选会话': 'Filter conversations',
   '活跃': 'Active',
   '忽略': 'Ignore',

@@ -32,6 +32,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { notifyOperation } from '../../composables/useOperationToast'
 import { onMounted, ref, watch } from 'vue'
 import { t } from '../../composables/useUiLanguage'
 import { useCustomConnections, customConnectionRequest } from '../../composables/useCustomConnections'
@@ -67,7 +68,7 @@ async function run(action: () => Promise<void>): Promise<void> {
   if (busy.value) return
   busy.value = true
   error.value = ''
-  try { await action() } catch (cause) { error.value = cause instanceof Error ? cause.message : '连接配置无效' }
+  try { await action() } catch (cause) { notifyOperation(cause instanceof Error ? cause.message : '连接配置无效') }
   finally { busy.value = false }
 }
 async function test(): Promise<void> {
@@ -77,6 +78,7 @@ async function test(): Promise<void> {
     draft.value.wireApi = result.wireApi
     testedEndpoints.value = result.supportedEndpoints
     testToken.value = result.token
+    notifyOperation('连接测试成功', 'success')
   })
 }
 async function save(): Promise<void> {
@@ -86,6 +88,7 @@ async function save(): Promise<void> {
     draft.value.apiKey = ''
     dialog.value = false
     emit('changed', previousId !== state.value.activeId)
+    notifyOperation('连接已保存', 'success')
   })
 }
 async function select(storageId: string): Promise<void> {
@@ -93,6 +96,7 @@ async function select(storageId: string): Promise<void> {
     const previousId = state.value.activeId
     state.value = await customConnectionRequest<CustomConnectionSnapshot>('/select', { storageId })
     emit('changed', previousId !== state.value.activeId)
+    notifyOperation('账号已切换', 'success')
   })
 }
 async function remove(): Promise<void> {
@@ -100,6 +104,7 @@ async function remove(): Promise<void> {
   await run(async () => {
     const previousId = state.value.activeId
     state.value = await customConnectionRequest<CustomConnectionSnapshot>('/remove', { storageId: draft.value.storageId })
+    notifyOperation('连接已移除', 'success')
     dialog.value = false
     emit('changed', previousId !== state.value.activeId)
   })

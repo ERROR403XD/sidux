@@ -835,7 +835,6 @@
           </div>
 
           <p v-if="automationDialogError" class="rename-thread-subtitle automation-thread-error">{{ t(automationDialogError) }}</p>
-          <p v-else-if="automationDialogNotice" class="rename-thread-subtitle automation-thread-notice">{{ t(automationDialogNotice) }}</p>
       <template #footer>
           <div class="rename-thread-actions">
             <AppButton
@@ -869,10 +868,10 @@
 </template>
 
 <script setup lang="ts">
+import { notifyOperation } from '../../composables/useOperationToast'
 import { matchesSidebarThreadFilter, type SidebarThreadFilter } from '../../sidebarThreadFilter'
 import AppSwitch from '../common/AppSwitch.vue'
 import { createThreadMatcher } from '../../threadSearchMatch'
-import { useTransientNotice } from '../../composables/useTransientNotice'
 import { accountDisplayName } from '../../accountDisplay'
 import { isOverlayEventInside } from '../../composables/overlayEvents'
 import { displayTimeZone, browserTimeZone, formatLocalDateTime } from '../../dateTime'
@@ -1051,7 +1050,6 @@ const automationTargetPickerVisible = ref(false)
 const automationTargetMode = ref<AutomationTargetMode>('thread')
 const automationTargetValue = ref('')
 const automationDialogError = ref('')
-const automationDialogNotice = useTransientNotice()
 const projectAutomationActionError = ref('')
 const isSavingAutomation = ref(false)
 const isRunningAutomation = ref(false)
@@ -1938,7 +1936,7 @@ function openAutomationDialog(threadId: string): void {
   automationDialogProjectName.value = ''
   automationTargetPickerVisible.value = false
   automationDialogError.value = ''
-  automationDialogNotice.value = ''
+
   const existing = automationByThreadId.value[threadId]?.[0]
   if (existing) {
     selectAutomationForEditing(existing.id)
@@ -1957,7 +1955,7 @@ function openProjectAutomationDialog(projectName: string): void {
     automationDialogProjectName.value = ''
     automationTargetPickerVisible.value = false
     automationDialogError.value = 'Project automation requires a resolved absolute project path.'
-    automationDialogNotice.value = ''
+
     automationDialogVisible.value = true
     closeProjectMenu()
     return
@@ -1967,7 +1965,7 @@ function openProjectAutomationDialog(projectName: string): void {
   automationDialogProjectName.value = projectCwd
   automationTargetPickerVisible.value = false
   automationDialogError.value = ''
-  automationDialogNotice.value = ''
+
   const existing = automationByProjectName.value[projectCwd]?.[0]
   if (existing) {
     selectAutomationForEditing(existing.id)
@@ -1988,7 +1986,7 @@ function openAutomationEditorFromPanel(payload: {
   automationDialogProjectName.value = payload.scope === 'project' ? payload.target : ''
   automationTargetPickerVisible.value = false
   automationDialogError.value = ''
-  automationDialogNotice.value = ''
+
   if (payload.scope === 'project') {
     automationByProjectName.value = updateAutomationForProject(automationByProjectName.value, payload.target, payload.automation)
   } else {
@@ -2008,7 +2006,7 @@ function openAutomationCreatorFromPanel(): void {
   automationDialogThreadId.value = ''
   automationDialogProjectName.value = ''
   automationDialogError.value = ''
-  automationDialogNotice.value = ''
+
   startNewAutomationDraft()
   automationDialogVisible.value = true
   closeProjectMenu()
@@ -2027,7 +2025,7 @@ function startNewAutomationDraft(): void {
   automationDialogAutomationId.value = ''
   automationDialogMode.value = 'create'
   automationDialogError.value = ''
-  automationDialogNotice.value = ''
+
   automationDraft.value = {
     name: automationDialogScope.value === 'project' ? 'Project automation' : 'Thread automation',
     prompt: '',
@@ -2043,7 +2041,7 @@ function selectAutomationForEditing(automationId: string): void {
   automationDialogAutomationId.value = existing.id
   automationDialogMode.value = 'edit'
   automationDialogError.value = ''
-  automationDialogNotice.value = ''
+
   automationTimezone.value = existing.timezone ?? ''
   automationDraft.value = {
     name: existing.name,
@@ -2063,7 +2061,7 @@ function closeAutomationDialog(): void {
   automationDialogProjectName.value = ''
   automationDialogAutomationId.value = ''
   automationDialogError.value = ''
-  automationDialogNotice.value = ''
+
   isSavingAutomation.value = false
   isRunningAutomation.value = false
 }
@@ -2126,7 +2124,7 @@ async function submitAutomationDialog(): Promise<void> {
   let projectName = automationDialogProjectName.value
   isSavingAutomation.value = true
   automationDialogError.value = ''
-  automationDialogNotice.value = ''
+
   try {
     if (automationScheduleDraft.value.mode === 'daily') normalizeDailyTimes(automationScheduleDraft.value.dailyTimes)
     syncAutomationRruleFromScheduleDraft()
@@ -2175,10 +2173,10 @@ async function submitAutomationDialog(): Promise<void> {
     }
     emit('automations-changed')
     selectAutomationForEditing(saved.id)
-    automationDialogNotice.value = 'Automation saved.'
+    notifyOperation('自动化已保存', 'success')
     isSavingAutomation.value = false
   } catch (error) {
-    automationDialogError.value = error instanceof Error ? error.message : 'Failed to save automation'
+    notifyOperation(error instanceof Error ? error.message : 'Failed to save automation')
     isSavingAutomation.value = false
   }
 }
@@ -2192,7 +2190,7 @@ async function onDeleteAutomationFromDialog(): Promise<void> {
   if (automationDialogScope.value === 'project' && !projectName) return
   isSavingAutomation.value = true
   automationDialogError.value = ''
-  automationDialogNotice.value = ''
+
   try {
     if (automationDialogScope.value === 'project') {
       await deleteProjectAutomation(projectName, automationId)
@@ -2204,8 +2202,9 @@ async function onDeleteAutomationFromDialog(): Promise<void> {
     emit('automations-changed')
     isSavingAutomation.value = false
     closeAutomationDialog()
+    notifyOperation('自动化已移除', 'success')
   } catch (error) {
-    automationDialogError.value = error instanceof Error ? error.message : 'Failed to remove automation'
+    notifyOperation(error instanceof Error ? error.message : 'Failed to remove automation')
     isSavingAutomation.value = false
   }
 }
@@ -2217,12 +2216,12 @@ async function onRunAutomationFromDialog(): Promise<void> {
   if (!target || !automationId || isRunningAutomation.value) return
   isRunningAutomation.value = true
   automationDialogError.value = ''
-  automationDialogNotice.value = ''
+
   try {
     await runAutomationNow({ automationId, target, kind: automationDialogScope.value === 'project' ? 'cron' : 'heartbeat', requestId: createAutomationRequestId() })
-    automationDialogNotice.value = 'Automation run queued.'
+    notifyOperation('自动化已加入队列', 'success')
   } catch (error) {
-    automationDialogError.value = error instanceof Error ? error.message : 'Failed to run automation'
+    notifyOperation(error instanceof Error ? error.message : 'Failed to run automation')
   } finally {
     isRunningAutomation.value = false
   }

@@ -1,0 +1,49 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { clearOperationToasts, dismissOperationToast, notifyOperation, operationToasts, pauseOperationToast, resumeOperationToast } from './useOperationToast'
+
+describe('operation notification lifetime', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => { clearOperationToasts(); vi.useRealTimers() })
+  it('expires success sooner, keeps failures readable, and releases timers', () => {
+    notifyOperation('saved', 'success')
+    notifyOperation('failed')
+    vi.advanceTimersByTime(3000)
+    expect(operationToasts.value.map(item => item.message)).toEqual(['failed'])
+    vi.advanceTimersByTime(3000)
+    expect(operationToasts.value).toHaveLength(0)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+  it('bounds repeated bursts and allows the same failed operation to notify again', () => {
+    for (let i = 0; i < 10; i++) notifyOperation('failed ' + i)
+    expect(operationToasts.value).toHaveLength(3)
+    expect(vi.getTimerCount()).toBe(3)
+    notifyOperation('failed 9')
+    expect(operationToasts.value).toHaveLength(3)
+    dismissOperationToast(operationToasts.value.at(-1)!.id)
+    notifyOperation('failed 9')
+    expect(operationToasts.value.at(-1)?.message).toBe('failed 9')
+  })
+  it('pauses while being read and resumes only the remaining time', () => {
+    notifyOperation('read me')
+    const id = operationToasts.value[0]!.id
+    vi.advanceTimersByTime(2000)
+    pauseOperationToast(id)
+    pauseOperationToast(id)
+    vi.advanceTimersByTime(30000)
+    expect(operationToasts.value).toHaveLength(1)
+    resumeOperationToast(id)
+    resumeOperationToast(id)
+    vi.advanceTimersByTime(3999)
+    expect(operationToasts.value).toHaveLength(1)
+    vi.advanceTimersByTime(1)
+    expect(operationToasts.value).toHaveLength(0)
+  })
+  it('clears only notifications from the conversation being left', () => {
+    notifyOperation('old error', 'error', 'A')
+    notifyOperation('fork created', 'success', 'B')
+    notifyOperation('account switched', 'success')
+    clearOperationToasts('A')
+    expect(operationToasts.value.map(item => item.message)).toEqual(['fork created', 'account switched'])
+    expect(vi.getTimerCount()).toBe(2)
+  })
+})

@@ -117,6 +117,7 @@
 </template>
 
 <script setup lang="ts">
+import { notifyOperation } from '../../composables/useOperationToast'
 import { readDailyTimesRule } from '../../automationDailyTimes'
 import { formatLocalDateTime } from '../../dateTime'
 import AppButton from '../common/AppButton.vue'
@@ -317,12 +318,13 @@ async function mutateAutomation(action: () => Promise<unknown>): Promise<void> {
   loadError.value = ''
   try {
     await action()
+    notifyOperation('自动化已更新', 'success')
     await loadAutomations()
     if (!loadError.value) {
       emit('automations-updated', { thread: threadAutomations.value, project: projectAutomations.value })
     }
   } catch (error) {
-    loadError.value = error instanceof Error ? error.message : 'Failed to save automation'
+    notifyOperation(error instanceof Error ? error.message : 'Failed to save automation')
   } finally {
     isMutating.value = false
   }

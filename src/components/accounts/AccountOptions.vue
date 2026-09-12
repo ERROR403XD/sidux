@@ -44,6 +44,7 @@
   </AppDialog>
 </template>
 <script setup lang="ts">
+import { notifyOperation } from '../../composables/useOperationToast'
 import AppSwitch from '../common/AppSwitch.vue'
 import { t } from '../../composables/useUiLanguage'
 
@@ -85,7 +86,7 @@ async function save(): Promise<void> {
     await apiProxyRequest('/notifications', { accountId: props.account.storageId, rule: rule.value, protectionPercent: percent.value !== initialPercent.value ? percent.value : undefined, alias: alias.value })
     visible.value = false
     emit('changed')
-  } catch (cause) { error.value = cause instanceof Error ? cause.message : '保存失败。' }
+  } catch (cause) { notifyOperation(cause instanceof Error ? cause.message : '保存失败。') }
   finally { busy.value = false }
 }
 </script>

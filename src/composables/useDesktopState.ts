@@ -1,3 +1,4 @@
+import { notifyOperation } from './useOperationToast'
 import { mergeQuotaUpdate } from '../quotaRefresh'
 import { effectiveConversationChoice, useWebConversationPreferences, type ConversationChoice } from '../webConversationPreferences'
 import { historyMessageKey, combineHistoryAndLive, sameMessageIdentity } from '../messageIdentity'
@@ -4265,6 +4266,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
       } catch (cause) {
         error.value = cause instanceof Error ? cause.message : '队列保存失败，请重试'
         queueErrorByThreadId.value = { ...queueErrorByThreadId.value, [operation.threadId]: error.value }
+        if (selectedThreadId.value === operation.threadId) notifyOperation(error.value, 'error', operation.threadId)
         throw cause
       }
     })
@@ -5864,6 +5866,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
     interruptSelectedThreadTurn,
     selectedThreadQueuedMessages,
     selectedThreadQueueError,
+    queueStateError,
     removeQueuedMessage,
     beginQueuedMessageEdit,
     updateQueuedMessage,

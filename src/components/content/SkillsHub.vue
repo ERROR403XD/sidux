@@ -1,6 +1,5 @@
 <template>
   <div class="skills-hub">
-    <div v-if="toast" class="skills-hub-toast" :class="toastClass">{{ t(toast.text) }}</div>
 
     <slot name="before-search" />
 
@@ -99,6 +98,7 @@
 </template>
 
 <script setup lang="ts">
+import { notifyOperation } from '../../composables/useOperationToast'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import DirectorySectionToggle from './DirectorySectionToggle.vue'
 import SkillCard from './SkillCard.vue'
@@ -127,11 +127,9 @@ const isInstalledOpen = ref(true)
 const isSearchResultsOpen = ref(true)
 const isDetailOpen = ref(false)
 const detailSkill = ref<HubSkill>(EMPTY_SKILL)
-const toast = ref<{ text: string; type: 'success' | 'error' } | null>(null)
 const actionSkillKey = ref('')
 const isInstallActionInFlight = ref(false)
 const isUninstallActionInFlight = ref(false)
-let toastTimer: ReturnType<typeof setTimeout> | null = null
 const { t } = useUiLanguage()
 const { openFeedbackReport, feedbackUrl, recordVisibleFailure } = useFeedbackDiagnostics()
 const feedbackMailto = feedbackUrl
@@ -146,7 +144,6 @@ const emit = defineEmits<{
   'try-item': [payload: { kind: 'skill'; name: string; displayName: string; skillPath?: string }]
 }>()
 
-const toastClass = computed(() => toast.value?.type === 'error' ? 'skills-hub-toast-error' : 'skills-hub-toast-success')
 const currentDetailSkillKey = computed(() => skillIdentity(detailSkill.value))
 function skillIdentity(skill: HubSkill): string { return skill.path || `${skill.owner}/${skill.name}` }
 const isDetailInstalling = computed(() =>
@@ -161,9 +158,7 @@ const filteredInstalled = computed(() => {
 })
 
 function showToast(text: string, type: 'success' | 'error' = 'success'): void {
-  toast.value = { text, type }
-  if (toastTimer) clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => { toast.value = null }, 3000)
+  notifyOperation(text, type)
 }
 
 function prepareSkillsErrorFeedback(event: MouseEvent, message: string): void {
@@ -359,7 +354,6 @@ onBeforeUnmount(() => {
   disposed = true
   skillsReadId += 1
   skillsController?.abort()
-  if (toastTimer) clearTimeout(toastTimer)
 })
 
 onMounted(() => {
@@ -436,17 +430,8 @@ watch(visibleSkillErrors, (values, oldValues) => {
   @apply min-w-0 flex-1 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800 outline-none placeholder-zinc-400 transition focus:border-zinc-300 focus:bg-white;
 }
 
-.skills-hub-toast {
-  @apply rounded-lg px-3 py-2 text-sm font-medium;
-}
 
-.skills-hub-toast-success {
-  @apply border border-emerald-200 bg-emerald-50 text-emerald-700;
-}
 
-.skills-hub-toast-error {
-  @apply border border-rose-200 bg-rose-50 text-rose-700;
-}
 
 .skills-hub-section {
   @apply flex flex-col gap-2;

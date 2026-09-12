@@ -25,6 +25,7 @@
 </template>
 
 <script setup lang="ts">
+import { notifyOperation } from '../../composables/useOperationToast'
 import { t } from '../../composables/useUiLanguage'
 
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -90,7 +91,7 @@ async function start() {
     const next = await startCodexLogin(props.intent, props.targetStorageId, method.value)
     if (disposed) { await cancelCodexLogin(next.loginSessionId); return }
     session.value = { ...next, intent: props.intent, targetStorageId: props.targetStorageId || null, status: 'waiting', error: null }
-  } catch (caught) { error.value = caught instanceof Error ? caught.message : '启动登录失败。' }
+  } catch (caught) { notifyOperation(caught instanceof Error ? caught.message : '启动登录失败。') }
   finally { busy.value = false }
 }
 async function cancel() {
@@ -103,7 +104,7 @@ async function cancel() {
     callback.value = ''
     error.value = ''
     emit('close')
-  } catch (caught) { error.value = caught instanceof Error ? caught.message : '取消失败。' }
+  } catch (caught) { notifyOperation(caught instanceof Error ? caught.message : '取消失败。') }
   finally { busy.value = false }
 }
 async function changeMethod(value: string) {
@@ -116,7 +117,7 @@ async function changeMethod(value: string) {
     callback.value = ''
     error.value = ''
     method.value = value
-  } catch (caught) { error.value = caught instanceof Error ? caught.message : '切换登录方式失败。' }
+  } catch (caught) { notifyOperation(caught instanceof Error ? caught.message : '切换登录方式失败。') }
   finally { busy.value = false }
 }
 async function completeLink() {
@@ -124,12 +125,12 @@ async function completeLink() {
   busy.value = true
   epoch++
   try { succeeded(await completeCodexLogin(session.value.loginSessionId, callback.value.trim())) }
-  catch (caught) { error.value = caught instanceof Error ? caught.message : '登录失败。' }
+  catch (caught) { notifyOperation(caught instanceof Error ? caught.message : '登录失败。') }
   finally { busy.value = false }
 }
 async function copyCode() {
   try { await copyTextToClipboard(session.value?.userCode || '') }
-  catch { error.value = '复制失败，请手动选中设备码。' }
+  catch { notifyOperation('复制失败，请手动选中设备码。') }
 }
 watch(() => props.open, open => { if (open && !session.value) error.value = '' })
 onMounted(() => { void poll(true); timer = setInterval(() => { void poll() }, 2000) })

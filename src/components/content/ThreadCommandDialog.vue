@@ -1,7 +1,7 @@
 <template>
   <AppDialog :open="true" :busy="working" :title="`/${request.name} · ${t(title)}`" @close="close">
     <div class="thread-command-dialog" :aria-busy="working || loading">
-      <DismissibleNotice :message="error" class="thread-command-error" />
+      <p v-if="error" class="thread-command-error" role="alert">{{ t(error) }}</p>
       <p v-if="feedback" class="thread-command-feedback" role="status">{{ t(feedback) }}</p>
       <p v-if="loading">{{ t('读取中…') }}</p>
       <template v-if="request.name === 'goal'">
@@ -51,7 +51,7 @@
 import { t } from '../../composables/useUiLanguage'
 
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import DismissibleNotice from '../common/DismissibleNotice.vue'
+import { notifyOperation } from '../../composables/useOperationToast'
 import AppDialog from '../common/AppDialog.vue'
 import AppButton from '../common/AppButton.vue'
 import AppSelect from '../common/AppSelect.vue'
@@ -124,7 +124,7 @@ async function action(fn: () => Promise<void>) {
   if (working.value || loading.value) return
   working.value = true; error.value = ''; feedback.value = ''
   let succeeded = false
-  try { await fn(); succeeded = true } catch (cause) { if (!disposed) error.value = cause instanceof Error ? cause.message : '操作失败' }
+  try { await fn(); succeeded = true } catch (cause) { if (!disposed) notifyOperation(cause instanceof Error ? cause.message : '操作失败') }
   finally {
     working.value = false
     if (pendingGoalNotification !== undefined) { goal.value = pendingGoalNotification; pendingGoalNotification = undefined }
@@ -145,7 +145,7 @@ async function saveGoal() {
     consume()
     if (props.threadId !== threadId) await props.run('goal', threadId)
     emit('model-change', selectedModel.value, selectedEffort.value || selectedCapability.value?.defaultEffort || '')
-    feedback.value = '目标已保存。运行状态和进度会随会话更新。'
+    notifyOperation('目标已保存', 'success')
   })
 }
 async function changeGoalStatus(status: 'active' | 'paused') {
@@ -159,6 +159,7 @@ async function changeGoalStatus(status: 'active' | 'paused') {
       await saveModelSettings()
     }
     goal.value = await setThreadGoal(threadId, { status })
+    notifyOperation(status === 'active' ? '目标已继续' : '目标已暂停', 'success')
     if (status === 'active') emit('model-change', selectedModel.value, selectedEffort.value || selectedCapability.value?.defaultEffort || '')
     consume()
   })
@@ -169,7 +170,7 @@ async function clearGoal() {
     await clearThreadGoal(threadId)
     fillGoalForm(null)
     consume()
-    feedback.value = '目标已清除，原会话仍保留。'
+    notifyOperation('目标已清除', 'success')
   })
 }
 async function execute() {

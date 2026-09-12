@@ -28,6 +28,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { notifyOperation } from '../../composables/useOperationToast'
 import { t } from '../../composables/useUiLanguage'
 
 import { formatLocalDateTime } from '../../dateTime'
@@ -82,7 +83,7 @@ async function runNow(previous?: AutomationRun) {
   try {
     await runAutomationNow({ automationId: props.automation.id, target: previous?.target ?? props.target, kind: props.automation.kind, requestId: createAutomationRequestId(), retryOf: previous?.runId })
     await load()
-  } catch (cause) { error.value = cause instanceof Error ? cause.message : '提交失败' }
+  } catch (cause) { notifyOperation(cause instanceof Error ? cause.message : '提交失败') }
   finally { busy.value = false }
 }
 watch(() => props.automation.id, () => { closeHistory(); runs.value = []; void load() })

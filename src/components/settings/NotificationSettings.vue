@@ -9,7 +9,6 @@
         <p v-if="error" class="account-panel-error" role="alert">{{ t(error) }}</p>
         <AppButton :busy="busy" @click="save()">{{ t('保存POST设置') }}</AppButton>
         <AppButton :disabled="busy || !settings.enabled" @click="test">{{ t('发送测试通知') }}</AppButton>
-        <span v-if="notice" role="status">{{ t(notice) }}</span>
       </div>
       <div class="notification-quiet">
         <AppSwitch v-model="settings.quietEnabled" :disabled="busy" @change="save()">{{ t('免打扰') }}</AppSwitch>
@@ -24,12 +23,12 @@
   </section>
 </template>
 <script setup lang="ts">
+import { notifyOperation } from '../../composables/useOperationToast'
 import AppTimeInput from '../common/AppTimeInput.vue'
 import AppSwitch from '../common/AppSwitch.vue'
 import { t } from '../../composables/useUiLanguage'
 
 import { onMounted, ref } from 'vue'
-import { useTransientNotice } from '../../composables/useTransientNotice'
 import AppButton from '../common/AppButton.vue'
 import { defaultNotificationSettings, validateNotificationSettings, type NotificationSettings } from '../../accountNotifications'
 import { displayTimeZone } from '../../dateTime'
@@ -37,7 +36,6 @@ import { apiProxyRequest } from '../../api/apiProxy'
 const settings = ref<NotificationSettings>({ ...defaultNotificationSettings })
 const loaded = ref(false)
 const busy = ref(false)
-const notice = useTransientNotice()
 const error = ref('')
 onMounted(async () => {
   try {
@@ -49,15 +47,15 @@ onMounted(async () => {
 async function save(showNotice = true): Promise<boolean> {
   if (busy.value) return false
   busy.value = true
-  notice.value = ''
+
   error.value = ''
   try {
     const value = validateNotificationSettings({ ...settings.value, timezone: displayTimeZone() })
     await apiProxyRequest('/notifications', { settings: value })
-    if (showNotice) notice.value = '已保存'
+    if (showNotice) notifyOperation('已保存', 'success')
     return true
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : '保存通知设置失败。'
+    notifyOperation(cause instanceof Error ? cause.message : '保存通知设置失败。')
     return false
   } finally {
     busy.value = false
@@ -68,10 +66,10 @@ async function test(): Promise<void> {
   busy.value = true
   try {
     const result = await apiProxyRequest<{ lastResult: string }>('/notifications/test', {})
-    if (result.lastResult === '测试通知已发送') notice.value = '通知已发送'
-    else error.value = result.lastResult || '测试发送结果未确认'
+    if (result.lastResult === '测试通知已发送') notifyOperation('通知已发送', 'success')
+    else notifyOperation(result.lastResult || '测试发送结果未确认')
   } catch {
-    error.value = '测试通知发送失败。'
+    notifyOperation('测试通知发送失败。')
   } finally {
     busy.value = false
   }
