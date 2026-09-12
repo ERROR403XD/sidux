@@ -29,16 +29,19 @@ export type SlashToken = { start: number; end: number; query: string; text: stri
 export function findSlashToken(text: string, cursor: number, selectionEnd = cursor): SlashToken | null {
   if (cursor !== selectionEnd) return null
   const before = text.slice(0, cursor)
-  const match = /(^|\s)(\/[\p{L}\p{N}_:.-]*)$/u.exec(before)
+  const match = /(\/[\p{L}\p{N}_:.-]*)$/u.exec(before)
   if (!match) return null
   // Slashes in fenced or inline code remain ordinary text.
   if ((before.match(/```/gu)?.length ?? 0) % 2) return null
   const line = before.slice(before.lastIndexOf('\n') + 1)
   if ((line.replace(/```/gu, '').match(/`/gu)?.length ?? 0) % 2) return null
-  const start = cursor - match[2]!.length
+  const start = cursor - match[1]!.length
+  const prefix = /\S*$/u.exec(before.slice(0, start))?.[0] ?? ''
+  // Keep URL and explicit path continuations as literal input.
+  if (/[/:\\]/u.test(prefix) || /^\.{1,2}$/u.test(prefix)) return null
   const tail = /^[^\s]*/u.exec(text.slice(cursor))?.[0] ?? ''
   if (!/^[\p{L}\p{N}_:.-]*$/u.test(tail)) return null
-  return { start, end: cursor + tail.length, query: match[2]!.slice(1), text: text.slice(start, cursor + tail.length) }
+  return { start, end: cursor + tail.length, query: match[1]!.slice(1), text: text.slice(start, cursor + tail.length) }
 }
 
 export function buildComposerCommands(

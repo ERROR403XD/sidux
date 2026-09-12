@@ -5,7 +5,7 @@ import { useComposerCommandPicker } from '../../composables/useComposerCommandPi
 
 const event = (key: string, extra = {}) => ({ key, shiftKey: false, ctrlKey: false, metaKey: false, altKey: false, isComposing: false, keyCode: 0, preventDefault() {}, ...extra }) as KeyboardEvent
 describe('slash command input contract', () => {
-  it.each(['https://a/b', '/tmp/path', '2026/09/06', 'a/b', '` /plan', '```ts\n /plan', '/plan/extra'])('leaves code and literal paths alone: %s', (text) => {
+  it.each(['https://a/b', '/tmp/path', '2026/09/06', './a/b', '../a/b', '` /plan', '```ts\n /plan', '/plan/extra'])('leaves code and literal paths alone: %s', (text) => {
     expect(findSlashToken(text, text.length)).toBeNull()
   })
   it('detects a token at the cursor without consuming neighboring text', () => {
@@ -56,4 +56,15 @@ it('searches translated built-in descriptions while preserving external descript
   expect(filterComposerCommands(commands, 'discuss').map(row => row.name)).toEqual(['/plan'])
   expect(filterComposerCommands(commands, '计划').map(row => row.name)).toEqual(['/plan'])
   expect(commands.find(row => row.name === '/external')?.description).toBe('保存')
+})
+
+
+it.each(['已有内容', 'hello', '第一行\n第二行', '先讨论，'])('opens slash search after preceding content: %s', prefix => {
+  const picker = useComposerCommandPicker(ref(buildComposerCommands([], [])), () => {})
+  picker.update(prefix + '/', prefix.length + 1)
+  expect(picker.visible.value).toBe(true)
+  picker.update(prefix + '/plan', prefix.length + 5)
+  expect(picker.visible.value).toBe(true)
+  expect(picker.token.value).toEqual({ start: prefix.length, end: prefix.length + 5, query: 'plan', text: '/plan' })
+  expect(picker.results.value.map(row => row.name)).toContain('/plan')
 })
