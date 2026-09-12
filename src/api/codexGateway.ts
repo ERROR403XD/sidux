@@ -1560,6 +1560,11 @@ export type ResumedThread = {
 const RESUME_THREAD_COALESCE_TTL_MS = 30_000
 const recentResumeThreadById = new Map<string, Promise<ResumedThread>>()
 
+export function invalidateThreadResumeCache(threadId?: string): void {
+  if (threadId) recentResumeThreadById.delete(threadId)
+  else recentResumeThreadById.clear()
+}
+
 export async function resumeThread(threadId: string): Promise<ResumedThread> {
   const existing = recentResumeThreadById.get(threadId)
   if (existing) return existing

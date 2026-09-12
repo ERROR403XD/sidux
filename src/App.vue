@@ -998,10 +998,10 @@ const { t, uiLanguage, uiLanguageOptions, setUiLanguage } = useUiLanguage()
 const { state: customConnections, active: activeCustomConnection, load: loadCustomConnections } = useCustomConnections()
 const displayAccounts = computed(() => activeCustomConnection.value ? accounts.value.map(account => ({ ...account, isActive: false })) : accounts.value)
 const executionAccounts = computed(() => [...accounts.value, ...customConnections.value.connections.filter(row => row.wireApi === 'responses').map(row => ({ storageId: row.storageId, alias: row.alias, email: null, accountId: row.baseUrl }))])
-async function onCustomConnectionsChanged(): Promise<void> {
+async function onCustomConnectionsChanged(changed = false): Promise<void> {
   invalidateModelCatalog()
   await loadCustomConnections()
-  await refreshAll({ includeSelectedThreadMessages: false })
+  await refreshAll({ accountChanged: changed, includeSelectedThreadMessages: changed, awaitAncillaryRefreshes: changed })
 }
 const displayTimeZoneError = ref('')
 const isSavingDisplayTimeZone = ref(false)
@@ -2715,7 +2715,9 @@ async function onSwitchAccount(storageId: string): Promise<void> {
     stopPolling()
     startPolling()
     await refreshAll({
+      accountChanged: true,
       includeSelectedThreadMessages: true,
+      awaitAncillaryRefreshes: true,
     })
     await loadAccountsState({ silent: true })
     accountActionNotice.value = t('Account switched.')

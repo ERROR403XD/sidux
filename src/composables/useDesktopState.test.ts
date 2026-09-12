@@ -48,6 +48,7 @@ const gatewayMocks = vi.hoisted(() => ({
 vi.mock('../api/codexGateway', () => ({
   ...gatewayMocks,
   invalidateModelCatalog: vi.fn(),
+  invalidateThreadResumeCache: vi.fn(),
   getAvailableModels: async (options: unknown) => (await gatewayMocks.getAvailableModelIds(options) || []).map((id: string) => normalizeModelCapability(id)! ),
   getBackgroundThreadListLimit: vi.fn(() => 100),
   pickCodexRateLimitSnapshot: vi.fn(() => null),
@@ -1640,4 +1641,65 @@ describe('image delivery optimistic reconciliation', () => {
     expect(gatewayMocks.startThreadTurn).toHaveBeenCalledTimes(1)
     state.stopPolling()
   })
+})
+
+it('retries a failed conversation immediately after the account identity changes', async () => {
+  installTestWindow()
+  gatewayMocks.getThreadGroupsPage.mockResolvedValue({ groups: [{ projectName: 'p', threads: [thread('account-chat', '/p')] }], nextCursor: null })
+  gatewayMocks.getCurrentModelConfig.mockResolvedValue({ model: 'gpt-6-astra', providerId: 'openai', reasoningEffort: 'medium', speedMode: '' })
+  gatewayMocks.getAvailableModelIds.mockResolvedValue(['gpt-6-astra', 'gpt-5.6-terra'])
+  gatewayMocks.resumeThread.mockRejectedValueOnce(new Error('thread not loaded')).mockResolvedValue({ model: 'gpt-6-astra', modelProvider: 'openai', messages: [{ id: 'reply', role: 'assistant', text: 'Recovered history' }], inProgress: false, activeTurnId: '', turnIndexByTurnId: {} })
+  const state = useDesktopState()
+  state.primeSelectedThread('account-chat')
+  await expect(state.loadMessages('account-chat')).rejects.toThrow('not loaded')
+  await state.refreshAll({ accountChanged: true, includeSelectedThreadMessages: true, awaitAncillaryRefreshes: true })
+  expect(gatewayMocks.resumeThread).toHaveBeenCalledTimes(2)
+  expect(state.messages.value.some(message => message.text === 'Recovered history')).toBe(true)
+})
+
+it('preserves an existing conversation model while a restricted account temporarily uses Terra', async () => {
+  installTestWindow({ 'codex-web-local.selected-model-by-context.v1': JSON.stringify({ 'astra-chat': 'gpt-6-astra', 'terra-chat': 'gpt-5.6-terra' }) })
+  gatewayMocks.getThreadGroupsPage.mockResolvedValue({ groups: [{ projectName: 'p', threads: [thread('astra-chat', '/p'), thread('terra-chat', '/p')] }], nextCursor: null })
+  gatewayMocks.getCurrentModelConfig.mockResolvedValue({ model: 'gpt-5.6-terra', providerId: 'openai', reasoningEffort: 'medium', speedMode: '' })
+  gatewayMocks.getAvailableModelIds.mockResolvedValue(['gpt-5.6-terra'])
+  const state = useDesktopState()
+  state.primeSelectedThread('astra-chat')
+  await state.refreshAll({ includeSelectedThreadMessages: false, awaitAncillaryRefreshes: true })
+  expect(state.selectedModelId.value).toBe('gpt-5.6-terra')
+  expect(JSON.parse(window.localStorage.getItem('codex-web-local.selected-model-by-context.v1')!)['astra-chat']).toBe('gpt-6-astra')
+  gatewayMocks.getAvailableModelIds.mockResolvedValue(['gpt-6-astra', 'gpt-5.6-terra'])
+  await state.refreshAll({ accountChanged: true, includeSelectedThreadMessages: false, awaitAncillaryRefreshes: true })
+  expect(state.selectedModelId.value).toBe('gpt-6-astra')
+  expect(state.readModelIdForThread('astra-chat')).toBe('gpt-6-astra')
+})
+
+it('discards a delayed failure from the previous account and loads the current identity', async () => {
+  installTestWindow()
+  gatewayMocks.getThreadGroupsPage.mockResolvedValue({ groups: [{ projectName: 'p', threads: [thread('race-chat', '/p')] }], nextCursor: null })
+  gatewayMocks.getCurrentModelConfig.mockResolvedValue({ model: 'gpt-6-astra', providerId: 'openai', reasoningEffort: 'medium', speedMode: '' })
+  gatewayMocks.getAvailableModelIds.mockResolvedValue(['gpt-6-astra'])
+  let reject!: (cause: Error) => void
+  gatewayMocks.resumeThread.mockImplementationOnce(() => new Promise((_, fail) => { reject = fail })).mockResolvedValue({ model: 'gpt-6-astra', modelProvider: 'openai', messages: [{ id: 'new', role: 'assistant', text: 'New account history' }], inProgress: false, activeTurnId: '', turnIndexByTurnId: {} })
+  const state = useDesktopState()
+  state.primeSelectedThread('race-chat')
+  const old = state.loadMessages('race-chat')
+  const changed = state.refreshAll({ accountChanged: true, includeSelectedThreadMessages: true, awaitAncillaryRefreshes: true })
+  reject(new Error('previous account failed'))
+  await Promise.all([old, changed])
+  expect(gatewayMocks.resumeThread).toHaveBeenCalledTimes(2)
+  expect(state.messages.value.some(message => message.text === 'New account history')).toBe(true)
+  expect(state.error.value).toBe('')
+})
+
+it('re-resumes an already cached idle conversation after switching accounts', async () => {
+  installTestWindow()
+  gatewayMocks.getThreadGroupsPage.mockResolvedValue({ groups: [{ projectName: 'p', threads: [thread('cached-chat', '/p')] }], nextCursor: null })
+  gatewayMocks.getCurrentModelConfig.mockResolvedValue({ model: 'gpt-6-astra', providerId: 'openai', reasoningEffort: 'medium', speedMode: '' })
+  gatewayMocks.getAvailableModelIds.mockResolvedValue(['gpt-6-astra'])
+  gatewayMocks.resumeThread.mockResolvedValue({ model: 'gpt-6-astra', modelProvider: 'openai', messages: [], inProgress: false, activeTurnId: '', turnIndexByTurnId: {} })
+  const state = useDesktopState()
+  state.primeSelectedThread('cached-chat')
+  await state.loadMessages('cached-chat')
+  await state.refreshAll({ accountChanged: true, includeSelectedThreadMessages: true, awaitAncillaryRefreshes: true })
+  expect(gatewayMocks.resumeThread).toHaveBeenCalledTimes(2)
 })

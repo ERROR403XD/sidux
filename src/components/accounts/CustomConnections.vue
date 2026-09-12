@@ -40,7 +40,7 @@ import AppButton from '../common/AppButton.vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppSelect from '../common/AppSelect.vue'
 import ConnectionEndpoints from './ConnectionEndpoints.vue'
-const emit = defineEmits<{ changed: [] }>()
+const emit = defineEmits<{ changed: [accountChanged: boolean] }>()
 const { state, load } = useCustomConnections()
 const dialog = ref(false)
 const busy = ref(false)
@@ -81,24 +81,27 @@ async function test(): Promise<void> {
 }
 async function save(): Promise<void> {
   await run(async () => {
+    const previousId = state.value.activeId
     state.value = await customConnectionRequest<CustomConnectionSnapshot>('', { ...draft.value, testToken: testToken.value })
     draft.value.apiKey = ''
     dialog.value = false
-    emit('changed')
+    emit('changed', previousId !== state.value.activeId)
   })
 }
 async function select(storageId: string): Promise<void> {
   await run(async () => {
+    const previousId = state.value.activeId
     state.value = await customConnectionRequest<CustomConnectionSnapshot>('/select', { storageId })
-    emit('changed')
+    emit('changed', previousId !== state.value.activeId)
   })
 }
 async function remove(): Promise<void> {
   if (!confirmRemove.value) { confirmRemove.value = true; return }
   await run(async () => {
+    const previousId = state.value.activeId
     state.value = await customConnectionRequest<CustomConnectionSnapshot>('/remove', { storageId: draft.value.storageId })
     dialog.value = false
-    emit('changed')
+    emit('changed', previousId !== state.value.activeId)
   })
 }
 onMounted(() => { void load().catch(cause => { error.value = cause instanceof Error ? cause.message : '连接配置无效' }) })

@@ -25,6 +25,7 @@ import {
   renameThread,
   getAvailableModels,
   invalidateModelCatalog,
+  invalidateThreadResumeCache,
   getCurrentModelConfig,
   getPendingServerRequests,
   getSkillsList,
@@ -1587,6 +1588,8 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
   let rateLimitRefreshTimer: number | null = null
   const delayedTurnSyncTimerByThreadId = new Map<string, number>()
   let loadThreadsPromise: Promise<void> | null = null
+  let accountIdentityRevision = 0
+  const loadIdentityRevisionByThreadId = new Map<string, number>()
   const loadMessagePromiseByThreadId = new Map<string, Promise<void>>()
   let refreshSkillsPromise: Promise<void> | null = null
   let lastThreadListLoadAt = 0
@@ -1730,7 +1733,11 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
         : ''
       if (providerModelId) return providerModelId
     }
-    return readSelectedModel(selectedModelIdByContext.value, threadId).trim()
+    const preferred = readSelectedModel(selectedModelIdByContext.value, threadId).trim()
+    if (threadId && selectedModelIdByContext.value[threadId] && availableModels.value.length) {
+      return effectiveConversationChoice({ model: preferred, provider: readProviderIdForThread(threadId), effort: '', tier: '' }, availableModels.value).model
+    }
+    return preferred
   }
 
   function readProviderIdForThread(threadId: string): string {
@@ -2019,6 +2026,12 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
       const webSession = webPreferences.sessions.value[selectedThreadId.value]
       if (webSession?.model) {
         selectedModelId.value = effectiveConversationChoice(webSession, models).model
+        return
+      }
+      const rememberedModel = selectedModelIdByContext.value[selectedThreadId.value]
+      if (selectedThreadId.value && rememberedModel && targetProviderId === 'codex') {
+        // Catalog fallback is effective state, never a new user preference.
+        selectedModelId.value = effectiveConversationChoice({ model: rememberedModel, provider: targetProviderId, effort: '', tier: '' }, models).model
         return
       }
       const currentModelInNewList = normalizedSelectedModelId && modelIds.includes(normalizedSelectedModelId)
@@ -4426,19 +4439,21 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
     await loadThreadsPromise
   }
 
-  async function loadMessages(threadId: string, options: { silent?: boolean } = {}) {
+  async function loadMessages(threadId: string, options: { silent?: boolean; retry?: boolean } = {}) {
     if (!threadId) {
       return
     }
     const recentLoadFailure =
       Date.now() - (lastMessageLoadFailureAtByThreadId.get(threadId) ?? 0) < RECENT_THREAD_MESSAGE_LOAD_REUSE_MS
-    if (turnErrorByThreadId.value[threadId]?.transient && (options.silent === true || recentLoadFailure)) {
+    if (!options.retry && turnErrorByThreadId.value[threadId]?.transient && (options.silent === true || recentLoadFailure)) {
       return
     }
 
     const existingLoad = loadMessagePromiseByThreadId.get(threadId)
     if (existingLoad) {
-      await existingLoad
+      const identity = loadIdentityRevisionByThreadId.get(threadId)
+      try { await existingLoad } catch (cause) { if (identity === accountIdentityRevision) throw cause }
+      if (identity !== accountIdentityRevision) await loadMessages(threadId, options)
       return
     }
 
@@ -4448,6 +4463,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
       isLoadingMessages.value = true
     }
 
+    const identityRevision = accountIdentityRevision
     const requestedRevision = messageHistoryRevisionByThreadId.get(threadId) ?? 0
     let loadedSnapshot = false
     const loadPromise = (async () => {
@@ -4457,7 +4473,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
       const loadedRecently =
         Date.now() - (lastMessageLoadAtByThreadId.get(threadId) ?? 0) < RECENT_THREAD_MESSAGE_LOAD_REUSE_MS
       const canReuseLoadedMessages =
-        alreadyLoaded &&
+        alreadyLoaded && !turnErrorByThreadId.value[threadId]?.transient &&
         requestedRevision === (loadedHistoryRevisionByThreadId.get(threadId) ?? 0) &&
         (
           loadedRecently ||
@@ -4473,7 +4489,15 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
 
       const needsResume = resumedThreadById.value[threadId] !== true
       const resumedThread = needsResume ? await resumeThread(threadId) : null
-      const detail = resumedThread ?? await getThreadDetail(threadId)
+      let detail = resumedThread
+      if (!detail) {
+        try { detail = await getThreadDetail(threadId) } catch (cause) {
+          if (!/thread.*(?:not loaded|not found)|no.*thread.*found/i.test(String(cause))) throw cause
+          invalidateThreadResumeCache(threadId)
+          detail = await resumeThread(threadId)
+        }
+      }
+      if (identityRevision !== accountIdentityRevision) return
       if (detail.thread) snapshotThreads.value = { ...snapshotThreads.value, [threadId]: detail.thread }
 
       if (detail.modelProvider) {
@@ -4546,6 +4570,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
         clearCompletedTurnLiveState(threadId)
       }
       } catch (unknownError) {
+        if (identityRevision !== accountIdentityRevision) return
         const message = unknownError instanceof Error ? unknownError.message : 'Unknown application error'
         if (selectedThreadId.value === threadId) {
           setTurnErrorForThread(threadId, message, { transient: true })
@@ -4559,6 +4584,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
       }
     })().finally(() => {
       loadMessagePromiseByThreadId.delete(threadId)
+      loadIdentityRevisionByThreadId.delete(threadId)
       if (loadedSnapshot && requestedRevision !== (messageHistoryRevisionByThreadId.get(threadId) ?? 0)
         && selectedThreadId.value === threadId && typeof window !== 'undefined') {
         pendingThreadMessageRefresh.add(threadId)
@@ -4569,6 +4595,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
       }
     })
 
+    loadIdentityRevisionByThreadId.set(threadId, identityRevision)
     loadMessagePromiseByThreadId.set(threadId, loadPromise)
     await loadPromise
   }
@@ -4684,10 +4711,27 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
   }
 
   async function refreshAll(
-    options: { includeSelectedThreadMessages?: boolean; awaitAncillaryRefreshes?: boolean; providerChanged?: boolean; forceThreadRefresh?: boolean } = {},
+    options: { includeSelectedThreadMessages?: boolean; awaitAncillaryRefreshes?: boolean; providerChanged?: boolean; forceThreadRefresh?: boolean; accountChanged?: boolean } = {},
   ) {
     error.value = ''
     codexCliMissingError.value = ''
+    if (options.accountChanged) {
+      accountIdentityRevision++
+      modelRefreshGeneration++
+      invalidateThreadResumeCache()
+      invalidateModelCatalog()
+      recentRateLimitsAt = 0
+      const ids = new Set([...Object.keys(loadedMessagesByThreadId.value), ...Object.keys(turnErrorByThreadId.value), ...loadMessagePromiseByThreadId.keys(), selectedThreadId.value])
+      const resumed = { ...resumedThreadById.value }
+      for (const id of ids) {
+        if (!id || inProgressById.value[id]) continue
+        delete resumed[id]
+        loadedHistoryRevisionByThreadId.set(id, -1)
+        lastMessageLoadFailureAtByThreadId.delete(id)
+        clearTransientTurnErrorForThread(id)
+      }
+      resumedThreadById.value = resumed
+    }
     if (options.providerChanged) { invalidateModelCatalog(); recentRateLimitsAt = 0 }
     const includeSelectedThreadMessages = options.includeSelectedThreadMessages !== false
     const awaitAncillaryRefreshes = options.awaitAncillaryRefreshes === true
@@ -4727,7 +4771,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
     setSelectedThreadId(threadId)
 
     try {
-      await loadMessages(threadId)
+      await loadMessages(threadId, { retry: true })
       await refreshModelPreferences({ includeProviderModels: true })
       void refreshSkills()
       return 'ok'
