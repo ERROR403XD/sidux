@@ -1,0 +1,80 @@
+{
+  "base": "http://127.0.0.1:59001",
+  "label": "candidate",
+  "screenshots": [
+    {
+      "path": "output/playwright/0219-slash-candidate-1440-light.png",
+      "width": 1440,
+      "height": 1000,
+      "dark": false
+    },
+    {
+      "path": "output/playwright/0219-slash-empty-candidate-light.png",
+      "width": 1440,
+      "height": 1000,
+      "dark": false
+    },
+    {
+      "path": "output/playwright/0219-slash-empty-detail-candidate-light.png",
+      "width": 1440,
+      "height": 1000,
+      "dark": false,
+      "element": ".composer-command-picker"
+    },
+    {
+      "path": "output/playwright/0219-slash-candidate-1440-dark.png",
+      "width": 1440,
+      "height": 1000,
+      "dark": true
+    },
+    {
+      "path": "output/playwright/0219-slash-empty-candidate-dark.png",
+      "width": 1440,
+      "height": 1000,
+      "dark": true
+    },
+    {
+      "path": "output/playwright/0219-slash-empty-detail-candidate-dark.png",
+      "width": 1440,
+      "height": 1000,
+      "dark": true,
+      "element": ".composer-command-picker"
+    },
+    {
+      "path": "output/playwright/0219-slash-candidate-375-light.png",
+      "width": 375,
+      "height": 812,
+      "dark": false
+    },
+    {
+      "path": "output/playwright/0219-slash-candidate-375-dark.png",
+      "width": 375,
+      "height": 812,
+      "dark": true
+    },
+    {
+      "path": "output/playwright/0219-slash-candidate-768-light.png",
+      "width": 768,
+      "height": 1024,
+      "dark": false
+    },
+    {
+      "path": "output/playwright/0219-slash-candidate-768-dark.png",
+      "width": 768,
+      "height": 1024,
+      "dark": true
+    }
+  ],
+  "cases": [
+    "已有内容/plan: literal",
+    "hello /plan: literal",
+    "第一行\n/plan: literal",
+    " /plan: literal",
+    "/plan /plan: literal",
+    "https://example.com/plan: literal",
+    "/tmp/folder/plan: literal"
+  ],
+  "errors": [],
+  "turnStarts": 0,
+  "passed": true
+}
