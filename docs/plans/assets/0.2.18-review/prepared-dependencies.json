@@ -1,0 +1,47 @@
+[
+  {
+    "name": "@xterm/addon-fit",
+    "declared": "^0.11.0",
+    "installed": "0.11.0"
+  },
+  {
+    "name": "@xterm/xterm",
+    "declared": "^6.0.0",
+    "installed": "6.0.0"
+  },
+  {
+    "name": "commander",
+    "declared": "^13.1.0",
+    "installed": "13.1.0"
+  },
+  {
+    "name": "express",
+    "declared": "^5.1.0",
+    "installed": "5.2.1"
+  },
+  {
+    "name": "highlight.js",
+    "declared": "^11.11.1",
+    "installed": "11.12.0"
+  },
+  {
+    "name": "rrule",
+    "declared": "2.8.1",
+    "installed": "2.8.1"
+  },
+  {
+    "name": "smol-toml",
+    "declared": "1.8.0",
+    "installed": "1.8.0"
+  },
+  {
+    "name": "ws",
+    "declared": "^8.18.3",
+    "installed": "8.21.3"
+  },
+  {
+    "name": "node-pty",
+    "declared": "^1.1.0",
+    "installed": "1.1.0"
+  }
+]

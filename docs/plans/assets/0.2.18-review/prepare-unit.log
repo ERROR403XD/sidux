@@ -1,0 +1,10 @@
+[WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.onlyBuiltDependencies". See https://pnpm.io/settings for the new home of each setting.
+$ vitest run
+
+ RUN  v4.1.11 /home/Code/codexapp
+
+
+ Test Files  104 passed | 1 skipped (105)
+      Tests  706 passed | 1 skipped (707)
+   Start at  16:27:59
+   Duration  3.52s (transform 8.58s, setup 0ms, import 15.51s, tests 18.28s, environment 11ms)
