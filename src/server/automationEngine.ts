@@ -29,7 +29,7 @@ type Definition = { record: ThreadAutomationRecord | null; error: string | null;
 export function automationError(error: unknown): { errorCode: string; error: string } {
   const text = error instanceof Error ? error.message : String(error)
   // Do not retain upstream responses, prompts or auth material in the run journal.
-  if (/quota|rate.?limit|usage.?limit|429|额度|限额/iu.test(text)) return { errorCode: 'QUOTA_EXHAUSTED', error: '本次运行因所选账号额度不足结束；可改选账号后重试' }
+  if (/quota|rate.?limit|usage.?limit|429|额度|限额/iu.test(text)) return { errorCode: 'QUOTA_EXHAUSTED', error: '本次运行遇到额度或速率限制；请查看实际额度和恢复时间，恢复后再试' }
   if (/auth|401|403|token|credential|bearer/iu.test(text)) return { errorCode: 'AUTH_REQUIRED', error: '认证失败；请检查当前账号，然后手动重试' }
   if (/model.*(not|invalid|unavailable|support)|模型/iu.test(text)) return { errorCode: 'MODEL_UNAVAILABLE', error: '模型不可用；请检查模型配置后重试' }
   if (/ENOENT|ENOTDIR|cwd|目录/iu.test(text)) return { errorCode: 'CWD_UNAVAILABLE', error: '工作目录不存在或不可访问' }

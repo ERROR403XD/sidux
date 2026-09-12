@@ -1,7 +1,7 @@
 <template>
   <AppDialog :open="true" :busy="working" :title="`/${request.name} · ${t(title)}`" @close="close">
     <div class="thread-command-dialog" :aria-busy="working || loading">
-      <p v-if="error" class="thread-command-error" role="alert">{{ t(error) }}</p>
+      <DismissibleNotice :message="error" class="thread-command-error" />
       <p v-if="feedback" class="thread-command-feedback" role="status">{{ t(feedback) }}</p>
       <p v-if="loading">{{ t('读取中…') }}</p>
       <template v-if="request.name === 'goal'">
@@ -51,6 +51,7 @@
 import { t } from '../../composables/useUiLanguage'
 
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import DismissibleNotice from '../common/DismissibleNotice.vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppButton from '../common/AppButton.vue'
 import AppSelect from '../common/AppSelect.vue'

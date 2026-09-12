@@ -1,32 +1,20 @@
-### Error-triggered feedback button
+### 最小问题报告（0.2.18 / R01）
 
-#### Feature/Change Name
-Feedback action appears in Settings and on visible error banners after captured UI/runtime/API failures, then opens prefilled email diagnostics.
+#### 前置条件
+- 4173 为当前工作树；使用隔离 CODEX_HOME。准备浅色、深色主题，桌面和手机视口。
+- 用浏览器路由拦截使 `/codex-api/skills-hub?*` 返回 500 和合成错误，不修改真实服务。
 
-#### Prerequisites/Setup
-1. Dev server running (`pnpm run dev --host 127.0.0.1 --port 4173` or an alternate free port).
-2. Browser devtools available to inject a test error or failed fetch.
-3. Light theme and dark theme both available from the appearance switcher.
+#### 操作
+1. 进入应用的技能页，点击错误旁的反馈入口。
+2. 检查“问题报告”弹窗，编辑复现步骤并复制；关闭后重新打开。
+3. 查看当前项目 Issues 链接目标，不实际提交。
+4. 测试剪贴板不可用时仍能选中报告文本，重复明暗主题检查。
 
-#### Steps
-1. In light theme, load the home screen, open Settings, and confirm no `Send feedback` row is visible during a clean state.
-2. Trigger a failure, for example run `fetch('/codex-api/rpc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })` in the browser console or open a folder path that produces a visible load error.
-3. Reopen Settings and confirm a `Send feedback` row with `Issue detected` appears after the failed request is recorded.
-4. Trigger or view a visible error banner, such as the missing Codex CLI composer banner, a chat send/connection error in the live conversation overlay, a settings provider error, a folder picker error, a Skills Hub error, or a branch dropdown error, and confirm that error state includes a compact `Send feedback` action.
-5. Confirm no feedback action appears in the content header during normal use.
-6. Click `Send feedback` and confirm the mail client opens a draft to `brutalstrikedevs@gmail.com`.
-7. Confirm the draft body includes current URL, user agent, viewport, app/worktree version info, and recent diagnostics including the failed request or visible error.
-8. Switch to dark theme and repeat steps 1-7.
+#### 预期
+- 点击后只打开应用内预览；不会打开邮件客户端、自动打开外站或发送报告。
+- 默认报告仅包含版本、时间、页面类别、主题、语言、视口、错误类别及 HTTP 状态；不包含会话正文、错误原文、完整 URL、目录、浏览器存储或凭据。
+- 报告最多含 12 条诊断。Issues 指向 `https://github.com/ERROR403XD/codexapp/issues`，报告不会通过 URL 参数传出。
+- 复制失败时提供可选中的文本和明确提示。弹窗使用共享组件，Esc、焦点返回和明暗主题正确。
 
-#### Expected Results
-- The settings feedback action is absent during normal operation.
-- Runtime errors, unhandled rejections, failed fetches/API responses, and visible load failures make the Settings feedback action visible.
-- Visible error states, including chat send/connection failures, include a local `Send feedback` action so the user can report the error from the same context.
-- The generated `mailto:` draft is prefilled with useful diagnostics and does not submit anything automatically.
-- No feedback action is shown in the app header during normal use.
-- The Settings feedback row and visible-error feedback actions remain readable in light and dark themes.
-
-#### Rollback/Cleanup
-- Close the generated email draft without sending if this was only a test.
-
----
+#### 清理
+关闭测试浏览器，移除路由拦截；不要提交测试报告。旧邮件采集行为已由本条替代。

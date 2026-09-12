@@ -1024,7 +1024,7 @@ export const zhSourceEnglish: Record<string, string> = {
   "无效的到期时间。": "Invalid expiry time.",
   "统计数据无法读取，原文件已保留；出口可继续使用，本次统计暂存于内存。": "Unable to read statistics. The original file was retained; the proxy remains available and new statistics are held in memory.",
   "统计写入失败，本次数据暂存于内存；出口可继续使用。": "Failed to write statistics. Data is held in memory; the proxy remains available.",
-  "本次运行因所选账号额度不足结束；可改选账号后重试": "This run ended because the selected account has insufficient quota. Select another account and retry.",
+  "本次运行遇到额度或速率限制；请查看实际额度和恢复时间，恢复后再试": "This run reached a quota or rate limit. Check the actual quota and reset time, then retry after recovery.",
   "认证失败；请检查当前账号，然后手动重试": "Authentication failed. Check the current account and retry manually.",
   "模型不可用；请检查模型配置后重试": "Model unavailable. Check model settings and retry.",
   "工作目录不存在或不可访问": "The working directory does not exist or is inaccessible",
@@ -1464,5 +1464,13 @@ export const zhSourceEnglish: Record<string, string> = {
   "统计数据无法读取，原文件已保留；代理可继续使用，本次统计暂存于内存。": "Unable to read statistics. The original file was retained; the proxy remains available and new statistics are held in memory.",
   "统计写入失败，本次数据暂存于内存；代理可继续使用。": "Failed to write statistics. Data is held in memory; the proxy remains available.",
   "API 出口": "API Proxy",
-  "API 代理": "API Proxy"
+  "API 代理": "API Proxy",
+  "问题报告": "Issue report",
+  "仅包含版本、界面信息和错误类别；可补充复现步骤后复制。": "Includes version, interface details and error categories only. Add reproduction steps before copying.",
+  "打开项目 Issues": "Open project Issues",
+  "复制报告": "Copy report",
+  "复制失败，请选中文本复制。": "Copy failed. Select the text to copy it.",
+  "关闭提示": "Dismiss notification",
+  "复制草稿": "Copy draft",
+  "保存中…": "Saving\u2026",
 }

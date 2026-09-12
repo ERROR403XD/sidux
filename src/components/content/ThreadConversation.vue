@@ -969,23 +969,17 @@ const fileLinkContextMenuY = ref(0)
 const fileLinkContextBrowseUrl = ref('')
 const fileLinkContextEditUrl = ref('')
 const { isMobile } = useMobile()
-const { buildFeedbackMailto, feedbackMailtoBase, recordVisibleFailure } = useFeedbackDiagnostics()
-const feedbackMailto = feedbackMailtoBase()
+const { openFeedbackReport, feedbackUrl, recordVisibleFailure } = useFeedbackDiagnostics()
+const feedbackMailto = feedbackUrl
 
 function prepareLiveErrorFeedback(event: MouseEvent, message: string): void {
   recordVisibleFailure(message)
-  const target = event.currentTarget
-  if (target instanceof HTMLAnchorElement) {
-    target.href = buildFeedbackMailto()
-  }
+  openFeedbackReport(event)
 }
 
 function prepareTurnErrorFeedback(event: MouseEvent, message: string): void {
   recordVisibleFailure(message)
-  const target = event.currentTarget
-  if (target instanceof HTMLAnchorElement) {
-    target.href = buildFeedbackMailto()
-  }
+  openFeedbackReport(event)
 }
 
 function parsePlanFromMessageText(text: string): { explanation: string; steps: UiPlanStep[] } | null {

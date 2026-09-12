@@ -30,3 +30,5 @@ Return to the [manual test index](../../tests.md).
 - [账号预留、重置与通知](account-reserve-reset-notifications.md)
 
 - [0.2.14 统一账号执行与移除](accounts-0214-unified-execution.md)
+
+- [功能提示关闭与草稿保存状态（0.2.18）](composer-notices-and-draft-status.md)

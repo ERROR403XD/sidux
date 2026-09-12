@@ -50,3 +50,10 @@
 ### 自动化来源与 TestChat 文件链接回归（0.1.90 收尾）
 
 前置：4173 内部 TestChat 夹具或隔离内部任务，浅/深主题，Asia/Shanghai 与 America/New_York。发送带唯一标记的自动化运行消息及 ``[`/tmp/codexapp-0190-browser-home/qwe.txt`](/tmp/codexapp-0190-browser-home/qwe.txt)``；重新加载后检查实际消息行。预期：内部信封隐藏，任务名与本地时间可见；文件链接 href 为 `/codex-local-browse/tmp/codexapp-0190-browser-home/qwe.txt`，title 和文本为原绝对路径，`hrefOk/titleOk/textOk` 全部通过。清理：关闭夹具或删除自己创建的测试任务，保留其他任务。
+
+### 0.2.18 / R02 额度提示
+
+前置：使用合成错误运行 `pnpm exec vitest run src/server/automationError.test.ts`，不制造真实账号限流。
+操作：覆盖 HTTP 429、quota、rate limit、额度不足，以及 401、ECONNRESET。
+预期：前四种保留 QUOTA_EXHAUSTED，并提示查看实际额度和恢复时间、恢复后再试；不建议换账号。认证和网络错误维持独立分类；不改变重试或调度行为。
+清理：无持久状态或真实请求。

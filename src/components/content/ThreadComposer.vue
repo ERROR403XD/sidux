@@ -366,6 +366,13 @@
       :disabled="isInteractionDisabled"
       @change="onFolderPickerChange"
     />
+    <div class="thread-composer-draft-status" :class="{ 'is-error': draftSaveStatus === 'failed' }" role="status">
+      <template v-if="draftSaveStatus === 'saved'">{{ t('已保存') }}</template>
+      <template v-else-if="draftSaveStatus === 'failed'">
+        <span>{{ t(draftCopyFailed ? '复制失败，请选中文本复制。' : '保存失败') }}</span>
+        <button type="button" @click="copyFailedDraft">{{ t('复制草稿') }}</button>
+      </template>
+    </div>
   </form>
 </template>
 
@@ -505,6 +512,8 @@ const PASTED_TEXT_FILE_THRESHOLD = 2000
 const PROMPT_OPTION_PREFIX = 'prompt:'
 
 const draft = ref('')
+const draftSaveStatus = ref<'saved' | 'failed' | ''>('')
+const draftCopyFailed = ref(false)
 const selectedImages = ref<SelectedImage[]>([])
 const selectedSkills = ref<SkillItem[]>([])
 const savedPrompts = ref<ComposerPromptInfo[]>([])
@@ -1022,11 +1031,26 @@ function persistDraftForThread(threadId: string, payload: ComposerDraftPayload):
       || payload.skills.length > 0
     if (hasContent) {
       window.localStorage.setItem(getDraftStorageKey(normalizedThreadId), JSON.stringify(payload))
+      draftSaveStatus.value = 'saved'
+      draftCopyFailed.value = false
       return
     }
     window.localStorage.removeItem(getDraftStorageKey(normalizedThreadId))
+    draftSaveStatus.value = ''
+    draftCopyFailed.value = false
   } catch {
-    // Ignore localStorage failures (quota/private mode).
+    draftSaveStatus.value = 'failed'
+  }
+}
+
+async function copyFailedDraft(): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(draft.value)
+    draftCopyFailed.value = false
+  } catch {
+    draftCopyFailed.value = true
+    inputRef.value?.focus()
+    inputRef.value?.select()
   }
 }
 
@@ -1801,6 +1825,8 @@ watch(
       persistDraftForThread(lastActiveThreadId, getCurrentDraftPayload())
     }
     clearDraftState()
+    draftSaveStatus.value = ''
+    draftCopyFailed.value = false
     const restored = loadPersistedDraftForThread(nextThreadId)
     if (restored) {
       replaceDraftState(restored)

@@ -1,146 +1,59 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  buildFeedbackMailto,
-  feedbackMailtoBase,
-  installFeedbackDiagnostics,
-  recordFeedbackDiagnostic,
-  useFeedbackDiagnostics,
-} from './useFeedbackDiagnostics'
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
+import { buildFeedbackReport, installFeedbackDiagnostics, FEEDBACK_URL, feedbackReport, openFeedbackReport, recordFeedbackDiagnostic, useFeedbackDiagnostics } from './useFeedbackDiagnostics'
 
 beforeEach(() => {
-  vi.stubGlobal('navigator', {
-    userAgent: 'TestAgent/1.0',
-    onLine: true,
-    language: 'en-US',
-    platform: 'TestOS',
-  })
   vi.stubGlobal('window', {
-    innerWidth: 390,
-    innerHeight: 844,
-    devicePixelRatio: 2,
-    location: {
-      href: 'http://127.0.0.1:4173/#/',
-      pathname: '/',
-      search: '',
-      hash: '#/',
-    },
-    addEventListener: vi.fn(),
-    localStorage: {
-      length: 2,
-      key: vi.fn((index: number) => ['codex-web-local.sidebar-chat-sort-mode.v1', 'codex-token'][index] ?? null),
-      getItem: vi.fn((key: string) => ({
-        'codex-web-local.sidebar-chat-sort-mode.v1': 'updated',
-        'codex-token': 'super-secret-token',
-      })[key] ?? null),
-    },
-    sessionStorage: {
-      length: 1,
-      key: vi.fn((index: number) => ['codex-web-local.temp'][index] ?? null),
-      getItem: vi.fn((key: string) => key === 'codex-web-local.temp' ? 'open-folder-modal' : null),
-    },
+    innerWidth: 390, innerHeight: 844, addEventListener: vi.fn(),
+    location: { hash: '#/thread/private-id?token=secret', href: 'https://private-host/private-path' },
+    localStorage: { getItem: () => { throw new Error('Storage must not be read') } },
   })
   vi.stubGlobal('document', {
-    body: {
-      innerText: 'Start new thread\\nVisible failure banner\\nSend feedback',
-    },
+    documentElement: { classList: { contains: () => true }, dataset: { uiLanguage: 'zh-CN' } },
+    body: { get innerText() { throw new Error('Page text must not be read') } },
   })
   useFeedbackDiagnostics().diagnostics.value = []
+  feedbackReport.value = null
+})
+afterEach(() => vi.unstubAllGlobals())
+
+describe('minimal feedback report', () => {
+  it('exports only allowlisted context and diagnostic categories', () => {
+    recordFeedbackDiagnostic({ kind: 'api-response', message: 'private conversation secret', url: '/private/path?token=secret', status: 429, statusText: 'private response' })
+    const report = buildFeedbackReport()
+    expect(report).toContain('Route: thread')
+    expect(report).toContain('Theme: dark')
+    expect(report).toContain('Language: zh-CN')
+    expect(report).toContain('Viewport: 390x844')
+    expect(report).toContain('api-response / HTTP 429')
+    expect(report).not.toMatch(/private|secret|token|localStorage/)
+  })
+  it('opens a local preview and prevents anchor navigation', () => {
+    const event = { preventDefault: vi.fn() } as unknown as MouseEvent
+    openFeedbackReport(event)
+    expect(event.preventDefault).toHaveBeenCalledOnce()
+    expect(feedbackReport.value).toContain('CodexApp')
+    expect(FEEDBACK_URL).toBe('https://github.com/ERROR403XD/codexapp/issues')
+  })
+  it('bounds reports and deduplicates identical latest entries', () => {
+    const entry = { kind: 'visible-error' as const, message: 'failure' }
+    recordFeedbackDiagnostic(entry)
+    recordFeedbackDiagnostic(entry)
+    expect(useFeedbackDiagnostics().diagnostics.value).toHaveLength(1)
+    for (let i = 0; i < 30; i++) recordFeedbackDiagnostic({ ...entry, message: String(i) })
+    expect(useFeedbackDiagnostics().diagnostics.value).toHaveLength(20)
+    expect(buildFeedbackReport().match(/visible-error/g)).toHaveLength(12)
+  })
 })
 
-describe('feedback diagnostics', () => {
-  it('keeps feedback hidden until a diagnostic is recorded', () => {
-    const state = useFeedbackDiagnostics()
-
-    expect(state.hasFeedbackDiagnostics.value).toBe(false)
-
-    state.recordVisibleFailure('Failed to load folders')
-
-    expect(state.hasFeedbackDiagnostics.value).toBe(true)
-  })
-
-  it('builds a mailto with context and recent diagnostics', () => {
-    recordFeedbackDiagnostic({
-      kind: 'api-response',
-      message: 'Request failed with HTTP 500',
-      url: '/codex-api/rpc',
-      method: 'POST',
-      status: 500,
-      statusText: 'Internal Server Error',
-      atIso: '2026-05-12T03:00:00.000Z',
-    })
-
-    const mailto = buildFeedbackMailto()
-    const parsed = new URL(mailto)
-    const body = parsed.searchParams.get('body') ?? ''
-
-    expect(mailto.startsWith('mailto:brutalstrikedevs@gmail.com?')).toBe(true)
-    expect(mailto).toContain('subject=Codex%20Web%20feedback%3A%20Request%20failed%20with%20HTTP%20500')
-    expect(mailto).not.toContain('+')
-    expect(parsed.searchParams.get('subject')).toContain('Request failed with HTTP 500')
-    expect(body).toContain('URL: http://127.0.0.1:4173/#/')
-    expect(body).toContain('User agent: TestAgent/1.0')
-    expect(body).toContain('Viewport: 390x844 @2x')
-    expect(body).toContain('Browser/app state')
-    expect(body).toContain('Hash: #/')
-    expect(body).toContain('Online: true')
-    expect(body).toContain('codex-web-local.sidebar-chat-sort-mode.v1=updated')
-    expect(body).toContain('codex-token=[omitted sensitive value, 18 chars]')
-    expect(mailto).not.toContain('super-secret-token')
-    expect(body).toContain('codex-web-local.temp=open-folder-modal')
-    expect(body).toContain('POST | /codex-api/rpc | 500 Internal Server Error')
-    expect(body).toContain('Visible page text')
-    expect(body).toContain('Visible failure banner')
-  })
-
-  it('exposes a minimal mailto href for static anchors', () => {
-    expect(feedbackMailtoBase()).toBe('mailto:brutalstrikedevs@gmail.com')
-  })
-
-  it('dedupes identical newest diagnostics', () => {
-    recordFeedbackDiagnostic({
-      kind: 'visible-error',
-      message: 'Failed to load folders',
-      url: 'http://127.0.0.1:4173/#/',
-      atIso: '2026-05-12T03:00:00.000Z',
-    })
-    recordFeedbackDiagnostic({
-      kind: 'visible-error',
-      message: 'Failed to load folders',
-      url: 'http://127.0.0.1:4173/#/',
-      atIso: '2026-05-12T03:00:01.000Z',
-    })
-
-    expect(useFeedbackDiagnostics().diagnostics.value).toHaveLength(1)
-  })
-
-  it('uses a single-line subject for multiline diagnostics', () => {
-    recordFeedbackDiagnostic({
-      kind: 'window-error',
-      message: 'Top level failure\n    at stack frame\n    at another frame',
-      url: 'http://127.0.0.1:4173/#/',
-      atIso: '2026-05-12T03:00:00.000Z',
-    })
-
-    const subject = new URL(buildFeedbackMailto()).searchParams.get('subject') ?? ''
-
-    expect(subject).toBe('Codex Web feedback: Top level failure')
-  })
-
-  it('does not throw during install when fetch is unavailable', () => {
+// Keep the existing startup failure guards covered after replacing email reports.
+describe('feedback instrumentation startup', () => {
+  it('does not prevent startup when fetch is unavailable', () => {
     expect(() => installFeedbackDiagnostics()).not.toThrow()
-
     expect(useFeedbackDiagnostics().diagnostics.value[0]?.message).toContain('window.fetch is unavailable')
   })
-
-  it('does not throw during install when fetch cannot be patched', () => {
-    Object.defineProperty(window, 'fetch', {
-      value: vi.fn(),
-      writable: false,
-      configurable: true,
-    })
-
+  it('does not prevent startup when fetch cannot be patched', () => {
+    Object.defineProperty(window, 'fetch', { value: vi.fn(), writable: false, configurable: true })
     expect(() => installFeedbackDiagnostics()).not.toThrow()
-
     expect(useFeedbackDiagnostics().diagnostics.value[0]?.message).toContain('could not monitor fetch')
   })
 })

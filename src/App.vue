@@ -1,4 +1,5 @@
 <template>
+  <FeedbackReportDialog />
   <DesktopLayout :is-sidebar-collapsed="isSidebarCollapsed" @close-sidebar="setSidebarCollapsed(true)">
     <template #sidebar>
       <section class="sidebar-root">
@@ -566,6 +567,7 @@
               </div>
 
               <div class="composer-with-queue">
+                <DismissibleNotice :key="composerThreadContextId" :message="commandActionError" class="composer-runtime-error" />
                 <div v-if="codexCliMissingError" class="composer-runtime-error" role="alert">
                   <span>{{ t(codexCliMissingError) }}</span>
                   <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, codexCliMissingError)">{{ t('Send feedback') }}</a>
@@ -639,6 +641,7 @@
                 </div>
 
                 <div class="composer-with-queue">
+                <DismissibleNotice :key="composerThreadContextId" :message="commandActionError" class="composer-runtime-error" />
                   <p v-if="selectedAuthRecovery" class="thread-auth-recovery" role="status">
                     {{ t(selectedAuthRecovery.phase === 'started' ? '正在恢复凭据' : '凭据恢复已结束') }}
                     <span v-if="selectedAuthRecovery.message"> · {{ t(selectedAuthRecovery.message) }}</span>
@@ -647,10 +650,10 @@
                     <span>{{ t(codexCliMissingError) }}</span>
                     <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, codexCliMissingError)">{{ t('Send feedback') }}</a>
                   </div>
-                  <p v-if="selectedThreadQueueError" class="composer-runtime-error" role="alert">{{ t(selectedThreadQueueError) }}</p>
-                  <p v-if="threadHistoryActionError" class="composer-runtime-error" role="alert">{{ t(threadHistoryActionError) }}</p>
+                  <DismissibleNotice :key="`selectedThreadQueueError-${selectedThreadId}`" :message="selectedThreadQueueError" class="composer-runtime-error" />
+                  <DismissibleNotice :key="`threadHistoryActionError-${selectedThreadId}`" :message="threadHistoryActionError" class="composer-runtime-error" />
                   <DeliveryOutbox :thread-id="selectedThreadId" :queue="selectedThreadQueuedMessages" @settled="onDeliveryAcknowledged" />
-                  <p v-if="queueDraftError" class="composer-runtime-error" role="alert">{{ t(queueDraftError) }}</p>
+                  <DismissibleNotice :key="`queueDraftError-${selectedThreadId}`" :message="queueDraftError" class="composer-runtime-error" />
                   <div v-if="editingQueuedMessageState" class="queue-edit-notice" role="status">
                     <span>{{ t('正在编辑队列消息') }}</span>
                     <AppButton @click="resumeQueuedMessage(editingQueuedMessageState.messageId)">{{ t('取消编辑') }}</AppButton>
@@ -897,6 +900,8 @@ import DesktopLayout from './components/layout/DesktopLayout.vue'
 import SidebarThreadTree from './components/sidebar/SidebarThreadTree.vue'
 import ContentHeader from './components/content/ContentHeader.vue'
 import AsyncQuestionDock from './components/content/AsyncQuestionDock.vue'
+import DismissibleNotice from './components/common/DismissibleNotice.vue'
+import FeedbackReportDialog from './components/content/FeedbackReportDialog.vue'
 import ThreadComposer from './components/content/ThreadComposer.vue'
 import ThreadGoalCard from './components/content/ThreadGoalCard.vue'
 import ThreadTasksPanel from './components/content/ThreadTasksPanel.vue'
@@ -1283,20 +1288,17 @@ type AutomationEditRequest = {
 const sidebarThreadTreeRef = ref<SidebarThreadTreeExposed | null>(null)
 const automationsPanelRef = ref<AutomationsPanelExposed | null>(null)
 const {
-  buildFeedbackMailto,
-  feedbackMailtoBase,
+  openFeedbackReport,
+  feedbackUrl,
   recordVisibleFailure,
 } = useFeedbackDiagnostics()
-const feedbackMailto = feedbackMailtoBase()
+const feedbackMailto = feedbackUrl
 
 function prepareFeedbackLink(event: MouseEvent, message?: string): void {
   if (message) {
     recordVisibleFailure(message)
   }
-  const target = event.currentTarget
-  if (target instanceof HTMLAnchorElement) {
-    target.href = buildFeedbackMailto()
-  }
+  openFeedbackReport(event)
 }
 const homeThreadComposerRef = ref<ThreadComposerExposed | null>(null)
 const threadComposerRef = ref<ThreadComposerExposed | null>(null)
@@ -3495,6 +3497,8 @@ async function onInsertTaskExcerpt(text: string) {
 }
 watch(() => selectedThreadId.value, () => { isTaskSearchOpen.value = false })
 const appCommandRequest = ref<AppCommandRequest | null>(null)
+const commandActionError = ref('')
+watch(composerThreadContextId, () => { commandActionError.value = '' })
 const commandContextSummary = computed(() => {
   if (isHomeRoute.value) return '新会话尚无上下文用量'
   const usage = selectedThreadTokenUsage.value
@@ -3503,10 +3507,16 @@ const commandContextSummary = computed(() => {
 })
 function onComposerCommand(request: AppCommandRequest) {
   if (isSwitchingAccounts.value) return
+  commandActionError.value = ''
+  const commandContextId = composerThreadContextId.value
   if (['new', 'resume', 'tasks', 'apps', 'plugins', 'mcp', 'automations', 'diff', 'copy', 'export'].includes(request.name)) {
     const navigation = ['new', 'resume', 'tasks', 'apps', 'plugins', 'mcp', 'automations', 'diff'].includes(request.name)
     if (navigation) request.complete()
-    void runAppCommand(request.name).then(() => { if (!navigation) request.complete() }).catch(cause => { desktopError.value = cause instanceof Error ? cause.message : '命令执行失败' })
+    void runAppCommand(request.name).then(() => { if (!navigation) request.complete() }).catch(cause => {
+      if (composerThreadContextId.value === commandContextId) {
+        commandActionError.value = cause instanceof Error ? cause.message : '命令执行失败'
+      }
+    })
     return
   }
   appCommandRequest.value = request

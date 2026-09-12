@@ -133,8 +133,8 @@ const isInstallActionInFlight = ref(false)
 const isUninstallActionInFlight = ref(false)
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 const { t } = useUiLanguage()
-const { buildFeedbackMailto, feedbackMailtoBase, recordVisibleFailure } = useFeedbackDiagnostics()
-const feedbackMailto = feedbackMailtoBase()
+const { openFeedbackReport, feedbackUrl, recordVisibleFailure } = useFeedbackDiagnostics()
+const feedbackMailto = feedbackUrl
 
 const props = defineProps<{
   cwd?: string
@@ -168,10 +168,7 @@ function showToast(text: string, type: 'success' | 'error' = 'success'): void {
 
 function prepareSkillsErrorFeedback(event: MouseEvent, message: string): void {
   recordVisibleFailure(message)
-  const target = event.currentTarget
-  if (target instanceof HTMLAnchorElement) {
-    target.href = buildFeedbackMailto()
-  }
+  openFeedbackReport(event)
 }
 
 function applySkillsPayload(payload: SkillsHubPayload): void {

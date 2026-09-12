@@ -2844,3 +2844,11 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 :root .automations-panel :is(.automations-create, .automations-refresh, .automation-edit-button, .automation-detail-edit) { height: 32px; border-radius: var(--ui-radius-control); font-size: var(--ui-font-control); line-height: 20px; }
 :root .automations-panel :is(.automations-refresh, .automation-edit-button, .automation-detail-edit) { border: 1px solid var(--ui-border); background: var(--ui-surface); color: var(--ui-text); }
 :root .automations-panel :is(.automations-refresh, .automation-edit-button, .automation-detail-edit):hover:not(:disabled) { background: var(--ui-hover); }
+
+.dismissible-notice { display: flex; align-items: flex-start; gap: 8px; color: var(--ui-danger); }
+.dismissible-notice > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.dismissible-notice-close { flex: none; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: var(--ui-radius-control); background: transparent; color: inherit; font-size: 20px; cursor: pointer; }
+.dismissible-notice-close:hover { background: var(--ui-hover); }
+.dismissible-notice-close:focus-visible { outline: 2px solid var(--ui-focus); }
+.thread-composer-draft-status { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-height: 18px; color: var(--ui-text); opacity: .6; font-size: 11px; }
+.thread-composer-draft-status.is-error { color: var(--ui-danger); opacity: 1; }

@@ -25,8 +25,8 @@ Feedback diagnostics startup hardening, project automation delete failure handli
 - Automation state is restored or reloaded after a failed delete.
 - Feedback diagnostics never prevent app startup when fetch cannot be patched.
 - Chat and Skills Hub error feedback links use native `mailto:` anchor handling so Chrome can open the configured email handler, while static link `href` values stay minimal until click.
-- Feedback email bodies include bounded visible page text alongside diagnostics.
-- Feedback email bodies include localStorage/sessionStorage state, route/hash, online state, language, and platform, with sensitive-looking storage values omitted and oversized values summarized.
+- 0.2.18 起反馈入口使用最小报告预览，不再采集页面文字；见同目录 `error-triggered-feedback-button.md`。
+- 0.2.18 起报告不读取 localStorage/sessionStorage，不导出完整路由、错误原文或页面正文。
 - Composer overflow checks remain functional without scheduling duplicate same-tick measurements.
 - The sidebar error message remains readable in light theme and dark theme.
 
