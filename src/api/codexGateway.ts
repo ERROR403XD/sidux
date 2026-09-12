@@ -1924,7 +1924,7 @@ export async function startThreadTurn(
   collaborationMode?: CollaborationModeKind,
   serviceTier?: string | null,
   deliveryMode: 'immediate' | 'steer' = 'immediate',
-  deliveryOptions?: { id: string; requireConfirmed?: boolean },
+  deliveryOptions?: { id: string; requireConfirmed?: boolean; onPrepared?: (id: string) => void; onResult?: (result: { id: string; status: string; turnId?: string }) => void },
 ): Promise<string> {
   try {
     const normalizedModel = model?.trim() ?? ''
@@ -1999,7 +1999,9 @@ export async function startThreadTurn(
         ...(serviceTier !== undefined ? { serviceTier } : {}),
       },
     })
+    try { deliveryOptions?.onPrepared?.(pending.id) } catch { /* Display observers cannot block a durable submission. */ }
     const payload = await submitRememberedDelivery(pending)
+    try { deliveryOptions?.onResult?.({ id: pending.id, status: payload.data.status || 'unknown', turnId: payload.data.turnId }) } catch { /* An observer failure cannot undo acceptance. */ }
     if (payload.data.status === 'cancelled') throw new Error('此提交已停止跟踪，请核对会话后再发送新消息')
     if (deliveryOptions?.requireConfirmed && !payload.data.turnId) throw new Error('回答尚未确认送达，请稍后核对')
     return typeof payload.data.turnId === 'string' ? payload.data.turnId : ''
@@ -2563,6 +2565,14 @@ export async function getThreadQueueState(): Promise<ThreadQueueState> {
       ? (payload as Record<string, unknown>)
       : {}
   return normalizeThreadQueueState(envelope.data)
+}
+
+export async function getDeliveryStatuses(threadId: string, ids: string[]): Promise<Array<{ id: string; status: 'accepted' | 'cancelled'; turnId?: string }>> {
+  const response = await fetch(`/codex-api/delivery-status?${new URLSearchParams({ threadId, ids: ids.join(',') })}`, { signal: AbortSignal.timeout(5000) })
+  const payload = await response.json()
+  if (!response.ok || !Array.isArray(payload.data)) throw new Error('无法读取发送回执')
+  return payload.data.filter((row: { id?: string; status?: string; turnId?: string }) => typeof row?.id === 'string'
+    && ids.includes(row.id) && (row.status === 'cancelled' || (row.status === 'accepted' && typeof row.turnId === 'string' && row.turnId.trim())))
 }
 
 export async function mutateThreadQueueState(operation: ThreadQueueOperation): Promise<ThreadQueueResult> {

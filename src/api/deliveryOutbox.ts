@@ -1,5 +1,7 @@
 import { createDeliveryId } from '../delivery'
 import type { StoredQueuedMessage, ThreadQueueState } from '../threadQueue'
+import { saveConversationDelivery } from './conversationDeliveryCache'
+import type { ConversationDeliveryStatus } from '../conversationDelivery'
 
 const PREFIX = 'codexapp.delivery.v2.'
 export const DELIVERY_OUTBOX_EVENT = 'codexapp-delivery-outbox'
@@ -111,6 +113,16 @@ export function submitRememberedDelivery(row: PendingWebDelivery): Promise<WebDe
       ? result?.id === row.id && ['accepted', 'cancelled', 'queued', 'editing', 'sending', 'unknown', 'failed'].includes(result.status)
       : result?.state && typeof result.state === 'object' && !Array.isArray(result.state)
     if (!valid) throw new Error('未收到有效的提交确认，请核对提交状态')
+    if (row.body.mode === 'steer') {
+      // Preserve the acknowledged content before clearing the submission outbox.
+      // This display cache is never consulted to decide whether to submit again.
+      saveConversationDelivery({ id: row.id, threadId: row.body.threadId, message: row.body.message,
+        createdAt: row.createdAt, status: result.status as ConversationDeliveryStatus,
+        ...(typeof result.turnId === 'string' ? { turnId: result.turnId } : {}),
+        ...(typeof result.error === 'string' ? { error: result.error } : {}),
+        ...(typeof result.revision === 'number' ? { revision: result.revision } : {}),
+      })
+    }
     forgetWebDelivery(row.id)
     return payload as WebDeliveryAck
   })().finally(() => { flights.delete(row.id) })

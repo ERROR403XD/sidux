@@ -27,6 +27,7 @@ const gatewayMocks = vi.hoisted(() => ({
   getThreadDetail: vi.fn(),
   getThreadGroupsPage: vi.fn(),
   getThreadQueueState: vi.fn(),
+  getDeliveryStatuses: vi.fn(),
   getThreadTitleCache: vi.fn(),
   getWorkspaceRootsState: vi.fn(),
   generateThreadTitle: vi.fn(),
@@ -89,6 +90,7 @@ function installTestWindow(initialStorage: Record<string, string> = {}) {
 beforeEach(() => {
   vi.clearAllMocks()
   gatewayMocks.getThreadQueueState.mockResolvedValue({})
+  gatewayMocks.getDeliveryStatuses.mockResolvedValue([])
   gatewayMocks.getThreadTitleCache.mockResolvedValue({ titles: {} })
   gatewayMocks.getWorkspaceRootsState.mockRejectedValue(new Error('no workspace roots state'))
 })
@@ -1456,6 +1458,60 @@ it('does not let an in-flight older history snapshot swallow a newer completion'
     gatewayMocks.mutateThreadQueueState.mockResolvedValue({ state: {}, delivered: { id: 'queue-1', turnId: 't1' } })
     await state.steerQueuedMessage('queue-1')
     expect(state.messages.value.filter(row => row.text === 'queued steer')).toHaveLength(1)
+    state.stopPolling()
+  })
+
+  it('shows steering before the HTTP response and retains it while switching conversations', async () => {
+    const { state } = setup()
+    await state.loadMessages('live')
+    let finish!: (turnId: string) => void
+    gatewayMocks.startThreadTurn.mockImplementationOnce(() => new Promise<string>(resolve => { finish = resolve }))
+    const pending = state.sendMessageToSelectedThread('visible immediately', [], [], 'steer')
+    expect(state.messages.value.find(row => row.text === 'visible immediately')?.deliveryState?.status).toBe('submitting')
+    state.primeSelectedThread('other')
+    expect(state.messages.value.some(row => row.text === 'visible immediately')).toBe(false)
+    state.primeSelectedThread('live')
+    expect(state.messages.value.some(row => row.text === 'visible immediately')).toBe(true)
+    finish('t1')
+    await pending
+    expect(state.messages.value.filter(row => row.text === 'visible immediately')).toHaveLength(1)
+    expect(state.messages.value.find(row => row.text === 'visible immediately')?.deliveryState?.status).toBe('accepted')
+    state.stopPolling()
+  })
+
+  it('restores a queued steer and reads its final receipt without sending again', async () => {
+    const { state } = setup()
+    const message = { id: 'queue-restore', text: 'queued visibility', imageUrls: [], skills: [], fileAttachments: [], delivery: { mode: 'steer', status: 'queued', revision: 2, createdAt: 1, updatedAt: 2 } }
+    gatewayMocks.getThreadQueueState.mockResolvedValue({ live: [message] })
+    await state.loadMessages('live')
+    await state.refreshQueueState()
+    expect(state.messages.value.find(row => row.text === message.text)?.deliveryState?.status).toBe('queued')
+    gatewayMocks.getThreadQueueState.mockResolvedValue({})
+    gatewayMocks.getDeliveryStatuses.mockResolvedValue([{ id: message.id, status: 'accepted', turnId: 't1' }])
+    await state.refreshQueueState()
+    expect(state.messages.value.find(row => row.text === message.text)?.deliveryState?.status).toBe('accepted')
+    expect(gatewayMocks.startThreadTurn).not.toHaveBeenCalled()
+    expect(gatewayMocks.mutateThreadQueueState).not.toHaveBeenCalled()
+    state.stopPolling()
+  })
+
+  it('keeps a queue-to-steer operation visible while pending and after failure or cancellation', async () => {
+    const { state } = setup()
+    const message = { id: 'queue-pending', text: 'show during steer', imageUrls: [], skills: [], fileAttachments: [], delivery: { mode: 'queue', status: 'queued', revision: 1, createdAt: 1, updatedAt: 1 } }
+    gatewayMocks.getThreadQueueState.mockResolvedValue({ live: [message] })
+    await state.loadMessages('live')
+    await state.refreshQueueState()
+    let finish!: (result: unknown) => void
+    gatewayMocks.mutateThreadQueueState.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    const pending = state.steerQueuedMessage(message.id)
+    expect(state.messages.value.some(row => row.text === message.text)).toBe(true)
+    await Promise.resolve()
+    finish({ state: { live: [{ ...message, delivery: { ...message.delivery, mode: 'steer', status: 'failed', revision: 3, error: 'fixture failure before submission' } }] } })
+    await pending
+    expect(state.messages.value.find(row => row.text === message.text)?.deliveryState?.status).toBe('failed')
+    gatewayMocks.mutateThreadQueueState.mockResolvedValueOnce({ state: {}, removed: message })
+    await state.removeQueuedMessage(message.id)
+    expect(state.messages.value.find(row => row.text === message.text)?.deliveryState?.status).toBe('cancelled')
     state.stopPolling()
   })
 

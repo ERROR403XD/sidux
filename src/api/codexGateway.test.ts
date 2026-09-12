@@ -52,6 +52,12 @@ function mockRpcFetch(): { requests: Array<{ method: string, params: Record<stri
 }
 
 describe('startThreadTurn collaboration mode payloads', () => {
+  it('does not let display observers block submission or turn acceptance into failure', async () => {
+    const { requests } = mockRpcFetch()
+    const fail = () => { throw new Error('display-only failure') }
+    expect(await startThreadTurn('thread-1', 'fixture', [], undefined, undefined, undefined, [], undefined, undefined, 'steer', { id: 'delivery-ui-test', onPrepared: fail, onResult: fail })).toMatch(/^turn-/)
+    expect(requests.filter(row => row.method === 'delivery/submit')).toHaveLength(1)
+  })
   afterEach(() => {
     vi.unstubAllGlobals()
   })

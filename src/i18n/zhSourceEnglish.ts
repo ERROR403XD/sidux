@@ -1559,3 +1559,11 @@ Object.assign(zhSourceEnglish, {
   "重置结果未确认，请刷新额度后核对。": "Reset unconfirmed. Refresh quota and check.",
   "自动化状态文件损坏，调度已停止，请检查 state.json": "Automation state file is corrupt. Scheduling stopped; check state.json"
 })
+
+Object.assign(zhSourceEnglish, {
+  '正在提交': 'Submitting',
+  '等待引导': 'Waiting to steer',
+  '引导中': 'Steering',
+  '已送达': 'Delivered',
+  '已移除': 'Removed',
+})

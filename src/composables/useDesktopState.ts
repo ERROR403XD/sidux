@@ -6,6 +6,7 @@ import { effectiveConversationChoice, useWebConversationPreferences, type Conver
 import { historyMessageKey, combineHistoryAndLive, sameMessageIdentity } from '../messageIdentity'
 import { mergeSubtaskMessage, observeTaskNotification } from '../subtasks'
 import { createDeliveryId } from '../delivery'
+import { useConversationDeliveries } from './useConversationDeliveries'
 import { changesThreadSearch } from '../threadSearchEvents'
 import { bindMessageTurnOrder, mergeTurnOrder, orderedTurnIds } from '../historyOrder'
 import { authRecoveryFromNotification, type AuthRecoveryState } from '../authRecovery'
@@ -42,6 +43,7 @@ import {
   rollbackThread,
   getThreadGroupsPage,
   getThreadQueueState,
+  getDeliveryStatuses,
   getWorkspaceRootsState,
   mutateThreadQueueState,
   setWorkspaceRootsState,
@@ -1374,6 +1376,7 @@ export function filterGroupsByWorkspaceRoots(
 }
 
 export function useDesktopState(options: { isThreadVisible?: (threadId: string) => boolean } = {}) {
+  const conversationDeliveries = useConversationDeliveries()
   const webPreferences = useWebConversationPreferences(typeof window !== 'undefined' ? window.localStorage : undefined)
   const webPreferenceState = webPreferences.state
   const webPreferenceError = webPreferences.error
@@ -1709,8 +1712,8 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
     const combined = combineHistoryAndLive(persisted, [...livePlan, ...liveCommands, ...liveFileChanges, ...liveAgent])
 
     const summary = turnSummaryByThreadId.value[threadId]
-    if (!summary) return combined
-    return insertTurnSummaryMessage(combined, summary)
+    const history = summary ? insertTurnSummaryMessage(combined, summary) : combined
+    return conversationDeliveries.project(threadId, history)
   })
   const hasMoreOlderMessages = computed(() => {
     const threadId = selectedThreadId.value
@@ -2554,6 +2557,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
   }
 
   function setPersistedMessagesForThread(threadId: string, nextMessages: UiMessage[]): void {
+    conversationDeliveries.observe(threadId, nextMessages)
     const failedCompactionTurns = new Set(nextMessages.filter(message => message.compaction?.status === 'failed' && message.id === `${message.turnId}-compaction`).map(message => message.turnId))
     if (failedCompactionTurns.size) nextMessages = nextMessages.filter(message => !failedCompactionTurns.has(message.turnId)
       || (message.messageType !== 'turnError' && (message.compaction?.status !== 'failed' || message.id === `${message.turnId}-compaction`)))
@@ -4245,6 +4249,31 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
 
   let queueMutationChain: Promise<unknown> = Promise.resolve()
   let queueRequestGeneration = 0
+  const deliveryReceiptReads = new Map<string, Promise<void>>()
+
+  function refreshVisibleDeliveryReceipts(threadId = selectedThreadId.value): Promise<void> {
+    if (!threadId) return Promise.resolve()
+    const pending = deliveryReceiptReads.get(threadId)
+    if (pending) return pending
+    const queuedIds = new Set((queuedMessagesByThreadId.value[threadId] ?? []).map(row => row.id))
+    const ids = conversationDeliveries.rows.value.filter(row => row.threadId === threadId
+      && !['accepted', 'cancelled', 'submitting'].includes(row.status) && !queuedIds.has(row.id)
+      && /^[a-zA-Z0-9_-]{1,160}$/.test(row.id)).map(row => row.id).slice(0, 100)
+    if (!ids.length) return Promise.resolve()
+    const request = (async () => {
+      try {
+        const receipts = await getDeliveryStatuses(threadId, ids)
+        for (const receipt of receipts) conversationDeliveries.patch(receipt.id, receipt)
+        if (receipts.some(receipt => receipt.status === 'accepted')) {
+          conversationDeliveries.observe(threadId, persistedMessagesByThreadId.value[threadId] ?? [])
+          markThreadHistoryDirty(threadId)
+          scheduleDelayedTurnSync(threadId)
+        }
+      } catch { /* A failed read is not proof of cancellation or delivery. Keep the content visible. */ }
+    })().finally(() => deliveryReceiptReads.delete(threadId))
+    deliveryReceiptReads.set(threadId, request)
+    return request
+  }
 
   function commitQueueOperation(operation: ThreadQueueOperation): Promise<ThreadQueueResult> {
     queueRequestGeneration += 1
@@ -4252,6 +4281,9 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
       try {
         const result = await mutateThreadQueueState(operation)
         queuedMessagesByThreadId.value = result.state
+        conversationDeliveries.syncQueue(result.state)
+        if (result.removed) conversationDeliveries.patch(result.removed.id, { status: 'cancelled' })
+        void refreshVisibleDeliveryReceipts(operation.threadId)
         queueErrorByThreadId.value = omitKey(queueErrorByThreadId.value, operation.threadId)
         return result
       } catch (cause) {
@@ -4272,6 +4304,8 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
       const state = await getThreadQueueState()
       if (generation === queueRequestGeneration) {
         queuedMessagesByThreadId.value = state
+        conversationDeliveries.syncQueue(state)
+        void refreshVisibleDeliveryReceipts()
         queueStateError.value = ''
       }
     } catch (cause) {
@@ -4445,6 +4479,8 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
     if (!threadId) {
       return
     }
+    conversationDeliveries.refresh()
+    void refreshVisibleDeliveryReceipts(threadId)
     const recentLoadFailure =
       Date.now() - (lastMessageLoadFailureAtByThreadId.get(threadId) ?? 0) < RECENT_THREAD_MESSAGE_LOAD_REUSE_MS
     if (!options.retry && turnErrorByThreadId.value[threadId]?.transient && (options.silent === true || recentLoadFailure)) {
@@ -5132,6 +5168,14 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
         normalizedImageUrls.push(latestAttachedImageUrl)
       }
     }
+    let deliveryId = deliveryOptions?.id || createDeliveryId()
+    const isSteering = deliveryMode === 'steer'
+    const previousTurnId = activeTurnIdByThreadId.value[threadId]
+    const userMessageOrdinal = (persistedMessagesByThreadId.value[threadId] ?? []).filter(message => message.role === 'user' && message.turnId === previousTurnId).length
+      + conversationDeliveries.rows.value.filter(row => row.threadId === threadId && row.status === 'accepted' && row.turnId === previousTurnId).length
+    if (isSteering) conversationDeliveries.begin(threadId, {
+      id: deliveryId, text: nextText, imageUrls: normalizedImageUrls, skills, fileAttachments, collaborationMode,
+    }, userMessageOrdinal, false, previousTurnId)
     try {
       if (resumedThreadById.value[threadId] !== true) {
         const resumedThread = await resumeThread(threadId)
@@ -5146,14 +5190,24 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
           [threadId]: true,
         }
       }
-      const deliveryId = deliveryOptions?.id || createDeliveryId()
-      const previousTurnId = activeTurnIdByThreadId.value[threadId]
-      const userMessageOrdinal = (persistedMessagesByThreadId.value[threadId] ?? []).filter(message => message.role === 'user' && message.turnId === previousTurnId).length
       const startedTurnId = await startThreadTurn(
         threadId, nextText, normalizedImageUrls, executionSettings.model || undefined,
         reasoningEffort || undefined, skills.length > 0 ? skills : undefined,
         fileAttachments, collaborationMode, executionSettings.serviceTier,
-        deliveryMode || 'immediate', { id: deliveryId, requireConfirmed: deliveryOptions?.requireConfirmed },
+        deliveryMode || 'immediate', { id: deliveryId, requireConfirmed: deliveryOptions?.requireConfirmed,
+          onPrepared: id => {
+            if (!isSteering) return
+            conversationDeliveries.replaceId(deliveryId, id)
+            deliveryId = id
+            conversationDeliveries.refresh()
+          },
+          onResult: result => {
+            if (!isSteering) return
+            conversationDeliveries.replaceId(deliveryId, result.id)
+            deliveryId = result.id
+            conversationDeliveries.refresh()
+          },
+        },
       )
       if (!startedTurnId) {
         // A queued steer must not clear the already running turn.
@@ -5170,7 +5224,12 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
         setThreadInProgress(threadId, true)
         const previous = persistedMessagesByThreadId.value[threadId] ?? []
         setPersistedMessagesForThread(threadId, previous.filter(message => !(isOptimisticUserMessage(message) && !message.turnId && message.text === readQuestionReply(nextText).text)))
-        appendOptimisticUserMessage(threadId, nextText, normalizedImageUrls, skills, fileAttachments, { id: deliveryId, turnId: startedTurnId, userMessageOrdinal: startedTurnId === previousTurnId ? userMessageOrdinal : 0 })
+        if (isSteering) {
+          conversationDeliveries.patch(deliveryId, { status: 'accepted', turnId: startedTurnId, userMessageOrdinal: startedTurnId === previousTurnId ? userMessageOrdinal : 0 })
+          conversationDeliveries.observe(threadId, previous)
+        } else {
+          appendOptimisticUserMessage(threadId, nextText, normalizedImageUrls, skills, fileAttachments, { id: deliveryId, turnId: startedTurnId, userMessageOrdinal: startedTurnId === previousTurnId ? userMessageOrdinal : 0 })
+        }
         activeTurnIdByThreadId.value = {
           ...activeTurnIdByThreadId.value,
           [threadId]: startedTurnId,
@@ -5183,6 +5242,14 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
       await syncFromNotifications().catch(() => {})
       scheduleDelayedTurnSync(threadId)
     } catch (unknownError) {
+      if (isSteering) {
+        conversationDeliveries.refresh()
+        // A saved outbox/queue record keeps its real uncertain status. Only a
+        // preflight failure, before any durable submission, is known not sent.
+        const row = conversationDeliveries.rows.value.find(row => row.id === deliveryId)
+        if (row?.status === 'submitting') conversationDeliveries.patch(deliveryId, { status: 'failed', error: String(unknownError) })
+        void refreshQueueState().catch(() => {})
+      }
       throw unknownError
     }
   }
@@ -5574,6 +5641,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
     restoreCompactionRequests()
 
     if (stopNotificationStream) return
+    conversationDeliveries.start()
     void loadPendingServerRequestsFromBridge()
     let notificationReady = false
     stopNotificationStream = subscribeCodexNotifications((notification) => {
@@ -5671,6 +5739,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
   }
 
   function stopPolling(): void {
+    if (typeof window !== 'undefined') conversationDeliveries.stop()
     if (modelRetryTimer) clearTimeout(modelRetryTimer)
     modelRetryTimer = null
     pendingSnapshot = null
@@ -5765,17 +5834,29 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
     const threadId = selectedThreadId.value
     const message = queuedMessagesByThreadId.value[threadId]?.find(row => row.id === messageId)
     if (!message) return
+    const showDelivery = type === 'steer' || message.delivery?.mode === 'steer'
+    const previousTurnId = activeTurnIdByThreadId.value[threadId]
+    const ordinal = (persistedMessagesByThreadId.value[threadId] ?? []).filter(row => row.role === 'user' && row.turnId === previousTurnId).length
+      + conversationDeliveries.rows.value.filter(row => row.threadId === threadId && row.status === 'accepted' && row.turnId === previousTurnId).length
+    if (type === 'steer') conversationDeliveries.begin(threadId, message, ordinal, true, previousTurnId)
     try {
-      const previousTurnId = activeTurnIdByThreadId.value[threadId]
-      const ordinal = (persistedMessagesByThreadId.value[threadId] ?? []).filter(row => row.role === 'user' && row.turnId === previousTurnId).length
       const result = await commitQueueOperation({ type, threadId, messageId, revision: message.delivery?.revision })
       if (result.delivered) {
-        appendOptimisticUserMessage(threadId, message.text, message.imageUrls, message.skills, message.fileAttachments,
-          { ...result.delivered, userMessageOrdinal: result.delivered.turnId === previousTurnId ? ordinal : 0 })
+        if (showDelivery) {
+          conversationDeliveries.patch(messageId, { status: 'accepted', turnId: result.delivered.turnId,
+            userMessageOrdinal: result.delivered.turnId === previousTurnId ? ordinal : 0 })
+          conversationDeliveries.observe(threadId, persistedMessagesByThreadId.value[threadId] ?? [])
+        } else {
+          appendOptimisticUserMessage(threadId, message.text, message.imageUrls, message.skills, message.fileAttachments,
+            { ...result.delivered, userMessageOrdinal: result.delivered.turnId === previousTurnId ? ordinal : 0 })
+        }
         markThreadHistoryDirty(threadId)
         scheduleDelayedTurnSync(threadId)
       }
-    } catch {
+    } catch (cause) {
+      if (showDelivery && conversationDeliveries.rows.value.find(row => row.id === messageId)?.status === 'submitting') {
+        conversationDeliveries.patch(messageId, { status: 'unknown', error: String(cause) })
+      }
       void refreshQueueState().catch(() => {})
     }
   }

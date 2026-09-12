@@ -6843,6 +6843,18 @@ export class BackendQueueProcessor {
     return state
   }
 
+  async readDeliveryStatuses(threadId: string, ids: string[]): Promise<Array<{ id: string; status: string; turnId?: string }>> {
+    if (!threadId || ids.length > 100 || ids.some(id => !/^[a-zA-Z0-9_-]{1,160}$/.test(id))) throw new Error('无效的发送记录查询')
+    const result: Array<{ id: string; status: string; turnId?: string }> = []
+    // Only completed receipts are read here. This must never call reconcile/process:
+    // observing the UI is not permission to submit or change account blocking.
+    for (const id of new Set(ids)) {
+      const receipt = await this.store.readReceipt(id)
+      if (receipt?.threadId === threadId) result.push({ id, status: receipt.status, turnId: receipt.turnId })
+    }
+    return result
+  }
+
   async submit(input: unknown): Promise<Record<string, unknown>> {
     const body = asRecord(input)
     if (body?.protocol !== 2) throw new Error('发送接口已更新，请刷新页面后重试')
@@ -9128,6 +9140,13 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
 
       if (req.method === 'GET' && url.pathname === '/codex-api/delivery-context') {
         setJson(res, 200, { data: { contextId: await backendQueueProcessor.deliveryContext() } })
+        return
+      }
+
+      if (req.method === 'GET' && url.pathname === '/codex-api/delivery-status') {
+        setJson(res, 200, { data: await backendQueueProcessor.readDeliveryStatuses(
+          url.searchParams.get('threadId') || '', (url.searchParams.get('ids') || '').split(',').filter(Boolean),
+        ) })
         return
       }
 

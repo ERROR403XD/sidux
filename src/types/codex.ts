@@ -236,6 +236,7 @@ export type UiMessage = {
   automationDisplayName?: string | null
   automationRun?: import('../automationMessage').AutomationMessageMetadata
   delivery?: 'async'
+  deliveryState?: { status: import('../conversationDelivery').ConversationDeliveryStatus; error?: string }
   questionOrdinal?: number
   questions?: import('../userQuestions').AsyncQuestion[]
   questionReply?: import('../userQuestions').QuestionReplyRef

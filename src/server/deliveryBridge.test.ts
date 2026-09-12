@@ -26,6 +26,22 @@ async function fixture() {
 }
 
 describe('durable bridge delivery', () => {
+  it('reads accepted and cancelled receipts without dispatch, reconcile, account access or queue writes', async () => {
+    const { processor, rpc, message, busy } = await fixture()
+    busy(true)
+    await processor.mutate({ protocol: 2, expectedContextId: 'fixture-account', type: 'add', threadId: 'fixture', message })
+    const queue = await processor.readState()
+    await processor.mutate({ protocol: 2, type: 'remove', threadId: 'fixture', messageId: message.id, revision: queue.fixture[0].delivery!.revision })
+    rpc.mockClear()
+    const state = await processor.readState()
+    expect(await processor.readDeliveryStatuses('fixture', [message.id])).toEqual([{ id: message.id, status: 'cancelled', turnId: undefined }])
+    expect(await processor.readDeliveryStatuses('other', [message.id])).toEqual([])
+    expect(await processor.readDeliveryStatuses('fixture', ['missing'])).toEqual([])
+    expect(await processor.readState()).toEqual(state)
+    expect(rpc).not.toHaveBeenCalled()
+    await expect(processor.readDeliveryStatuses('fixture', ['../bad'])).rejects.toThrow('无效')
+    await expect(processor.readDeliveryStatuses('fixture', Array(101).fill('id'))).rejects.toThrow('无效')
+  })
   it('recovers a persisted question reply ID and deduplicates a lost acknowledgement', async () => {
     const { processor, rpc, message } = await fixture()
     const saved = new Map<string, string>()

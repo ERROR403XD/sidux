@@ -1,6 +1,6 @@
 <template>
   <section class="conversation-root" @contextmenu.capture="onConversationContextMenu">
-    <p v-if="isLoading" class="conversation-loading">Loading messages...</p>
+    <p v-if="isLoading && messages.length === 0" class="conversation-loading">Loading messages...</p>
 
     <p
       v-else-if="messages.length === 0 && pendingRequests.length === 0 && !liveOverlay && !hasMoreAbove"
@@ -713,6 +713,9 @@
                 </div>
               </section>
 
+              <p v-if="message.deliveryState" class="conversation-delivery-status" :data-status="message.deliveryState.status" :title="message.deliveryState.error" role="status">
+                {{ t(conversationDeliveryLabel(message.deliveryState.status)) }}
+              </p>
               <div
                 v-if="showCopyResponseButton(message) || showEditMessageButton(message)"
                 class="message-toolbar"
@@ -943,6 +946,7 @@
 </template>
 
 <script setup lang="ts">
+import { conversationDeliveryLabel } from '../../conversationDelivery'
 import { messageRenderKey } from '../../messageIdentity'
 import SubtaskEventCard from './SubtaskEventCard.vue'
 import { formatLocalDateTime } from '../../dateTime'
@@ -2386,7 +2390,7 @@ const editableTurnIdByMessageId = computed<Record<string, string>>(() => {
 })
 
 function showEditMessageButton(message: UiMessage): boolean {
-  return typeof editableTurnIdByMessageId.value[renderKey(message)] === 'string'
+  return !message.deliveryState && typeof editableTurnIdByMessageId.value[renderKey(message)] === 'string'
 }
 
 function editMessage(messageId: string): void {
