@@ -81,6 +81,6 @@ export function fastModeControl(model: ModelCapability | null | undefined, selec
 export function modelSettingsProblem(model: ModelCapability | null | undefined, effort: string, tier: string, hasImages = false): string {
   if (effort && !reasoningUnavailable(model) && model?.efforts && !model.efforts.some(item => item.value === effort)) return `模型未公布思考强度 ${effort}，请重新选择或使用模型默认。`
   if (tier && !(model?.providerId === 'custom' && !model.serviceTiers?.length) && model?.serviceTiers && !model.serviceTiers.some(item => item.value === tier)) return `模型未公布服务档位 ${tier}，请重新选择或使用标准速度。`
-  if (hasImages && model?.inputModalities && !model.inputModalities.includes('image')) return '当前模型不支持图片，请更换模型或移除图片。'
+  if (hasImages && model?.inputModalities && !model.inputModalities.includes('image')) return '当前模型不支持图片。'
   return ''
 }

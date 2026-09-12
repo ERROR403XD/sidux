@@ -214,7 +214,7 @@ async function terminate() {
       body: JSON.stringify({ threadId: props.threadId, processId: row.processId, itemId: row.itemId }) })
     const payload = await response.json()
     if (!response.ok || !payload.data) throw new Error(payload.error || '停止结果无法确认')
-    if (!disposed) notice.value = payload.data.absent ? '进程已不在后台列表。' : payload.data.terminated ? '已收到原生停止确认。' : '原生接口未停止该进程，请检查当前状态。'
+    if (!disposed) notice.value = payload.data.absent ? '进程已不在后台列表。' : payload.data.terminated ? '已收到停止确认。' : '未能停止进程，请检查当前状态。'
   } catch (cause) {
     if (!disposed) notice.value = formatDirectoryError(cause, '停止结果无法确认') + '；请核对当前列表。'
   } finally {

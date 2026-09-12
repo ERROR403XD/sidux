@@ -16,6 +16,6 @@ export function normalizeToolSummary(value: unknown): UiMessage | null {
   return {
     id: row.id, role: 'system', messageType: type, isUnhandled: true,
     text: [labels[type] || '执行事件', name, status].filter(Boolean).join(' · '),
-    rawPayload: `事件类型：${type}\n${status ? `状态：${status}\n` : ''}已记录执行事件；完整内容保留在 CLI 会话中。`,
+    rawPayload: `事件类型：${type}\n${status ? `状态：${status}\n` : ''}完整内容请查看 CLI 会话。`,
   }
 }

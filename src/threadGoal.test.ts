@@ -13,8 +13,8 @@ describe('goal edits and budget boundaries', () => {
   })
   it('clamps remaining tokens without hiding over-budget usage and requires an increase before resume', () => {
     expect(goalBudgetRemaining(goal)).toBe(0)
-    expect(goalResumeProblem(goal)).toContain('提高预算')
-    expect(goalResumeProblem({ ...goal, tokensUsed: 1000 })).toContain('提高预算')
+    expect(goalResumeProblem(goal)).toBe('预算已用尽')
+    expect(goalResumeProblem({ ...goal, tokensUsed: 1000 })).toBe('预算已用尽')
     expect(goalBudgetRemaining({ ...goal, tokenBudget: 2000 })).toBe(800)
     expect(goalResumeProblem({ ...goal, tokenBudget: null })).toBe('')
     expect(goal.tokensUsed).toBe(1200)

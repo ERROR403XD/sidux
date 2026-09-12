@@ -163,7 +163,7 @@ export class ProcessActivityStore {
         }
         this.error = ''
       } catch {
-        this.error = '观察记录保存失败；刷新可读内存记录，重启后可能缺失。'
+        this.error = '观察记录保存失败，重启后可能丢失。'
       }
     })().finally(() => { this.writing = null })
     return this.writing

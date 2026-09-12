@@ -36,7 +36,7 @@
       </div>
     </div>
     <AppDialog :open="Boolean(abandonId)" :title="t('停止跟踪这条消息？')" size="compact" @close="abandonId = ''">
-      <p>{{ t('消息可能已经送达。停止跟踪不会中止已执行的任务；后续消息将可以继续发送。') }}</p>
+      <p>{{ t('消息可能已送达，停止跟踪不会中止任务。') }}</p>
       <template #footer>
         <AppButton @click="abandonId = ''">{{ t('保留记录') }}</AppButton>
         <AppButton variant="danger" @click="confirmAbandon">{{ t('停止跟踪') }}</AppButton>

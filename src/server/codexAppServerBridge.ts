@@ -3955,7 +3955,7 @@ async function assertNoTrackedGitChanges(repoRoot: string): Promise<void> {
     .map((line) => line.trimEnd())
     .filter((line) => line && !line.startsWith('?? '))
   if (trackedChanges.length > 0) {
-    throw new Error('Cannot switch branches or reset with tracked uncommitted changes. Commit, stash, or discard tracked changes first. Untracked files are allowed unless Git would overwrite them.')
+    throw new Error('切换分支或重置前，请先提交、Stash 或丢弃已跟踪的改动；未跟踪文件仅在会被覆盖时需处理。')
   }
 }
 
@@ -5577,7 +5577,7 @@ export class AppServerProcess {
   }
   private async configureSession(storageId: string | null, kind: 'primary' | 'automation', ownerId: string): Promise<void> {
     if (this.assignedStorageId !== storageId && (this.activeTurnThreadIds.size || this.pendingServerRequests.size)) {
-      throw Object.assign(new Error('此会话仍在执行，请等当前回合结束后更换账号。其他会话不受影响。'), { rpcRejected: true, submissionNotSent: true })
+      throw Object.assign(new Error('会话运行中，暂不能更换账号。'), { rpcRejected: true, submissionNotSent: true })
     }
     const coordinator = getAccountAuthCoordinator()
     const changed = this.assignedStorageId !== storageId
@@ -6735,8 +6735,8 @@ export class BackendQueueProcessor {
 
   async cancelAccountDeliveries(): Promise<void> {
     for (const row of await this.store.records()) {
-      if (row.status === 'sending') await this.store.unknown(row.message.id, '账号已移除，已切断执行连接；请核对会话历史')
-      else if (row.status === 'queued') await this.store.failed(row.message.id, row.revision, '账号已移除；请登录后手动重新发送')
+      if (row.status === 'sending') await this.store.unknown(row.message.id, '账号已移除，请核对会话历史')
+      else if (row.status === 'queued') await this.store.failed(row.message.id, row.revision, '账号已移除，请登录后重新发送')
       this.appServer.notifyQueueChanged(row.threadId)
     }
   }
@@ -6810,7 +6810,7 @@ export class BackendQueueProcessor {
 
   async mutate(input: unknown): Promise<{ state: ThreadQueueState; removed?: StoredQueuedMessage; delivered?: { id: string; turnId: string } }> {
     const body = asRecord(input)
-    if (body?.protocol !== 2) throw new Error('队列接口已更新，请刷新页面后重试；队列未修改')
+    if (body?.protocol !== 2) throw new Error('队列接口已更新，请刷新页面后重试')
     const threadId = readNonEmptyString(body.threadId)
     if (!threadId) throw new Error('缺少会话 ID')
     let removed: StoredQueuedMessage | undefined
@@ -9079,7 +9079,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
       }
 
       if (req.method === 'PUT' && url.pathname === '/codex-api/thread-queue-state') {
-        setJson(res, 409, { error: '队列接口已更新，请刷新页面后重试；服务器队列未修改' })
+        setJson(res, 409, { error: '队列接口已更新，请刷新页面后重试' })
         return
       }
 

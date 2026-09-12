@@ -56,7 +56,7 @@
             <div v-if="isMcpSectionOpen" class="skills-embedded-body">
               <div class="directory-mcp-toolbar"><p class="directory-scope-note">{{ t('查看已配置服务、连接状态与可用工具。') }}</p><AppButton v-if="supportsMcpReload" :busy="isReloadingMcps" @click="reloadMcps">{{ t('重载配置') }}</AppButton></div>
               <div v-if="!supportsMcps" class="directory-empty">
-                {{ t('MCP status APIs unavailable in this Codex CLI. Update Codex CLI to inspect MCP servers.') }}
+                {{ t('当前 CLI 不支持查询 MCP 状态，请更新 CLI。') }}
               </div>
               <div v-else-if="mcpError" class="directory-error">{{ t(mcpError) }}</div>
               <div v-else-if="isLoadingMcps" class="directory-loading">{{ t('Loading MCP servers...') }}</div>

@@ -49,7 +49,7 @@ export class ProxyUsageStore {
       this.prune()
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return
-      this.error = '统计数据无法读取，原文件已保留；出口可继续使用，本次统计暂存于内存。'
+      this.error = '统计读取失败，原文件已保留；本次统计暂存于内存。'
       this.blocked = true
     }
   }
@@ -135,7 +135,7 @@ export class ProxyUsageStore {
         this.error = null
       } catch {
         this.dirty = true
-        this.error = '统计写入失败，本次数据暂存于内存；出口可继续使用。'
+        this.error = '统计写入失败，本次数据暂存于内存。'
       }
     })
     return this.writing

@@ -188,7 +188,7 @@ export class AccountAuthCoordinator {
   quotaRetryAt(storageId: string): number { return this.quotaBackoff.get(storageId)?.until || 0 }
   async readQuotaWithBackoff<T>(storageId: string, read: () => Promise<T>): Promise<T> {
     const backoff = this.quotaBackoff.get(storageId)
-    if (backoff && backoff.until > Date.now()) throw new Error(`额度读取退避中，请等待${Math.ceil((backoff.until - Date.now()) / 1000)}秒`)
+    if (backoff && backoff.until > Date.now()) throw new Error(`额度读取需等待 ${Math.ceil((backoff.until - Date.now()) / 1000)} 秒`)
     const generation = (this.quotaReadGeneration.get(storageId) || 0) + 1
     this.quotaReadGeneration.set(storageId, generation)
     try {
@@ -433,7 +433,7 @@ export class AccountAuthCoordinator {
     if (session.method === 'link' && !isLocalCallbackUrl(input.callbackUrl)) {
       throw new AccountCoordinatorError('invalid_callback_url', 'The callback URL must use localhost.', 400)
     }
-    if (session.completionStarted) throw new AccountCoordinatorError('login_verifying', '正在验证账号，请等待结果。')
+    if (session.completionStarted) throw new AccountCoordinatorError('login_verifying', '正在验证账号。')
     session.completionStarted = true
     try {
       const before = await stat(`${session.home}/auth.json`).then((value) => value.mtimeMs).catch(() => null)
@@ -502,7 +502,7 @@ export class AccountAuthCoordinator {
   async cancelLogin(loginSessionId: string): Promise<void> {
     const session = this.loginSession
     if (!session || session.id !== loginSessionId) return
-    if (session.completionStarted) throw new AccountCoordinatorError('login_verifying', '正在验证账号，请等待结果。')
+    if (session.completionStarted) throw new AccountCoordinatorError('login_verifying', '正在验证账号。')
     await this.finishLoginSession(session)
   }
 

@@ -2079,7 +2079,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
       } else {
         codexCliMissingError.value = ''
       }
-      if (generation === modelRefreshGeneration) modelCatalogError.value = '模型目录暂时不可用，保留当前选择；能力尚未确认。'
+      if (generation === modelRefreshGeneration) modelCatalogError.value = '模型目录暂时不可用'
       if (!options?.retry && generation === modelRefreshGeneration) {
         modelRetryTimer = setTimeout(() => {
           modelRetryTimer = null

@@ -21,7 +21,7 @@
     </ul>
     <AppButton v-if="cursor && rows.length < 200" :disabled="loading || inserting" @click="load(true)">{{ t('加载更多任务') }}</AppButton>
     <small v-else-if="cursor">{{ t('当前显示前 200 条；请缩小搜索范围。') }}</small>
-    <p class="task-search-scope">{{ t('摘录只包含最近 10 回合的用户与最终回复，最多 6,000 字符；插入后可在草稿中编辑。') }}</p>
+    <p class="task-search-scope">{{ t('摘录包含最近 10 回合的用户与最终回复，最多 6,000 字符。') }}</p>
   </AppDialog>
 </template>
 

@@ -376,7 +376,7 @@ function requestPanelPrompt(request: UiServerRequest): string {
   if (isPermissionsApprovalRequest(request)) return 'Do you want to grant these permissions?'
   if (isMcpElicitationRequest(request)) return 'An MCP server needs your input before Codex can continue.'
   if (request.method === 'item/tool/requestUserInput') return isAsyncUserInputRequest(request) ? 'Codex 会继续工作。' : '请回答后继续。'
-  return 'Codex is waiting for a response before it can continue.'
+  return 'Codex 正在等待回应。'
 }
 
 function unwrapApprovalCommand(value: string): string {

@@ -36,7 +36,7 @@ export function createAccountActivationRuntime(coordinator: AccountAuthCoordinat
             try {
               await sendActivationRequest(fixed, ACTIVATION_MODEL, AbortSignal.any([requestSignal, sendSignal, AbortSignal.timeout(20000)]))
             } catch {
-              throw new Error('激活未确认完成，已让出资源，不自动重发')
+              throw new Error('激活结果未确认，不自动重发')
             }
           },
           dispose,
@@ -50,7 +50,7 @@ export function createAccountActivationRuntime(coordinator: AccountAuthCoordinat
       if (busy(id) || coordinator.isAccountOperationInProgress()) return '请求已完成；账号忙碌，额度同步已跳过'
       const started = Date.now()
       const account = await coordinator.refreshAccount(id)
-      if (account.quotaStatus !== 'ready' || !account.quotaUpdatedAtIso || !(Date.parse(account.quotaUpdatedAtIso) >= started)) return '请求已完成；额度同步失败，不重发'
+      if (account.quotaStatus !== 'ready' || !account.quotaUpdatedAtIso || !(Date.parse(account.quotaUpdatedAtIso) >= started)) return '请求已完成；额度同步失败'
       const window = [account.quotaSnapshot?.primary, account.quotaSnapshot?.secondary].find(row => row?.windowMinutes === 300)
       return window?.resetsAt && window.resetsAt * 1000 > Date.now() && window.usedPercent > 0
         ? '请求已完成；额度已同步，5 小时窗口已确认'

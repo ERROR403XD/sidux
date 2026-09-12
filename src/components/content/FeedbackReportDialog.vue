@@ -1,6 +1,6 @@
 <template>
   <AppDialog :open="feedbackReport !== null" :title="t('问题报告')" @close="feedbackReport = null">
-    <p>{{ t('仅包含版本、界面信息和错误类别；可补充复现步骤后复制。') }}</p>
+    <p>{{ t('仅含版本、界面信息和错误类别，可补充复现步骤。') }}</p>
     <textarea v-model="reportText" class="app-input feedback-report-text" :aria-label="t('问题报告')" />
     <p v-if="copyState" role="status">{{ t(copyState) }}</p>
     <template #footer>

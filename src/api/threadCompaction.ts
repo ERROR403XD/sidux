@@ -132,7 +132,7 @@ export async function compactThread(threadId: string, repeatUnknown = false): Pr
   if (isCompactionPending(current) && !(repeatUnknown && current.status === 'unknown')) throw new Error('已有压缩请求，请先检查结果。')
   const operation = (async () => {
     const thread = await recentHistory(threadId, 1)
-    if (thread.status?.type === 'active' || thread.turns.some((turn: any) => turn.status === 'inProgress')) throw new Error('当前任务运行中，请等待结束后再压缩。')
+    if (thread.status?.type === 'active' || thread.turns.some((turn: any) => turn.status === 'inProgress')) throw new Error('任务运行中，暂不能压缩。')
     const record: CompactionRequest = { threadId, beforeTurnId: thread.turns.at(-1)?.id || '', requestedAtMs: Date.now(), status: 'requested' }
     save(record, true)
     try {

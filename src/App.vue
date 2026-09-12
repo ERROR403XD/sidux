@@ -1787,7 +1787,7 @@ function formatCompactTokenCount(value: number): string {
 
 function buildThreadContextTooltip(usage: UiThreadTokenUsage | null): string {
   if (!usage) {
-    return t('Waiting for Codex thread/tokenUsage/updated events for this thread.')
+    return t('等待会话用量更新。')
   }
 
   const lines = [
@@ -1799,7 +1799,7 @@ function buildThreadContextTooltip(usage: UiThreadTokenUsage | null): string {
     lines.unshift(`${t('Model context window')}: ${usage.modelContextWindow.toLocaleString()} ${t('tokens')}`)
     lines.push(`${t('Remaining context')}: ${(usage.remainingContextTokens ?? 0).toLocaleString()} ${t('tokens')}`)
   } else {
-    lines.push(t('Model context window is unavailable in the latest usage event.'))
+    lines.push(t('暂无模型上下文窗口信息。'))
   }
 
   return lines.join('\n')
@@ -3636,7 +3636,7 @@ async function hydrateQueuedMessage(messageId: string): Promise<void> {
     }
     threadComposerRef.value?.hydrateDraft(payload)
   } catch {
-    queueDraftError.value = '未能保存编辑关联；原消息仍保留在队列中，可点击“继续编辑”恢复'
+    queueDraftError.value = '编辑关联保存失败，可点击“继续编辑”恢复队列中的原消息'
   }
 }
 

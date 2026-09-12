@@ -615,7 +615,7 @@ export async function handleSkillsRoutes(
       const installedMap = await collectInstalledSkillsMap(appServer)
       const installed = installedMap.get(name || installSource.slice(installSource.lastIndexOf('@') + 1))
       if (!installed?.path) {
-        throw new Error(`Skill install completed but ${installSource} was not found in local installed skills`)
+        throw new Error(`技能已安装，但在本地找不到 ${installSource}。`)
       }
       await ensureInstalledSkillIsValid(appServer, installed.path)
       setJson(res, 200, { ok: true, path: installed.path })

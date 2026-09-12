@@ -62,7 +62,7 @@ describe('manual compaction request recovery', () => {
     await expect(api.compactThread('t')).rejects.toThrow('无法保存')
     expect(mocks.rpcCall).not.toHaveBeenCalled()
     fetcher.mockResolvedValue(response([turn('baseline', [], 'inProgress')], 'active'))
-    await expect(api.compactThread('t')).rejects.toThrow('当前任务运行中')
+    await expect(api.compactThread('t')).rejects.toThrow('任务运行中，暂不能压缩。')
     expect(mocks.rpcCall).not.toHaveBeenCalled()
   })
   it('restores a known interrupted request using its exact turn id even without a native item', async () => {

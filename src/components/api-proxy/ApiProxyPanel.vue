@@ -280,7 +280,7 @@ async function savePolicy(): Promise<void> {
     policyTarget.value = null
   })
 }
-async function copySecret(): Promise<void> { try { await copyTextToClipboard(secret.value) } catch { error.value = '当前浏览器无法自动复制，请选中 key 手动复制。' } }
+async function copySecret(): Promise<void> { try { await copyTextToClipboard(secret.value) } catch { error.value = '无法自动复制，请选中 key 手动复制。' } }
 async function updateKey(key: ApiProxyKey, input: unknown): Promise<void> { await run(async () => { await apiProxyRequest(`/keys/${key.id}`, input) }) }
 async function revokeKey(): Promise<void> { const target = revokeTarget.value; if (!target) return; await run(async () => { await apiProxyRequest(`/keys/${target.id}`, { revoke: true, interrupt: interruptKey.value }); revokeTarget.value = null }) }
 async function renameKey(): Promise<void> { const target = renameTarget.value; if (!target) return; await run(async () => { await apiProxyRequest(`/keys/${target.id}`, { name: renameValue.value }); renameTarget.value = null }) }

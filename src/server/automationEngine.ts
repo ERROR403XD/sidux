@@ -29,14 +29,14 @@ type Definition = { record: ThreadAutomationRecord | null; error: string | null;
 export function automationError(error: unknown): { errorCode: string; error: string } {
   const text = error instanceof Error ? error.message : String(error)
   // Do not retain upstream responses, prompts or auth material in the run journal.
-  if (/quota|rate.?limit|usage.?limit|429|额度|限额/iu.test(text)) return { errorCode: 'QUOTA_EXHAUSTED', error: '本次运行遇到额度或速率限制；请查看实际额度和恢复时间，恢复后再试' }
-  if (/auth|401|403|token|credential|bearer/iu.test(text)) return { errorCode: 'AUTH_REQUIRED', error: '认证失败；请检查当前账号，然后手动重试' }
+  if (/quota|rate.?limit|usage.?limit|429|额度|限额/iu.test(text)) return { errorCode: 'QUOTA_EXHAUSTED', error: '额度或速率受限' }
+  if (/auth|401|403|token|credential|bearer/iu.test(text)) return { errorCode: 'AUTH_REQUIRED', error: '认证失败，请检查当前账号后重试' }
   if (/model.*(not|invalid|unavailable|support)|模型/iu.test(text)) return { errorCode: 'MODEL_UNAVAILABLE', error: '模型不可用；请检查模型配置后重试' }
   if (/ENOENT|ENOTDIR|cwd|目录/iu.test(text)) return { errorCode: 'CWD_UNAVAILABLE', error: '工作目录不存在或不可访问' }
   if (/no rollout found|thread (?:not found|not loaded)|thread.*does not exist/iu.test(text)) return { errorCode: 'THREAD_UNAVAILABLE', error: '执行会话无法加载；请检查目标会话后重试' }
   if (/timeout|timed out|超时/iu.test(text)) return { errorCode: 'TIMEOUT', error: '请求超时；请打开执行会话核对结果' }
   if (/ECONN|EPIPE|network|fetch failed|socket/iu.test(text)) return { errorCode: 'CONNECTION_ERROR', error: '上游连接暂时不可用' }
-  return { errorCode: 'EXECUTION_ERROR', error: '执行未完成；请打开会话查看错误并处理' }
+  return { errorCode: 'EXECUTION_ERROR', error: '执行未完成，请打开会话查看错误' }
 }
 
 async function bounded<T>(promise: Promise<T>, ms = 30000): Promise<T> {
@@ -90,7 +90,7 @@ export class AutomationEngine {
     try {
       if (!await this.store.acquire(this.now())) {
         this.retryInitialization = true
-        throw new Error('另一个实例持有调度锁；本实例等待锁释放后再执行自动化')
+        throw new Error('自动化等待其他实例释放调度锁')
       }
       this.retryInitialization = false
       this.state = await this.store.read()
@@ -230,7 +230,7 @@ export class AutomationEngine {
     return this.serial(async () => {
       this.assertReady()
       if (this.drained) throw new Error('调度器正在交接，暂不接受新运行')
-      if (!requestId || requestId.length > 128) throw new Error('需要有效的 requestId 以避免重复提交')
+      if (!requestId || requestId.length > 128) throw new Error('需要有效的 requestId')
       await this.scan()
       const record = this.definitions.get(id)?.record
       if (!record || !(record.kind === 'heartbeat' ? record.targetThreadId === target : record.cwds.includes(target))) throw new Error('找不到有效任务或执行目标')
@@ -281,7 +281,7 @@ export class AutomationEngine {
             const queued = this.state.runs.some((run) => run.automationId === id && run.target === target && run.status === 'queued')
             if (latest > meta.nextRunAtMs) {
               const missed = this.enqueue(record, target, meta.nextRunAtMs, `${key}:gap`, 'schedule')
-              this.finish(missed, now - meta.nextRunAtMs > 86400000 ? 'missed' : 'skipped', '多个漏跑时点已合并；仅考虑最近一个时点', 'COALESCED')
+              this.finish(missed, now - meta.nextRunAtMs > 86400000 ? 'missed' : 'skipped', '仅考虑最近一个漏跑时点', 'COALESCED')
             }
             const run = this.enqueue(record, target, latest, key, 'schedule')
             if (now - latest > 86400000) this.finish(run, 'missed', '漏跑超过 24 小时，请按需手动补跑', 'MISSED')
@@ -389,7 +389,7 @@ export class AutomationEngine {
       if (isCancelledRun(run)) { this.runtime.releaseAccount?.(run.runId); return }
       const info = automationError(error)
       if ((error as { rpcRejected?: boolean })?.rpcRejected) this.finish(run, 'failed', info.error, info.errorCode)
-      else if (run.submittedAt) { run.status = 'starting'; run.error = '提交结果待核对；不会自动重复提交'; run.errorCode = 'SUBMISSION_UNKNOWN' }
+      else if (run.submittedAt) { run.status = 'starting'; run.error = '提交结果待核对'; run.errorCode = 'SUBMISSION_UNKNOWN' }
       else if (['CONNECTION_ERROR', 'TIMEOUT'].includes(info.errorCode) && run.attempt < 3) {
         this.runtime.releaseAccount?.(run.runId)
         run.status = 'queued'; run.retryAfter = this.now() + 5000 * 2 ** (run.attempt - 1); run.attempt += 1
@@ -445,7 +445,7 @@ export class AutomationEngine {
           if (failure) this.inspectionFailed(run, failure, false)
           else {
             run.errorCode = 'RUN_TIMEOUT'
-            run.error = '运行已超时，已请求中止，等待上游确认'
+            run.error = '运行超时，已请求中止，等待上游确认'
           }
           await this.persist()
         })
@@ -465,7 +465,7 @@ export class AutomationEngine {
   private applyInspection(run: AutomationRun, result: AutomationInspection, restart: boolean): boolean {
     if (result.turnId) run.turnId = result.turnId
     if (result.status === 'unknown') {
-      if (restart || this.now() - run.submittedAt! > 120000) this.finish(run, 'interrupted', '无法确认提交结果，请检查会话后再决定是否重试', 'SUBMISSION_UNKNOWN')
+      if (restart || this.now() - run.submittedAt! > 120000) this.finish(run, 'interrupted', '提交结果未确认，请先核对会话', 'SUBMISSION_UNKNOWN')
     } else if (['completed', 'failed', 'interrupted'].includes(result.status)) {
       const info = result.status === 'failed' ? automationError(result.error ?? '') : null
       this.finish(run, result.status as AutomationRun['status'], info?.error, info?.errorCode)
@@ -485,7 +485,7 @@ export class AutomationEngine {
       if (this.applyInspection(run, result, restart)) {
         await bounded(this.runtime.interrupt(run))
         run.errorCode = 'RUN_TIMEOUT'
-        run.error = '运行已超时，已请求中止，等待上游确认'
+        run.error = '运行超时，已请求中止，等待上游确认'
       }
     } catch (error) { this.inspectionFailed(run, error, restart) }
   }

@@ -7,7 +7,7 @@
       <template v-if="request.name === 'goal'">
         <p v-if="goal" class="thread-goal-status">{{ t(goalLabels[goal.status]) }} {{ t('· Codex 计量') }} {{ goal.tokensUsed.toLocaleString() }} tokens · {{ Math.round(goal.timeUsedSeconds / 60) }} {{ t('分钟') }}</p>
         <p v-if="goal && goalStatusHint(goal)" class="thread-command-hint" role="status">{{ t(goalStatusHint(goal)) }}</p>
-        <p v-if="goalConflict" class="thread-command-error" role="alert">{{ t('目标已在其他位置修改。请重新读取后再编辑。') }}<AppButton :disabled="working" @click="reloadGoalForm">{{ t('重新读取') }}</AppButton></p>
+        <p v-if="goalConflict" class="thread-command-error" role="alert">{{ t('目标已在其他位置修改，请重新读取。') }}<AppButton :disabled="working" @click="reloadGoalForm">{{ t('重新读取') }}</AppButton></p>
         <label>{{ t('目标') }}<textarea v-model="objective" data-autofocus rows="5" maxlength="8000" :disabled="working || loading" :placeholder="t('说明希望完成什么，以及如何验收')" /></label>
         <div class="goal-model-fields">
           <div><span class="goal-model-label">{{ t('模型') }}</span><AppSelect v-model="selectedModel" class="goal-model-picker" :options="modelOptions" enable-search :search-placeholder="t('搜索模型')" :disabled="working || loading || !supported" /></div>
@@ -21,11 +21,11 @@
           <AppButton v-if="goal" type="button" :disabled="working || loading || !supported || (goal.status !== 'active' && (!!goalResumeProblem(goal) || !!settingsProblem || goalConflict || goalFormDirty))" @click="changeGoalStatus(goal.status === 'active' ? 'paused' : 'active')">{{ t(goal.status === 'active' ? '暂停目标' : '继续目标') }}</AppButton>
           <AppButton v-if="goal" type="button" :disabled="working || loading || !supported || goalConflict" @click="clearGoal">{{ t('清除目标') }}</AppButton>
         </div>
-        <p v-if="goal && goal.status !== 'active' && goalFormDirty" class="thread-command-hint">{{ t('请先保存目标或预算的修改，再继续。') }}</p>
+        <p v-if="goal && goal.status !== 'active' && goalFormDirty" class="thread-command-hint">{{ t('请先保存目标或预算的修改。') }}</p>
         <p v-if="goal && goal.status !== 'active' && goalResumeProblem(goal) && goal.status !== 'budgetLimited'" class="thread-command-hint">{{ t(goalResumeProblem(goal)) }}</p>
       </template>
       <template v-else-if="request.name === 'help'">
-        <p>{{ t('输入 / 后继续搜索；↑↓ 选择，Enter 确认，Esc 收起。未选择命令时按原方式输入和发送文字。') }}</p>
+        <p>{{ t('输入 / 后继续搜索；↑↓ 选择，Enter 确认，Esc 收起。') }}</p>
         <dl class="thread-command-help"><template v-for="command in helpCommands" :key="command.id"><dt>{{ command.name }}</dt><dd>{{ t(command.description) }}</dd></template></dl>
       </template>
       <template v-else-if="request.name === 'status'">
@@ -95,7 +95,7 @@ async function reloadGoalForm() {
 async function checkCurrentGoal() {
   const current = await getThreadGoal(threadId)
   goal.value = pendingGoalNotification !== undefined ? pendingGoalNotification : current
-  if (goalConflict.value) throw new Error('目标已在其他位置修改，请重新读取后再编辑。')
+  if (goalConflict.value) throw new Error('目标已在其他位置修改，请重新读取。')
 }
 const consume = () => { if (!consumed) { props.request.complete(); consumed = true } }
 const selectedModel = ref(props.model)
@@ -117,7 +117,7 @@ async function checkCompaction() {
   await action(() => checkThreadCompaction(threadId))
 }
 const helpCommands = buildComposerCommands([], [])
-const unavailable = computed(() => descriptor.value?.requiresThread && !props.threadId ? '请先进入一个会话。' : descriptor.value?.idleOnly && props.busy ? '当前任务运行中，请等待结束后再操作。' : '')
+const unavailable = computed(() => descriptor.value?.requiresThread && !props.threadId ? '请先进入一个会话。' : descriptor.value?.idleOnly && props.busy ? '当前任务运行中。' : '')
 const actionLabel = computed(() => ({ compact: '开始压缩', review: '开始审查', rename: '保存名称', fork: '创建分支', copy: '复制回复', export: '导出 Markdown' }[props.request.name as 'compact' | 'review' | 'rename' | 'fork' | 'copy' | 'export'] ?? '打开'))
 function close() { if (!working.value) emit('close') }
 async function action(fn: () => Promise<void>) {
@@ -155,7 +155,7 @@ async function changeGoalStatus(status: 'active' | 'paused') {
       if (!goal.value) throw new Error('持续目标已被清除，请重新读取。')
       const problem = goalResumeProblem(goal.value)
       if (problem) throw new Error(problem)
-      if (goalFormDirty.value) throw new Error('请先保存目标或预算的修改，再继续。')
+      if (goalFormDirty.value) throw new Error('请先保存目标或预算的修改。')
       await saveModelSettings()
     }
     goal.value = await setThreadGoal(threadId, { status })

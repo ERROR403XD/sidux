@@ -58,7 +58,7 @@ export async function prepareWebDelivery(endpoint: PendingWebDelivery['endpoint'
   const pending = readPendingWebDeliveries(body.threadId)
   const previous = pending.find(row => row.endpoint === endpoint && intent(row.body) === intent(body))
   if (previous) return previous
-  if (pending.length) throw new Error('此会话还有未确认的提交，请先点击“核对提交”')
+  if (pending.length) throw new Error('提交待确认，请点击“核对提交”')
   const response = await fetch('/codex-api/delivery-context')
   const payload = await response.json()
   if (!response.ok || typeof payload.data?.contextId !== 'string' || !payload.data.contextId) throw new Error(payload.error || '无法确认当前账号，消息尚未提交')
@@ -70,7 +70,7 @@ export function rememberWebDelivery(endpoint: PendingWebDelivery['endpoint'], bo
   const pending = rows.filter(row => row.body.threadId === body.threadId)
   const previous = pending.find(row => row.endpoint === endpoint && intent(row.body) === intent(body))
   if (previous) return previous
-  if (pending.length) throw new Error('此会话还有未确认的提交，请先点击“核对提交”')
+  if (pending.length) throw new Error('提交待确认，请点击“核对提交”')
   if (rows.length >= 20) throw new Error('浏览器中未确认的提交过多，请先核对已有记录')
   const id = body.message.id || createDeliveryId()
   const row: PendingWebDelivery = { id, endpoint, body: { ...body, message: { ...body.message, id } }, createdAt: Date.now() }

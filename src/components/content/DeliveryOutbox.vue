@@ -12,7 +12,7 @@
       </div>
     </div>
     <AppDialog :open="Boolean(forgetId)" :title="t('停止跟踪这次提交？')" size="compact" @close="forgetId = ''">
-      <p>{{ t('这次提交可能已经到达服务器。停止跟踪不会取消服务器上的队列消息或中止任务。') }}</p>
+      <p>{{ t('提交可能已送达，停止跟踪不会取消队列消息或中止任务。') }}</p>
       <template #footer>
         <AppButton @click="forgetId = ''">{{ t('保留记录') }}</AppButton>
         <AppButton variant="danger" @click="confirmForget">{{ t('停止跟踪') }}</AppButton>

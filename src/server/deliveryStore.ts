@@ -123,9 +123,9 @@ export class DeliveryStore {
 
   private async publish(state: State): Promise<void> {
     await this.lease.assertOwnership()
-    if (state.records.length > MAX_PENDING) throw new Error('尚未处理的发送记录超过 500 条，请先处理现有记录')
+    if (state.records.length > MAX_PENDING) throw new Error('待处理发送记录超过 500 条上限')
     const raw = JSON.stringify(state)
-    if (Buffer.byteLength(raw) > MAX_PENDING_BYTES) throw new Error('尚未处理的发送内容超过 32 MB，请先处理现有记录')
+    if (Buffer.byteLength(raw) > MAX_PENDING_BYTES) throw new Error('待处理发送内容超过 32 MB 上限')
     await writeAutomationFileAtomic(join(this.directory, 'pending.json'), raw)
   }
 
@@ -289,7 +289,7 @@ export class DeliveryStore {
   async remove(id: string, revision: number, abandon = false): Promise<StoredQueuedMessage> {
     return this.serial(async state => {
       const row = this.pending(state, id, revision)
-      if (row.status === 'sending') throw new Error('正在发送，请等待结果后再操作')
+      if (row.status === 'sending') throw new Error('正在发送')
       if (row.status === 'unknown' && !abandon) throw new Error('可能已经送达；停止跟踪不会中止已执行的任务')
       const receipt: DeliveryReceipt = { id, threadId: row.threadId, fingerprint: row.fingerprint, status: 'cancelled', createdAt: row.createdAt, updatedAt: this.now() }
       await writeAutomationFileAtomic(join(this.directory, 'receipts', id + '.json'), JSON.stringify(receipt))

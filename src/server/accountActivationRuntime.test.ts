@@ -74,7 +74,7 @@ describe('activation runtime with real local HTTP transport',()=>{
   })
   it('keeps generation sent when independent quota synchronization fails',async()=>{
     const f=await fixture('sync-error')
-    expect((await f.service.snapshot()).runs[0]).toMatchObject({status:'sent',reason:'请求已完成；额度同步失败，不重发'})
+    expect((await f.service.snapshot()).runs[0]).toMatchObject({status:'sent',reason:'请求已完成；额度同步失败'})
     expect(f.requests).toHaveLength(1)
   })
   it('never sends through a component with a different credential revision',async()=>{

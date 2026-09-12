@@ -265,7 +265,7 @@ const currentCommitSummary = computed(() => {
 const triggerLabel = computed(() => t('Git branch: {branch}', { branch: displayLabel.value }))
 const disabled = computed(() => props.loading && props.branches.length === 0)
 const busy = computed(() => props.busy || props.loading)
-const statusMessage = computed(() => t(props.error) || (props.dirty ? t('Tracked changes must be committed, stashed, or discarded before switching or resetting. Untracked files are allowed unless Git would overwrite them.') : ''))
+const statusMessage = computed(() => t(props.error) || (props.dirty ? t('切换分支或重置前，请先提交、Stash 或丢弃已跟踪的改动；未跟踪文件仅在会被覆盖时需处理。') : ''))
 const statusKind = computed(() => props.error ? 'error' : 'info')
 const filteredBranches = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()

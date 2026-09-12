@@ -1998,7 +1998,7 @@ export async function startThreadTurn(
     })
     const payload = await submitRememberedDelivery(pending)
     if (payload.data.status === 'cancelled') throw new Error('此提交已停止跟踪，请核对会话后再发送新消息')
-    if (deliveryOptions?.requireConfirmed && !payload.data.turnId) throw new Error('回答尚未确认送达，请稍后核对；重试将复用本次投递，不重复发送。')
+    if (deliveryOptions?.requireConfirmed && !payload.data.turnId) throw new Error('回答尚未确认送达，请稍后核对')
     return typeof payload.data.turnId === 'string' ? payload.data.turnId : ''
   } catch (error) {
     throw normalizeCodexApiError(error, `Failed to start turn for thread ${threadId}`, 'turn/start')

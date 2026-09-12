@@ -201,7 +201,7 @@ export class AccountActivationScheduler {
       if (run.status === 'sent' && this.dependencies.afterSend && !this.closed && revision === this.revision) {
         const syncSignal = AbortSignal.any([this.abort.signal, AbortSignal.timeout(this.dependencies.syncMs ?? 5000)])
         try { run.reason = await activationBounded(this.track(this.dependencies.afterSend(accountId)), syncSignal) }
-        catch { run.reason = '请求已完成；额度同步失败，不重发' }
+        catch { run.reason = '请求已完成；额度同步失败' }
         await this.write(run)
       }
     }

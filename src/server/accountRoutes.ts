@@ -108,7 +108,7 @@ export async function handleAccountRoutes(
       }
       const outcome = await coordinator.consumeResetCredit(input.storageId, input.creditId, input.idempotencyKey)
       setJson(res, 200, { data: { outcome } })
-    } catch (error) { sendError(res, error, '重置结果未确认，请刷新额度后核对；不要重复使用其他重置机会。') }
+    } catch (error) { sendError(res, error, '重置结果未确认，请刷新额度后核对。') }
     return true
   }
 

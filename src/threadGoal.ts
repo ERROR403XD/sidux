@@ -11,7 +11,7 @@ export type ThreadGoal = {
 
 export const goalStatusLabels = {
   active: '运行中', paused: '已暂停', blocked: '需要处理',
-  usageLimited: '用量受限', budgetLimited: '预算已到', complete: '已完成',
+  usageLimited: '用量受限', budgetLimited: '预算已用尽', complete: '已完成',
 }
 
 export function readThreadGoal(value: unknown, threadId: string): ThreadGoal | null {
@@ -36,15 +36,15 @@ export function goalUsageUnreported(goal: ThreadGoal): boolean {
 
 export function goalResumeProblem(goal: ThreadGoal): string {
   return goal.tokenBudget != null && goal.tokensUsed >= goal.tokenBudget
-    ? '预算已用完，请先提高预算或留空取消预算，再继续。'
+    ? '预算已用尽'
     : ''
 }
 
 export function goalStatusHint(goal: ThreadGoal): string {
   switch (goal.status) {
-    case 'blocked': return '目标已阻塞，请查看最后回复，处理后继续。'
-    case 'budgetLimited': return goalResumeProblem(goal) || '预算已调整，可手动继续目标。'
-    case 'usageLimited': return '运行时用量受限，额度恢复后可继续。'
+    case 'blocked': return '目标已阻塞，请查看最后回复。'
+    case 'budgetLimited': return goalResumeProblem(goal) || '预算已调整'
+    case 'usageLimited': return '用量受限'
     default: return ''
   }
 }

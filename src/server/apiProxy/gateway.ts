@@ -450,7 +450,7 @@ export class ApiProxyGateway {
     upstream.once('error', () => {
       this.owner(generation).recordResult(generation, 502, undefined, true)
       finalize('failed')
-      errorResponse(res, new ProxyError('upstream_unavailable', '反代组件连接失败，将为后续请求重新准备组件。', 502))
+      errorResponse(res, new ProxyError('upstream_unavailable', '反代组件连接失败。', 502))
     })
     upstream.once('close', () => { if (!upstreamResponse) finalize('interrupted') })
     upstream.setTimeout(30 * 60_000, () => { upstream.destroy(); upstreamResponse?.destroy(); res.destroy() })

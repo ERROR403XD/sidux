@@ -32,6 +32,16 @@ describe('Chinese-authored interface translations', () => {
     }
     expect(t('用 {{message}} 插入通知正文。')).toContain('{{message}}')
   })
+  it('keeps reviewed notification values and multiline details intact', () => {
+    setUiLanguage('en')
+    expect(t('额度读取需等待 17 秒')).toBe('Wait 17 seconds before reading quota')
+    expect(t('当前账号使用：中文模型$& · high')).toBe('Current account uses: 中文模型$& · high')
+    expect(t('技能已安装，但在本地找不到 中文技能$&。')).toBe('Skill installed, but 中文技能$& was not found locally.')
+    expect(t('事件类型：exec\n状态：done\n完整内容请查看 CLI 会话。')).toBe('Event type: exec\n状态：done\nSee the CLI conversation for the full content.')
+    setUiLanguage('zh-CN')
+    expect(t('预算已用尽')).toBe('预算已用尽')
+    expect(t('当前账号使用：中文模型$& · high')).toBe('当前账号使用：中文模型$& · high')
+  })
   it('does not read inherited object properties as translations', () => {
     expect(t('toString')).toBe('toString')
     expect(t('constructor')).toBe('constructor')

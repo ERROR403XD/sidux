@@ -131,7 +131,7 @@ describe('AccountAuthCoordinator', () => {
     resolve()
     await old
     const read = vi.fn(async () => {})
-    await expect(coordinator.readQuotaWithBackoff('account', read)).rejects.toThrow('退避')
+    await expect(coordinator.readQuotaWithBackoff('account', read)).rejects.toThrow('额度读取需等待')
     expect(read).not.toHaveBeenCalled()
     expect(coordinator.quotaRetryAt('account')).toBeGreaterThan(Date.now() + 119000)
   })
