@@ -35,7 +35,7 @@ createInterface({ input: process.stdin }).on('line', line => {
   if (method === 'config/read') result = { config: { model_provider: configuredProvider, model: 'fixture' } }
   if (method === 'account/rateLimits/read') result = { rateLimits: { primary: { usedPercent: 10, windowDurationMins: 300 } } }
   if (method === 'thread/start') {
-    const thread = { id: randomUUID(), cwd: p.cwd, status: { type: 'idle' }, turns: [] }
+    const thread = { id: randomUUID(), cwd: p.cwd, modelProvider: configuredProvider, status: { type: 'idle' }, turns: [] }
     threads.set(thread.id, thread)
     loaded.add(thread.id)
     save(thread)
@@ -49,6 +49,9 @@ createInterface({ input: process.stdin }).on('line', line => {
     const thread = JSON.parse(readFileSync(process.env.CODEX_HOME + '/fixture-thread-' + p.threadId + '.json', 'utf8'))
     // Native Codex does not persist a resumable rollout until the first turn.
     if (!thread.turns.length) { send({ id, error: { message: 'no rollout found for thread id ' + p.threadId } }); return }
+    const provider = p.modelProvider || thread.modelProvider || configuredProvider
+    if (provider !== configuredProvider) { send({ id, error: { message: 'failed to load configuration: Model provider `' + provider + '` not found' } }); return }
+    thread.modelProvider = provider
     threads.set(thread.id, thread)
     loaded.add(thread.id)
     result = { thread }

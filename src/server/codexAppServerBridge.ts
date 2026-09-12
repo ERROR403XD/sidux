@@ -5784,6 +5784,18 @@ export class AppServerProcess {
     return { args, env: extraEnv }
   }
 
+  private async withRuntimeThreadProvider(params: unknown): Promise<Record<string, unknown>> {
+    const input = asRecord(params) ?? {}
+    const custom = this.runtimeOptions.isolatedTask ? getCustomConnectionStore().get(this.assignedStorageId) : undefined
+    if (custom) return { ...input, modelProvider: `custom_${custom.storageId}` }
+    const result = asRecord(await this.call('config/read', {}))
+    const config = asRecord(result?.config)
+    // Resume/fork otherwise inherit the rollout's provider, which may only
+    // exist in a previous custom worker. Use this worker's selected outlet;
+    // do not register other providers or mutate the global account selection.
+    return { ...input, modelProvider: readNonEmptyString(config?.model_provider) || 'openai' }
+  }
+
   private getAppServerConfigSignature(config: { args: string[]; env: Record<string, string> }): string {
     return JSON.stringify({
       args: config.args,
@@ -6375,10 +6387,19 @@ export class AppServerProcess {
       })
     }
     if (this.runtimeOptions.isolatedTask && mutatingTurn && threadId && !this.ownedThreadIds.has(threadId)) {
-      await this.call('thread/resume', { threadId, excludeTurns: true, ...(customConnection ? { modelProvider: `custom_${customConnection.storageId}`, model: customConnection.model } : {}) })
+      const resumeParams = await this.withRuntimeThreadProvider({
+        threadId,
+        excludeTurns: true,
+        ...(customConnection ? { model: customConnection.model } : {}),
+      })
+      await this.call('thread/resume', resumeParams)
       this.ownedThreadIds.add(threadId)
     }
-    if (customConnection && ['thread/start', 'thread/resume', 'thread/fork'].includes(method)) params = { ...asRecord(params), modelProvider: `custom_${customConnection.storageId}` }
+    if (method === 'thread/resume' || method === 'thread/fork') {
+      params = await this.withRuntimeThreadProvider(params)
+    } else if (customConnection && method === 'thread/start') {
+      params = { ...asRecord(params), modelProvider: `custom_${customConnection.storageId}` }
+    }
     if (customConnection && mutatingTurn) {
       const input = { ...asRecord(params) }
       const capability = customConnection.models.find(model => model.id === input.model) || customConnection.models.find(model => model.id === customConnection.model)

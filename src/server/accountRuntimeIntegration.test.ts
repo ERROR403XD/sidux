@@ -151,6 +151,22 @@ it('isolates a custom automation from a busy OpenAI session and never changes it
     await vi.waitFor(async () => expect(((await app.rpc('thread/read', { threadId: externalChat.thread.id })) as any).thread.turns.at(-1).items.at(-1).text).toBe('OUTPUT:custom'))
     expect(app.liveActivity().activeTurnThreadIds).toContain(primary.thread.id)
     await connections.select(null)
+    const resumed = await app.rpc('thread/resume', { threadId: externalChat.thread.id }) as any
+    expect(resumed.thread.modelProvider).toBe('openai')
+    expect(app.liveActivity().activeTurnThreadIds).toContain(primary.thread.id)
+    expect(connections.active()).toBeUndefined()
+    await connections.select(custom.storageId)
+    const returned = await app.rpc('thread/resume', { threadId: externalChat.thread.id }) as any
+    expect(returned.thread.modelProvider).toBe(`custom_${custom.storageId}`)
+    expect(app.liveActivity().activeTurnThreadIds).toContain(primary.thread.id)
+    await connections.select(null)
+    // A send after switching also resumes implicitly in the replacement worker.
+    await app.rpc('turn/start', { threadId: externalChat.thread.id, input: [{ type: 'text', text: 'COMPLETE' }] })
+    await vi.waitFor(async () => {
+      const continued = await app.rpc('thread/read', { threadId: externalChat.thread.id }) as any
+      expect(continued.thread.turns.at(-1).items.at(-1).text).toBe('OUTPUT:primary')
+    })
+    expect(app.liveActivity().activeTurnThreadIds).toContain(primary.thread.id)
     expect(await readFile(home + '/auth.json', 'utf8')).toBe(before)
   } finally {
     app.stopTaskRouting()
