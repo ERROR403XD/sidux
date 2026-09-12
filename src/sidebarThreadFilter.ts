@@ -2,9 +2,10 @@ import type { UiThread } from './types/codex'
 
 export type SidebarThreadFilter = 'all' | 'active' | 'unread' | 'interrupted'
 
-export function matchesSidebarThreadFilter(thread: UiThread, filter: SidebarThreadFilter, retainedUnreadId: string, interrupted: Record<string, boolean | null>): boolean {
+export function matchesSidebarThreadFilter(thread: UiThread, filter: SidebarThreadFilter, retainedThreadId: string, interrupted: Record<string, boolean | null>): boolean {
+  if (filter !== 'all' && thread.id === retainedThreadId) return true
   if (filter === 'active') return thread.inProgress
-  if (filter === 'unread') return thread.unread || thread.id === retainedUnreadId
+  if (filter === 'unread') return thread.unread
   if (filter === 'interrupted') return !thread.inProgress && interrupted[thread.id] === true
   return true
 }

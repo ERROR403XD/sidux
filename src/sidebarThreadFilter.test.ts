@@ -24,3 +24,12 @@ describe('sidebar status masks', () => {
     expect(isFinalQuotaInterruption({ status: 'failed', error: { message: '401 unauthorized' } })).toBe(false)
   })
 })
+
+
+it.each(['active', 'unread', 'interrupted'] as const)('keeps the retained row in %s without changing its actual status', filter => {
+  const thread = row('a')
+  expect(matchesSidebarThreadFilter(thread, filter, 'a', { a: false })).toBe(true)
+  expect(matchesSidebarThreadFilter(thread, filter, 'b', { a: false })).toBe(false)
+  expect(thread.inProgress).toBe(false)
+  expect(thread.unread).toBe(false)
+})

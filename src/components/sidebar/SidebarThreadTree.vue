@@ -920,7 +920,7 @@ import { reconcilePinnedThreadIds } from './pinnedThreadUtils'
 const props = defineProps<{
   groups: UiProjectGroup[]
   statusFilter?: SidebarThreadFilter
-  retainedUnreadId?: string
+  retainedThreadId?: string
   quotaInterrupted?: Record<string, boolean | null>
   filterLoading?: boolean
   accounts?: { storageId: string; alias?: string; email: string | null; accountId: string }[]
@@ -1300,7 +1300,7 @@ watch([isPinnedSectionExpanded, isProjectsSectionExpanded, isChatsSectionExpande
 const isStatusFilterActive = computed(() => !!props.statusFilter && props.statusFilter !== 'all')
 
 function threadMatchesStatus(thread: UiThread): boolean {
-  return matchesSidebarThreadFilter(thread, props.statusFilter || 'all', props.retainedUnreadId || '', props.quotaInterrupted || {})
+  return matchesSidebarThreadFilter(thread, props.statusFilter || 'all', props.retainedThreadId || '', props.quotaInterrupted || {})
 }
 
 const normalizedSearchQuery = computed(() => props.searchQuery.trim().toLowerCase())

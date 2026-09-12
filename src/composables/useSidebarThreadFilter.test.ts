@@ -33,21 +33,21 @@ describe('sidebar selection lifetime', () => {
     const { groups, selected, state } = mount()
     state.filter.value = 'unread'
     await nextTick()
-    state.retainBeforeRead('a')
+    state.retainBeforeSelect('a')
     groups.value[0]!.threads[0]!.unread = false
     await nextTick() // acknowledgement can precede route selection
-    expect(state.retainedUnreadId.value).toBe('a')
+    expect(state.retainedThreadId.value).toBe('a')
     selected.value = 'a'
     await nextTick()
-    expect(state.retainedUnreadId.value).toBe('a')
-    state.retainBeforeRead('b')
+    expect(state.retainedThreadId.value).toBe('a')
+    state.retainBeforeSelect('b')
     groups.value[0]!.threads[1]!.unread = false
     selected.value = 'b'
     await nextTick()
-    expect(state.retainedUnreadId.value).toBe('b')
+    expect(state.retainedThreadId.value).toBe('b')
     selected.value = 'already-read'
     await nextTick()
-    expect(state.retainedUnreadId.value).toBe('')
+    expect(state.retainedThreadId.value).toBe('')
     state.filter.value = 'active'
     await vi.advanceTimersByTimeAsync(200)
     expect(fetcher).not.toHaveBeenCalled()
@@ -70,4 +70,24 @@ describe('sidebar selection lifetime', () => {
     await vi.advanceTimersByTimeAsync(200)
     expect(fetcher).toHaveBeenCalledTimes(2)
   })
+})
+
+
+it.each(['active', 'interrupted'] as const)('retains the selected %s match after it stops matching, until selection changes', async filter => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: { a: false, b: false } }) }))
+  const { groups, selected, state, notify } = mount()
+  groups.value[0]!.threads[0]!.inProgress = filter === 'active'
+  selected.value = 'a'
+  state.filter.value = filter
+  if (filter === 'interrupted') state.interrupted.value = { a: true }
+  await nextTick()
+  expect(state.retainedThreadId.value).toBe('a')
+  if (filter === 'active') groups.value[0]!.threads[0]!.inProgress = false
+  else notify('thread/quotaErrorIgnored/changed', { threadId: 'a' })
+  await nextTick()
+  await vi.advanceTimersByTimeAsync(200)
+  expect(state.retainedThreadId.value).toBe('a')
+  selected.value = 'b'
+  await nextTick()
+  expect(state.retainedThreadId.value).toBe('')
 })
