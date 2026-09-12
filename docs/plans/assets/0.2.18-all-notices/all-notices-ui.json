@@ -1,0 +1,15 @@
+{
+  "url": "http://127.0.0.1:4173/#/thread/notice-check",
+  "shots": [
+    "output/playwright/0218-all-notices-1440-light.png",
+    "output/playwright/0218-all-notices-1440-dark.png",
+    "output/playwright/0218-all-notices-375-light.png",
+    "output/playwright/0218-all-notices-375-dark.png",
+    "output/playwright/0218-all-notices-768-light.png",
+    "output/playwright/0218-all-notices-768-dark.png"
+  ],
+  "errors": [],
+  "dismissedWithoutReload": true,
+  "stableRerender": true,
+  "persistedErrorHidden": true
+}

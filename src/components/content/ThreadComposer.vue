@@ -1,8 +1,6 @@
 <template>
   <form class="thread-composer" @submit.prevent="onSubmit(isTurnInProgress ? activeInProgressMode : 'steer')">
-    <p v-if="dictationErrorText" class="thread-composer-dictation-error">
-      {{ t(dictationErrorText) }}
-    </p>
+    <DismissibleNotice :message="dictationErrorText" class="thread-composer-dictation-error" />
 
     <div
       class="thread-composer-shell"
@@ -227,7 +225,7 @@
           </div>
         </div>
 
-        <span v-if="modelSettingsWarning || modelCatalogError" class="model-capability-warning" role="status">{{ t(modelSettingsWarning || modelCatalogError || '') }}</span>
+        <DismissibleNotice :message="modelSettingsWarning || modelCatalogError || ''" class="model-capability-warning" />
         <template v-if="!isDictationRecording">
           <ComposerSearchDropdown hide-chevron
             ref="commandSkillsRef"
@@ -368,16 +366,16 @@
     />
     <div class="thread-composer-draft-status" :class="{ 'is-error': draftSaveStatus === 'failed' }" role="status">
       <template v-if="draftSaveStatus === 'saved'">{{ t('已保存') }}</template>
-      <template v-else-if="draftSaveStatus === 'failed'">
-        <span>{{ t(draftCopyFailed ? '复制失败，请选中文本复制。' : '保存失败') }}</span>
+      <DismissibleNotice :message="draftSaveStatus === 'failed' ? (draftCopyFailed ? '复制失败，请选中文本复制。' : '保存失败') : ''">
         <button type="button" @click="copyFailedDraft">{{ t('复制草稿') }}</button>
-      </template>
+      </DismissibleNotice>
     </div>
   </form>
 </template>
 
 <script setup lang="ts">
 import AppSelect from '../common/AppSelect.vue'
+import DismissibleNotice from '../common/DismissibleNotice.vue'
 import { reasoningUnavailable, fastModeControl, effortOptions, tierOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
 import { isOverlayEventInside } from '../../composables/overlayEvents'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'

@@ -10,7 +10,7 @@
     <p v-if="identity?.canAcceptDirectInput === false" class="task-input-note">{{ t(identity?.parentThreadId ? '此子任务由上级控制，可返回上级继续沟通。' : '当前任务不接受直接输入。') }}</p>
     <div v-if="open" class="thread-tasks-body">
       <div class="task-result-heading"><small>{{ t('直属子任务') }}</small><AppButton :disabled="loading" @click="load(false)">{{ t('刷新') }}</AppButton></div>
-      <p v-if="error" role="alert">{{ t(error) }}</p>
+      <DismissibleNotice :message="error" />
       <p v-if="loading" role="status">{{ t('读取中…') }}</p>
       <p v-else-if="!rows.length && !error">{{ t('暂无已保存的直属子任务。') }}</p>
       <ul class="task-result-list">
@@ -27,6 +27,7 @@
 </template>
 
 <script setup lang="ts">
+import DismissibleNotice from '../common/DismissibleNotice.vue'
 import { t } from '../../composables/useUiLanguage'
 
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'

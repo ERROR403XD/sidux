@@ -4,16 +4,16 @@
   <AppDialog :open="mode !== null" :title="t(mode === 'hooks' ? 'Hooks' : 'Codex 后台终端')" :busy="stopping" panel-class="thread-process-dialog" @close="close">
     <div class="process-heading"><small>{{ cwd }}</small><AppButton :disabled="loading || stopping" @click="load()">{{ t('刷新') }}</AppButton></div>
     <p v-if="loading" role="status">{{ t('读取中…') }}</p>
-    <p v-if="error" class="process-error" role="alert">{{ t(error) }}</p>
+    <DismissibleNotice :message="error" class="process-error" />
     <template v-if="mode === 'hooks'">
       <p class="process-note">{{ t('观察记录始于') }} {{ formatLocalDateTime(hooks.observedSince) }}{{ t('；仅包含已收到的事件。') }}</p>
-      <p v-if="hooks.error" class="process-error" role="alert">{{ t(hooks.error) }}</p>
+      <DismissibleNotice :message="hooks.error" class="process-error" />
       <p v-if="hooks.limited" class="process-note">{{ t('仅保留最近记录。') }}</p>
       <p v-if="!loading && !error && !hooks.runs.length">{{ t('尚未观察到本会话的 Hooks 执行。') }}</p>
       <HookRunCard v-for="run in hooks.runs" :key="hookRunKey(run)" :run="run" />
       <details class="process-config"><summary>{{ t('当前目录的 Hooks 配置（') }}{{ configuration?.hooks.length ?? '—' }}）</summary>
-        <p v-if="configError" class="process-error" role="alert">{{ t(configError) }}</p>
-        <p v-for="warning in configuration?.warnings" :key="warning" class="process-error">{{ t(warning) }}</p>
+        <DismissibleNotice :message="configError" class="process-error" />
+        <DismissibleNotice v-for="warning in configuration?.warnings" :key="warning" :message="warning" class="process-error" />
         <p v-if="configuration && !configuration.hooks.length">{{ t('当前目录没有 Hooks 配置。') }}</p>
         <p class="process-note">{{ t('需审阅的配置请在 Codex CLI 的 /hooks 中处理。') }}</p>
         <details v-for="definition in configuration?.hooks" :key="definition.key" class="process-card">
@@ -42,7 +42,7 @@
       <section v-if="selected" class="process-card terminal-output" :aria-label="t('进程输出')">
         <div class="process-heading"><strong>{{ t('输出 ·') }} {{ selected.processId }}</strong><AppButton :disabled="outputLoading" @click="selectOutput(selected)">{{ t('重新读取输出') }}</AppButton></div>
         <p v-if="terminalReadAt && !terminals.some(row => row.processId === selected?.processId)">{{ t('已不在后台列表。') }}</p>
-        <p v-if="outputLoading">{{ t('读取输出中…') }}</p><p v-if="outputError" class="process-error" role="alert">{{ t(outputError) }}</p>
+        <p v-if="outputLoading">{{ t('读取输出中…') }}</p><DismissibleNotice :message="outputError" class="process-error" />
         <template v-if="output">
           <p v-if="output.source === 'unavailable'">{{ t('当前观察记录及最近 10 回合中没有这条命令的输出。') }}</p>
           <template v-else><small>{{ t(output.source === 'toolResult' ? '工具返回片段' : output.source === 'history' ? '会话历史' : '已观察的输出') }} · {{ t(commandStatusLabel(output.status)) }}<template v-if="output.exitCode !== null"> {{ t('· 退出码') }} {{ output.exitCode }}</template></small><pre>{{ output.text || t('尚未收到输出。') }}</pre><small v-if="output.truncated">{{ t('只显示已记录的片段或尾部，最多 32k 字符。') }}</small></template>
@@ -53,6 +53,7 @@
 </template>
 
 <script setup lang="ts">
+import DismissibleNotice from '../common/DismissibleNotice.vue'
 import { t } from '../../composables/useUiLanguage'
 
 import { onBeforeUnmount, onMounted, ref } from 'vue'

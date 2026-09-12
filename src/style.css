@@ -2893,3 +2893,7 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .quota-error-ignore:disabled { opacity: .5; cursor: wait; }
 
 .quota-error-ignore:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 2px; }
+
+.dismissible-notice-content { min-width: 0; overflow-wrap: anywhere; }
+.dismissible-notice-content > a, .dismissible-notice-content > button { margin-left: 8px; }
+.turn-error-close { margin-left: 8px; }
