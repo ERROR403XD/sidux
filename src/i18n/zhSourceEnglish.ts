@@ -1501,6 +1501,7 @@ export const zhSourceEnglish: Record<string, string> = {
 
 // Approved notification copy, 2026-09-12. Values in templates remain unchanged.
 Object.assign(zhSourceEnglish, {
+  "移动到项目": "Move to project",
   "提交待确认，请点击“核对提交”": "Submission unconfirmed. Click “Check submission”.",
   "回答尚未确认送达，请稍后核对": "Answer delivery is unconfirmed. Check again later.",
   "模型目录暂时不可用": "Model catalog temporarily unavailable",

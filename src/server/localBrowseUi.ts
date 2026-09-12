@@ -240,10 +240,10 @@ export async function getLocalDirectoryListing(
   }
 }
 
-export async function createDirectoryListingHtml(localPath: string, options?: { newProjectName?: string }): Promise<string> {
+export async function createDirectoryListingHtml(localPath: string, options?: { newProjectName?: string; entries?: LocalDirectoryListingEntry[] }): Promise<string> {
   const newProjectName = normalizeNewProjectName(options?.newProjectName ?? '')
-  const items = await getDirectoryItems(localPath)
-  const parentPath = dirname(localPath)
+  const items = options?.entries ? options.entries.map(item => ({ ...item, isDirectory: true, editable: false })) : await getDirectoryItems(localPath)
+  const parentPath = options?.entries ? localPath : dirname(localPath)
   const rows = items
     .map((item) => {
       const suffix = item.isDirectory ? '/' : ''
@@ -260,7 +260,7 @@ export async function createDirectoryListingHtml(localPath: string, options?: { 
   const pickerSummary = newProjectName
     ? `<p class="picker-summary">Browse to the parent folder where you want to create <strong>${escapeHtml(newProjectName)}</strong>, or open the current folder directly.</p>`
     : ''
-  const actionButtons = actionButtonsHtml(localPath, newProjectName)
+  const actionButtons = options?.entries ? '' : actionButtonsHtml(localPath, newProjectName)
 
   return `<!doctype html>
 <html lang="en">

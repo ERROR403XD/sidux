@@ -98,7 +98,7 @@
           </div>
           <div>
             <dt>{{ t('Target') }}</dt>
-            <dd :title="selectedRow.targetTitle">{{ selectedRow.targetLabel }}</dd>
+            <dd :title="isVirtualProjectId(selectedRow.targetTitle) ? selectedRow.targetLabel : selectedRow.targetTitle">{{ selectedRow.targetLabel }}</dd>
           </div>
           <div>
             <dt>ID</dt>
@@ -117,6 +117,7 @@
 </template>
 
 <script setup lang="ts">
+import { isVirtualProjectId } from '../../projectOrganization'
 import { notifyOperation } from '../../composables/useOperationToast'
 import { readDailyTimesRule } from '../../automationDailyTimes'
 import { formatLocalDateTime } from '../../dateTime'

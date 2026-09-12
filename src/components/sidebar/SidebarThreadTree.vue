@@ -289,7 +289,8 @@
             <template #left>
               <span class="project-icon-stack">
                 <span class="project-icon-folder">
-                  <IconTablerFolder v-if="isCollapsed(group.projectName)" class="thread-icon" />
+                  <IconProjectOrganization v-if="isVirtualProjectId(group.projectName)" :expanded="!isCollapsed(group.projectName)" class="thread-icon" />
+                  <IconTablerFolder v-else-if="isCollapsed(group.projectName)" class="thread-icon" />
                   <IconTablerFolderOpen v-else class="thread-icon" />
                 </span>
                 <span class="project-icon-chevron">
@@ -623,6 +624,7 @@
         <button class="thread-menu-item" type="button" @click="onForkThread(openThreadMenuThread.id)">
           {{ t('Create chat fork') }}
         </button>
+        <button v-if="isProjectlessChatPath(openThreadMenuThread.cwd) && projectMoveOptions.length > 1" class="thread-menu-item" type="button" @click="openMoveProjectDialog(openThreadMenuThread)">{{ t('移动到项目') }}</button>
         <button class="thread-menu-item" type="button" @click="onTogglePinFromMenu(openThreadMenuThread.id)">
           {{ isPinned(openThreadMenuThread.id) ? t('Unpin thread') : t('Pin thread') }}
         </button>
@@ -864,10 +866,19 @@
           </div>
       </template>
     </AppDialog>
+    <AppDialog :open="Boolean(projectMoveThread)" :title="t('移动到项目')" size="compact" @close="projectMoveThread = null">
+      <AppSelect v-model="projectMoveTarget" :options="projectMoveOptions" :enable-search="true" :search-placeholder="t('Search projects')" />
+      <template #footer>
+        <AppButton @click="projectMoveThread = null">{{ t('Cancel') }}</AppButton>
+        <AppButton @click="submitMoveProject">{{ t('Save') }}</AppButton>
+      </template>
+    </AppDialog>
   </section>
 </template>
 
 <script setup lang="ts">
+import { isVirtualProjectId } from '../../projectOrganization'
+import IconProjectOrganization from '../icons/IconProjectOrganization.vue'
 import { notifyOperation } from '../../composables/useOperationToast'
 import { matchesSidebarThreadFilter, type SidebarThreadFilter } from '../../sidebarThreadFilter'
 import AppSwitch from '../common/AppSwitch.vue'
@@ -947,6 +958,7 @@ const { t } = useUiLanguage()
 const { recordVisibleFailure } = useFeedbackDiagnostics()
 
 const emit = defineEmits<{
+  'move-conversation-project': [payload: { cwd: string; projectId: string | null }]
   'toggle-quota-resume': [threadId: string]
   select: [threadId: string]
   archive: [threadId: string]
@@ -965,6 +977,23 @@ const emit = defineEmits<{
   'start-new-chat': []
   'automations-changed': []
 }>()
+
+const projectMoveThread = ref<UiThread | null>(null)
+const projectMoveTarget = ref('')
+const projectMoveOptions = computed(() => [
+  { value: '', label: t('Projectless') },
+  ...props.groups.filter(group => isVirtualProjectId(group.projectName)).map(group => ({ value: group.projectName, label: props.projectDisplayNameById[group.projectName] || group.projectName })),
+])
+function openMoveProjectDialog(thread: UiThread): void {
+  projectMoveThread.value = thread
+  projectMoveTarget.value = isVirtualProjectId(thread.projectName) ? thread.projectName : ''
+  closeThreadMenu()
+}
+function submitMoveProject(): void {
+  if (!projectMoveThread.value) return
+  emit('move-conversation-project', { cwd: projectMoveThread.value.cwd, projectId: projectMoveTarget.value || null })
+  projectMoveThread.value = null
+}
 
 type PendingProjectDrag = {
   projectName: string
@@ -1330,7 +1359,7 @@ function threadMatchesSearch(thread: UiThread): boolean {
 
 const filteredGroups = computed<UiProjectGroup[]>(() => {
   return props.groups.flatMap((group) => {
-    const threads = group.threads.filter((thread) => !isProjectlessChatPath(thread.cwd) && threadMatchesSearch(thread)).sort(compareSearchRank)
+    const threads = group.threads.filter((thread) => (isVirtualProjectId(group.projectName) || !isProjectlessChatPath(thread.cwd)) && threadMatchesSearch(thread)).sort(compareSearchRank)
     if (threads.length > 0) return [{ ...group, threads }]
     return !isSearchActive.value && !isStatusFilterActive.value && group.threads.length === 0 ? [{ ...group, threads }] : []
   }).sort((first, second) => isSearchActive.value ? compareSearchRank(first.threads[0]!, second.threads[0]!) : 0)
@@ -1357,7 +1386,7 @@ const globalThreads = computed<UiThread[]>(() => {
 })
 
 const chatThreads = computed(() => {
-  const rows = globalThreads.value.filter((thread) => isProjectlessChatPath(thread.cwd))
+  const rows = globalThreads.value.filter((thread) => !isVirtualProjectId(thread.projectName) && isProjectlessChatPath(thread.cwd))
   const timestampKey = chatSortMode.value === 'created' ? 'createdAtIso' : 'updatedAtIso'
   return rows
     .sort((first, second) => {
@@ -2247,6 +2276,7 @@ function isPathLikeProjectName(value: string): boolean {
 }
 
 function getProjectTooltipTitle(projectName: string): string {
+  if (isVirtualProjectId(projectName)) return getProjectDisplayName(projectName)
   return props.projectCwdByName[projectName]?.trim() || (isPathLikeProjectName(projectName) ? projectName : getProjectDisplayName(projectName))
 }
 
@@ -2264,6 +2294,7 @@ function isDuplicatePathLeafName(value: string): boolean {
 }
 
 function getProjectVisibleName(group: UiProjectGroup): string {
+  if (isVirtualProjectId(group.projectName)) return getProjectDisplayName(group.projectName)
   const customDisplayName = props.projectDisplayNameById[group.projectName]
   const displayName = getProjectDisplayName(group.projectName)
   const projectName = group.projectName
@@ -2394,6 +2425,7 @@ function onRemoveProject(projectName: string): void {
 }
 
 function getProjectAutomationKey(projectName: string): string {
+  if (isVirtualProjectId(projectName)) return projectName
   const projectCwd = props.projectCwdByName[projectName]?.trim() ?? ''
   return isAbsoluteLikePath(projectCwd) ? projectCwd : ''
 }

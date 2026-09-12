@@ -1,3 +1,4 @@
+import { isVirtualProjectId, type VirtualProject } from '../projectOrganization'
 import type { ThreadSearchMode } from '../threadSearchMatch'
 import { normalizeResetCredits } from '../accountResetCredits'
 import { normalizeInstalledApps, readDirectoryPages, type InstalledDirectoryApp, type DirectoryMcpSnapshot } from '../directory'
@@ -187,6 +188,7 @@ function normalizeCollaborationModeReasoningEffort(value: ReasoningEffort | '' |
 }
 
 export type WorkspaceRootsState = {
+  virtualProjects?: VirtualProject[]
   order: string[]
   labels: Record<string, string>
   active: string[]
@@ -201,6 +203,7 @@ export type WorkspaceRootsState = {
 
 let workspaceRootsStatePromise: Promise<WorkspaceRootsState> | null = null
 let cachedWorkspaceRootsState: WorkspaceRootsState | null = null
+let workspaceRootsRevision = 0
 
 export type ComposerFileSuggestion = {
   path: string
@@ -2462,6 +2465,7 @@ function normalizeWorkspaceRootsState(payload: unknown): WorkspaceRootsState {
   }
 
   return {
+    virtualProjects: Array.isArray(record.virtualProjects) ? (record.virtualProjects as VirtualProject[]).filter(project => project && isVirtualProjectId(project.id) && Array.isArray(project.cwds)) : [],
     order: normalizeArray(record.order).map((value) => normalizePathForUi(value)),
     labels,
     active: normalizeArray(record.active).map((value) => normalizePathForUi(value)),
@@ -2488,14 +2492,17 @@ export async function getWorkspaceRootsState(): Promise<WorkspaceRootsState> {
     return cloneWorkspaceRootsState(cachedWorkspaceRootsState)
   }
   if (!workspaceRootsStatePromise) {
-    workspaceRootsStatePromise = fetchWorkspaceRootsState()
+    const revision = workspaceRootsRevision
+    const pending = fetchWorkspaceRootsState()
       .then((state) => {
+        if (revision !== workspaceRootsRevision) return getWorkspaceRootsState()
         cachedWorkspaceRootsState = state
         return state
       })
       .finally(() => {
-        workspaceRootsStatePromise = null
+        if (workspaceRootsStatePromise === pending) workspaceRootsStatePromise = null
       })
+    workspaceRootsStatePromise = pending
   }
   return cloneWorkspaceRootsState(await workspaceRootsStatePromise)
 }
@@ -2515,6 +2522,7 @@ async function fetchWorkspaceRootsState(): Promise<WorkspaceRootsState> {
 
 function cloneWorkspaceRootsState(state: WorkspaceRootsState): WorkspaceRootsState {
   return {
+    virtualProjects: state.virtualProjects?.map(project => ({ ...project, cwds: [...project.cwds] })) ?? [],
     order: [...state.order],
     labels: { ...state.labels },
     active: [...state.active],
@@ -2523,8 +2531,25 @@ function cloneWorkspaceRootsState(state: WorkspaceRootsState): WorkspaceRootsSta
   }
 }
 
-function invalidateWorkspaceRootsStateCache(): void {
+export function invalidateWorkspaceRootsStateCache(): void {
   cachedWorkspaceRootsState = null
+  workspaceRootsStatePromise = null
+  workspaceRootsRevision += 1
+}
+
+export async function assignConversationProject(cwd: string, projectId: string | null): Promise<void> {
+  const response = await fetch('/codex-api/project-membership', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cwd, projectId }),
+  })
+  if (!response.ok) throw new Error(getErrorMessageFromPayload(await response.json(), 'Failed to save project'))
+  invalidateWorkspaceRootsStateCache()
+}
+
+export async function removeVirtualProject(id: string): Promise<void> {
+  const response = await fetch(`/codex-api/project-root?${new URLSearchParams({ id })}`, { method: 'DELETE' })
+  if (!response.ok) throw new Error(getErrorMessageFromPayload(await response.json(), 'Failed to remove project'))
+  invalidateWorkspaceRootsStateCache()
 }
 
 export async function getThreadQueueState(): Promise<ThreadQueueState> {
@@ -2958,7 +2983,9 @@ export async function setWorkspaceRootsState(nextState: WorkspaceRootsState): Pr
   if (!response.ok) {
     throw new Error('Failed to save workspace roots state')
   }
-  cachedWorkspaceRootsState = cloneWorkspaceRootsState(nextState)
+  // The server owns project membership and remote project metadata. A reorder
+  // payload is only a partial snapshot and must not replace those fields.
+  invalidateWorkspaceRootsStateCache()
 }
 
 export async function openProjectRoot(path: string, options?: { createIfMissing?: boolean; label?: string; directories?: string[] }): Promise<string> {
@@ -3133,11 +3160,11 @@ export async function cloneGithubRepository(url: string, basePath: string): Prom
   return typeof data.path === 'string' ? normalizePathForUi(data.path) : ''
 }
 
-export async function createProjectlessThreadDirectory(prompt?: string): Promise<{ cwd: string; outputDirectory: string; workspaceRoot: string }> {
+export async function createProjectlessThreadDirectory(prompt?: string, projectId?: string): Promise<{ cwd: string; outputDirectory: string; workspaceRoot: string }> {
   const response = await fetch('/codex-api/projectless-thread-cwd', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt: prompt ?? null }),
+    body: JSON.stringify({ prompt: prompt ?? null, projectId }),
   })
   const payload = await readJsonResponse(response)
   if (!response.ok) {

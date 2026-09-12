@@ -1,3 +1,7 @@
+import { readProjectArchiveMembers } from './projectOrganizationArchive.js'
+import { VirtualProjectStore } from './virtualProjects.js'
+import { createDirectoryListingHtml } from './localBrowseUi.js'
+import { isVirtualProjectId, type VirtualProject } from '../projectOrganization.js'
 import { IgnoredQuotaErrors } from './ignoredQuotaErrors.js'
 import { SidebarThreadStatusReader } from './sidebarThreadStatusReader.js'
 import { getCustomConnectionStore, customRuntimeConfig } from './customConnectionStore.js'
@@ -127,6 +131,7 @@ type ServerRequestReply = {
 }
 
 export type WorkspaceRootsState = {
+  virtualProjects?: VirtualProject[]
   order: string[]
   labels: Record<string, string>
   active: string[]
@@ -1341,20 +1346,21 @@ async function* singleZipBufferChunk(data: Buffer): AsyncGenerator<Buffer> {
   yield data
 }
 
-async function streamProjectZip(root: string, res: ServerResponse, virtualEntries: ProjectZipVirtualEntry[] = []): Promise<void> {
+async function streamProjectZip(root: string, res: ServerResponse, virtualEntries: ProjectZipVirtualEntry[] = [], sourceRoots = [{ root, prefix: '' }]): Promise<void> {
   const centralEntries: ZipCentralDirectoryEntry[] = []
   let offset = 0
-  const ignoreMatcher = await createProjectZipIgnoreMatcher(root)
-
-  for await (const entry of walkProjectZipEntries(root, ignoreMatcher)) {
-    const zipPath = toZipEntryPath(root, entry.path, entry.isDirectory)
-    if (zipPath === '.codex-project/manifest.json') continue
-    offset = await writeProjectZipEntry(res, centralEntries, offset, {
-      zipPath,
-      mtime: entry.mtime,
-      isDirectory: entry.isDirectory,
-      chunks: entry.isDirectory ? singleZipBufferChunk(Buffer.alloc(0)) : createReadStream(entry.path) as AsyncIterable<Buffer>,
-    })
+  for (const source of sourceRoots) {
+    const ignoreMatcher = await createProjectZipIgnoreMatcher(source.root)
+    for await (const entry of walkProjectZipEntries(source.root, ignoreMatcher)) {
+      const zipPath = source.prefix + toZipEntryPath(source.root, entry.path, entry.isDirectory)
+      if (zipPath === '.codex-project/manifest.json') continue
+      offset = await writeProjectZipEntry(res, centralEntries, offset, {
+        zipPath,
+        mtime: entry.mtime,
+        isDirectory: entry.isDirectory,
+        chunks: entry.isDirectory ? singleZipBufferChunk(Buffer.alloc(0)) : createReadStream(entry.path) as AsyncIterable<Buffer>,
+      })
+    }
   }
 
   for (const entry of virtualEntries) {
@@ -1810,12 +1816,14 @@ function mergeImportedThreadsIntoThreadListResult(result: unknown, params: unkno
   }
 }
 
-async function collectProjectChatZipEntries(projectRoot: string): Promise<ProjectZipVirtualEntry[]> {
-  const canonicalProjectRoot = await realpath(projectRoot)
+async function collectProjectChatZipEntries(projectRoot: string | VirtualProject): Promise<ProjectZipVirtualEntry[]> {
+  const organization = typeof projectRoot === 'string' ? null : projectRoot
+  const canonicalProjectRoots = await Promise.all((typeof projectRoot === 'string' ? [projectRoot] : projectRoot.cwds).map(path => realpath(path).catch(() => resolve(path))))
   const codexHome = getCodexHomeDir()
   const threadTitles = await readMergedThreadTitleCache()
   const stateDbThreadMetadata = readStateDbThreadExportMetadata()
   const exportedTitles: Record<string, string> = {}
+  const exportedConversationCwds: Record<string, string> = {}
   const exportedThreads: Record<string, ExportedThreadMetadata> = {}
   const roots = [
     { disk: join(codexHome, 'sessions'), zip: '.codex-project/chats/sessions' },
@@ -1826,10 +1834,12 @@ async function collectProjectChatZipEntries(projectRoot: string): Promise<Projec
     data: Buffer.from(JSON.stringify({
       version: 1,
       exportedAt: new Date().toISOString(),
-      projectName: basename(canonicalProjectRoot) || 'project',
+      projectName: organization?.label || basename(canonicalProjectRoots[0] || '') || 'project',
+      ...(organization ? { organization: { version: 1, members: organization.cwds.map((cwd, index) => ({ cwd, prefix: `files/${String(index + 1).padStart(6, '0')}/` })) } } : {}),
     }, null, 2)),
     mtime: new Date(),
   }]
+  if (!canonicalProjectRoots.length) return entries
 
   for (const root of roots) {
     for await (const sessionPath of walkFiles(root.disk)) {
@@ -1848,9 +1858,11 @@ async function collectProjectChatZipEntries(projectRoot: string): Promise<Projec
       } catch {
         canonicalSessionCwd = isAbsolute(sessionCwd) ? resolve(sessionCwd) : resolve(sessionCwd)
       }
-      if (!isSameOrDescendantPath(canonicalSessionCwd, canonicalProjectRoot)) continue
+      const memberIndex = canonicalProjectRoots.findIndex(root => organization ? root === canonicalSessionCwd : isSameOrDescendantPath(canonicalSessionCwd, root))
+      if (memberIndex < 0) continue
       const rel = relative(root.disk, sessionPath).split(sep).join('/')
       const zipPath = `${root.zip}/${rel}`
+      if (organization && sessionCwd !== organization.cwds[memberIndex]) exportedConversationCwds[zipPath] = organization.cwds[memberIndex]
       const sessionId = readSessionMetaId(raw)
       const stateMetadata = sessionId ? stateDbThreadMetadata.get(sessionId) : undefined
       const title = readNonEmptyString(stateMetadata?.title) || (sessionId ? readNonEmptyString(threadTitles.titles[sessionId]) : '')
@@ -1867,6 +1879,11 @@ async function collectProjectChatZipEntries(projectRoot: string): Promise<Projec
         mtime: new Date(),
       })
     }
+  }
+  if (organization && Object.keys(exportedConversationCwds).length) {
+    const manifest = JSON.parse(entries[0].data!.toString('utf8'))
+    manifest.organization.conversationCwds = exportedConversationCwds
+    entries[0].data = Buffer.from(JSON.stringify(manifest, null, 2))
   }
   if (Object.keys(exportedTitles).length > 0 || Object.keys(exportedThreads).length > 0) {
     entries.push({
@@ -1938,15 +1955,29 @@ async function importProjectZip(buffer: Buffer, destinationParent: string): Prom
   const entries = parseStoredProjectZip(buffer)
   const manifestEntry = entries.find((entry) => entry.path === '.codex-project/manifest.json' && !entry.isDirectory)
   let projectName = 'imported-project'
+  let organizationManifest: unknown
   if (manifestEntry) {
     try {
       const manifest = asRecord(JSON.parse(manifestEntry.data.toString('utf8')) as unknown)
       projectName = readNonEmptyString(manifest?.projectName) || projectName
+      organizationManifest = manifest?.organization
     } catch {
       projectName = 'imported-project'
     }
   }
-  projectName = projectName.replace(/[\\/]+/g, '-').replace(/[\u0000-\u001f]+/g, '').trim() || 'imported-project'
+  if (organizationManifest === undefined) projectName = projectName.replace(/[\\/]+/g, '-').replace(/[\u0000-\u001f]+/g, '').trim() || 'imported-project'
+  const organizationMembers = readProjectArchiveMembers(organizationManifest)
+  const conversationCwds = normalizeStringRecord(asRecord(organizationManifest)?.conversationCwds)
+  const memberCwdForEntry = (entry: { path: string; data: Buffer }) => Object.hasOwn(conversationCwds, entry.path) ? conversationCwds[entry.path] : readSessionMetaCwd(entry.data.toString('utf8'))
+  if (organizationMembers) {
+    for (const entry of entries) {
+      if (entry.path.startsWith('.codex-project/chats/')) {
+        if (entry.path.endsWith('.jsonl') && !organizationMembers.some(member => member.cwd === memberCwdForEntry(entry))) throw new Error('Invalid project conversation membership')
+      } else if (entry.path !== '.codex-project/manifest.json' && !organizationMembers.some(member => entry.path.startsWith(member.prefix))) {
+        throw new Error('Invalid project file membership')
+      }
+    }
+  }
   const titleEntry = entries.find((entry) => entry.path === '.codex-project/chats/thread-titles.json' && !entry.isDirectory)
   const importedThreadMetadata = new Map<string, ExportedThreadMetadata>()
   if (titleEntry) {
@@ -1976,11 +2007,20 @@ async function importProjectZip(buffer: Buffer, destinationParent: string): Prom
   }
 
   const parent = await realpath(destinationParent)
-  let projectPath = join(parent, projectName)
-  for (let index = 2; existsSync(projectPath); index += 1) {
-    projectPath = join(parent, `${projectName}-${index}`)
+  let projectPath: string
+  const memberTargets = new Map<string, string>()
+  if (organizationMembers) {
+    const project = await getVirtualProjectStore().save(undefined, projectName)
+    projectPath = project.id
+    for (const member of organizationMembers) {
+      const directory = await createProjectConversationDirectory(basename(member.cwd), project.id)
+      memberTargets.set(member.cwd, directory.cwd)
+    }
+  } else {
+    projectPath = join(parent, projectName)
+    for (let index = 2; existsSync(projectPath); index += 1) projectPath = join(parent, `${projectName}-${index}`)
+    await mkdir(projectPath, { recursive: true })
   }
-  await mkdir(projectPath, { recursive: true })
 
   let importedSessions = 0
   const importedSessionRecords: ImportedSessionRecord[] = []
@@ -1990,9 +2030,10 @@ async function importProjectZip(buffer: Buffer, destinationParent: string): Prom
     .map((entry) => {
       const importedMetadata = importedThreadMetadata.get(entry.path)
       const sourceSessionRaw = entry.data.toString('utf8')
-      const sourceRecord = readImportedSessionRecord(sourceSessionRaw, entry.path, projectPath, readSessionMetaId(sourceSessionRaw) || randomUUID(), importedMetadata?.title ?? '')
+      const targetCwd = organizationMembers ? memberTargets.get(memberCwdForEntry(entry))! : projectPath
+      const sourceRecord = readImportedSessionRecord(sourceSessionRaw, entry.path, targetCwd, readSessionMetaId(sourceSessionRaw) || randomUUID(), importedMetadata?.title ?? '')
       const updatedAtMs = (importedMetadata?.updatedAtMs ?? 0) > 0 ? importedMetadata?.updatedAtMs ?? 0 : sourceRecord.updatedAtMs
-      return { entry, importedMetadata, sourceSessionRaw, sourceRecord, updatedAtMs }
+      return { entry, importedMetadata, sourceSessionRaw, sourceRecord, updatedAtMs, targetCwd }
     })
     .sort((first, second) => second.updatedAtMs - first.updatedAtMs)
 
@@ -2000,9 +2041,9 @@ async function importProjectZip(buffer: Buffer, destinationParent: string): Prom
     const importedThreadId = randomUUID()
     const target = join(importedSessionsRoot, 'imported', `${String(index + 1).padStart(6, '0')}-${importedThreadId}.jsonl`)
     await mkdir(dirname(target), { recursive: true })
-    const importedSessionRaw = rewriteImportedSession(chatEntry.sourceSessionRaw, projectPath, importedThreadId)
+    const importedSessionRaw = rewriteImportedSession(chatEntry.sourceSessionRaw, chatEntry.targetCwd, importedThreadId)
     await writeFile(target, importedSessionRaw, 'utf8')
-    const importedRecord = readImportedSessionRecord(importedSessionRaw, target, projectPath, importedThreadId, chatEntry.importedMetadata?.title ?? '')
+    const importedRecord = readImportedSessionRecord(importedSessionRaw, target, chatEntry.targetCwd, importedThreadId, chatEntry.importedMetadata?.title ?? '')
     if (chatEntry.updatedAtMs > 0) {
       importedRecord.updatedAtMs = chatEntry.updatedAtMs
       importedRecord.createdAtMs = Math.min(chatEntry.sourceRecord.createdAtMs, importedRecord.updatedAtMs)
@@ -2022,8 +2063,11 @@ async function importProjectZip(buffer: Buffer, destinationParent: string): Prom
     if (entry.path.startsWith('.codex-project/chats/')) {
       continue
     }
-    const target = join(projectPath, entry.path)
-    if (!isSameOrDescendantPath(target, projectPath)) throw new Error('Project ZIP contains an unsafe path')
+    if (organizationMembers && entry.path === '.codex-project/manifest.json') continue
+    const member = organizationMembers?.find(member => entry.path.startsWith(member.prefix))
+    const targetRoot = member ? memberTargets.get(member.cwd)! : projectPath
+    const target = join(targetRoot, member ? entry.path.slice(member.prefix.length) : entry.path)
+    if (!isSameOrDescendantPath(target, targetRoot)) throw new Error('Project ZIP contains an unsafe path')
     if (entry.isDirectory) {
       await mkdir(target, { recursive: true })
     } else {
@@ -2032,7 +2076,8 @@ async function importProjectZip(buffer: Buffer, destinationParent: string): Prom
     }
   }
 
-  await persistWorkspaceRoot(projectPath, projectName)
+  if (organizationMembers) await updateWorkspaceRootsState(state => ({ ...state, projectOrder: prependUniqueString(projectPath, state.projectOrder) }))
+  else await persistWorkspaceRoot(projectPath, projectName)
   return { projectPath, importedSessions }
 }
 
@@ -4284,6 +4329,20 @@ function isLoopbackRemoteAddress(remoteAddress: string | undefined): boolean {
   return normalized === '127.0.0.1' || normalized === '::1'
 }
 
+let virtualProjectStore: VirtualProjectStore | undefined
+function getVirtualProjectStore(): VirtualProjectStore {
+  const home = getCodexHomeDir()
+  if (!virtualProjectStore || virtualProjectStore.path !== join(home, 'codexapp-projects.json')) virtualProjectStore = new VirtualProjectStore(home)
+  return virtualProjectStore
+}
+
+async function createProjectConversationDirectory(prompt: string | null, projectId: string) {
+  const project = await getVirtualProjectStore().get(projectId)
+  const directory = await createProjectlessThreadDirectory(prompt)
+  await getVirtualProjectStore().assign(directory.cwd, project.id)
+  return directory
+}
+
 function getCodexGlobalStatePath(): string {
   return join(getCodexHomeDir(), '.codex-global-state.json')
 }
@@ -4522,7 +4581,7 @@ async function writeProjectCronAutomation(input: {
   if (!projectName || !name || !prompt || !rrule) {
     throw new Error('projectName, name, prompt, and rrule are required')
   }
-  if (!isAbsoluteLikePath(projectName)) {
+  if (!isAbsoluteLikePath(projectName) && !isVirtualProjectId(projectName)) {
     throw new Error('Project automation cwd must be an absolute path')
   }
 
@@ -4565,7 +4624,7 @@ async function writeProjectCronAutomation(input: {
 async function deleteProjectCronAutomation(projectName: string, automationId = ''): Promise<boolean> {
   const normalizedProjectName = projectName.trim()
   const normalizedAutomationId = automationId.trim()
-  if (!normalizedProjectName || !isAbsoluteLikePath(normalizedProjectName)) return false
+  if (!normalizedProjectName || (!isAbsoluteLikePath(normalizedProjectName) && !isVirtualProjectId(normalizedProjectName))) return false
   if (normalizedAutomationId) {
     const automation = await readProjectCronAutomation(normalizedProjectName, normalizedAutomationId)
     if (!automation) return false
@@ -5020,6 +5079,7 @@ export async function canonicalizeWorkspaceRootsState(
     active,
     projectOrder,
     remoteProjects: state.remoteProjects.map((project) => ({ ...project })),
+    ...(state.virtualProjects ? { virtualProjects: state.virtualProjects } : {}),
   }
 }
 
@@ -5074,9 +5134,11 @@ async function readWorkspaceRootsState(): Promise<WorkspaceRootsState> {
     payload = {}
   }
 
+  const virtualProjects = await getVirtualProjectStore().list()
   return await canonicalizeWorkspaceRootsState({
+    virtualProjects,
     order: normalizeStringArray(payload['electron-saved-workspace-roots']),
-    labels: normalizeStringRecord(payload['electron-workspace-root-labels']),
+    labels: { ...normalizeStringRecord(payload['electron-workspace-root-labels']), ...Object.fromEntries(virtualProjects.map(project => [project.id, project.label])) },
     active: normalizeStringArray(payload['active-workspace-roots']),
     projectOrder: normalizeStringArray(payload['project-order']),
     remoteProjects: normalizeRemoteProjects(payload['remote-projects']),
@@ -5095,7 +5157,7 @@ export async function writeWorkspaceRootsState(nextState: WorkspaceRootsState): 
   }
 
   payload['electron-saved-workspace-roots'] = normalizeStringArray(state.order)
-  payload['electron-workspace-root-labels'] = normalizeStringRecord(state.labels)
+  payload['electron-workspace-root-labels'] = normalizeStringRecord(Object.fromEntries(Object.entries(state.labels).filter(([id]) => !isVirtualProjectId(id))))
   payload['active-workspace-roots'] = normalizeStringArray(state.active)
   payload['project-order'] = normalizeStringArray(state.projectOrder)
 
@@ -7183,6 +7245,7 @@ function getSharedBridgeState(): SharedBridgeState {
   const threadCompactionGate = new ThreadCompactionGate((method, params) => appServer.rpc(method, params),
     async threadId => backendQueueProcessor.isIdentityChanging() || Boolean((await backendQueueProcessor.readState())[threadId]?.length))
   const automationEngine = new AutomationEngine(getCodexHomeDir(), createAutomationRuntime({
+    resolveCwd: async (cwd, name) => isVirtualProjectId(cwd) ? (await createProjectConversationDirectory(name, cwd)).cwd : cwd,
     rpc: (method, params, runId) => appServer.automationRpc(method, params, runId),
     acquireAccount: (runId, settings) => appServer.acquireTaskAccount(runId, settings),
     releaseAccount: runId => appServer.releaseTaskAccount(runId),
@@ -9094,8 +9157,25 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         return
       }
 
+      if (req.method === 'GET' && url.pathname === '/codex-api/project-files') {
+        const project = await getVirtualProjectStore().get(url.searchParams.get('id') ?? '')
+        res.setHeader('Content-Type', 'text/html; charset=utf-8')
+        res.setHeader('Cache-Control', 'no-store')
+        res.end(await createDirectoryListingHtml(project.label, { entries: project.cwds.map(cwd => ({ name: basename(cwd), path: cwd })) }))
+        return
+      }
+
       if ((req.method === 'GET' || req.method === 'HEAD') && url.pathname === '/codex-api/project-zip') {
         const rawCwd = (url.searchParams.get('cwd') ?? '').trim()
+        if (isVirtualProjectId(rawCwd)) {
+          const project = await getVirtualProjectStore().get(rawCwd)
+          const roots = await Promise.all(project.cwds.map(async (cwd, index) => ({ root: await resolveAllowedProjectZipCwd(cwd), prefix: `files/${String(index + 1).padStart(6, '0')}/` })))
+          const entries = req.method === 'HEAD' ? [] : await collectProjectChatZipEntries(project)
+          setProjectZipHeaders(res, toProjectZipFileName(project.label))
+          if (req.method !== 'HEAD') await streamProjectZip('', res, entries, roots)
+          res.end()
+          return
+        }
         if (!rawCwd) {
           setJson(res, 400, { error: 'Missing cwd' })
           return
@@ -9169,6 +9249,10 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
 
       if (req.method === 'GET' && url.pathname === '/codex-api/project-directories') {
         const root = url.searchParams.get('path') ?? ''
+        if (isVirtualProjectId(root)) {
+          setJson(res, 200, { data: [] })
+          return
+        }
         if (!isAbsolute(root)) {
           setJson(res, 400, { error: '工作目录必须填写绝对路径' })
           return
@@ -9181,13 +9265,33 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         return
       }
 
+      if (req.method === 'POST' && url.pathname === '/codex-api/project-membership') {
+        const payload = asRecord(await readJsonBody(req))
+        const cwd = typeof payload?.cwd === 'string' ? payload.cwd : ''
+        const projectId = typeof payload?.projectId === 'string' ? payload.projectId : null
+        await getVirtualProjectStore().assign(cwd, projectId)
+        setJson(res, 200, { ok: true })
+        return
+      }
+
+      if (req.method === 'DELETE' && url.pathname === '/codex-api/project-root') {
+        const id = url.searchParams.get('id') ?? ''
+        if (!isVirtualProjectId(id)) { setJson(res, 400, { error: 'Invalid project' }); return }
+        await getVirtualProjectStore().remove(id)
+        await updateWorkspaceRootsState(state => ({ ...state, projectOrder: state.projectOrder.filter(item => item !== id) }))
+        setJson(res, 200, { ok: true })
+        return
+      }
+
       if (req.method === 'POST' && url.pathname === '/codex-api/project-root') {
         const payload = asRecord(await readJsonBody(req))
         const rawPath = typeof payload?.path === 'string' ? payload.path.trim() : ''
         const createIfMissing = payload?.createIfMissing === true
         const label = typeof payload?.label === 'string' ? payload.label : ''
-        if (!rawPath) {
-          setJson(res, 400, { error: 'Missing path' })
+        if (!rawPath || isVirtualProjectId(rawPath)) {
+          const project = await getVirtualProjectStore().save(rawPath || undefined, label)
+          await updateWorkspaceRootsState(state => ({ ...state, projectOrder: prependUniqueString(project.id, state.projectOrder) }))
+          setJson(res, 200, { data: { path: project.id } })
           return
         }
 
@@ -9263,7 +9367,8 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         const payload = asRecord(await readJsonBody(req))
         const prompt = typeof payload?.prompt === 'string' ? payload.prompt : null
         try {
-          const directory = await createProjectlessThreadDirectory(prompt)
+          const projectId = typeof payload?.projectId === 'string' ? payload.projectId : ''
+          const directory = projectId ? await createProjectConversationDirectory(prompt, projectId) : await createProjectlessThreadDirectory(prompt)
           setJson(res, 200, { data: directory })
         } catch (error) {
           setJson(res, 500, { error: error instanceof Error ? error.message : 'Failed to create new chat folder' })
@@ -9599,7 +9704,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           setJson(res, 400, { error: 'projectName, name, prompt, and rrule are required' })
           return
         }
-        if (!isAbsoluteLikePath(projectName)) {
+        if (!isAbsoluteLikePath(projectName) && !isVirtualProjectId(projectName)) {
           setJson(res, 400, { error: 'Project automation cwd must be an absolute path' })
           return
         }

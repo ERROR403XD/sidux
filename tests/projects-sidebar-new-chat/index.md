@@ -27,3 +27,4 @@ Return to the [manual test index](../../tests.md).
 | [0.1.89 项目级关联目录](project-related-directories.md) |
 | [0.2.16：会话完成列表与线程菜单](thread-completion-list.md) |
 | [0.2.18：侧边栏状态筛选](sidebar-status-filter.md) |
+| [0.2.19：仅名称项目与项目专项回归](organized-projects-without-directory.md) |

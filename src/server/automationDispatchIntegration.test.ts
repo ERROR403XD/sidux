@@ -28,7 +28,10 @@ it.each([
   ['heartbeat', false, 'manual'],
   ['heartbeat', true, 'manual'],
   ['cron', true, 'schedule'],
-] as const)('delivers %s via %s fixed selection on %s through the engine and IPC worker', async (kind, fixed, trigger) => {
+  ['cron', false, 'manual', true],
+  ['cron', true, 'manual', true],
+  ['cron', true, 'schedule', true],
+] as const)('delivers %s via %s fixed selection on %s through the engine and IPC worker', async (kind, fixed, trigger, organized: boolean = false) => {
   home = await mkdtemp(join(tmpdir(), 'automation-dispatch-'))
   vi.stubEnv('CODEX_HOME', home)
   vi.stubEnv('CODEXUI_CODEX_COMMAND', resolve('src/server/fixtures/account-app-server.cjs'))
@@ -49,19 +52,21 @@ it.each([
   const targetThreadId = kind === 'heartbeat'
     ? ((await app.rpc('thread/start', { cwd: home })) as { thread: { id: string } }).thread.id
     : null
-  const target = targetThreadId || home
+  const projectId = 'virtual:11111111-1111-4111-8111-111111111111'
+  const target = targetThreadId || (organized ? projectId : home)
   let now = Date.parse('2026-09-10T01:00:30Z')
   const marker = `AUTOMATION_0215_${kind}_${fixed}_${trigger}`
   await mkdir(join(home, 'automations', 'dispatch'), { recursive: true })
   await writeFile(join(home, 'automations', 'dispatch', 'automation.toml'), serializeAutomationToml({
     id: 'dispatch', name: marker, kind, prompt: marker, rrule: 'FREQ=MINUTELY',
     status: trigger === 'schedule' ? 'ACTIVE' : 'PAUSED', targetThreadId,
-    cwds: kind === 'cron' ? [home] : [], createdAtMs: now, updatedAtMs: now,
+    cwds: kind === 'cron' ? [target] : [], createdAtMs: now, updatedAtMs: now,
     nextRunAtMs: null, extraTomlLines: [], model: 'fixture', reasoningEffort: 'low',
     ...(fixed ? { accountStorageId: b.account.storageId } : {}),
   }))
   const rpc = vi.fn((method: string, params: unknown, runId?: string) => runtimeApp.automationRpc(method, params, runId))
   const runtime = createAutomationRuntime({
+    resolveCwd: async cwd => organized && cwd === projectId ? home : cwd,
     rpc,
     acquireAccount: (id, settings) => runtimeApp.acquireTaskAccount(id, settings),
     releaseAccount: id => runtimeApp.releaseTaskAccount(id),
@@ -88,6 +93,8 @@ it.each([
   const run = engine.runs('dispatch').data[0]!
   expect(run).toMatchObject({ trigger, executionAccountStorageId: fixed ? b.account.storageId : a.account.storageId })
   const thread = (await runtimeApp.automationRpc('thread/read', { threadId: run.threadId, includeTurns: true })) as any
+  expect(thread.thread.cwd).toBe(home)
+  expect(JSON.stringify(rpc.mock.calls)).not.toContain(projectId)
   expect(thread.thread.turns).toHaveLength(1)
   expect(thread.thread.turns[0].items[0].content[0].text).toContain(marker)
   expect(thread.thread.turns[0].items[0].content[0].text).toContain(`[CodexApp automation run:${run.runId}]`)

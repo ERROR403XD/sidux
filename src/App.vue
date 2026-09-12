@@ -129,6 +129,7 @@
             @save-thread-project="onSaveThreadProject"
             @browse-project-files="onBrowseProjectFiles"
             @save-project="onSaveProject"
+            @move-conversation-project="onMoveConversationProject"
             @request-project-git-status="onRequestProjectGitStatus"
             @create-project-worktree="onCreateProjectWorktree"
             @rename-thread="onRenameThread"
@@ -845,7 +846,7 @@
                           @keydown.enter.prevent="onSubmitProjectSetup"
                         />
                       </label>
-                      <label v-if="projectSetupMode === 'create'" class="new-thread-project-field">
+                      <label v-if="projectSetupMode === 'create' && projectSetupBaseDir.trim()" class="new-thread-project-field">
                         <span class="new-thread-open-folder-label">{{ t('附加工作目录') }}</span>
                         <textarea v-model="projectDirectoryDraft" class="new-thread-open-folder-path project-directories-input" rows="4" :disabled="isProjectSetupSubmitting || !projectDirectoriesLoaded" :placeholder="'/home/Code/project1\n/home/Code/project2'" />
                       </label>
@@ -900,6 +901,8 @@ import AppSelect from './components/common/AppSelect.vue'
 import AppTimeInput from './components/common/AppTimeInput.vue'
 import { vModalBackdrop } from './composables/modalBackdrop'
 import { getProjectDirectories } from './api/codexGateway'
+import { isVirtualProjectId, type VirtualProject } from './projectOrganization'
+import { assignConversationProject, invalidateWorkspaceRootsStateCache } from './api/codexGateway'
 import { projectDisplayName, projectSetupInput } from './composables/projectSetup'
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -1364,7 +1367,8 @@ const gitRepoStatusRequestByCwd = new Map<string, Promise<boolean>>()
 const newWorktreeBaseBranch = ref('')
 const worktreeBranchOptions = ref<WorktreeBranchOption[]>([])
 const isLoadingWorktreeBranches = ref(false)
-const workspaceRootOptionsState = ref<{ order: string[]; labels: Record<string, string>; projectOrder: string[] }>({
+const workspaceRootOptionsState = ref<{ order: string[]; labels: Record<string, string>; projectOrder: string[]; virtualProjects: VirtualProject[] }>({
+  virtualProjects: [],
   order: [],
   labels: {},
   projectOrder: [],
@@ -1727,7 +1731,7 @@ const visiblePendingRequests = computed(() => {
 })
 const pendingReplyIds = ref(new Set<number>())
 const composerCwd = computed(() => {
-  if (isHomeRoute.value) return newThreadCwd.value.trim()
+  if (isHomeRoute.value) return isVirtualProjectId(newThreadCwd.value) ? '' : newThreadCwd.value.trim()
   return selectedThread.value?.cwd?.trim() ?? ''
 })
 const canShowTerminalToggle = computed(() => (
@@ -1754,7 +1758,7 @@ const isTerminalKeyboardLayoutActive = computed(() => (
 ))
 const directoryCwd = computed(() => isSkillsRoute.value
   ? (typeof route.query.cwd === 'string' ? route.query.cwd.trim() : '')
-  : selectedThread.value?.cwd?.trim() ?? newThreadCwd.value.trim())
+  : selectedThread.value?.cwd?.trim() ?? composerCwd.value)
 const directoryThreadId = computed(() => isSkillsRoute.value && typeof route.query.fromThread === 'string' ? route.query.fromThread : '')
 const directoryProjects = computed(() => [...new Set([
   ...workspaceRootOptionsState.value.order,
@@ -1856,9 +1860,9 @@ function getFolderOptionLabel(path: string, fallbackLabel = ''): string {
 }
 
 function getOrderedWorkspaceRootOptions(): string[] {
-  const savedRoots = new Set(workspaceRootOptionsState.value.order)
+  const savedRoots = new Set([...workspaceRootOptionsState.value.order, ...workspaceRootOptionsState.value.virtualProjects.map(project => project.id)])
   const orderedRoots = workspaceRootOptionsState.value.projectOrder.filter((item) => savedRoots.has(item))
-  for (const rootPath of workspaceRootOptionsState.value.order) {
+  for (const rootPath of savedRoots) {
     if (!orderedRoots.includes(rootPath)) orderedRoots.push(rootPath)
   }
   return orderedRoots
@@ -1966,8 +1970,8 @@ const isProjectNameDraftValid = computed(() => Boolean(projectNameDraft.value.tr
 const canSubmitProjectSetup = computed(() => {
   if (projectSetupMode.value === 'create' && !projectDirectoriesLoaded.value) return false
   const baseDir = projectSetupDestination.value.trim()
-  if (!baseDir) return false
   if (projectSetupMode.value === 'create') return isProjectNameDraftValid.value
+  if (!baseDir) return false
   return githubCloneUrlDraft.value.trim().length > 0
 })
 const resolvedExistingFolderPath = computed(() => {
@@ -2805,6 +2809,7 @@ function isWorktreePath(cwdRaw: string): boolean {
 }
 
 function resolvePreferredLocalCwd(projectName: string, fallbackCwd = ''): string {
+  if (isVirtualProjectId(projectName)) return ''
   const group = projectGroups.value.find((row) => row.projectName === projectName)
   if (!group) return resolveWorkspaceRootCwd(projectName) || fallbackCwd.trim()
   const nonWorktreeThread = group.threads.find((thread) => !isWorktreePath(thread.cwd))
@@ -2813,6 +2818,7 @@ function resolvePreferredLocalCwd(projectName: string, fallbackCwd = ''): string
 }
 
 function onStartNewThread(projectName: string): void {
+  if (isVirtualProjectId(projectName)) newThreadCwd.value = projectName
   const projectGroup = projectGroups.value.find((group) => group.projectName === projectName)
   const projectCwd = resolvePreferredLocalCwd(projectName, projectGroup?.threads[0]?.cwd?.trim() ?? '')
   if (projectCwd) {
@@ -2837,6 +2843,7 @@ function onBrowseThreadFiles(threadId: string): void {
 }
 
 function getProjectCwd(projectName: string): string {
+  if (isVirtualProjectId(projectName)) return projectName
   const projectGroup = projectGroups.value.find((group) => group.projectName === projectName)
   return resolvePreferredLocalCwd(projectName, projectGroup?.threads[0]?.cwd?.trim() ?? '')
 }
@@ -2865,6 +2872,10 @@ function toWorktreeFolderNameDraft(projectName: string): string {
 function onBrowseProjectFiles(projectName: string): void {
   const targetCwd = getProjectCwd(projectName)
   if (!targetCwd || typeof window === 'undefined') return
+  if (isVirtualProjectId(projectName)) {
+    window.open(`/codex-api/project-files?${new URLSearchParams({ id: projectName })}`, '_blank', 'noopener,noreferrer')
+    return
+  }
   window.open(`/codex-local-browse${encodeURI(targetCwd)}`, '_blank', 'noopener,noreferrer')
 }
 
@@ -3022,7 +3033,7 @@ function resolveSelectedThreadProjectCwd(): string {
 
 function onStartNewThreadFromToolbar(): void {
   const thread = route.name === 'thread' && !isSettingsOpen.value ? selectedThread.value : null
-  newThreadCwd.value = thread?.cwd && !isProjectlessChatPath(thread.cwd) ? thread.cwd.trim() : ''
+  newThreadCwd.value = thread && isVirtualProjectId(thread.projectName) ? thread.projectName : thread?.cwd && !isProjectlessChatPath(thread.cwd) ? thread.cwd.trim() : ''
   isSettingsOpen.value = false
   newThreadRuntime.value = 'local'
   if (isMobile.value) setSidebarCollapsed(true)
@@ -3039,6 +3050,7 @@ function onStartProjectlessNewChat(): void {
 }
 
 async function loadGitRepoStatus(cwdRaw: string): Promise<void> {
+  if (isVirtualProjectId(cwdRaw)) return
   const cwd = cwdRaw.trim()
   if (!cwd || Object.prototype.hasOwnProperty.call(gitRepoStatusByCwd.value, cwd)) return
 
@@ -3072,11 +3084,11 @@ async function loadGitRepoStatus(cwdRaw: string): Promise<void> {
 
 async function onEditProject(projectName: string): Promise<void> {
   const group = projectGroups.value.find(entry => entry.projectName === projectName)
-  const root = resolvePreferredLocalCwd(projectName, group?.threads[0]?.cwd?.trim() ?? '')
+  const root = isVirtualProjectId(projectName) ? projectName : resolvePreferredLocalCwd(projectName, group?.threads[0]?.cwd?.trim() ?? '')
   if (!root) return
   projectEditingId.value = projectName
   projectNameEdited.value = true
-  projectSetupBaseDir.value = root
+  projectSetupBaseDir.value = isVirtualProjectId(root) ? '' : root
   projectNameDraft.value = projectDisplayNameById.value[projectName] || projectDisplayName(root, workspaceRootOptionsState.value.labels)
   projectSetupMode.value = 'create'
   projectDirectoryDraft.value = ''
@@ -3102,6 +3114,16 @@ async function onRemoveProject(projectName: string): Promise<void> {
   await removeProject(projectName)
   await loadWorkspaceRootOptionsState()
   void refreshDefaultProjectName()
+}
+
+async function onMoveConversationProject(payload: { cwd: string; projectId: string | null }): Promise<void> {
+  try {
+    await assignConversationProject(payload.cwd, payload.projectId)
+    await loadWorkspaceRootOptionsState()
+    await refreshAll({ includeSelectedThreadMessages: false, forceThreadRefresh: true })
+  } catch (error) {
+    notifyOperation(error instanceof Error ? error.message : 'Failed to save project')
+  }
 }
 
 function onReorderProject(payload: { projectName: string; toIndex: number }): void {
@@ -3940,6 +3962,7 @@ function onCloseProjectSetupModal(): void {
 
 async function createProjectFromSetupModal(): Promise<string> {
   const input = projectSetupInput(normalizeAbsolutePath(projectSetupBaseDir.value), projectNameDraft.value)
+  if (isVirtualProjectId(projectEditingId.value)) input.path = projectEditingId.value
   return openProjectRoot(input.path, { ...input.options, createIfMissing: !projectEditingId.value, directories: projectDirectoryDraft.value.split('\n').map(path => path.trim()).filter(Boolean) })
 }
 
@@ -3967,6 +3990,7 @@ async function onSubmitProjectSetup(): Promise<void> {
     else newThreadCwd.value = normalizedPath
     pinProjectToTop(getProjectOrderNameForPath(normalizedPath))
     await loadWorkspaceRootOptionsState()
+    await refreshAll({ includeSelectedThreadMessages: false, forceThreadRefresh: true })
     isProjectSetupModalOpen.value = false
   } catch (error) {
     notifyOperation(error instanceof Error ? error.message : 'Failed to create or clone project.')
@@ -4019,7 +4043,7 @@ async function onDirectProjectImportFileChange(event: Event): Promise<void> {
 }
 
 async function onOpenExistingFolder(): Promise<void> {
-  const startPath = newThreadCwd.value.trim() || await resolveProjectBaseDirectory()
+  const startPath = composerCwd.value.trim() || await resolveProjectBaseDirectory()
   if (!startPath) return
   isCreateFolderOpen.value = false
   isExistingFolderPickerOpen.value = true
@@ -4113,7 +4137,7 @@ async function onOpenCreateFolderPanel(): Promise<void> {
     return
   }
   if (!isExistingFolderPickerOpen.value) {
-    const startPath = newThreadCwd.value.trim() || await resolveProjectBaseDirectory()
+    const startPath = composerCwd.value.trim() || await resolveProjectBaseDirectory()
     if (!startPath) return
     isExistingFolderPickerOpen.value = true
     existingFolderFilter.value = ''
@@ -4231,9 +4255,9 @@ async function refreshDefaultProjectName(): Promise<void> {
 }
 
 function getProjectBaseDirectory(): string {
-  const selected = newThreadCwd.value.trim()
+  const selected = composerCwd.value.trim()
   if (selected) return getPathParent(selected)
-  const first = newThreadFolderOptions.value[0]?.value?.trim() ?? ''
+  const first = newThreadFolderOptions.value.find(option => !isVirtualProjectId(option.value))?.value?.trim() ?? ''
   if (first) return getPathParent(first)
   return homeDirectory.value.trim()
 }
@@ -4250,12 +4274,13 @@ async function loadWorkspaceRootOptionsState(): Promise<void> {
   try {
     const state = await getWorkspaceRootsState()
     workspaceRootOptionsState.value = {
+      virtualProjects: state.virtualProjects ?? [],
       order: [...state.order],
       labels: { ...state.labels },
       projectOrder: [...state.projectOrder],
     }
   } catch {
-    workspaceRootOptionsState.value = { order: [], labels: {}, projectOrder: [] }
+    workspaceRootOptionsState.value = { order: [], labels: {}, projectOrder: [], virtualProjects: [] }
   }
 }
 
@@ -5083,8 +5108,10 @@ async function submitFirstMessageForNewThread(
         }
         return false
       }
-    } else if (!targetCwd.trim()) {
-      const directory = await createProjectlessThreadDirectory(text)
+    } else if (!targetCwd.trim() || isVirtualProjectId(targetCwd)) {
+      const projectId = isVirtualProjectId(targetCwd) ? targetCwd : undefined
+      const directory = await createProjectlessThreadDirectory(text, projectId)
+      if (projectId) invalidateWorkspaceRootsStateCache()
       targetCwd = directory.cwd
     }
     const threadId = await sendMessageToNewThread(text, targetCwd, imageUrls, skills, fileAttachments)

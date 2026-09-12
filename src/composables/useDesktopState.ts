@@ -1,3 +1,5 @@
+import { isVirtualProjectId, organizeProjectGroups } from '../projectOrganization'
+import { removeVirtualProject } from '../api/codexGateway'
 import { notifyOperation } from './useOperationToast'
 import { mergeQuotaUpdate } from '../quotaRefresh'
 import { effectiveConversationChoice, useWebConversationPreferences, type ConversationChoice } from '../webConversationPreferences'
@@ -1074,11 +1076,14 @@ function getRemoteProjectById(rootsState: WorkspaceRootsState | null): Map<strin
 
 function getWorkspaceProjectOrderPaths(rootsState: WorkspaceRootsState | null): string[] {
   if (!rootsState) return []
-  const savedRoots = new Set(rootsState.order)
+  const savedRoots = new Set([...rootsState.order, ...(rootsState.virtualProjects ?? []).map(project => project.id)])
   const remoteProjectIds = new Set((rootsState.remoteProjects ?? []).map((project) => project.id))
   const orderedRoots = rootsState.projectOrder.filter((item) => savedRoots.has(item) || remoteProjectIds.has(item))
   for (const rootPath of rootsState.order) {
     if (!orderedRoots.includes(rootPath)) orderedRoots.push(rootPath)
+  }
+  for (const project of rootsState.virtualProjects ?? []) {
+    if (!orderedRoots.includes(project.id)) orderedRoots.push(project.id)
   }
   for (const remoteProjectId of remoteProjectIds) {
     if (!orderedRoots.includes(remoteProjectId)) orderedRoots.push(remoteProjectId)
@@ -1092,7 +1097,7 @@ function getWorkspaceProjectOrderNames(
 ): string[] {
   const remoteProjectsById = getRemoteProjectById(rootsState)
   return getWorkspaceProjectOrderPaths(rootsState).map((rootPath) => {
-    if (remoteProjectsById.has(rootPath)) return rootPath
+    if (remoteProjectsById.has(rootPath) || isVirtualProjectId(rootPath)) return rootPath
     const normalizedRootPath = normalizePathForUi(rootPath).trim()
     const leafName = toProjectNameFromWorkspaceRoot(normalizedRootPath)
     return duplicateLeafNames.has(leafName) ? normalizedRootPath : leafName
@@ -1154,7 +1159,7 @@ export function buildWorkspaceRootsProjectOrderState(
   }
 
   for (const projectName of orderedProjectNames) {
-    if (remoteProjectIds.has(projectName)) {
+    if (remoteProjectIds.has(projectName) || isVirtualProjectId(projectName)) {
       pushProjectOrderItem(projectName)
       continue
     }
@@ -1314,6 +1319,7 @@ function addWorkspaceRootPlaceholderGroups(
   const remoteProjectsById = getRemoteProjectById(rootsState)
 
   for (const rootPath of getWorkspaceProjectOrderPaths(rootsState)) {
+    if (isVirtualProjectId(rootPath)) continue
     if (remoteProjectsById.has(rootPath)) {
       if (existingProjectNames.has(rootPath)) continue
       nextGroups.push({ projectName: rootPath, threads: [] })
@@ -1348,7 +1354,7 @@ function toForkedThreadTitle(title: string): string {
 }
 
 function isProjectlessGroup(group: UiProjectGroup): boolean {
-  return group.threads.some((thread) => thread.cwd.trim().length === 0 || isProjectlessChatPath(thread.cwd))
+  return !isVirtualProjectId(group.projectName) && group.threads.some((thread) => thread.cwd.trim().length === 0 || isProjectlessChatPath(thread.cwd))
 }
 
 export function filterGroupsByWorkspaceRoots(
@@ -1357,7 +1363,7 @@ export function filterGroupsByWorkspaceRoots(
 ): UiProjectGroup[] {
   const duplicateLeafNames = collectDuplicateProjectLeafNames(groups, rootsState)
   const disambiguatedGroups = disambiguateProjectGroupsByCwd(groups, rootsState)
-  const groupsWithWorkspaceRoots = addWorkspaceRootPlaceholderGroups(disambiguatedGroups, rootsState, duplicateLeafNames)
+  const groupsWithWorkspaceRoots = organizeProjectGroups(addWorkspaceRootPlaceholderGroups(disambiguatedGroups, rootsState, duplicateLeafNames), rootsState?.virtualProjects ?? [])
   if (!rootsState || (rootsState.order.length === 0 && (rootsState.remoteProjects ?? []).length === 0)) return groupsWithWorkspaceRoots
   const allowedProjectNames = new Set<string>()
   for (const projectName of getWorkspaceProjectOrderNames(rootsState, duplicateLeafNames)) {
@@ -1629,7 +1635,8 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
     const snapshot = snapshotThreads.value[threadId]
     const thread = listed ?? snapshot
     if (!thread) return null
-    return { ...thread, title: threadTitleById.value[threadId] || thread.title, task: snapshot?.task ?? thread.task }
+    const organization = loadedThreadListRootsState?.virtualProjects?.find(project => project.cwds.includes(thread.cwd))
+    return { ...thread, projectName: organization?.id ?? thread.projectName, title: threadTitleById.value[threadId] || thread.title, task: snapshot?.task ?? thread.task }
   })
   const selectedThreadTerminalOpen = computed(() => {
     const threadId = selectedThreadId.value
@@ -4196,26 +4203,10 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
     }
   }
 
-  function filterGroupsByWorkspaceRoots(
-    groups: UiProjectGroup[],
-    rootsState: WorkspaceRootsState | null,
-  ): UiProjectGroup[] {
-    const duplicateLeafNames = collectDuplicateProjectLeafNames(groups, rootsState)
-    const disambiguatedGroups = disambiguateProjectGroupsByCwd(groups, rootsState)
-    const groupsWithWorkspaceRoots = addWorkspaceRootPlaceholderGroups(disambiguatedGroups, rootsState, duplicateLeafNames)
-    if (!rootsState || (rootsState.order.length === 0 && (rootsState.remoteProjects ?? []).length === 0)) return groupsWithWorkspaceRoots
-    const allowedProjectNames = new Set<string>()
-    for (const projectName of getWorkspaceProjectOrderNames(rootsState, duplicateLeafNames)) {
-      allowedProjectNames.add(projectName)
-    }
-    const filteredGroups = groupsWithWorkspaceRoots.filter((group) => {
-      if (allowedProjectNames.has(group.projectName)) return true
-      return isProjectlessGroup(group)
-    })
-    return orderGroupsByWorkspaceProjectOrder(filteredGroups, rootsState, duplicateLeafNames)
-  }
-
   function applyThreadGroups(groups: UiProjectGroup[], rootsState: WorkspaceRootsState | null): void {
+    for (const project of rootsState?.virtualProjects ?? []) {
+      projectDisplayNameById.value[project.id] = project.label
+    }
     const visibleGroups = filterGroupsByWorkspaceRoots(groups, rootsState)
     const hasWorkspaceRootsState = Boolean(
       rootsState && (rootsState.order.length > 0 || rootsState.projectOrder.length > 0 || (rootsState.remoteProjects ?? []).length > 0),
@@ -5364,6 +5355,13 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
 
   async function removeProject(projectName: string): Promise<void> {
     if (projectName.length === 0) return
+    if (isVirtualProjectId(projectName)) {
+      await removeVirtualProject(projectName)
+      projectOrder.value = projectOrder.value.filter(id => id !== projectName)
+      saveProjectOrder(projectOrder.value)
+      await loadThreads({ force: true })
+      return
+    }
 
     const nextProjectOrder = projectOrder.value.filter((name) => name !== projectName)
     if (!areStringArraysEqual(projectOrder.value, nextProjectOrder)) {

@@ -1,3 +1,4 @@
+import { isVirtualProjectId } from '../projectOrganization.js'
 import { DEFAULT_TIME_ZONE } from '../timeZoneConstants.js'
 import { buildAutomationMessage } from '../automationMessage.js'
 import { AutomationHistory } from './automationHistory.js'
@@ -163,7 +164,7 @@ export class AutomationEngine {
         if (this.definitions.get(id)?.signature === signature) continue
         const record = parseAutomationToml(await readFile(file, 'utf8'))
         if (!record || record.id !== id) throw new Error('automation.toml 无效或 ID 与目录不符')
-        if (record.kind === 'heartbeat' ? !record.targetThreadId : !record.cwds.length || record.cwds.some((cwd) => !isAbsolute(cwd))) throw new Error('缺少有效的执行目标')
+        if (record.kind === 'heartbeat' ? !record.targetThreadId : !record.cwds.length || record.cwds.some((cwd) => !isAbsolute(cwd) && !isVirtualProjectId(cwd))) throw new Error('缺少有效的执行目标')
         const previous = this.state.definitions[id]
         const timezone = this.timezone
         const revision = createHash('sha256').update(JSON.stringify([record.rrule, record.prompt, record.status, record.targetThreadId, record.cwds, timezone, record.model, record.reasoningEffort, record.serviceTier, record.accountStorageId, record.protected])).digest('hex').slice(0, 16)
@@ -362,7 +363,7 @@ export class AutomationEngine {
     await this.persist()
     try {
       if (!run.threadId) {
-        if (!(await stat(run.target)).isDirectory()) throw new Error('cwd 不是目录')
+        if (!isVirtualProjectId(run.target) && !(await stat(run.target)).isDirectory()) throw new Error('cwd 不是目录')
         const thread = await bounded(this.runtime.createThread(run.target, `${record.name} · ${formatAutomationTime(run.scheduledAt, run.timezone)}`, record, run.runId))
         run.threadId = thread.threadId; run.model = thread.model ?? null
         await this.persist()
