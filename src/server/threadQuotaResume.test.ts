@@ -11,7 +11,7 @@ afterEach(async () => {
 async function fixture() {
   const home = await mkdtemp(tmpdir() + '/quota-resume-')
   homes.push(home)
-  const runtime = { inspect: vi.fn(async () => ({ active: false, turnId: 'failed-turn', status: 'failed', error: 'quota' })), available: vi.fn(async () => false), submit: vi.fn(async () => {}), cancel: vi.fn(async () => {}), changed: vi.fn() }
+  const runtime = { inspect: vi.fn(async (_id: string) => ({ active: false, turnId: 'failed-turn', status: 'failed', error: 'quota' })), available: vi.fn(async () => false), submit: vi.fn(async () => {}), cancel: vi.fn(async () => {}), changed: vi.fn() }
   const service = new ThreadQuotaResume(home, runtime, false)
   services.push(service)
   return { home, runtime, service }
@@ -114,4 +114,46 @@ it('records known pre-send failure and retries with an explicit continuation', a
   await service.tick()
   expect((await service.snapshot())['thread-a']?.lastError).toBeUndefined()
   expect(runtime.submit).toHaveBeenCalledTimes(2)
+})
+
+it('rotates past eight permanently busy waiting threads without increasing batch or submission limits', async () => {
+  const { service, runtime } = await fixture()
+  for (let i = 0; i < 10; i++) await service.set(`thread-${i}`, true)
+  runtime.available.mockResolvedValue(true)
+  runtime.inspect.mockImplementation(async id => ({ active: Number(id.split('-')[1]) < 8, turnId: 'failed-turn', status: 'failed', error: 'quota' }))
+  runtime.inspect.mockClear()
+  await service.tick()
+  expect(runtime.inspect).toHaveBeenCalledTimes(8)
+  expect(runtime.submit).not.toHaveBeenCalled()
+  runtime.inspect.mockClear()
+  await service.tick()
+  expect(runtime.inspect.mock.calls.length).toBeLessThanOrEqual(8)
+  expect(runtime.submit).toHaveBeenCalledOnce()
+  expect(runtime.submit).toHaveBeenCalledWith('thread-8', expect.any(String))
+  expect((await service.snapshot())['thread-9']?.status).toBe('waiting')
+})
+
+it('eventually reconciles the ninth unknown delivery without replaying the earlier uncertain sends', async () => {
+  const { home, service, runtime } = await fixture()
+  runtime.available.mockResolvedValue(true)
+  runtime.submit.mockRejectedValue(new Error('unknown after send'))
+  for (let i = 0; i < 9; i++) {
+    await service.set(`thread-${i}`, true)
+    await service.tick()
+  }
+  expect(runtime.submit).toHaveBeenCalledTimes(9)
+  await service.close()
+  runtime.available.mockResolvedValue(false)
+  const reconcile = vi.fn(async (id: string) => id === 'thread-8' ? 'waiting' as const : 'unknown' as const)
+  const resumed = new ThreadQuotaResume(home, { ...runtime, reconcile }, false)
+  services.push(resumed)
+  await resumed.tick()
+  expect(reconcile).toHaveBeenCalledTimes(8)
+  expect((await resumed.snapshot())['thread-8']?.status).toBe('unknown')
+  reconcile.mockClear()
+  await resumed.tick()
+  expect(reconcile).toHaveBeenCalledTimes(8)
+  expect((await resumed.snapshot())['thread-8']).toMatchObject({ status: 'waiting', attemptId: null })
+  expect((await resumed.snapshot())['thread-0']?.status).toBe('unknown')
+  expect(runtime.submit).toHaveBeenCalledTimes(9)
 })

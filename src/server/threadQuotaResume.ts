@@ -22,6 +22,8 @@ export class ThreadQuotaResume {
   private ticking = false
   private stopped = false
   private inspectionOffset = 0
+  private waitingOffset = 0
+  private unknownOffset = 0
   private timer: ReturnType<typeof setInterval> | null = null
   private readonly path: string
   readonly ready: Promise<void>
@@ -98,6 +100,14 @@ export class ThreadQuotaResume {
       }).catch(() => undefined)
     }
   }
+  private rotatingBatch(status: 'waiting' | 'unknown'): [string, QuotaResumeMark][] {
+    const rows = Object.entries(this.marks).filter(([, mark]) => mark.status === status)
+    const key = status === 'waiting' ? 'waitingOffset' : 'unknownOffset'
+    const count = Math.min(8, rows.length)
+    const batch = Array.from({ length: count }, (_, index) => rows[(this[key] + index) % rows.length]!)
+    this[key] = rows.length ? (this[key] + count) % rows.length : 0
+    return batch
+  }
   async tick(): Promise<void> {
     if (this.stopped || this.ticking) return
     this.ticking = true
@@ -125,7 +135,7 @@ export class ThreadQuotaResume {
           } catch { /* One unreadable thread must not stop other continuations. */ }
         }
         if (candidates.length) this.inspectionOffset = (this.inspectionOffset + count) % candidates.length
-        for (const [threadId, mark] of Object.entries(this.marks).filter(([, mark]) => mark.status === 'unknown').slice(0, 8)) {
+        for (const [threadId, mark] of this.rotatingBatch('unknown')) {
           if (!mark.attemptId || !this.runtime.reconcile) continue
           let status: 'waiting' | 'submitted' | 'unknown'
           try { status = await this.runtime.reconcile(threadId, mark.attemptId, mark.attemptedAt) }
@@ -136,7 +146,7 @@ export class ThreadQuotaResume {
             await this.save()
           }
         }
-        const waiting = Object.entries(this.marks).filter(([, mark]) => mark.status === 'waiting').slice(0, 8)
+        const waiting = this.rotatingBatch('waiting')
         if (!waiting.length || !await this.runtime.available()) return
         for (const [threadId, mark] of waiting) {
           if (this.stopped) break
