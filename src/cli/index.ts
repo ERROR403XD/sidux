@@ -22,9 +22,23 @@ import { createServer as createApp } from '../server/httpServer.js'
 import { generatePassword } from '../server/password.js'
 import { spawnSyncCommand } from '../utils/commandInvocation.js'
 import { listenOnPort } from './listenOnPort.js'
+import { maintainAutomationHistory } from '../server/automationHistoryMaintenance.js'
 
 const program = new Command().name('codexui').description('Web interface for Codex app-server')
 const __dirname = dirname(fileURLToPath(import.meta.url))
+
+program.command('automation-history')
+  .description('repair automation history indexes offline; optionally export for an older application')
+  .requiredOption('--home <path>', 'explicit CODEX_HOME to maintain')
+  .option('--export-legacy', 'also write compatible history copies before rolling back to an older binary', false)
+  .action(async (options: { home: string; exportLegacy: boolean }) => {
+    try {
+      console.log(JSON.stringify(await maintainAutomationHistory(options.home, options.exportLegacy)))
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : '执行历史维护失败')
+      process.exitCode = 1
+    }
+  })
 
 function getCodexHomePath(): string {
   return process.env.CODEX_HOME?.trim() || join(homedir(), '.codex')

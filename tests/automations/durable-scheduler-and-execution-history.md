@@ -69,3 +69,20 @@
 调度回归：`pnpm exec vitest run src/automationDailyTimes.test.ts src/server/automation.test.ts`，覆盖精确时刻、next/previous、去重、TOML 回读、24 项上限、夏令时及旧调度行为。
 
 清理：删除本次测试自动化的精确 ID，并确认列表已移除；关闭拦截浏览器，不修改其他自动化。
+
+
+## 0.2.19：分段历史、恢复与旧版回退
+
+前置：构建当前包，仅使用自己创建的临时 CODEX_HOME；不要在生产目录注入损坏。旧 history/history-keys 为兼容输入，当前归档写 history-v2。账号、认证、计划及热运行 state.json 格式不变。
+
+操作与预期：
+
+1. 运行 `pnpm exec vitest run src/server/automationHistory.test.ts src/server/automation.test.ts`。验证 207 条同毫秒记录的 100/100/7 分页、45 天跨段分页、热冷重复记录合并及重启后的 requestId 防重。
+2. 运行 `node scripts/test-automation-history-recovery.cjs`。在 pending、事实、键副本、时间索引、ID 索引各次原子落盘后 SIGKILL 测试子进程，重启离线维护。五种中断均恢复原 runId，pending 清空，无重复记录，认证哨兵字节不变。
+3. 单测分别删除一份永久事实、破坏另一份文件；有有效副本时仍识别旧请求，两份损坏时明确失败。旧键索引存在但正文丢失时禁止当作新请求发送。历史不能被自动清理为防重失效。
+4. 在测试 home 运行调度器时执行 `node dist-cli/index.js automation-history --home <测试 home>`，预期拒绝维护；第二实例未取得调度锁时也不得通过历史查询启动写入恢复。
+5. 确认目标实例停止后，执行同一命令重建派生索引；准备回退到旧包时，加 `--export-legacy`。预期生成旧格式完整副本，旧读取算法能查回原记录；新格式与旧源文件均保留。**旧应用不能读取 history-v2，必须先导出再回退。**
+
+性能：每天的显示索引按需加载，最多缓存 32 天；页最多 100 条，正文最多并发 8 次。1,000 条/100 天本机测试归档约 1.19 秒，100 条分页中位 7.00ms/p95 7.95ms，键查询中位 0.10ms/p95 0.19ms；该结果不代表 NAS 或百万条历史。旧格式首次迁移需要逐条复制，可能延长自动化初始化，之后只核对目录元数据。
+
+恢复边界：验证的是进程中断与文件损坏，不承诺未经实测的断电持久性；同时丢失全部事实及备份无法凭空恢复。旧源文件和新永久事实不自动删除；建议正常备份整个 CODEX_HOME。清理只移除本脚本拥有的测试子进程和临时目录。

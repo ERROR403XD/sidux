@@ -220,6 +220,7 @@ describe('durable automation execution', () => {
     const second = await f.make()
     expect(second.snapshot().ready).toBe(false)
     expect(second.snapshot().error).toContain('调度锁')
+    await expect(second.historyPage('fixture', null, 5)).rejects.toThrow('调度锁')
     await f.engine.dispose()
     const third = await f.make(); expect(third.snapshot().ready).toBe(true)
     const store = new AutomationStore(join(f.home, 'codexapp-automations'))

@@ -144,7 +144,13 @@ export class AutomationEngine {
   }
   private get history() { return this.historyStore ??= new AutomationHistory(this.store.directory) }
   private historyStore?: AutomationHistory
-  async historyPage(id: string, cursor: string | null, limit: number) { await this.readyPromise; return this.history.page(id, this.state.runs, cursor, limit) }
+  async historyPage(id: string, cursor: string | null, limit: number) {
+    await this.readyPromise
+    // History reads can complete an interrupted archive/migration. A standby
+    // instance must never perform that recovery without the scheduler lease.
+    await this.store.assertOwnership()
+    return this.history.page(id, this.state.runs, cursor, limit)
+  }
   runs(id: string, before = Infinity, limit = 20) {
     const items = this.state.runs.filter((run) => (!id || run.automationId === id) && run.createdAt < before).sort((a, b) => b.createdAt - a.createdAt)
     const data = items.slice(0, Math.max(1, Math.min(100, limit)))
