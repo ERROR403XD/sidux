@@ -1,0 +1,76 @@
+{
+  "baseline": "f9a3b94948936a294cb2e8991eb7b3709c8165ab",
+  "sourceFiles": 228,
+  "testFiles": 105,
+  "sourceLines": 68829,
+  "largestFiles": [
+    {
+      "path": "src/server/codexAppServerBridge.ts",
+      "lines": 9753
+    },
+    {
+      "path": "src/App.vue",
+      "lines": 6239
+    },
+    {
+      "path": "src/composables/useDesktopState.ts",
+      "lines": 5843
+    },
+    {
+      "path": "src/components/content/ThreadConversation.vue",
+      "lines": 5180
+    },
+    {
+      "path": "src/api/codexGateway.ts",
+      "lines": 3603
+    },
+    {
+      "path": "src/components/sidebar/SidebarThreadTree.vue",
+      "lines": 3577
+    },
+    {
+      "path": "src/components/content/ThreadComposer.vue",
+      "lines": 2269
+    },
+    {
+      "path": "src/components/content/ReviewPane.vue",
+      "lines": 1527
+    },
+    {
+      "path": "src/i18n/zhSourceEnglish.ts",
+      "lines": 1478
+    },
+    {
+      "path": "src/components/content/ThreadPendingRequestPanel.vue",
+      "lines": 1183
+    },
+    {
+      "path": "src/server/accountAuthCoordinator.ts",
+      "lines": 1116
+    },
+    {
+      "path": "src/server/reviewGit.ts",
+      "lines": 1047
+    }
+  ],
+  "unusedDiagnostics": 69,
+  "unusedByFile": {
+    "src/App.vue": 26,
+    "src/api/codexGateway.ts": 3,
+    "src/api/normalizers/v2.ts": 1,
+    "src/components/api-proxy/ApiProxyPanel.vue": 2,
+    "src/components/content/ThreadComposer.vue": 6,
+    "src/components/content/ThreadConversation.vue": 1,
+    "src/components/content/ThreadTerminalPanel.vue": 2,
+    "src/components/sidebar/SidebarThreadTree.vue": 4,
+    "src/composables/useDesktopState.ts": 4,
+    "src/quotaPresentation.ts": 1,
+    "src/server/accountActivationRuntime.test.ts": 1,
+    "src/server/apiProxy/gateway.ts": 1,
+    "src/server/automationEngine.ts": 1,
+    "src/server/codexAppServerBridge.ts": 6,
+    "src/server/reviewGit.ts": 1,
+    "src/server/skillsRoutes.ts": 8,
+    "src/server/telegramThreadBridge.ts": 1
+  }
+}

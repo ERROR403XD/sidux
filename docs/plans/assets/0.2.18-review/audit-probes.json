@@ -1,0 +1,42 @@
+{
+  "baseline": "f9a3b9494893",
+  "slowInspection": {
+    "confirmed": true,
+    "syntheticInspectionDelayMs": 100,
+    "observedControlWaitMs": 104,
+    "manualAndDrainBlockedUntilInspectionSettled": true
+  },
+  "hangingAcquisition": {
+    "confirmed": true,
+    "virtualElapsedHours": 2,
+    "acquiring": 4,
+    "queued": 1,
+    "disposeWaitsForUnboundedAcquisition": true,
+    "scope": "engine adapter contract; real network stall not injected"
+  },
+  "activationIdleGap": {
+    "confirmed": true,
+    "syntheticActivationStatus": "sending",
+    "reportedIdle": true,
+    "activationEndpointRead": false,
+    "requested": [
+      "/codex-api/runtime/activity",
+      "/codex-api/automation-runtime",
+      "/codex-api/thread-queue-state",
+      "/codex-api/server-requests/pending",
+      "/codex-api/api-proxy/status",
+      "/codex-api/rpc",
+      "/codex-api/meta/methods",
+      "/codex-api/runtime/activity"
+    ]
+  },
+  "continuationStarvation": {
+    "confirmed": true,
+    "waiting": 9,
+    "firstEightBusy": true,
+    "ticks": 3,
+    "inspections": 24,
+    "ninthInspected": false,
+    "submissions": 0
+  }
+}
