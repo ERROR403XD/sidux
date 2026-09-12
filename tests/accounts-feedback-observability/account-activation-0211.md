@@ -78,3 +78,7 @@ CODEXAPP_NATIVE_ACTIVATION_TEST=1 pnpm exec vitest run src/server/accountActivat
 验证命令：`pnpm exec vitest run src/server/accountActivationRequest.test.ts src/server/accountActivationRuntime.test.ts src/server/accountActivationScheduler.test.ts src/server/accountActivationAdmission.test.ts src/server/accountExecution.test.ts src/server/apiProxy/gateway.test.ts`。含真实本地 HTTP 测试、逐字节 CRLF SSE、固定凭据版本、抢占、账号移除、额度同步失败、无会话目录及主选择不变。
 
 清理：关闭测试容器，确认测试端口消失，保留候选 59001/开发 4173。回滚代码时保留原 activation state/history/claims，不能重新发送旧时刻。旧 sessions 目录不再参与启动，历史遗留文件不自动删除。真实云端窗口效果留待符合准入条件的正常计划确认。
+
+## 0.2.19：退役旧 CLI 激活模块
+
+前述 CLI 激活流程及 `accountActivationSession*` 命令仅保留作历史记录，0.2.19 已删除未被运行代码引用的旧模块和两个专用测试文件。当前验收执行上节“最小 API”命令，以及发布活动统计/迟到清理测试；不再运行旧命令。此项不删除任何 home、旧 sessions 或激活历史文件。
