@@ -80,7 +80,7 @@ export class WebUiBrandingStore {
     const settings = await this.snapshot()
     if (path === '/webui-assets/settings') end('application/json', JSON.stringify({ data: settings }))
     else if (path === '/manifest.webmanifest') {
-      end('application/manifest+json', JSON.stringify({ id: '/', name: settings.title || 'Codex Web', short_name: settings.title || 'Codex Web', start_url: '/', scope: '/', display: 'standalone', background_color: '#020617', theme_color: '#020617', icons: [192, 512].map(size => ({ src: webUiIconUrl(size, settings.logoVersion), sizes: `${size}x${size}`, type: 'image/png', purpose: 'any' })).concat([{ src: webUiIconUrl(512, settings.logoVersion, true), sizes: '512x512', type: 'image/png', purpose: 'maskable' }]) }))
+      end('application/manifest+json', JSON.stringify({ id: '/', name: settings.title || 'Codex Web', short_name: settings.title || 'Codex Web', start_url: '/', scope: '/', display: 'standalone', launch_handler: { client_mode: 'focus-existing' }, background_color: '#020617', theme_color: '#020617', icons: [192, 512].map(size => ({ src: webUiIconUrl(size, settings.logoVersion), sizes: `${size}x${size}`, type: 'image/png', purpose: 'any' })).concat([{ src: webUiIconUrl(512, settings.logoVersion, true), sizes: '512x512', type: 'image/png', purpose: 'maskable' }]) }))
     } else if (path === '/browserconfig.xml') {
       end('application/xml', `<browserconfig><msapplication><tile><square150x150logo src="${webUiIconUrl(150, settings.logoVersion)}"/><TileColor>#020617</TileColor></tile></msapplication></browserconfig>`)
     } else {

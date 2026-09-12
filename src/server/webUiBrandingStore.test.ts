@@ -35,6 +35,7 @@ it('persists branding, escapes HTML, publishes sized icons/ICO/manifest and rest
     expect(await new WebUiBrandingStore(home).snapshot()).toEqual(saved)
     const manifest = await (await fetch(base + '/manifest.webmanifest')).json()
     expect(manifest.name).toBe(saved.title)
+    expect(manifest.launch_handler).toEqual({ client_mode: 'focus-existing' })
     expect(manifest.icons.map((icon: { purpose: string }) => icon.purpose)).toEqual(['any', 'any', 'maskable'])
     for (const icon of manifest.icons) expect((await fetch(base + icon.src)).headers.get('content-type')).toBe('image/png')
     const ico = Buffer.from(await (await fetch(base + '/favicon.ico')).arrayBuffer())
