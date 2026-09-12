@@ -1010,10 +1010,11 @@ function mergeIncomingWithLocalInProgressThreads(
   previous: UiProjectGroup[],
   incoming: UiProjectGroup[],
   inProgressById: Record<string, boolean>,
+  pendingThreadIds: ReadonlySet<string> = new Set(),
 ): UiProjectGroup[] {
   const incomingThreadIds = new Set(flattenThreads(incoming).map((thread) => thread.id))
   const localInProgressThreads = flattenThreads(previous).filter(
-    (thread) => inProgressById[thread.id] === true && !incomingThreadIds.has(thread.id),
+    (thread) => (inProgressById[thread.id] === true || pendingThreadIds.has(thread.id)) && !incomingThreadIds.has(thread.id),
   )
 
   if (localInProgressThreads.length === 0) {
@@ -2207,7 +2208,11 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
     projectGroups.value = mergeThreadGroups(projectGroups.value, flaggedGroups)
   }
 
+  const pendingListedThreadIds = new Set<string>()
+
   function insertOptimisticThread(threadId: string, cwd: string, firstMessageText: string): void {
+    pendingListedThreadIds.add(threadId)
+    if (pendingListedThreadIds.size > 256) pendingListedThreadIds.delete(pendingListedThreadIds.values().next().value!)
     const nowIso = new Date().toISOString()
     const normalizedCwd = normalizePathForUi(cwd)
     const projectName = toProjectName(normalizedCwd)
@@ -4229,11 +4234,14 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
     }
 
     const orderedGroups = orderGroupsByProjectOrder(visibleGroups, projectOrder.value)
-    markServerListedThreads(new Set(flattenThreads(orderedGroups).map((thread) => thread.id)))
+    const listedIds = new Set(flattenThreads(orderedGroups).map(thread => thread.id))
+    for (const id of listedIds) pendingListedThreadIds.delete(id)
+    markServerListedThreads(listedIds)
     const mergedWithInProgress = mergeIncomingWithLocalInProgressThreads(
       sourceGroups.value,
       orderedGroups,
       inProgressById.value,
+      pendingListedThreadIds,
     )
     sourceGroups.value = mergeThreadGroups(sourceGroups.value, mergedWithInProgress)
     inProgressById.value = pruneThreadStateMap(
@@ -4290,6 +4298,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
   }
 
   function removeArchivedThreadFromLoadedLists(threadId: string): void {
+    pendingListedThreadIds.delete(threadId)
     loadedThreadListGroups = removeThreadFromGroups(loadedThreadListGroups, threadId)
     sourceGroups.value = removeThreadFromGroups(sourceGroups.value, threadId)
     inProgressById.value = omitKey(inProgressById.value, threadId)
