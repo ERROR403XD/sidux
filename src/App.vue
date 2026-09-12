@@ -261,7 +261,7 @@
   @reload="loadAccountsState()" @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount" />
 <CustomConnections @changed="onCustomConnectionsChanged" />
 <AccountActivation :key="displayTimeZonePreference" :accounts="accounts" /></template>
-<template #general><div class="settings-form-grid"><ConversationDefaults :value="webDefaultChoice" :remember="webPreferenceState.remember" :models="availableModels" :provider="webDefaultsProvider" :error="webPreferenceError" @save="configureWebDefaults" />              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the interface language for the app.')">
+<template #general><div class="settings-form-grid"><ConversationDefaults :value="webDefaultChoice" :remember="webPreferenceState.remember" :models="availableModels" :provider="webDefaultsProvider" :has-account="!!activeAccount" :error="webPreferenceError" @save="configureWebDefaults" />              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the interface language for the app.')">
                 <span class="sidebar-settings-label">{{ t('UI language') }}</span>
                 <AppSelect
                   class="sidebar-settings-provider-dropdown"
@@ -348,15 +348,15 @@
       <div class="notification-quiet">
         <AppSwitch v-model="telegramQuietDraft.quietEnabled" :disabled="isTelegramSaving" @change="saveTelegramQuietHours">{{ t('免打扰') }}</AppSwitch>
         <div class="notification-hours">
-          <input v-model="telegramQuietDraft.quietStart" class="app-input" :aria-label="t('免打扰开始')" placeholder="22:00" maxlength="5" :disabled="isTelegramSaving || !telegramQuietDraft.quietEnabled" @change="saveTelegramQuietHours" />
+          <AppTimeInput v-model="telegramQuietDraft.quietStart" class="app-input" :aria-label="t('免打扰开始')" placeholder="22:00" :disabled="isTelegramSaving || !telegramQuietDraft.quietEnabled" @change="saveTelegramQuietHours" />
           <span>{{ t('至') }}</span>
-          <input v-model="telegramQuietDraft.quietEnd" class="app-input" :aria-label="t('免打扰结束')" placeholder="08:00" maxlength="5" :disabled="isTelegramSaving || !telegramQuietDraft.quietEnabled" @change="saveTelegramQuietHours" />
+          <AppTimeInput v-model="telegramQuietDraft.quietEnd" class="app-input" :aria-label="t('免打扰结束')" placeholder="08:00" :disabled="isTelegramSaving || !telegramQuietDraft.quietEnabled" @change="saveTelegramQuietHours" />
         </div>
       </div>
     </section>
   </div>
 </template>
-<template #about><div class="settings-about-versions"><div class="account-versions"><span>Codex {{ t(runtimeCapabilities?.cliVersion || '检测中…') }}</span><span>CodexApp {{ runtimeCapabilities?.appVersion || appVersion }}</span></div><p>{{ t('工作树') }} {{ worktreeName }}</p>
+<template #about><div class="settings-about-versions"><div class="account-versions"><span>Codex {{ t(runtimeCapabilities?.cliVersion || '检测中…') }}</span><span>CodexApp {{ runtimeCapabilities?.appVersion || appVersion }}</span></div>
 <p v-if="runtimeCapabilities && runtimeCapabilities.appVersion !== appVersion" role="alert">{{ t('前端版本') }} {{ appVersion }} {{ t('与服务端版本不同，请刷新页面。') }}</p></div>
 <details class="runtime-capabilities"><summary>{{ t('运行版本与能力') }}</summary>
 <template v-if="runtimeCapabilities"><p>{{ t('模型：动态目录 · 工具：轻量摘要') }}</p><p>{{ t('异步问题：已接入') }}</p><p>{{ t('原生历史分页：') }}{{ t(runtimeCapabilities.features?.historyPaging ? '可用' : 'CLI 未声明，使用兼容路径') }}</p><p>{{ t('协议') }} {{ t(runtimeCapabilities.experimental ? 'experimental' : '默认') }} · {{ runtimeCapabilities.schemaHash.slice(0,12) }}</p><p>{{ t('CLI 声明') }} {{ runtimeCapabilities.methods.length }} {{ t('个方法，声明数量不代表客户端支持率。') }}</p><p>{{ t('检测时间') }} {{ runtimeCapabilities.generatedAt }}</p></template>
@@ -891,6 +891,7 @@ import { isAsyncUserInputRequest, pendingRequestPriority } from './userQuestions
 import { isOverlayEventInside } from './composables/overlayEvents'
 import { availableDisplayTimeZones, browserTimeZone, displayTimeZone, displayTimeZonePreference, formatLocalDateTime, setDisplayTimeZone, subscribeDisplayTimeZoneStorage } from './dateTime'
 import AppSelect from './components/common/AppSelect.vue'
+import AppTimeInput from './components/common/AppTimeInput.vue'
 import { vModalBackdrop } from './composables/modalBackdrop'
 import { getProjectDirectories } from './api/codexGateway'
 import { projectDisplayName, projectSetupInput } from './composables/projectSetup'
@@ -1028,7 +1029,6 @@ const SIDEBAR_COLLAPSED_STORAGE_KEY = 'codex-web-local.sidebar-collapsed.v1'
 const ACCOUNTS_SECTION_COLLAPSED_STORAGE_KEY = 'codex-web-local.accounts-section-collapsed.v1'
 const TERMINAL_QUICK_COMMAND_STORAGE_KEY = 'codex-web-local.terminal-quick-commands.v1'
 const TOGGLE_TERMINAL_COMMAND_VALUE = '__toggle_terminal__'
-const worktreeName = import.meta.env.VITE_WORKTREE_NAME ?? 'unknown'
 const appVersion = import.meta.env.VITE_APP_VERSION ?? 'unknown'
 const SETTINGS_HELP = {
   sendWithEnter: t('When enabled, press Enter to send. When disabled, use Command+Enter to send.'),

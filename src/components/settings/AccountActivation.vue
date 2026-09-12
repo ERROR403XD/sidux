@@ -16,8 +16,7 @@
         <div class="activation-time-list">
           <p v-if="!settings.times.length" class="account-card-meta">{{ t('尚未添加时间') }}</p>
           <div v-for="(_, index) in settings.times" :key="index" class="activation-time-row">
-            <input :value="settings.times[index]?.split(':')[0]" class="app-input activation-time-part" type="text" inputmode="numeric" maxlength="2" :aria-label="t(`激活小时 ${index + 1}`)" placeholder="HH" @input="setTimePart(index, 0, $event)" @blur="normalizeTime(index)" /><span>:</span>
-            <input :value="settings.times[index]?.split(':')[1]" class="app-input activation-time-part" type="text" inputmode="numeric" maxlength="2" :aria-label="t(`激活分钟 ${index + 1}`)" placeholder="mm" @input="setTimePart(index, 1, $event)" @blur="normalizeTime(index)" />
+            <AppTimeInput :model-value="settings.times[index] || ''" :aria-label="t('每日激活时间') + ` ${index + 1}`" @update:model-value="settings.times[index] = $event" />
             <AppButton @click="settings.times.splice(index, 1)">{{ t('移除') }}</AppButton>
           </div>
         </div>
@@ -52,6 +51,7 @@ import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { t } from '../../composables/useUiLanguage'
 import { accountDisplayName } from '../../accountDisplay'
 import AppButton from '../common/AppButton.vue'
+import AppTimeInput from '../common/AppTimeInput.vue'
 import AppSwitch from '../common/AppSwitch.vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppSelect from '../common/AppSelect.vue'
@@ -107,17 +107,6 @@ function addTime(): void {
       return
     }
   }
-}
-function setTimePart(index: number, part: number, event: Event): void {
-  const input = event.target as HTMLInputElement
-  const pieces = (settings.value.times[index] || ':').split(':')
-  pieces[part] = input.value.replace(/\D/g, '').slice(0, 2)
-  input.value = pieces[part]!
-  settings.value.times[index] = pieces.join(':')
-}
-function normalizeTime(index: number): void {
-  const value = settings.value.times[index]
-  if (value && /^\d{1,2}:\d{1,2}$/.test(value)) settings.value.times[index] = value.split(':').map(part => part.padStart(2, '0')).join(':')
 }
 function accountName(id: string): string {
   const account = props.accounts.find(row => row.storageId === id)

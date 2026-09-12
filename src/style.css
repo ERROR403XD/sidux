@@ -2473,8 +2473,8 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .notification-settings .notification-check { display: flex; gap: 8px; align-items: center; }
 .notification-settings small { font-size: 11px; opacity: .75; overflow-wrap: anywhere; }
 .notification-settings textarea { width: 100%; resize: vertical; }
-.notification-hours { display: flex; flex: 1 1 136px; min-width: 0; gap: 6px; align-items: center; font-size: 12px; line-height: 20px; }
-.notification-hours .app-input { width: 56px; min-width: 0; height: 32px; flex: 1 1 56px; padding: 5px 4px; font-size: 12px; line-height: 20px; text-align: center; font-variant-numeric: tabular-nums; }
+.notification-hours { display: flex; flex: 0 0 auto; min-width: 0; gap: 6px; align-items: center; font-size: 12px; line-height: 20px; }
+.notification-hours .app-input { width: 96px; min-width: 96px; height: 32px; flex: 0 0 96px; padding: 5px 4px; font-size: 12px; line-height: 20px; text-align: center; font-variant-numeric: tabular-nums; }
 .notification-hours > span { flex: 0 0 auto; font-size: 12px; }
 
 /* 0.2.12: shared route and compact account controls. */
@@ -2700,8 +2700,8 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .notification-actions > .account-panel-error { flex-basis: 100%; margin: 0; }
 .settings-integration-card { min-width: 0; margin: 0; padding: 18px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-dialog); background: var(--ui-surface); }
 .settings-integration-card h3 { margin: 0; font-size: 14px; }
-.notification-quiet { display: flex; align-items: center; align-self: start; gap: 10px; padding-top: 14px; border-top: 1px solid var(--ui-divider); }
-.notification-quiet > .app-switch { flex: 0 0 auto; gap: 8px; }
+.notification-quiet { display: flex; flex-wrap: wrap; align-items: center; align-self: start; column-gap: 20px; row-gap: 10px; padding-top: 14px; border-top: 1px solid var(--ui-divider); }
+.notification-quiet > .app-switch { flex: 0 0 auto; width: auto; justify-content: flex-start; gap: 12px; }
 .notification-quiet .app-switch-label { white-space: nowrap; }
 .notification-hours .app-input:disabled { color: var(--ui-muted); opacity: 0.5; cursor: not-allowed; }
 @media (max-width: 1000px) { .settings-integrations-grid { grid-template-columns: minmax(0, 1fr); } }
@@ -2852,3 +2852,9 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .dismissible-notice-close:focus-visible { outline: 2px solid var(--ui-focus); }
 .thread-composer-draft-status { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-height: 18px; color: var(--ui-text); opacity: .6; font-size: 11px; }
 .thread-composer-draft-status.is-error { color: var(--ui-danger); opacity: 1; }
+
+.app-time-input { width: 104px; min-width: 0; flex: none; text-align: center; font-variant-numeric: tabular-nums; }
+.activation-time-row .app-time-input { width: 104px; }
+.app-time-input[aria-invalid="true"] { border-color: var(--ui-danger); }
+
+:root.dark .app-time-input { color-scheme: dark; }

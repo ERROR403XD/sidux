@@ -14,9 +14,9 @@
       <div class="notification-quiet">
         <AppSwitch v-model="settings.quietEnabled" :disabled="busy" @change="save()">{{ t('免打扰') }}</AppSwitch>
         <div class="notification-hours">
-          <input v-model="settings.quietStart" class="app-input" :aria-label="t('免打扰开始')" placeholder="22:00" maxlength="5" :disabled="busy || !settings.quietEnabled" @change="save()" />
+          <AppTimeInput v-model="settings.quietStart" class="app-input" :aria-label="t('免打扰开始')" placeholder="22:00" :disabled="busy || !settings.quietEnabled" @change="save()" />
           <span>{{ t('至') }}</span>
-          <input v-model="settings.quietEnd" class="app-input" :aria-label="t('免打扰结束')" placeholder="08:00" maxlength="5" :disabled="busy || !settings.quietEnabled" @change="save()" />
+          <AppTimeInput v-model="settings.quietEnd" class="app-input" :aria-label="t('免打扰结束')" placeholder="08:00" :disabled="busy || !settings.quietEnabled" @change="save()" />
         </div>
       </div>
     </template>
@@ -24,6 +24,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import AppTimeInput from '../common/AppTimeInput.vue'
 import AppSwitch from '../common/AppSwitch.vue'
 import { t } from '../../composables/useUiLanguage'
 

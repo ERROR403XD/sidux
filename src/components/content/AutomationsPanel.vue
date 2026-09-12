@@ -21,7 +21,7 @@
       </div>
     </div>
 
-    <p v-if="runtime" class="automation-runtime-status" :class="{ 'has-error': !runtime.ready }">{{ t('调度器：') }}{{ t(runtime.error || (runtime.draining ? '正在交接，停止领取新任务' : runtime.ready ? '运行中' : '初始化中')) }}</p>
+    <p v-if="runtime && (runtime.error || runtime.draining || !runtime.ready)" class="automation-runtime-status" :class="{ 'has-error': !runtime.ready }">{{ t('调度器：') }}{{ t(runtime.error || (runtime.draining ? '正在交接，停止领取新任务' : runtime.ready ? '运行中' : '初始化中')) }}</p>
     <p v-for="problem in runtime?.definitions.filter(row => row.error) ?? []" :key="problem.id" class="automations-error">{{ problem.id }}：{{ t(problem.error || '') }}</p>
     <p v-if="loadError" class="automations-error">{{ t(loadError) }}</p>
 

@@ -781,11 +781,11 @@
 
             <div v-if="automationScheduleDraft.mode === 'daily'" class="automation-schedule-row">
               <span class="automation-schedule-copy">{{ t('Run every day at') }}</span>
-              <input
+              <AppTimeInput
                 v-model="automationScheduleDraft.dailyTime"
                 class="automation-schedule-time"
-                type="time"
-                @input="syncAutomationRruleFromScheduleDraft"
+                :aria-label="t('Run every day at')"
+                @change="syncAutomationRruleFromScheduleDraft"
               />
             </div>
 
@@ -905,6 +905,8 @@ import IconTablerTrash from '../icons/IconTablerTrash.vue'
 import { useUiLanguage } from '../../composables/useUiLanguage'
 import { useFeedbackDiagnostics } from '../../composables/useFeedbackDiagnostics'
 import { getPathLeafName, getPathParent, isAbsoluteLikePath, isProjectlessChatPath } from '../../pathUtils.js'
+import AppTimeInput from '../common/AppTimeInput.vue'
+import { isValidTimeInput } from '../common/timeInput'
 import AppSelect from '../common/AppSelect.vue'
 import { normalizeModelCapability, reasoningUnavailable, fastModeControl, effortOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
 import SidebarMenuRow from './SidebarMenuRow.vue'
@@ -1733,6 +1735,11 @@ function describeAutomationSchedule(rrule: string): string {
 function syncAutomationRruleFromScheduleDraft(): void {
   const draft = automationScheduleDraft.value
   if (draft.mode === 'daily') {
+    if (!isValidTimeInput(draft.dailyTime)) {
+      automationDialogError.value = '时间格式应为 HH:mm'
+      return
+    }
+    automationDialogError.value = ''
     automationDraft.value.rrule = buildDailyRrule(draft.dailyTime)
   } else if (draft.mode === 'interval') {
     automationDraft.value.rrule = buildIntervalRrule(draft.interval, draft.intervalUnit)
@@ -2105,6 +2112,7 @@ async function submitAutomationDialog(): Promise<void> {
   automationDialogError.value = ''
   automationDialogNotice.value = ''
   try {
+    if (automationScheduleDraft.value.mode === 'daily' && !isValidTimeInput(automationScheduleDraft.value.dailyTime)) throw new Error('时间格式应为 HH:mm')
     syncAutomationRruleFromScheduleDraft()
     if (automationTargetPickerVisible.value && automationDialogMode.value === 'create') {
       if (automationTargetMode.value === 'thread') {
