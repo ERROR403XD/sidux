@@ -2896,7 +2896,7 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 
 .operation-toast-host {
   position: fixed;
-  top: max(16px, env(safe-area-inset-top));
+  top: max(var(--operation-toast-top, 56px), env(safe-area-inset-top));
   right: max(16px, env(safe-area-inset-right));
   width: min(380px, calc(100vw - 32px));
   z-index: calc(var(--ui-layer-popover) + 10);

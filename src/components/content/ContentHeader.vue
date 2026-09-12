@@ -18,16 +18,19 @@ let observer: ResizeObserver | null = null
 let contentRoot: HTMLElement | null = null
 let measureFrame = 0
 let measuredHeight = -1
+let measuredBottom = -1
 onMounted(() => {
   const header = headerRef.value
   if (!header) return
   contentRoot = header.closest<HTMLElement>('.content-root')
   const measure = () => {
     measureFrame = 0
-    const height = header.getBoundingClientRect().height
-    if (Math.abs(height - measuredHeight) < 0.5) return
+    const { height, bottom } = header.getBoundingClientRect()
+    if (Math.abs(height - measuredHeight) < 0.5 && Math.abs(bottom - measuredBottom) < 0.5) return
     measuredHeight = height
+    measuredBottom = bottom
     contentRoot?.style.setProperty('--content-header-height', `${height}px`)
+    document.documentElement.style.setProperty('--operation-toast-top', `${bottom}px`)
   }
   measure()
   observer = new ResizeObserver(() => {
@@ -39,6 +42,7 @@ onBeforeUnmount(() => {
   observer?.disconnect()
   cancelAnimationFrame(measureFrame)
   contentRoot?.style.removeProperty('--content-header-height')
+  document.documentElement.style.removeProperty('--operation-toast-top')
 })
 
 defineProps<{
