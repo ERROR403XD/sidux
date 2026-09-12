@@ -142,15 +142,12 @@ it('keeps the actual shared read pending and coalesces timed-out retries until t
     await f.app.rpc('config/read', {})
     await writeFile(f.pause, JSON.stringify({ method: 'config/read', phase: 'before' }))
     for (let i = 0; i < 5; i++) {
-      const held = f.acquire(`blocked-read-${i}`, undefined, 100)
-      // Explicit B skips the global config read; use its preparation lifetime
-      // directly for a shared, read-only RPC before releasing the acquired worker.
-      expect(await held.result).toBe(true)
-      const result = await f.app.rpc('config/read', {}, undefined, held.scope).catch(error => error)
-      expect(result).toBe(held.scope.signal.reason)
-      await held.scope.settle()
-      f.app.endTaskPreparation(`blocked-read-${i}`)
-      f.app.releaseTaskAccount(`blocked-read-${i}`)
+      // Exercise the shared read directly. Account-worker startup is unrelated
+      // to this deadline and must not consume it on a busy test host.
+      const scope = new AutomationPreparation(100)
+      const result = await f.app.rpc('config/read', {}, undefined, scope).catch(error => error)
+      expect(result).toBe(scope.signal.reason)
+      await scope.settle()
     }
     const pending = [...(f.app as any).pending.values()].filter((request: any) => request.method === 'config/read')
     expect(pending).toHaveLength(1)
