@@ -3556,7 +3556,7 @@ async function ensureCommandThread(objective?: string): Promise<string> {
 async function runAppCommand(name: AppCommandName, value?: string): Promise<void> {
   const threadId = isHomeRoute.value ? '' : selectedThreadId.value || ''
   if (['rename', 'fork', 'review', 'diff', 'copy', 'export'].includes(name) && !threadId) throw new Error('请先进入一个会话')
-  if (['review', 'fork'].includes(name) && isSelectedThreadInProgress.value) throw new Error('请等待当前任务结束后再操作')
+  if (name === 'review' && isSelectedThreadInProgress.value) throw new Error('请等待当前任务结束后再操作')
   switch (name) {
     case 'goal':
       if (!value) throw new Error('缺少目标会话')
@@ -5339,7 +5339,7 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
 }
 
 .composer-runtime-error {
-  @apply flex w-full items-start justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-800 shadow-sm;
+  @apply flex w-full max-w-[min(var(--chat-column-max,72rem),100%)] mx-auto items-start justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-800 shadow-sm;
 }
 
 .visible-error-with-feedback {

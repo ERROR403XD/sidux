@@ -1703,3 +1703,16 @@ it('re-resumes an already cached idle conversation after switching accounts', as
   await state.refreshAll({ accountChanged: true, includeSelectedThreadMessages: true, awaitAncillaryRefreshes: true })
   expect(gatewayMocks.resumeThread).toHaveBeenCalledTimes(2)
 })
+
+it('forks a completed response while its source conversation continues another turn', async () => {
+  installTestWindow()
+  gatewayMocks.getThreadGroupsPage.mockResolvedValue({ groups: [{ projectName: 'p', threads: [{ ...thread('busy-source', '/p'), inProgress: true }, thread('fork-result', '/p')] }], nextCursor: null })
+  gatewayMocks.resumeThread.mockImplementation(async (id: string) => ({ model: 'gpt-6-astra', modelProvider: 'openai', messages: id === 'busy-source' ? [{ id: 'answer', role: 'assistant', text: 'Completed answer', turnId: 'completed-turn' }] : [], inProgress: id === 'busy-source', activeTurnId: id === 'busy-source' ? 'running-turn' : '', turnIndexByTurnId: {} }))
+  gatewayMocks.forkThreadAtTurn.mockResolvedValue({ threadId: 'fork-result', model: 'gpt-6-astra', modelProvider: 'openai' })
+  const state = useDesktopState()
+  state.primeSelectedThread('busy-source')
+  await state.loadMessages('busy-source')
+  expect(await state.forkThreadFromTurn('busy-source', 'completed-turn')).toBe('fork-result')
+  expect(gatewayMocks.forkThreadAtTurn).toHaveBeenCalledWith('busy-source', 'completed-turn')
+  expect(gatewayMocks.interruptThreadTurn).not.toHaveBeenCalled()
+})

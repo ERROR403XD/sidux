@@ -4861,10 +4861,6 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
 
   async function forkThreadFromTurn(threadId: string, turnId: string): Promise<string> {
     if (!threadId.trim() || !turnId.trim()) return ''
-    if (inProgressById.value[threadId] === true) {
-      error.value = '请等待当前回合结束后再创建分支。'
-      return ''
-    }
     const sourceMessages = persistedMessagesByThreadId.value[threadId] ?? []
     if (!sourceMessages.some(message => message.turnId === turnId)) return ''
     const sourceThread = flattenThreads(sourceGroups.value).find(row => row.id === threadId)

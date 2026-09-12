@@ -11,7 +11,7 @@ export const APP_COMMANDS: { id: AppCommandName; description: string; requiresTh
   { id: 'tasks', description: '搜索任务，打开或插入近期对话摘录' },
   { id: 'new', description: '在当前项目开始新会话，保留原会话' },
   { id: 'rename', description: '重命名当前会话', requiresThread: true },
-  { id: 'fork', description: '从当前会话创建独立分支', requiresThread: true, idleOnly: true },
+  { id: 'fork', description: '从当前会话创建独立分支', requiresThread: true },
   { id: 'review', description: '让 Codex 审查当前未提交的代码变更', requiresThread: true, idleOnly: true },
   { id: 'diff', description: '打开工作区文件差异与审阅面板', requiresThread: true },
   { id: 'status', description: '查看当前模型、上下文用量与运行状态' },
