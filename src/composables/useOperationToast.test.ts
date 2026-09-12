@@ -28,10 +28,13 @@ describe('operation notification lifetime', () => {
     const id = operationToasts.value[0]!.id
     vi.advanceTimersByTime(2000)
     pauseOperationToast(id)
+    expect(operationToasts.value[0]?.paused).toBe(true)
+    expect(operationToasts.value[0]?.duration).toBe(6000)
     pauseOperationToast(id)
     vi.advanceTimersByTime(30000)
     expect(operationToasts.value).toHaveLength(1)
     resumeOperationToast(id)
+    expect(operationToasts.value[0]?.paused).toBe(false)
     resumeOperationToast(id)
     vi.advanceTimersByTime(3999)
     expect(operationToasts.value).toHaveLength(1)

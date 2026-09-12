@@ -2905,10 +2905,12 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
   pointer-events: none;
 }
 .operation-toast {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 12px;
+  padding: 12px 12px 14px;
   border: 1px solid var(--ui-border);
   border-left: 3px solid var(--ui-danger);
   border-radius: var(--ui-radius-control);
@@ -2924,7 +2926,21 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .operation-toast-message { flex: 1; min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 .operation-toast button { flex: none; padding: 0 3px; color: var(--ui-text); font-size: 18px; line-height: 20px; }
 .operation-toast button:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 2px; }
-.operation-toast-enter-active, .operation-toast-leave-active { transition: opacity .16s, transform .16s; }
-.operation-toast-enter-from, .operation-toast-leave-to { opacity: 0; transform: translateY(-8px); }
+.operation-toast-progress {
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  background: var(--ui-danger);
+  opacity: .65;
+  transform-origin: left;
+  animation: operation-toast-countdown linear forwards;
+}
+.operation-toast.is-success .operation-toast-progress { background: #22a06b; }
+@keyframes operation-toast-countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.operation-toast-enter-active { transition: opacity .24s ease-out, transform .24s cubic-bezier(.2,.8,.2,1); }
+.operation-toast-leave-active { position: absolute; width: 100%; transition: opacity .18s ease-in, transform .18s ease-in; }
+.operation-toast-move { transition: transform .24s cubic-bezier(.2,.8,.2,1); }
+.operation-toast-enter-from { opacity: 0; transform: translateX(12px); }
+.operation-toast-leave-to { opacity: 0; transform: translateX(8px); }
 @media (max-width: 600px) { .operation-toast-host { left: 16px; right: 16px; width: auto; } }
-@media (prefers-reduced-motion: reduce) { .operation-toast-enter-active, .operation-toast-leave-active { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .operation-toast-enter-active, .operation-toast-leave-active, .operation-toast-move { transition: none; } }

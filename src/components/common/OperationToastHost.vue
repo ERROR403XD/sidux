@@ -5,6 +5,7 @@
         <div v-for="item in operationToasts" :key="item.id" class="operation-toast" :class="`is-${item.kind}`"
           role="status" @mouseenter="pauseOperationToast(item.id)" @mouseleave="resumeUnlessFocused($event, item.id)"
           @focusin="pauseOperationToast(item.id)" @focusout="resumeUnlessHovered($event, item.id)">
+          <span class="operation-toast-progress" aria-hidden="true" :style="{ animationDuration: `${item.duration}ms`, animationPlayState: item.paused ? 'paused' : 'running' }" />
           <span class="operation-toast-icon" aria-hidden="true">{{ item.kind === 'success' ? '✓' : '!' }}</span>
           <span class="operation-toast-message">{{ t(item.message) }}</span>
           <button type="button" :aria-label="t('关闭提示')" @click="dismissOperationToast(item.id)">×</button>

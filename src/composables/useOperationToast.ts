@@ -1,6 +1,6 @@
 import { readonly, ref } from 'vue'
 
-export type OperationToast = { id: number; message: string; kind: 'success' | 'error'; scope?: string; remaining: number; started: number }
+export type OperationToast = { id: number; message: string; kind: 'success' | 'error'; scope?: string; remaining: number; started: number; duration: number; paused: boolean }
 const items = ref<OperationToast[]>([])
 const timers = new Map<number, ReturnType<typeof setTimeout>>()
 let nextId = 0
@@ -15,11 +15,13 @@ export function pauseOperationToast(id: number): void {
   if (!item || !timers.has(id)) return
   clearTimeout(timers.get(id))
   timers.delete(id)
+  item.paused = true
   item.remaining = Math.max(0, item.remaining - (Date.now() - item.started))
 }
 export function resumeOperationToast(id: number): void {
   const item = items.value.find(item => item.id === id)
   if (!item || timers.has(id)) return
+  item.paused = false
   item.started = Date.now()
   timers.set(id, setTimeout(() => dismissOperationToast(id), item.remaining))
 }
@@ -32,6 +34,7 @@ export function notifyOperation(message: string, kind: OperationToast['kind'] = 
   if (duplicate) dismissOperationToast(duplicate.id)
   while (items.value.length >= 3) dismissOperationToast(items.value[0]!.id)
   const id = ++nextId
-  items.value.push({ id, message, kind, scope, remaining: kind === 'success' ? 3000 : 6000, started: Date.now() })
+  const duration = kind === 'success' ? 3000 : 6000
+  items.value.push({ id, message, kind, scope, remaining: duration, duration, paused: false, started: Date.now() })
   resumeOperationToast(id)
 }
