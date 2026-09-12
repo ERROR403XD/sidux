@@ -1,0 +1,1068 @@
+﻿编号,类别,审核意见,中文文案,中文来源,源码原文,出现位置
+NT0001,操作结果,,{变量1} 设置已保存,现有中文/翻译,{变量1} 设置已保存,src/components/content/SkillsHub.vue:324
+NT0002,操作结果,,安装技能失败。,中文审核译文；当前源码为英文,Failed to install skill,src/components/content/SkillsHub.vue:282；src/server/skillsRoutes.ts:623
+NT0003,操作结果,,保存失败,现有中文/翻译,保存失败,src/App.vue:2347；src/App.vue:2349；src/components/settings/AccountActivation.vue:154；src/components/settings/WebUiBrandingSettings.vue:46；src/components/settings/WebUiBrandingSettings.vue:48；src/server/codexAppServerBridge.ts:7367；src/server/codexAppServerBridge.ts:9700
+NT0004,操作结果,,保存失败。,现有中文/翻译,保存失败。,src/components/accounts/AccountOptions.vue:89
+NT0005,操作结果,,保存通知设置失败。,现有中文/翻译,保存通知设置失败。,src/components/settings/NotificationSettings.vue:58
+NT0006,操作结果,,保存自定义端点失败。,中文审核译文；当前源码为英文,Failed to save custom endpoint,src/App.vue:4576
+NT0007,操作结果,,保存自动化失败,现有中文/翻译,Failed to save automation,src/components/content/AutomationsPanel.vue:327；src/components/sidebar/SidebarThreadTree.vue:2179
+NT0008,操作结果,,保存OpenCode Zen 配置失败。,中文审核译文；当前源码为英文,Failed to save OpenCode Zen config,src/App.vue:4618
+NT0009,操作结果,,保存OpenRouter API 格式失败。,中文审核译文；当前源码为英文,Failed to save OpenRouter API format,src/App.vue:4598
+NT0010,操作结果,,操作失败,现有中文/翻译,操作失败,src/components/content/ThreadCommandDialog.vue:127
+NT0011,操作结果,,测试发送结果未确认,现有中文/翻译,测试发送结果未确认,src/components/settings/NotificationSettings.vue:70；src/server/accountNotificationService.ts:110
+NT0012,操作结果,,测试通知发送失败。,现有中文/翻译,测试通知发送失败。,src/App.vue:2363；src/App.vue:2366；src/components/settings/NotificationSettings.vue:72；src/server/codexAppServerBridge.ts:9722
+NT0013,操作结果,,测试通知已发送,现有中文/翻译,测试通知已发送,src/components/settings/NotificationSettings.vue:69；src/server/accountNotificationService.ts:114
+NT0014,操作结果,,插件操作失败,现有中文/翻译,插件操作失败,src/components/content/DirectoryHub.vue:342
+NT0015,操作结果,,插件设置已保存,现有中文/翻译,插件设置已保存,src/components/content/DirectoryHub.vue:341
+NT0016,操作结果,,创建或克隆项目失败。,现有中文/翻译,Failed to create or clone project.,src/App.vue:3972
+NT0017,操作结果,,登录失败。,现有中文/翻译,登录失败。,src/components/accounts/AccountLoginDialog.vue:128
+NT0018,操作结果,,分支已创建,现有中文/翻译,分支已创建,src/App.vue:2797；src/App.vue:3154
+NT0019,操作结果,,复制失败，请手动选中设备码。,现有中文/翻译,复制失败，请手动选中设备码。,src/components/accounts/AccountLoginDialog.vue:133
+NT0020,操作结果,,更新技能失败。,中文审核译文；当前源码为英文,Failed to update skill,src/components/content/SkillsHub.vue:326
+NT0021,操作结果,,工作树名称必须为单个文件夹名。,中文审核译文；当前源码为英文,Worktree name must be a single folder name.,src/App.vue:2988
+NT0022,操作结果,,结果未确认，请刷新账号核对。,现有中文/翻译,结果未确认，请刷新账号核对。,src/components/accounts/AccountResetCredits.vue:60
+NT0023,操作结果,,连接 Telegram 机器人失败,现有中文/翻译,Failed to connect Telegram bot,src/App.vue:2329；src/api/codexGateway.ts:3263
+NT0024,操作结果,,连接配置无效,现有中文/翻译,连接配置无效,src/components/accounts/CustomConnections.vue:71；src/components/accounts/CustomConnections.vue:112；src/composables/useCustomConnections.ts:8；src/server/codexAppServerBridge.ts:7410；src/server/customConnectionStore.ts:66
+NT0025,操作结果,,连接失败,现有中文/翻译,连接失败,src/components/content/DirectoryHub.vue:289；src/directory.ts:114
+NT0026,操作结果,,连接已保存,现有中文/翻译,连接已保存,src/components/accounts/CustomConnections.vue:91
+NT0027,操作结果,,连接已移除,现有中文/翻译,连接已移除,src/components/accounts/CustomConnections.vue:107
+NT0028,操作结果,,目标已保存,现有中文/翻译,目标已保存,src/components/content/ThreadCommandDialog.vue:148
+NT0029,操作结果,,目标已继续,现有中文/翻译,目标已继续,src/components/content/ThreadCommandDialog.vue:162
+NT0030,操作结果,,目标已清除,现有中文/翻译,目标已清除,src/components/content/ThreadCommandDialog.vue:173
+NT0031,操作结果,,目标已暂停,现有中文/翻译,目标已暂停,src/components/content/ThreadCommandDialog.vue:162
+NT0032,操作结果,,启动登录失败。,现有中文/翻译,启动登录失败。,src/components/accounts/AccountLoginDialog.vue:94
+NT0033,操作结果,,切换登录方式失败。,现有中文/翻译,切换登录方式失败。,src/components/accounts/AccountLoginDialog.vue:120
+NT0034,操作结果,,切换提供方失败。,中文审核译文；当前源码为英文,Failed to switch provider,src/App.vue:4557
+NT0035,操作结果,,切换账号失败,现有中文/翻译,Failed to switch account,src/App.vue:2719；src/api/codexGateway.ts:1514；src/api/codexGateway.ts:1520
+NT0036,操作结果,,取消失败。,现有中文/翻译,取消失败。,src/components/accounts/AccountLoginDialog.vue:107
+NT0037,操作结果,,刷新账号额度失败,现有中文/翻译,Failed to refresh account quota,src/App.vue:2686；src/api/codexGateway.ts:1502
+NT0038,操作结果,,刷新账号失败,现有中文/翻译,Failed to refresh accounts,src/App.vue:2671；src/api/codexGateway.ts:1442
+NT0039,操作结果,,提交失败,现有中文/翻译,提交失败,src/components/content/AutomationRunHistory.vue:86
+NT0040,操作结果,,通知已发送,现有中文/翻译,通知已发送,src/App.vue:2364；src/components/settings/NotificationSettings.vue:69；src/server/accountNotificationService.ts:220
+NT0041,操作结果,,未找到匹配的技能。,现有中文/翻译,No matching skills found.,src/components/content/SkillsHub.vue:251
+NT0042,操作结果,,无法创建分支。,现有中文/翻译,无法创建分支。,src/App.vue:2789
+NT0043,操作结果,,无法读取Logo,现有中文/翻译,无法读取Logo,src/components/settings/WebUiBrandingSettings.vue:81
+NT0044,操作结果,,显示时区保存失败。,现有中文/翻译,显示时区保存失败。,src/App.vue:1027；src/App.vue:1030
+NT0045,操作结果,,卸载技能失败。,中文审核译文；当前源码为英文,Failed to uninstall skill,src/components/content/SkillsHub.vue:305；src/server/skillsRoutes.ts:643
+NT0046,操作结果,,移除账号失败,现有中文/翻译,Failed to remove account,src/App.vue:2776；src/api/codexGateway.ts:1542
+NT0047,操作结果,,移除自动化失败,现有中文/翻译,Failed to remove automation,src/components/sidebar/SidebarThreadTree.vue:2207
+NT0048,操作结果,,已保存,现有中文/翻译,已保存,src/App.vue:2326；src/components/content/ThreadComposer.vue:370；src/components/settings/NotificationSettings.vue:55
+NT0049,操作结果,,已打开授权页面,现有中文/翻译,已打开授权页面,src/components/content/DirectoryHub.vue:288
+NT0050,操作结果,,运行自动化失败,现有中文/翻译,Failed to run automation,src/components/sidebar/SidebarThreadTree.vue:2224
+NT0051,操作结果,,账号已切换,现有中文/翻译,账号已切换,src/App.vue:2717；src/components/accounts/CustomConnections.vue:99
+NT0052,操作结果,,账号已移除,现有中文/翻译,账号已移除,src/App.vue:2765；src/server/accountActivationAdmission.ts:28
+NT0053,操作结果,,重置结果未确认。,现有中文/翻译,重置结果未确认。,src/components/accounts/AccountResetCredits.vue:65
+NT0054,操作结果,,自动化已保存,现有中文/翻译,自动化已保存,src/components/sidebar/SidebarThreadTree.vue:2176
+NT0055,操作结果,,自动化已更新,现有中文/翻译,自动化已更新,src/components/content/AutomationsPanel.vue:321
+NT0056,操作结果,,自动化已加入队列,现有中文/翻译,自动化已加入队列,src/components/sidebar/SidebarThreadTree.vue:2222
+NT0057,操作结果,,自动化已移除,现有中文/翻译,自动化已移除,src/components/sidebar/SidebarThreadTree.vue:2205
+NT0058,操作结果,,MCP 配置已重载。,现有中文/翻译,MCP 配置已重载。,src/components/content/DirectoryHub.vue:297
+NT0059,操作结果,,MCP 重载失败,现有中文/翻译,MCP 重载失败,src/components/content/DirectoryHub.vue:298
+NT0060,确认与风险提醒,,{变量1}（已保存，目录未确认）,现有中文/翻译,{变量1}（已保存，目录未确认）,src/modelCapabilities.ts:56；src/modelCapabilities.ts:62
+NT0061,确认与风险提醒,,↑↓ 选择 · Enter 确认 · Esc 收起,现有中文/翻译,↑↓ 选择 · Enter 确认 · Esc 收起,src/components/content/ComposerCommandPicker.vue:14
+NT0062,确认与风险提醒,,部分会话状态未能确认，请重试,现有中文/翻译,部分会话状态未能确认，请重试,src/composables/useSidebarThreadFilter.ts:64
+NT0063,确认与风险提醒,提交待确认，请点击“核对提交”,此会话还有未确认的提交，请先点击“核对提交”,现有中文/翻译,此会话还有未确认的提交，请先点击“核对提交”,src/api/deliveryOutbox.ts:61；src/api/deliveryOutbox.ts:73
+NT0064,确认与风险提醒,,待确认,现有中文/翻译,待确认,src/components/api-proxy/ApiProxyPanel.vue:204
+NT0065,确认与风险提醒,,待确认的压缩请求过多，请先检查已有请求。,现有中文/翻译,待确认的压缩请求过多，请先检查已有请求。,src/api/threadCompaction.ts:43；src/server/threadCompactionGate.ts:26
+NT0066,确认与风险提醒,,等待确认是否送达,现有中文/翻译,等待确认是否送达,src/delivery.ts:39
+NT0067,确认与风险提醒,回答尚未确认送达，请稍后核对,回答尚未确认送达，请稍后核对；重试将复用本次投递，不重复发送。,现有中文/翻译,回答尚未确认送达，请稍后核对；重试将复用本次投递，不重复发送。,src/api/codexGateway.ts:2001
+NT0068,确认与风险提醒,,结果未确认,现有中文/翻译,结果未确认,src/components/settings/AccountActivation.vue:73
+NT0069,确认与风险提醒,,扩展列表超过 20 页，无法确认完整结果,现有中文/翻译,扩展列表超过 20 页，无法确认完整结果,src/directory.ts:110
+NT0070,确认与风险提醒,,浏览器中未确认的提交过多，请先核对已有记录,现有中文/翻译,浏览器中未确认的提交过多，请先核对已有记录,src/api/deliveryOutbox.ts:74
+NT0071,确认与风险提醒,模型目录暂时不可用,模型目录暂时不可用，保留当前选择；能力尚未确认。,现有中文/翻译,模型目录暂时不可用，保留当前选择；能力尚未确认。,src/composables/useDesktopState.ts:2082
+NT0072,确认与风险提醒,,模型能力尚未确认,现有中文/翻译,模型能力尚未确认,src/components/content/ThreadComposer.vue:597
+NT0073,确认与风险提醒,,确认后消耗一次重置机会，并重置上游允许的额度窗口。,现有中文/翻译,确认后消耗一次重置机会，并重置上游允许的额度窗口。,src/components/accounts/AccountResetCredits.vue:11
+NT0074,确认与风险提醒,,确认使用一次,现有中文/翻译,确认使用一次,src/components/accounts/AccountResetCredits.vue:13
+NT0075,确认与风险提醒,,确认使用重置机会,现有中文/翻译,确认使用重置机会,src/components/accounts/AccountResetCredits.vue:8
+NT0076,确认与风险提醒,,确认停止进程,现有中文/翻译,确认停止进程,src/components/content/ThreadProcessPanel.vue:36
+NT0077,确认与风险提醒,,上下文压缩结果未确认,现有中文/翻译,上下文压缩结果未确认,src/compaction.ts:12
+NT0078,确认与风险提醒,,尚未确认提交结果，请稍后核对,现有中文/翻译,尚未确认提交结果，请稍后核对,src/components/content/DeliveryOutbox.vue:65
+NT0079,确认与风险提醒,输入 / 后继续搜索；↑↓ 选择，Enter 确认，Esc 收起。,输入 / 后继续搜索；↑↓ 选择，Enter 确认，Esc 收起。未选择命令时按原方式输入和发送文字。,现有中文/翻译,输入 / 后继续搜索；↑↓ 选择，Enter 确认，Esc 收起。未选择命令时按原方式输入和发送文字。,src/components/content/ThreadCommandDialog.vue:28
+NT0080,确认与风险提醒,,提交结果待确认,现有中文/翻译,提交结果待确认,src/components/content/DeliveryOutbox.vue:6
+NT0081,确认与风险提醒,,停止结果无法确认,现有中文/翻译,停止结果无法确认,src/components/content/ThreadProcessPanel.vue:216；src/components/content/ThreadProcessPanel.vue:219
+NT0082,确认与风险提醒,,未确认提交结果，请核对提交状态,现有中文/翻译,未确认提交结果，请核对提交状态,src/api/deliveryOutbox.ts:108
+NT0083,确认与风险提醒,,未收到有效的提交确认，请核对提交状态,现有中文/翻译,未收到有效的提交确认，请核对提交状态,src/api/deliveryOutbox.ts:113
+NT0084,确认与风险提醒,,无法读取待确认提交,现有中文/翻译,无法读取待确认提交,src/components/content/DeliveryOutbox.vue:53
+NT0085,确认与风险提醒,,无法确认当前账号，消息尚未提交,现有中文/翻译,无法确认当前账号，消息尚未提交,src/api/deliveryOutbox.ts:64
+NT0086,确认与风险提醒,,压缩请求等待确认。,现有中文/翻译,压缩请求等待确认。,src/App.vue:633
+NT0087,确认与风险提醒,,压缩请求结果未确认,现有中文/翻译,压缩请求结果未确认,src/api/threadCompaction.ts:142
+NT0088,确认与风险提醒,已收到停止确认。,已收到原生停止确认。,现有中文/翻译,已收到原生停止确认。,src/components/content/ThreadProcessPanel.vue:217
+NT0089,确认与风险提醒,,重置结果未确认，请核对额度后重试。,现有中文/翻译,重置结果未确认，请核对额度后重试。,src/components/accounts/AccountResetCredits.vue:57
+NT0090,确认与风险提醒,,状态待确认,现有中文/翻译,状态待确认,src/components/content/ThreadProcessPanel.vue:95；src/processActivity.ts:63
+NT0091,确认与风险提醒,,准备项目 AGENTS.md 初始化指令，确认后发送,现有中文/翻译,准备项目 AGENTS.md 初始化指令，确认后发送,src/components/content/composerCommands.ts:56
+NT0092,会话与回合提示,,{变量1} 已删除。,中文审核译文；当前源码为英文模板,{变量1} deleted,src/components/content/ThreadConversation.vue:2165
+NT0093,会话与回合提示,,⊘ 已中断,中文审核译文；当前源码为英文,⊘ Interrupted,src/components/content/ThreadConversation.vue:1305
+NT0094,会话与回合提示,,✗ 失败,中文审核译文；当前源码为英文,✗ Failed,src/components/content/ThreadConversation.vue:1303
+NT0095,会话与回合提示,,⟳ 运行中,中文审核译文；当前源码为英文,⟳ Running,src/components/content/ThreadConversation.vue:1301
+NT0096,会话与回合提示,,复制失败,现有中文/翻译,Copy failed,src/components/content/ThreadConversation.vue:588；src/components/content/ThreadConversation.vue:753；src/utils/clipboard.ts:60
+NT0097,会话与回合提示,,更新文件改动失败。,中文审核译文；当前源码为英文,Failed to update file changes.,src/components/content/ThreadConversation.vue:2067
+NT0098,会话与回合提示,,加载历史失败，请重试。,现有中文/翻译,加载历史失败，请重试。,src/components/content/ThreadConversation.vue:3864
+NT0099,会话与回合提示,,加载消息中...,现有中文/翻译,Loading messages...,src/components/content/ThreadConversation.vue:3
+NT0100,会话与回合提示,,没有可用 diff,现有中文/翻译,No diff available,src/components/content/ThreadConversation.vue:882
+NT0101,会话与回合提示,,目标数据不完整，请重新读取,现有中文/翻译,持续目标数据不完整，请重新读取,src/threadGoal.ts:24
+NT0102,会话与回合提示,目标已阻塞，请查看最后回复。,目标已阻塞，请查看最后回复，处理后继续。,现有中文/翻译,目标已阻塞，请查看最后回复，处理后继续。,src/threadGoal.ts:45
+NT0103,会话与回合提示,,需要处理,现有中文/翻译,需要处理,src/threadGoal.ts:13
+NT0104,会话与回合提示,,用量受限,现有中文/翻译,用量受限,src/threadGoal.ts:14
+NT0105,会话与回合提示,预算已用尽,预算已到,现有中文/翻译,预算已到,src/threadGoal.ts:14
+NT0106,会话与回合提示,预算已调整,预算已调整，可手动继续目标。,现有中文/翻译,预算已调整，可手动继续目标。,src/threadGoal.ts:46
+NT0107,会话与回合提示,预算已用尽,预算已用完，请先提高预算或留空取消预算，再继续。,现有中文/翻译,预算已用完，请先提高预算或留空取消预算，再继续。,src/threadGoal.ts:39
+NT0108,会话与回合提示,用量受限,运行时用量受限，额度重置后可继续。,现有中文/翻译,运行时用量受限，额度恢复后可继续。,src/threadGoal.ts:47
+NT0109,错误与失败提示,,{变量1} 个会话读取失败。,现有中文/翻译,{变量1} 个会话读取失败。,src/App.vue:2190
+NT0110,错误与失败提示,,{变量1} 执行失败，退出码为 {变量2}。,中文审核译文；当前源码为英文模板,{变量1} failed with exit code {变量2},src/cli/index.ts:51；src/cli/index.ts:69
+NT0111,错误与失败提示,,安装失败,中文审核译文；当前源码为英文,Install failed,src/components/content/SkillsHub.vue:270
+NT0112,错误与失败提示,,安装已完成，但刷新后未找到本地技能。,中文审核译文；当前源码为英文,Install completed but the local skill was not found after refresh,src/components/content/SkillsHub.vue:275
+NT0113,错误与失败提示,,保存工作区根目录状态失败。,中文审核译文；当前源码为英文,Failed to save workspace roots state,src/api/codexGateway.ts:2959
+NT0114,错误与失败提示,,保存会话自动化失败。,中文审核译文；当前源码为英文,Failed to save thread automation,src/api/codexGateway.ts:1219
+NT0115,错误与失败提示,,保存失败，请重试,现有中文/翻译,保存失败，请重试,src/App.vue:3606
+NT0116,错误与失败提示,,保存项目自动化失败。,中文审核译文；当前源码为英文,Failed to save project automation,src/api/codexGateway.ts:1247
+NT0117,错误与失败提示,,备用请求失败：{变量1},中文审核译文；当前源码为英文模板,Fallback request failed with {变量1},src/api/codexGateway.ts:593
+NT0118,错误与失败提示,,部分插件市场读取失败：{变量1},现有中文/翻译,部分插件市场读取失败：{变量1},src/components/content/DirectoryHub.vue:227
+NT0119,错误与失败提示,,操作失败。,现有中文/翻译,操作失败。,src/components/api-proxy/ApiProxyPanel.vue:227
+NT0120,错误与失败提示,,插件读取失败,现有中文/翻译,插件读取失败,src/components/content/DirectoryHub.vue:315
+NT0121,错误与失败提示,,插件市场加载失败,现有中文/翻译,插件市场加载失败,src/api/codexGateway.ts:2268
+NT0122,错误与失败提示,,撤回会话失败。,中文审核译文；当前源码为英文,Failed to rollback thread,src/composables/useDesktopState.ts:5306
+NT0123,错误与失败提示,,初始化 Git 失败,现有中文/翻译,Failed to initialize Git,src/api/codexGateway.ts:2867；src/components/content/ReviewPane.vue:840；src/server/reviewGit.ts:1041
+NT0124,错误与失败提示,,创建本地目录失败。,中文审核译文；当前源码为英文,Failed to create local directory,src/api/codexGateway.ts:3096
+NT0125,错误与失败提示,,创建工作树失败。,中文审核译文；当前源码为英文,Failed to create worktree,src/api/codexGateway.ts:2571；src/api/codexGateway.ts:2591；src/server/codexAppServerBridge.ts:8558；src/server/codexAppServerBridge.ts:8633
+NT0126,错误与失败提示,,创建工作树失败。,中文审核译文；当前源码为英文,Failed to create worktree.,src/App.vue:3010
+NT0127,错误与失败提示,,创建文件夹失败。,中文审核译文；当前源码为英文,Failed to create folder.,src/App.vue:4173
+NT0128,错误与失败提示,,创建文件夹失败。,中文审核译文；当前源码为英文,Failed to create the folder.,src/App.vue:4164
+NT0129,错误与失败提示,,创建新会话目录失败。,中文审核译文；当前源码为英文,Failed to create new chat folder,src/api/codexGateway.ts:3144；src/api/codexGateway.ts:3157；src/server/codexAppServerBridge.ts:2103；src/server/codexAppServerBridge.ts:9269
+NT0130,错误与失败提示,,打开所选文件夹失败。,中文审核译文；当前源码为英文,Failed to open the selected folder.,src/App.vue:4092；src/App.vue:4103
+NT0131,错误与失败提示,,打开项目根目录失败。,中文审核译文；当前源码为英文,Failed to open project root,src/api/codexGateway.ts:2977
+NT0132,错误与失败提示,,导出项目失败：{变量1},中文审核译文；当前源码为英文模板,Failed to export project: {变量1},src/api/codexGateway.ts:3024
+NT0133,错误与失败提示,,导出项目失败。,中文审核译文；当前源码为英文,Failed to export project,src/api/codexGateway.ts:3019；src/server/codexAppServerBridge.ts:9129；src/server/codexAppServerBridge.ts:9131
+NT0134,错误与失败提示,,导出项目失败。,中文审核译文；当前源码为英文,Failed to export project.,src/App.vue:2970
+NT0135,错误与失败提示,,导入项目失败。,中文审核译文；当前源码为英文,Failed to import project,src/api/codexGateway.ts:3067；src/server/codexAppServerBridge.ts:9165
+NT0136,错误与失败提示,,导入项目失败。,中文审核译文；当前源码为英文,Failed to import project.,src/App.vue:4018
+NT0137,错误与失败提示,,读取待处理服务器请求失败，HTTP {变量1}。,中文审核译文；当前源码为英文模板,Pending server requests failed with HTTP {变量1},src/api/codexRpcClient.ts:355
+NT0138,错误与失败提示,,读取登录状态失败。,现有中文/翻译,读取登录状态失败。,src/api/codexGateway.ts:346；src/components/accounts/AccountLoginDialog.vue:82
+NT0139,错误与失败提示,,读取方法目录失败，HTTP {变量1}。,中文审核译文；当前源码为英文模板,Method catalog failed with HTTP {变量1},src/api/codexRpcClient.ts:95
+NT0140,错误与失败提示,,读取激活计划失败,现有中文/翻译,读取激活计划失败,src/App.vue:1017
+NT0141,错误与失败提示,,读取激活记录失败,现有中文/翻译,读取激活记录失败,src/components/settings/AccountActivation.vue:92；src/components/settings/AccountActivation.vue:95
+NT0142,错误与失败提示,,读取记录失败,现有中文/翻译,读取记录失败,src/components/content/AutomationRunHistory.vue:62
+NT0143,错误与失败提示,,读取历史失败,现有中文/翻译,读取历史失败,src/components/content/AutomationRunHistory.vue:74
+NT0144,错误与失败提示,,读取失败,现有中文/翻译,读取失败,src/components/content/ThreadCommandDialog.vue:218；src/components/settings/AccountActivation.vue:134
+NT0145,错误与失败提示,,读取失败。,现有中文/翻译,读取失败。,src/components/api-proxy/ApiProxyPanel.vue:220
+NT0146,错误与失败提示,,读取通知目录失败，HTTP {变量1}。,中文审核译文；当前源码为英文模板,Notification catalog failed with HTTP {变量1},src/api/codexRpcClient.ts:120
+NT0147,错误与失败提示,,读取通知设置失败。,现有中文/翻译,读取通知设置失败。,src/components/settings/NotificationSettings.vue:45
+NT0148,错误与失败提示,,读取项目工作目录失败,现有中文/翻译,读取项目工作目录失败,src/App.vue:1606；src/App.vue:3091；src/api/codexGateway.ts:3606；src/server/codexAppServerBridge.ts:9179
+NT0149,错误与失败提示,,读取摘录失败。,现有中文/翻译,读取摘录失败。,src/components/content/TaskSearchDialog.vue:98
+NT0150,错误与失败提示,,读取账号设置失败。,现有中文/翻译,读取账号设置失败。,src/components/accounts/AccountOptions.vue:79
+NT0151,错误与失败提示,,读取Git 仓库状态失败。,中文审核译文；当前源码为英文,Failed to read Git repository status,src/api/codexGateway.ts:2690；src/server/codexAppServerBridge.ts:8807
+NT0152,错误与失败提示,,队列保存失败，请重试,现有中文/翻译,队列保存失败，请重试,src/api/codexGateway.ts:2554；src/composables/useDesktopState.ts:4267
+NT0153,错误与失败提示,,发送前失败,现有中文/翻译,发送前失败,src/delivery.ts:39
+NT0154,错误与失败提示,,分享项目失败，请使用下载。,现有中文/翻译,Failed to share project. Use Download instead.,src/App.vue:2954
+NT0155,错误与失败提示,,服务器错误,中文审核译文；当前源码为英文,Server error,src/api/codexGateway.ts:1648
+NT0156,错误与失败提示,,复制失败，请选中文本复制。,现有中文/翻译,复制失败，请选中文本复制。,src/components/content/FeedbackReportDialog.vue:27
+NT0157,错误与失败提示,,工作树初始化失败,现有中文/翻译,Worktree setup failed,src/App.vue:5081
+NT0158,错误与失败提示,,关闭终端失败,中文审核译文；当前源码为英文,Terminal close failed,src/components/content/ThreadTerminalPanel.vue:310
+NT0159,错误与失败提示,,忽略标记保存失败，请重试,现有中文/翻译,忽略标记保存失败，请重试,src/composables/useIgnoredQuotaErrors.ts:40
+NT0160,错误与失败提示,,忽略标记读取失败，请重试,现有中文/翻译,忽略标记读取失败，请重试,src/composables/useIgnoredQuotaErrors.ts:21
+NT0161,错误与失败提示,,回答发送失败，请重试。,现有中文/翻译,回答发送失败，请重试。,src/components/content/AsyncQuestionCard.vue:66
+NT0162,错误与失败提示,,回复服务器请求失败，HTTP {变量1}。,中文审核译文；当前源码为英文模板,Server request reply failed with HTTP {变量1},src/api/codexRpcClient.ts:333
+NT0163,错误与失败提示,,回应服务器请求失败。,中文审核译文；当前源码为英文,Failed to reply to server request,src/api/codexRpcClient.ts:319；src/composables/useDesktopState.ts:5670
+NT0164,错误与失败提示,,会话状态读取失败，请重试,现有中文/翻译,会话状态读取失败，请重试,src/composables/useSidebarThreadFilter.ts:57；src/composables/useSidebarThreadFilter.ts:66
+NT0165,错误与失败提示,,技能设置保存失败,现有中文/翻译,技能设置保存失败,src/components/content/SkillsHub.vue:320
+NT0166,错误与失败提示,,加载 Commit 文件失败,现有中文/翻译,Failed to load commit files,src/App.vue:3889；src/api/codexGateway.ts:2756；src/server/codexAppServerBridge.ts:8992
+NT0167,错误与失败提示,,加载本地目录失败。,中文审核译文；当前源码为英文,Failed to load local directories,src/api/codexGateway.ts:2915
+NT0168,错误与失败提示,,加载本地文件夹失败。,中文审核译文；当前源码为英文,Failed to load local folders.,src/App.vue:4279
+NT0169,错误与失败提示,,加载分支失败。,中文审核译文；当前源码为英文,Failed to load branches,src/api/codexGateway.ts:2607
+NT0170,错误与失败提示,,加载分支提交记录失败。,中文审核译文；当前源码为英文,Failed to load branch commits,src/App.vue:3862；src/api/codexGateway.ts:2730；src/server/codexAppServerBridge.ts:8904
+NT0171,错误与失败提示,,加载更早的消息失败。,中文审核译文；当前源码为英文,Failed to load earlier messages,src/composables/useDesktopState.ts:4646
+NT0172,错误与失败提示,,加载工作区根目录状态失败。,中文审核译文；当前源码为英文,Failed to load workspace roots state,src/api/codexGateway.ts:2507
+NT0173,错误与失败提示,,加载会话 {变量1} 更早的消息失败。,中文审核译文；当前源码为英文模板,Failed to load earlier messages for thread {变量1},src/api/codexGateway.ts:872
+NT0174,错误与失败提示,,加载会话 {变量1} 失败。,中文审核译文；当前源码为英文模板,Failed to load thread {变量1},src/api/codexGateway.ts:838；src/api/codexGateway.ts:846；src/api/codexGateway.ts:864
+NT0175,错误与失败提示,,加载会话分组失败。,中文审核译文；当前源码为英文,Failed to load thread groups,src/api/codexGateway.ts:815；src/api/codexGateway.ts:826
+NT0176,错误与失败提示,,加载会话自动化失败。,中文审核译文；当前源码为英文,Failed to load thread automation,src/api/codexGateway.ts:1191
+NT0177,错误与失败提示,,加载会话自动化失败。,中文审核译文；当前源码为英文,Failed to load thread automations,src/api/codexGateway.ts:1157
+NT0178,错误与失败提示,,加载技能失败。,中文审核译文；当前源码为英文,Failed to load skills,src/components/content/SkillsHub.vue:221
+NT0179,错误与失败提示,,加载审查快照失败,现有中文/翻译,Failed to load review snapshot,src/api/codexGateway.ts:2819；src/components/content/ReviewPane.vue:769；src/server/reviewGit.ts:1012
+NT0180,错误与失败提示,,加载审阅摘要失败。,中文审核译文；当前源码为英文,Failed to load review summary,src/api/codexGateway.ts:2832；src/server/reviewGit.ts:987
+NT0181,错误与失败提示,,加载完成列表失败。,中文审核译文；当前源码为英文,Failed to load completion list,src/composables/useDesktopState.ts:1427
+NT0182,错误与失败提示,,加载项目自动化失败。,中文审核译文；当前源码为英文,Failed to load project automations,src/api/codexGateway.ts:1173
+NT0183,错误与失败提示,,加载账号额度失败。,中文审核译文；当前源码为英文,Failed to load account rate limits,src/api/codexGateway.ts:1405
+NT0184,错误与失败提示,,加载账号失败,现有中文/翻译,Failed to load accounts,src/App.vue:2651；src/api/codexGateway.ts:1430
+NT0185,错误与失败提示,,加载主目录失败。,中文审核译文；当前源码为英文,Failed to load home directory,src/api/codexGateway.ts:2894
+NT0186,错误与失败提示,,加载自动化失败,现有中文/翻译,Failed to load automations,src/components/content/AutomationsPanel.vue:309
+NT0187,错误与失败提示,,加载Git 分支状态失败。,中文审核译文；当前源码为英文,Failed to load Git branch state,src/api/codexGateway.ts:2636
+NT0188,错误与失败提示,,加载Telegram 配置失败。,中文审核译文；当前源码为英文,Failed to load Telegram configuration,src/App.vue:2287；src/api/codexGateway.ts:3272
+NT0189,错误与失败提示,,加载Telegram 状态失败。,中文审核译文；当前源码为英文,Failed to load Telegram status,src/App.vue:2265；src/api/codexGateway.ts:3309
+NT0190,错误与失败提示,,进程状态读取失败,现有中文/翻译,进程状态读取失败,src/components/content/ThreadProcessPanel.vue:101；src/components/content/ThreadProcessPanel.vue:141
+NT0191,错误与失败提示,,克隆GitHub 仓库失败。,中文审核译文；当前源码为英文,Failed to clone GitHub repository,src/api/codexGateway.ts:3122；src/server/codexAppServerBridge.ts:9257
+NT0192,错误与失败提示,,快捷命令执行失败,中文审核译文；当前源码为英文,Quick command failed,src/components/content/ThreadTerminalPanel.vue:487
+NT0193,错误与失败提示,,扩展读取失败,现有中文/翻译,扩展读取失败,src/components/content/DirectoryHub.vue:234
+NT0194,错误与失败提示,,临时错误,现有中文/翻译,Temporary error,src/App.vue:2517
+NT0195,错误与失败提示,,命令执行失败,现有中文/翻译,命令执行失败,src/App.vue:3540
+NT0196,错误与失败提示,,模型目录读取失败,现有中文/翻译,模型目录读取失败,src/api/modelCatalog.ts:48
+NT0197,错误与失败提示,,目标读取失败,现有中文/翻译,持续目标读取失败,src/composables/useThreadGoals.ts:57
+NT0198,错误与失败提示,,目标读取失败，显示的状态可能已过期。,现有中文/翻译,持续目标读取失败，显示的状态可能已过期。,src/composables/useThreadGoals.ts:42
+NT0199,错误与失败提示,,能力检测失败,现有中文/翻译,能力检测失败,src/App.vue:1459
+NT0200,错误与失败提示,,启动 Codex 登录失败,现有中文/翻译,Failed to start Codex login,src/api/codexGateway.ts:1456；src/api/codexGateway.ts:1463
+NT0201,错误与失败提示,,启动会话 {变量1} 的回合失败。,中文审核译文；当前源码为英文模板,Failed to start turn for thread {变量1},src/api/codexGateway.ts:2004
+NT0202,错误与失败提示,,启动新会话失败。,中文审核译文；当前源码为英文,Failed to start a new thread,src/api/codexGateway.ts:1748
+NT0203,错误与失败提示,,切换分支失败。,中文审核译文；当前源码为英文,Failed to switch branch,src/App.vue:3807；src/api/codexGateway.ts:2712；src/server/codexAppServerBridge.ts:8855
+NT0204,错误与失败提示,,请求会话历史分页失败：{变量1},中文审核译文；当前源码为英文模板,Older thread page request failed with {变量1},src/api/codexGateway.ts:786
+NT0205,错误与失败提示,,请求失败，HTTP {变量1}。,中文审核译文；当前源码为英文模板,Request failed with HTTP {变量1},src/composables/useFeedbackDiagnostics.ts:135
+NT0206,错误与失败提示,,任务读取失败，请重试。,现有中文/翻译,任务读取失败，请重试。,src/api/tasks.ts:8
+NT0207,错误与失败提示,,任务摘录读取失败。,现有中文/翻译,任务摘录读取失败。,src/api/tasks.ts:29；src/server/codexAppServerBridge.ts:8032
+NT0208,错误与失败提示,,沙箱模式无效：{变量1},中文审核译文；当前源码为英文模板,Invalid sandbox mode: {变量1},src/cli/index.ts:390
+NT0209,错误与失败提示,,删除会话自动化失败。,中文审核译文；当前源码为英文,Failed to delete thread automation,src/api/codexGateway.ts:1262
+NT0210,错误与失败提示,,删除项目自动化失败。,中文审核译文；当前源码为英文,Failed to delete project automation,src/api/codexGateway.ts:1274；src/components/sidebar/SidebarThreadTree.vue:2380
+NT0211,错误与失败提示,,上下文压缩失败,现有中文/翻译,上下文压缩失败,src/compaction.ts:11
+NT0212,错误与失败提示,,设置保存失败，请检查浏览器存储后重试。,现有中文/翻译,设置保存失败，请检查浏览器存储后重试。,src/webConversationPreferences.ts:32
+NT0213,错误与失败提示,,设置已保存，读取有效状态失败：{变量1},现有中文/翻译,设置已保存，读取有效状态失败：{变量1},src/components/content/SkillsHub.vue:322
+NT0214,错误与失败提示,,审批策略无效：{变量1},中文审核译文；当前源码为英文模板,Invalid approval policy: {变量1},src/cli/index.ts:397
+NT0215,错误与失败提示,,生成建议：项目名称失败。,中文审核译文；当前源码为英文,Failed to suggest project name,src/api/codexGateway.ts:3171
+NT0216,错误与失败提示,,使工具调用失败,现有中文/翻译,Fail Tool Call,src/components/content/ThreadPendingRequestPanel.vue:217
+NT0217,错误与失败提示,,输出读取失败,现有中文/翻译,输出读取失败,src/components/content/ThreadProcessPanel.vue:201
+NT0218,错误与失败提示,,搜索会话失败。,中文审核译文；当前源码为英文,Failed to search threads,src/api/codexGateway.ts:3236
+NT0219,错误与失败提示,,搜索技能失败。,中文审核译文；当前源码为英文,Failed to search skills,src/components/content/SkillsHub.vue:254；src/server/skillsRoutes.ts:568
+NT0220,错误与失败提示,,搜索失败，请重试。,现有中文/翻译,搜索失败，请重试。,src/App.vue:2197
+NT0221,错误与失败提示,,搜索失败。,现有中文/翻译,搜索失败。,src/components/content/TaskSearchDialog.vue:80
+NT0222,错误与失败提示,,搜索文件失败。,中文审核译文；当前源码为英文,Failed to search files,src/api/codexGateway.ts:3202；src/server/codexAppServerBridge.ts:9342
+NT0223,错误与失败提示,,所选账号模型目录读取失败,现有中文/翻译,所选账号模型目录读取失败,src/components/sidebar/SidebarThreadTree.vue:1091
+NT0224,错误与失败提示,,所选账号模型目录读取失败，请重新选择账号重试。,现有中文/翻译,所选账号模型目录读取失败，请重新选择账号重试。,src/components/sidebar/SidebarThreadTree.vue:1095
+NT0225,错误与失败提示,,听写失败。,现有中文/翻译,Dictation failed.,src/components/content/ThreadComposer.vue:558
+NT0226,错误与失败提示,,同步激活计划时区失败，请重试。,现有中文/翻译,同步激活计划时区失败，请重试。,src/App.vue:1022
+NT0227,错误与失败提示,,完成 Codex 登录失败,现有中文/翻译,Failed to complete Codex login,src/api/codexGateway.ts:1476；src/api/codexGateway.ts:1483
+NT0228,错误与失败提示,,网络错误,中文审核译文；当前源码为英文,Network error,src/api/codexGateway.ts:1663
+NT0229,错误与失败提示,,为会话 {变量1} 创建分支失败。,中文审核译文；当前源码为英文模板,Failed to fork thread {变量1},src/api/codexGateway.ts:1796；src/api/codexGateway.ts:1825
+NT0230,错误与失败提示,,未找到 Codex CLI，正在从 npm 安装官方 Codex CLI…,中文审核译文；当前源码为英文,Codex CLI not found. Installing official Codex CLI from npm...,src/cli/index.ts:86
+NT0231,错误与失败提示,,未找到 Codex CLI，正在从 npm 安装兼容 Termux 的 Codex CLI…,中文审核译文；当前源码为英文,Codex CLI not found. Installing Termux-compatible Codex CLI from npm...,src/cli/index.ts:78
+NT0232,错误与失败提示,,未找到 Codex CLI。请安装 @openai/codex 或设置 CODEXUI_CODEX_COMMAND。,中文审核译文；当前源码为英文,Codex CLI not found. Install @openai/codex or set CODEXUI_CODEX_COMMAND.,src/composables/useDesktopState.ts:114
+NT0233,错误与失败提示,,未知应用错误,中文审核译文；当前源码为英文,Unknown application error,src/composables/useDesktopState.ts:4585；src/composables/useDesktopState.ts:4757；src/composables/useDesktopState.ts:4772；src/composables/useDesktopState.ts:4790；src/composables/useDesktopState.ts:4823；src/composables/useDesktopState.ts:4838；src/composables/useDesktopState.ts:4868；src/composables/useDesktopState.ts:5003；src/composables/useDesktopState.ts:5091；src/composables/useDesktopState.ts:5107
+NT0234,错误与失败提示,,无法绑定指定端口时退出并报错,中文审核译文；当前源码为英文,fail when the requested port cannot be bound,src/cli/index.ts:343
+NT0235,错误与失败提示,,无法创建工作树。请重试，或切换到本地项目。,现有中文/翻译,Unable to create worktree. Try again or switch to Local project.,src/App.vue:5082
+NT0236,错误与失败提示,,无法确定新文件夹的创建位置。,中文审核译文；当前源码为英文,Unable to determine where the new folder should be created.,src/App.vue:4150
+NT0237,错误与失败提示,,写入校验失败,中文审核译文；当前源码为英文,write verification failed,src/api/deliveryOutbox.ts:81
+NT0238,错误与失败提示,,卸载失败,中文审核译文；当前源码为英文,Uninstall failed,src/components/content/SkillsHub.vue:299
+NT0239,错误与失败提示,,续跑标记保存或读取失败，请重试。,现有中文/翻译,续跑标记保存或读取失败，请重试。,src/composables/useQuotaResume.ts:13
+NT0240,错误与失败提示,,应用审查操作失败,现有中文/翻译,Failed to apply review action,src/api/codexGateway.ts:2854；src/components/content/ReviewPane.vue:813；src/server/reviewGit.ts:1024
+NT0241,错误与失败提示,,运行 codexui 失败：{变量1},中文审核译文；当前源码为英文模板,Failed to run codexui: {变量1},src/cli/index.ts:410
+NT0242,错误与失败提示,,运行会话自动化失败。,中文审核译文；当前源码为英文,Failed to run thread automation,src/api/codexGateway.ts:1286
+NT0243,错误与失败提示,,暂时异常,现有中文/翻译,暂时异常,src/components/api-proxy/ApiProxyPanel.vue:204
+NT0244,错误与失败提示,,中断会话 {变量1} 的回合失败。,中文审核译文；当前源码为英文模板,Failed to interrupt turn for thread {变量1},src/api/codexGateway.ts:2019
+NT0245,错误与失败提示,,中断活动回合失败。,中文审核译文；当前源码为英文,Failed to interrupt active turn,src/composables/useDesktopState.ts:5256
+NT0246,错误与失败提示,,终端错误,中文审核译文；当前源码为英文,Terminal error,src/components/content/ThreadTerminalPanel.vue:277
+NT0247,错误与失败提示,,终端附加失败,现有中文/翻译,Terminal attach failed,src/components/content/ThreadTerminalPanel.vue:237
+NT0248,错误与失败提示,,终端请求失败，HTTP {变量1}。,中文审核译文；当前源码为英文模板,Terminal request failed with HTTP {变量1},src/api/codexGateway.ts:1318
+NT0249,错误与失败提示,,终端输入失败,现有中文/翻译,Terminal input failed,src/components/content/ThreadTerminalPanel.vue:187
+NT0250,错误与失败提示,,重置分支到指定提交失败。,中文审核译文；当前源码为英文,Failed to reset branch to commit,src/App.vue:3832；src/api/codexGateway.ts:2785；src/server/codexAppServerBridge.ts:9039
+NT0251,错误与失败提示,,主激活账号模型目录读取失败,现有中文/翻译,主激活账号模型目录读取失败,src/api/modelCatalog.ts:34
+NT0252,错误与失败提示,,转写失败：{变量1},中文审核译文；当前源码为英文模板,Transcription failed: {变量1},src/composables/useDictation.ts:244
+NT0253,错误与失败提示,,子任务读取失败。,现有中文/翻译,子任务读取失败。,src/components/content/ThreadTasksPanel.vue:67
+NT0254,错误与失败提示,,自动化请求失败,现有中文/翻译,自动化请求失败,src/api/automationGateway.ts:10
+NT0255,错误与失败提示,,API 代理请求失败。,现有中文/翻译,API 出口请求失败。,src/api/apiProxy.ts:25
+NT0256,错误与失败提示,,Codex 审批策略：untrusted、on-failure、on-request、never,中文审核译文；当前源码为英文,"Codex approval policy: untrusted, on-failure, on-request, never",src/cli/index.ts:349
+NT0257,错误与失败提示,,Fast 设置保存失败,现有中文/翻译,Fast 设置保存失败,src/composables/useDesktopState.ts:1955
+NT0258,错误与失败提示,,Hook 结果读取失败,现有中文/翻译,Hook 结果读取失败,src/components/content/HookRunCard.vue:46
+NT0259,错误与失败提示,,Hooks 记录读取失败,现有中文/翻译,Hooks 记录读取失败,src/components/content/ThreadProcessPanel.vue:128
+NT0260,错误与失败提示,,Hooks 配置读取失败,现有中文/翻译,Hooks 配置读取失败,src/components/content/ThreadProcessPanel.vue:130
+NT0261,错误与失败提示,,MCP 状态读取失败,现有中文/翻译,MCP 状态读取失败,src/api/codexGateway.ts:2375；src/components/content/DirectoryHub.vue:258；src/server/codexAppServerBridge.ts:8017
+NT0262,错误与失败提示,,RPC {变量1} 失败，HTTP {变量2}。,中文审核译文；当前源码为英文模板,RPC {变量1} failed with HTTP {变量2},src/api/codexRpcClient.ts:61
+NT0263,错误与失败提示,,RPC {变量1} 失败。,中文审核译文；当前源码为英文模板,RPC {变量1} failed,src/api/codexGateway.ts:518
+NT0264,错误与失败提示,,RPC {变量1} 在请求发出前失败。,中文审核译文；当前源码为英文模板,RPC {变量1} failed before request was sent,src/api/codexRpcClient.ts:45
+NT0265,错误与失败提示,,Service Worker 注册失败。,现有中文/翻译,Service worker registration failed.,src/main.ts:18
+NT0266,状态与功能提醒,,，内容已截取,现有中文/翻译,，内容已截取,src/taskExcerpt.ts:30
+NT0267,状态与功能提醒,,；保持启用即可等待额度重置。,现有中文/翻译,；保持启用即可等待恢复。,src/components/api-proxy/ApiProxyPanel.vue:9
+NT0268,状态与功能提醒,,；仅包含已收到的事件。,现有中文/翻译,；仅包含已收到的事件。,src/components/content/ThreadProcessPanel.vue:9
+NT0269,状态与功能提醒,,；请核对当前列表。,现有中文/翻译,；请核对当前列表。,src/components/content/ThreadProcessPanel.vue:219
+NT0270,状态与功能提醒,,· 已安装,现有中文/翻译,· 已安装,src/components/content/DirectoryHub.vue:23
+NT0271,状态与功能提醒,,”后无法重新启用。,现有中文/翻译,”后无法重新启用。,src/components/api-proxy/ApiProxyPanel.vue:106
+NT0272,状态与功能提醒,,{{account}} 的5小时额度已重置，剩余 {{remaining}}%，下次重置 {{reset_at}},现有中文/翻译,{{account}} 的5小时额度已重置，剩余 {{remaining}}%，下次重置 {{reset_at}},src/accountNotifications.ts:11
+NT0273,状态与功能提醒,,{{account}} 的主额度已重置，剩余 {{remaining}}%，下次重置 {{reset_at}},现有中文/翻译,{{account}} 的主额度已重置，剩余 {{remaining}}%，下次重置 {{reset_at}},src/accountNotifications.ts:11
+NT0274,状态与功能提醒,,{变量1}（暂不可用）,现有中文/翻译,{变量1}（暂不可用）,src/components/settings/ConversationDefaults.vue:23
+NT0275,状态与功能提醒,,402 需要付费,现有中文/翻译,402 Payment Required,src/App.vue:2583
+NT0276,状态与功能提醒,,保存的模型属于其他来源，请重新选择模型。,现有中文/翻译,保存的模型属于其他来源，请重新选择模型。,src/composables/useDesktopState.ts:1505
+NT0277,状态与功能提醒,,保存的模型暂不可用，请重新选择模型。,现有中文/翻译,保存的模型暂不可用，请重新选择模型。,src/composables/useDesktopState.ts:1506
+NT0278,状态与功能提醒,,保存中…,现有中文/翻译,保存中…,src/components/settings/AccountActivation.vue:3
+NT0279,状态与功能提醒,,保护选项无效,现有中文/翻译,保护选项无效,src/automationOptions.ts:13
+NT0280,状态与功能提醒,Codex 返回用量为 0，暂不显示剩余预算。,本次已运行，但 Codex 返回的用量为 0，剩余预算暂不显示。,现有中文/翻译,本次已运行，但 Codex 返回的用量为 0，剩余预算暂不显示。,src/components/content/ThreadGoalCard.vue:7
+NT0281,状态与功能提醒,,必须填写 RRULE。,现有中文/翻译,RRULE is required.,src/components/sidebar/SidebarThreadTree.vue:1728
+NT0282,状态与功能提醒,,不可用,现有中文/翻译,不可用,src/subtasks.ts:25
+NT0283,状态与功能提醒,,不可用账号,现有中文/翻译,Unavailable account,src/App.vue:2623
+NT0284,状态与功能提醒,,不支持该模型。,中文审核译文；当前源码为英文,model is not supported,src/composables/useDesktopState.ts:597
+NT0285,状态与功能提醒,,查看已配置服务、连接状态与可用工具。,现有中文/翻译,查看已配置服务、连接状态与可用工具。,src/components/content/DirectoryHub.vue:57
+NT0286,状态与功能提醒,,成功（空结果）,现有中文/翻译,Success (Empty),src/components/content/ThreadPendingRequestPanel.vue:220
+NT0287,状态与功能提醒,,持续时间请填写正整数天数，留空为无限。,现有中文/翻译,持续时间请填写正整数天数，留空为无限。,src/components/api-proxy/ApiProxyPanel.vue:256
+NT0288,状态与功能提醒,,窗口大小不可用,现有中文/翻译,Window size unavailable,src/App.vue:1831
+NT0289,状态与功能提醒,,此插件当前不可安装,现有中文/翻译,此插件当前不可安装,src/components/content/DirectoryHub.vue:112
+NT0290,状态与功能提醒,,此浏览器不支持文件分享。,中文审核译文；当前源码为英文,File sharing is not supported in this browser.,src/App.vue:2922
+NT0291,状态与功能提醒,,此提交已停止跟踪，请核对会话后再发送新消息,现有中文/翻译,此提交已停止跟踪，请核对会话后再发送新消息,src/api/codexGateway.ts:2000
+NT0292,状态与功能提醒,,此文件夹未找到 Git 分支。,现有中文/翻译,No Git branches found for this folder.,src/App.vue:563
+NT0293,状态与功能提醒,,此重置机会已不可用,现有中文/翻译,此重置机会已不可用,src/components/accounts/AccountResetCredits.vue:58
+NT0294,状态与功能提醒,,当前 CLI 不支持 Hooks 配置查询,现有中文/翻译,当前 CLI 不支持 Hooks 配置查询,src/components/content/ThreadProcessPanel.vue:123
+NT0295,状态与功能提醒,,当前 CLI 不支持后台终端查询,现有中文/翻译,当前 CLI 不支持后台终端查询,src/components/content/ThreadProcessPanel.vue:132
+NT0296,状态与功能提醒,,当前 Codex 运行时不支持此命令，请检查 CLI 版本。,现有中文/翻译,当前 Codex 运行时不支持此命令，请检查 CLI 版本。,src/components/content/ThreadCommandDialog.vue:209
+NT0297,状态与功能提醒,当前 CLI 不支持查询 MCP 状态，请更新 CLI。,当前 Codex CLI 不支持 MCP 状态 API，请更新 CLI 以查看 MCP 服务器。,现有中文/翻译,MCP status APIs unavailable in this Codex CLI. Update Codex CLI to inspect MCP servers.,src/components/content/DirectoryHub.vue:59
+NT0298,状态与功能提醒,无法自动复制，请选中 key 手动复制。,当前浏览器无法自动复制，请选中 key 手动复制。,现有中文/翻译,当前浏览器无法自动复制，请选中 key 手动复制。,src/components/api-proxy/ApiProxyPanel.vue:283
+NT0299,状态与功能提醒,,当前没有已完成的助手回复可复制,现有中文/翻译,当前没有已完成的助手回复可复制,src/api/threadCommands.ts:47
+NT0300,状态与功能提醒,当前模型不支持图片。,当前模型不支持图片，请更换模型或移除图片。,现有中文/翻译,当前模型不支持图片，请更换模型或移除图片。,src/modelCapabilities.ts:84
+NT0301,状态与功能提醒,当前任务运行中。,当前任务运行中，请等待结束后再操作。,现有中文/翻译,当前任务运行中，请等待结束后再操作。,src/components/content/ThreadCommandDialog.vue:120
+NT0302,状态与功能提醒,任务运行中，暂不能压缩。,当前任务运行中，请等待结束后再压缩。,现有中文/翻译,当前任务运行中，请等待结束后再压缩。,src/api/threadCompaction.ts:135
+NT0303,状态与功能提醒,,当前显示前 200 条；请缩小搜索范围。,现有中文/翻译,当前显示前 200 条；请缩小搜索范围。,src/components/content/TaskSearchDialog.vue:23
+NT0304,状态与功能提醒,当前账号使用：{变量1} · {变量2},当前账号使用：{变量1} · {变量2}；已保存偏好不变。,现有中文/翻译,当前账号使用：{变量1} · {变量2}；已保存偏好不变。,src/components/settings/ConversationDefaults.vue:31
+NT0305,状态与功能提醒,,导出当前已加载会话内容为 Markdown,现有中文/翻译,导出当前已加载会话内容为 Markdown,src/components/content/composerCommands.ts:24
+NT0306,状态与功能提醒,,登录会话已结束，请重新开始。,现有中文/翻译,登录会话已结束，请重新开始。,src/components/accounts/AccountLoginDialog.vue:70
+NT0307,状态与功能提醒,,等待处理,现有中文/翻译,等待处理,src/components/content/AutomationRunList.vue:23
+NT0308,状态与功能提醒,等待会话用量更新。,等待此会话的 Codex tokenUsage 更新事件。,现有中文/翻译,Waiting for Codex thread/tokenUsage/updated events for this thread.,src/App.vue:1790
+NT0309,状态与功能提醒,,等待额度,现有中文/翻译,等待额度,src/components/sidebar/SidebarThreadTree.vue:944
+NT0310,状态与功能提醒,,等待回复,现有中文/翻译,Awaiting response,src/components/content/ThreadPendingRequestPanel.vue:366；src/components/sidebar/SidebarThreadTree.vue:2978
+NT0311,状态与功能提醒,,等待批准,现有中文/翻译,Awaiting approval,src/components/content/ThreadPendingRequestPanel.vue:364；src/components/sidebar/SidebarThreadTree.vue:2978
+NT0312,状态与功能提醒,,等待请求结束的上限（秒）,现有中文/翻译,等待请求结束的上限（秒）,src/components/api-proxy/ApiProxyPanel.vue:17
+NT0313,状态与功能提醒,,等待数据中,现有中文/翻译,Awaiting data,src/App.vue:1818
+NT0314,状态与功能提醒,,等待子任务,现有中文/翻译,等待子任务,src/subtasks.ts:26
+NT0315,状态与功能提醒,,读取中…,现有中文/翻译,读取中…,src/components/content/AutomationRunHistory.vue:15；src/components/content/ThreadCommandDialog.vue:6；src/components/content/ThreadProcessPanel.vue:6；src/components/content/ThreadTasksPanel.vue:14；src/components/settings/AccountActivation.vue:28
+NT0316,状态与功能提醒,,额度不可用,现有中文/翻译,Quota unavailable,src/App.vue:2611；src/App.vue:2614；src/components/accounts/AccountPanel.vue:20
+NT0317,状态与功能提醒,,额度读取超时，仍等待原请求结束,现有中文/翻译,额度读取超时，仍等待原请求结束,src/quotaRefresh.ts:9
+NT0318,状态与功能提醒,,额度已重置,现有中文/翻译,额度已重置,src/components/accounts/AccountResetCredits.vue:58
+NT0319,状态与功能提醒,,发送状态无效，请刷新页面核对,现有中文/翻译,发送状态无效，请刷新页面核对,src/delivery.ts:52
+NT0320,状态与功能提醒,,反馈诊断无法监测请求：{变量1},中文审核译文；当前源码为英文模板,Feedback diagnostics could not monitor fetch: {变量1},src/composables/useFeedbackDiagnostics.ts:160
+NT0321,状态与功能提醒,,反馈诊断无法监测请求：window.fetch 不可用。,中文审核译文；当前源码为英文,Feedback diagnostics could not monitor fetch: window.fetch is unavailable,src/composables/useFeedbackDiagnostics.ts:119
+NT0322,状态与功能提醒,,复制最近一条已完成的助手回复,现有中文/翻译,复制最近一条已完成的助手回复,src/components/content/composerCommands.ts:18
+NT0323,状态与功能提醒,,该次重置已完成,现有中文/翻译,该次重置已完成,src/components/accounts/AccountResetCredits.vue:58
+NT0324,状态与功能提醒,,该任务尚无可引用的用户或最终回复。,现有中文/翻译,该任务尚无可引用的用户或最终回复。,src/components/content/TaskSearchDialog.vue:95
+NT0325,状态与功能提醒,,该消息已发送或已被其他页面移除，请刷新队列,现有中文/翻译,该消息已发送或已被其他页面移除，请刷新队列,src/threadQueue.ts:83
+NT0326,状态与功能提醒,,个请求正在处理。客户端会收到中断，需要重新连接。,现有中文/翻译,个请求正在处理。客户端会收到中断，需要重新连接。,src/components/api-proxy/ApiProxyPanel.vue:118
+NT0327,状态与功能提醒,,工具调用正在等待响应,中文审核译文；当前源码为英文,Tool call waiting for response,src/components/content/ThreadPendingRequestPanel.vue:367
+NT0328,状态与功能提醒,,官方插件详情暂不可用（404），请稍后重试。,现有中文/翻译,官方插件详情暂不可用（404），请稍后重试。,src/directory.ts:8
+NT0329,状态与功能提醒,,后台终端响应无效,现有中文/翻译,后台终端响应无效,src/processActivity.ts:88
+NT0330,状态与功能提醒,,基础分支不可用,现有中文/翻译,Base branch unavailable,src/components/content/ReviewPane.vue:122
+NT0331,状态与功能提醒,,基础分支不可用。,中文审核译文；当前源码为英文,Base branch is unavailable,src/api/codexGateway.ts:2881
+NT0332,状态与功能提醒,,激活设置暂不可用,现有中文/翻译,激活设置暂不可用,src/components/settings/AccountActivation.vue:119
+NT0333,状态与功能提醒,,技能列表响应无效,现有中文/翻译,技能列表响应无效,src/directory.ts:44
+NT0334,状态与功能提醒,,加载额度中…,现有中文/翻译,Loading quota…,src/App.vue:2608；src/components/accounts/AccountPanel.vue:20
+NT0335,状态与功能提醒,,加载分支中…,现有中文/翻译,Loading branches…,src/App.vue:560
+NT0336,状态与功能提醒,,加载会话中...,现有中文/翻译,Loading threads...,src/components/sidebar/SidebarThreadTree.vue:183
+NT0337,状态与功能提醒,,加载技能内容中...,现有中文/翻译,Loading skill contents...,src/components/content/SkillDetailModal.vue:30
+NT0338,状态与功能提醒,,加载技能中...,现有中文/翻译,Loading skills...,src/components/content/SkillsHub.vue:76
+NT0339,状态与功能提醒,,加载审查状态中,现有中文/翻译,Loading review state,src/components/content/ReviewPane.vue:106
+NT0340,状态与功能提醒,,加载文件夹中…,现有中文/翻译,Loading folders…,src/App.vue:511
+NT0341,状态与功能提醒,,检查结果后重试,现有中文/翻译,检查结果后重试,src/components/content/AutomationRunList.vue:10
+NT0342,状态与功能提醒,仅含版本、界面信息和错误类别，可补充复现步骤。,仅包含版本、界面信息和错误类别；可补充复现步骤后复制。,现有中文/翻译,仅包含版本、界面信息和错误类别；可补充复现步骤后复制。,src/components/content/FeedbackReportDialog.vue:3
+NT0343,状态与功能提醒,,近期请求（本次运行）,现有中文/翻译,近期请求（本次运行）,src/components/api-proxy/ApiProxyPanel.vue:69
+NT0344,状态与功能提醒,,进程已不在后台列表。,现有中文/翻译,进程已不在后台列表。,src/components/content/ThreadProcessPanel.vue:217
+NT0345,状态与功能提醒,,扩展列表返回重复游标，请刷新重试,现有中文/翻译,扩展列表返回重复游标，请刷新重试,src/directory.ts:107
+NT0346,状态与功能提醒,,扩展列表响应无效,现有中文/翻译,扩展列表响应无效,src/directory.ts:103
+NT0347,状态与功能提醒,,浏览、管理已安装插件,现有中文/翻译,浏览、管理已安装插件,src/components/content/composerCommands.ts:21
+NT0348,状态与功能提醒,,浏览器未能保存发送记录，消息尚未提交；请释放本地存储空间,现有中文/翻译,浏览器未能保存发送记录，消息尚未提交；请释放本地存储空间,src/api/deliveryOutbox.ts:83
+NT0349,状态与功能提醒,,浏览器无法保存发送记录，请允许本地存储后重试,现有中文/翻译,浏览器无法保存发送记录，请允许本地存储后重试,src/api/deliveryOutbox.ts:29
+NT0350,状态与功能提醒,,浏览器中的发送记录损坏，请先核对队列,现有中文/翻译,浏览器中的发送记录损坏，请先核对队列,src/api/deliveryOutbox.ts:45
+NT0351,状态与功能提醒,,浏览器中的发送记录无效，请先核对队列,现有中文/翻译,浏览器中的发送记录无效，请先核对队列,src/api/deliveryOutbox.ts:47
+NT0352,状态与功能提醒,,麦克风访问被拒绝。,现有中文/翻译,Microphone access was denied.,src/components/content/ThreadComposer.vue:555
+NT0353,状态与功能提醒,,免打扰时间请填写HH:mm。,现有中文/翻译,免打扰时间请填写HH:mm。,src/accountNotifications.ts:8；src/accountNotifications.ts:34
+NT0354,状态与功能提醒,,模型目录格式无效,现有中文/翻译,模型目录格式无效,src/api/modelCatalog.ts:64
+NT0355,状态与功能提醒,,模型未公布服务档位 {变量1}，请重新选择或使用标准速度。,现有中文/翻译,模型未公布服务档位 {变量1}，请重新选择或使用标准速度。,src/modelCapabilities.ts:83
+NT0356,状态与功能提醒,,模型未公布思考强度 {变量1}，请重新选择或使用模型默认。,现有中文/翻译,模型未公布思考强度 {变量1}，请重新选择或使用模型默认。,src/modelCapabilities.ts:82
+NT0357,状态与功能提醒,,目标保存结果缺失，请重新读取,现有中文/翻译,持续目标保存结果缺失，请重新读取,src/api/threadCommands.ts:38
+NT0358,状态与功能提醒,,目标通知不完整，请重新打开。,现有中文/翻译,持续目标通知不完整，请重新打开。,src/components/content/ThreadCommandDialog.vue:198
+NT0359,状态与功能提醒,,目标已被清除，请重新读取。,现有中文/翻译,持续目标已被清除，请重新读取。,src/components/content/ThreadCommandDialog.vue:155
+NT0360,状态与功能提醒,目标已在其他位置修改，请重新读取。,目标已在其他位置修改，请重新读取后再编辑。,现有中文/翻译,目标已在其他位置修改，请重新读取后再编辑。,src/components/content/ThreadCommandDialog.vue:98
+NT0361,状态与功能提醒,目标已在其他位置修改，请重新读取。,目标已在其他位置修改。请重新读取后再编辑。,现有中文/翻译,目标已在其他位置修改。请重新读取后再编辑。,src/components/content/ThreadCommandDialog.vue:10
+NT0362,状态与功能提醒,,能力检测暂时不可用,现有中文/翻译,能力检测暂时不可用,src/App.vue:1456
+NT0363,状态与功能提醒,,排序目标已变化，请刷新队列,现有中文/翻译,排序目标已变化，请刷新队列,src/threadQueue.ts:88
+NT0364,状态与功能提醒,,配置列表已截断。,现有中文/翻译,配置列表已截断。,src/components/content/ThreadProcessPanel.vue:24
+NT0365,状态与功能提醒,,配置已变更,现有中文/翻译,配置已变更,src/components/content/ThreadProcessPanel.vue:94
+NT0366,状态与功能提醒,切换分支或重置前，请先提交、Stash 或丢弃已跟踪的改动；未跟踪文件仅在会被覆盖时需处理。,切换分支或 Reset 前，请先 Commit、Stash 或丢弃已跟踪文件的更改。未跟踪文件可以保留，除非 Git 会覆盖它们。,现有中文/翻译,"Tracked changes must be committed, stashed, or discarded before switching or resetting. Untracked files are allowed unless Git would overwrite them.",src/components/content/HeaderGitBranchDropdown.vue:268
+NT0367,状态与功能提醒,,切换时等待当前请求结束。,现有中文/翻译,切换时等待当前请求结束。,src/components/api-proxy/ApiProxyPanel.vue:20
+NT0368,状态与功能提醒,,请等待当前任务结束后再操作,现有中文/翻译,请等待当前任务结束后再操作,src/App.vue:3560
+NT0369,状态与功能提醒,,请回答后继续。,现有中文/翻译,请回答后继续。,src/components/content/ThreadPendingRequestPanel.vue:378
+NT0370,状态与功能提醒,,请回答每个问题后再发送。,现有中文/翻译,请回答每个问题后再发送。,src/components/content/AsyncQuestionCard.vue:56；src/components/content/ThreadPendingRequestPanel.vue:944；src/userQuestions.ts:35
+NT0371,状态与功能提醒,,请求地址,现有中文/翻译,请求地址,src/components/settings/NotificationSettings.vue:6
+NT0372,状态与功能提醒,,请求体须包含 {{message}} 占位符。,现有中文/翻译,请求体须包含 {{message}} 占位符。,src/accountNotifications.ts:32
+NT0373,状态与功能提醒,,"请填写1至16个提前时间，例如7d, 3d, 12h",现有中文/翻译,"请填写1至16个提前时间，例如7d, 3d, 12h",src/accountNotifications.ts:53
+NT0374,状态与功能提醒,,请填写必填项：{变量1}。,中文审核译文；当前源码为英文模板,Answer the required field: {变量1}.,src/components/content/ThreadPendingRequestPanel.vue:827
+NT0375,状态与功能提醒,,请填写这些必填项：{变量1}。,中文审核译文；当前源码为英文模板,Answer the required fields: {变量1}.,src/components/content/ThreadPendingRequestPanel.vue:828
+NT0376,状态与功能提醒,请先保存目标或预算的修改。,请先保存目标或预算的修改，再继续。,现有中文/翻译,请先保存目标或预算的修改，再继续。,src/components/content/ThreadCommandDialog.vue:158；src/components/content/ThreadCommandDialog.vue:24
+NT0377,状态与功能提醒,,请先进入一个会话,现有中文/翻译,请先进入一个会话,src/App.vue:3559
+NT0378,状态与功能提醒,,请先进入一个会话。,现有中文/翻译,请先进入一个会话。,src/components/content/ThreadCommandDialog.vue:120
+NT0379,状态与功能提醒,,请先添加 GPT 账号。,现有中文/翻译,请先添加 GPT 账号。,src/components/settings/AccountActivation.vue:11
+NT0380,状态与功能提醒,,请现在保存完整 key，关闭后不会再次显示。,现有中文/翻译,请现在保存完整 key，关闭后不会再次显示。,src/components/api-proxy/ApiProxyPanel.vue:102
+NT0381,状态与功能提醒,,请选择 1–24 个有效时间（HH:mm）,现有中文/翻译,请选择 1–24 个有效时间（HH:mm）,src/automationDailyTimes.ts:5
+NT0382,状态与功能提醒,,请选择有效的 IANA 时区。,现有中文/翻译,请选择有效的 IANA 时区。,src/dateTime.ts:32
+NT0383,状态与功能提醒,,请选择有效的服务档位,现有中文/翻译,请选择有效的服务档位,src/automationOptions.ts:7
+NT0384,状态与功能提醒,,请选择有效的模型,现有中文/翻译,请选择有效的模型,src/automationOptions.ts:8
+NT0385,状态与功能提醒,,请选择有效的推理强度,现有中文/翻译,请选择有效的思考强度,src/automationOptions.ts:9
+NT0386,状态与功能提醒,,请选择有效的账号,现有中文/翻译,请选择有效的账号,src/automationOptions.ts:12
+NT0387,状态与功能提醒,,请选择有效时区,现有中文/翻译,请选择有效时区,src/accountActivation.ts:11；src/accountActivation.ts:12
+NT0388,状态与功能提醒,,请选择SVG、PNG或ICO文件,现有中文/翻译,请选择SVG、PNG或ICO文件,src/components/settings/WebUiBrandingSettings.vue:59
+NT0389,状态与功能提醒,,请阅读当前项目结构与已有说明，创建或完善项目 AGENTS.md，记录实际开发、测试及目录约定。保留已有有效规则，不猜测未核实的命令；先说明准备修改的内容。,现有中文/翻译,请阅读当前项目结构与已有说明，创建或完善项目 AGENTS.md，记录实际开发、测试及目录约定。保留已有有效规则，不猜测未核实的命令；先说明准备修改的内容。,src/components/content/ThreadComposer.vue:672
+NT0390,状态与功能提醒,,全局 npm 安装需要更高权限，正在使用 --prefix {变量1} 重试…,中文审核译文；当前源码为英文模板,Global npm install requires elevated permissions. Retrying with --prefix {变量1}...,src/cli/index.ts:72
+NT0391,状态与功能提醒,,缺少 project path。,中文审核译文；当前源码为英文,Missing project path,src/cli/index.ts:232
+NT0392,状态与功能提醒,,缺少目标会话,现有中文/翻译,缺少目标会话,src/App.vue:3563
+NT0393,状态与功能提醒,,任务分页未前进，请刷新后重试。,现有中文/翻译,任务分页未前进，请刷新后重试。,src/components/content/ThreadTasksPanel.vue:63
+NT0394,状态与功能提醒,,任务分页未前进，请重新搜索。,现有中文/翻译,任务分页未前进，请重新搜索。,src/components/content/TaskSearchDialog.vue:76
+NT0395,状态与功能提醒,,任务列表格式不可用，请刷新后重试。,现有中文/翻译,任务列表格式不可用，请刷新后重试。,src/api/tasks.ts:17
+NT0396,状态与功能提醒,,筛选已安装技能,现有中文/翻译,筛选已安装技能,src/components/content/SkillsHub.vue:59；src/components/content/SkillsHub.vue:60
+NT0397,状态与功能提醒,,上下文压缩已中断,现有中文/翻译,上下文压缩已中断,src/api/threadCompaction.ts:96；src/compaction.ts:12
+NT0398,状态与功能提醒,,尚无执行记录。,现有中文/翻译,尚无执行记录。,src/components/content/AutomationRunHistory.vue:16
+NT0399,状态与功能提醒,,设置已保存，{变量1},现有中文/翻译,设置已保存，{变量1},src/components/content/DirectoryHub.vue:335
+NT0400,状态与功能提醒,,实际执行模型已变更,现有中文/翻译,实际执行模型已变更,src/composables/useDesktopState.ts:3816
+NT0401,状态与功能提醒,,使用 ChatGPT 账号运行 Codex 时不支持此操作。,中文审核译文；当前源码为英文,not supported when using codex with a chatgpt account,src/composables/useDesktopState.ts:596
+NT0402,状态与功能提醒,"事件类型：{变量1}
+{变量2}完整内容请查看 CLI 会话。","事件类型：{变量1}
+{变量2}已记录执行事件；完整内容保留在 CLI 会话中。",现有中文/翻译,"事件类型：{变量1}
+{变量2}已记录执行事件；完整内容保留在 CLI 会话中。",src/api/normalizers/toolSummary.ts:19
+NT0403,状态与功能提醒,,输出已截断。,现有中文/翻译,输出已截断。,src/components/content/HookRunCard.vue:13
+NT0404,状态与功能提醒,,搜索并打开已有会话,现有中文/翻译,搜索并打开已有会话,src/components/content/composerCommands.ts:19
+NT0405,状态与功能提醒,,所选账号不支持此模型，请重新选择,现有中文/翻译,所选账号不支持此模型，请重新选择,src/components/sidebar/SidebarThreadTree.vue:2153
+NT0406,状态与功能提醒,,提交结果待核对，请查看会话,现有中文/翻译,提交结果待核对，请查看会话,src/components/sidebar/SidebarThreadTree.vue:944
+NT0407,状态与功能提醒,,提前时间格式无效,现有中文/翻译,提前时间格式无效,src/accountNotifications.ts:51
+NT0408,状态与功能提醒,,提前时间请使用天d或小时h，例如1d12h,现有中文/翻译,提前时间请使用天d或小时h，例如1d12h,src/accountNotifications.ts:57
+NT0409,状态与功能提醒,,通知设置格式错误。,现有中文/翻译,通知设置格式错误。,src/accountNotifications.ts:6；src/accountNotifications.ts:26
+NT0410,状态与功能提醒,,未保存,中文审核译文；当前源码为英文,Not saved,src/dateTime.ts:36
+NT0411,状态与功能提醒,编辑关联保存失败，可点击“继续编辑”恢复队列中的原消息,未能保存编辑关联；原消息仍保留在队列中，可点击“继续编辑”恢复,现有中文/翻译,未能保存编辑关联；原消息仍保留在队列中，可点击“继续编辑”恢复,src/App.vue:3639
+NT0412,状态与功能提醒,,未找到本次压缩的完整结果。,现有中文/翻译,未找到本次压缩的完整结果。,src/api/threadCompaction.ts:121
+NT0413,状态与功能提醒,,未找到分支。,现有中文/翻译,No branches found.,src/components/content/HeaderGitBranchDropdown.vue:179
+NT0414,状态与功能提醒,,未找到匹配任务。,现有中文/翻译,未找到匹配任务。,src/components/content/TaskSearchDialog.vue:10
+NT0415,状态与功能提醒,,未找到提交。,现有中文/翻译,No commits found.,src/components/content/HeaderGitBranchDropdown.vue:137
+NT0416,状态与功能提醒,,未找到相对基础分支的合并 diff。,现有中文/翻译,No merge diff found against the base branch.,src/components/content/ReviewPane.vue:433
+NT0417,状态与功能提醒,,未找到已安装的技能。,现有中文/翻译,No installed skills found.,src/components/content/SkillsHub.vue:81
+NT0418,状态与功能提醒,,问题状态已变化，请刷新会话后重试。,现有中文/翻译,问题状态已变化，请刷新会话后重试。,src/composables/useDesktopState.ts:4916
+NT0419,状态与功能提醒,,无法保存显示时区，请检查浏览器存储后重试。,现有中文/翻译,无法保存显示时区，请检查浏览器存储后重试。,src/dateTime.ts:38
+NT0420,状态与功能提醒,,无法保存压缩请求状态，请检查浏览器存储后重试。,现有中文/翻译,无法保存压缩请求状态，请检查浏览器存储后重试。,src/api/threadCompaction.ts:49
+NT0421,状态与功能提醒,,无法撤回历史。,现有中文/翻译,无法撤回历史。,src/App.vue:4388
+NT0422,状态与功能提醒,,无法创建历史分支。,现有中文/翻译,无法创建历史分支。,src/App.vue:3147；src/composables/useDesktopState.ts:4891
+NT0423,状态与功能提醒,,无法从该回合创建分支。,现有中文/翻译,无法从该回合创建分支。,src/api/codexGateway.ts:1766
+NT0424,状态与功能提醒,,无法读取发送队列,现有中文/翻译,无法读取发送队列,src/composables/useDesktopState.ts:4287
+NT0425,状态与功能提醒,,无法读取发送队列，请稍后重试,现有中文/翻译,无法读取发送队列，请稍后重试,src/api/codexGateway.ts:2534
+NT0426,状态与功能提醒,,无法读取历史回合。,现有中文/翻译,无法读取历史回合。,src/api/codexGateway.ts:1755
+NT0427,状态与功能提醒,,无法读取压缩状态，请稍后重试。,现有中文/翻译,无法读取压缩状态，请稍后重试。,src/api/threadCompaction.ts:58
+NT0428,状态与功能提醒,,无法附加,现有中文/翻译,Could not attach,src/components/content/ThreadComposer.vue:789
+NT0429,状态与功能提醒,,无法附加文件。,现有中文/翻译,Could not attach file.,src/components/content/ThreadComposer.vue:789
+NT0430,状态与功能提醒,,无法确定要中断的活动回合 ID。,中文审核译文；当前源码为英文,Could not determine active turn id for interrupt,src/composables/useDesktopState.ts:5239
+NT0431,状态与功能提醒,,无法为此仓库解析 `origin/HEAD`、`main` 或 `master`。,现有中文/翻译,"Could not resolve `origin/HEAD`, `main`, or `master` for this repository.",src/components/content/ReviewPane.vue:123
+NT0432,状态与功能提醒,,无效的激活设置,现有中文/翻译,无效的激活设置,src/accountActivation.ts:8
+NT0433,状态与功能提醒,,无效的排队消息,现有中文/翻译,无效的排队消息,src/threadQueue.ts:76
+NT0434,状态与功能提醒,,下次可重试：,现有中文/翻译,下次可重试：,src/components/api-proxy/ApiProxyPanel.vue:9
+NT0435,状态与功能提醒,消息可能已送达，停止跟踪不会中止任务。,消息可能已经送达。停止跟踪不会中止已执行的任务；后续消息将可以继续发送。,现有中文/翻译,消息可能已经送达。停止跟踪不会中止已执行的任务；后续消息将可以继续发送。,src/components/content/QueuedMessages.vue:39
+NT0436,状态与功能提醒,,新会话尚无上下文用量,现有中文/翻译,新会话尚无上下文用量,src/App.vue:3526
+NT0437,状态与功能提醒,,需审阅的配置请在 Codex CLI 的 /hooks 中处理。,现有中文/翻译,需审阅的配置请在 Codex CLI 的 /hooks 中处理。,src/components/content/ThreadProcessPanel.vue:18
+NT0438,状态与功能提醒,,需要处理付费状态,现有中文/翻译,Payment required,src/App.vue:2513
+NT0439,状态与功能提醒,,需要付费,中文审核译文；当前源码为英文,payment required,src/App.vue:2496；src/api/codexGateway.ts:405；src/server/accountTokenRefresh.ts:67
+NT0440,状态与功能提醒,,需要恢复,现有中文/翻译,Recovery required,src/App.vue:2518；src/App.vue:2588
+NT0441,状态与功能提醒,,需要认证,现有中文/翻译,需要认证,src/directory.ts:114
+NT0442,状态与功能提醒,,需要填写 Telegram Bot Token。,现有中文/翻译,Telegram bot token is required.,src/App.vue:2308
+NT0443,状态与功能提醒,,需要重新登录,现有中文/翻译,Sign-in required,src/App.vue:2512；src/App.vue:2586
+NT0444,状态与功能提醒,,已安装,现有中文/翻译,已安装,src/components/content/DirectoryHub.vue:160
+NT0445,状态与功能提醒,,已安装技能,现有中文/翻译,已安装技能,src/components/content/SkillsHub.vue:53
+NT0446,状态与功能提醒,,已不在后台列表。,现有中文/翻译,已不在后台列表。,src/components/content/ThreadProcessPanel.vue:44
+NT0447,状态与功能提醒,,已撤销,现有中文/翻译,已撤销,src/components/api-proxy/ApiProxyPanel.vue:208
+NT0448,状态与功能提醒,,已到期,现有中文/翻译,已到期,src/components/api-proxy/ApiProxyPanel.vue:208
+NT0449,状态与功能提醒,,已复制,现有中文/翻译,已复制,src/components/content/FeedbackReportDialog.vue:25
+NT0450,状态与功能提醒,,已复制 Commit 引用,现有中文/翻译,Copied commit ref,src/components/content/HeaderGitBranchDropdown.vue:46；src/components/content/HeaderGitBranchDropdown.vue:123
+NT0451,状态与功能提醒,,已关闭,现有中文/翻译,已关闭,src/subtasks.ts:25
+NT0452,状态与功能提醒,,已合并,现有中文/翻译,已合并,src/components/content/AutomationRunList.vue:23
+NT0453,状态与功能提醒,,已结束,现有中文/翻译,已结束,src/components/content/ThreadProcessPanel.vue:95
+NT0454,状态与功能提醒,,已禁用,现有中文/翻译,已禁用,src/directory.ts:114
+NT0455,状态与功能提醒,,已拒绝,现有中文/翻译,已拒绝,src/components/content/ThreadProcessPanel.vue:95
+NT0456,状态与功能提醒,,已连接,现有中文/翻译,已连接,src/directory.ts:114
+NT0457,状态与功能提醒,,已启用,现有中文/翻译,已启用,src/components/sidebar/SidebarThreadTree.vue:944
+NT0458,状态与功能提醒,,已取消,现有中文/翻译,已取消,src/components/content/AutomationRunList.vue:23；src/directory.ts:114
+NT0459,状态与功能提醒,,已失效,现有中文/翻译,已失效,src/components/api-proxy/ApiProxyPanel.vue:139
+NT0460,状态与功能提醒,,已授权,现有中文/翻译,已授权,src/components/content/DirectoryHub.vue:278
+NT0461,状态与功能提醒,,已提交续跑,现有中文/翻译,已提交续跑,src/components/sidebar/SidebarThreadTree.vue:944
+NT0462,状态与功能提醒,,已跳过,现有中文/翻译,已跳过,src/components/settings/AccountActivation.vue:73
+NT0463,状态与功能提醒,,已停用,现有中文/翻译,已停用,src/components/api-proxy/ApiProxyPanel.vue:208
+NT0464,状态与功能提醒,,已停止,现有中文/翻译,已停止,src/processActivity.ts:64
+NT0465,状态与功能提醒,,已完成,现有中文/翻译,已完成,src/components/settings/AccountActivation.vue:73；src/processActivity.ts:64；src/subtasks.ts:25；src/threadGoal.ts:14
+NT0466,状态与功能提醒,,已信任,现有中文/翻译,已信任,src/components/content/ThreadProcessPanel.vue:94
+NT0467,状态与功能提醒,,已移除的账号,现有中文/翻译,已移除的账号,src/components/settings/AccountActivation.vue:114
+NT0468,状态与功能提醒,,已有压缩请求，请先检查结果。,现有中文/翻译,已有压缩请求，请先检查结果。,src/api/threadCompaction.ts:132；src/server/threadCompactionGate.ts:25
+NT0469,状态与功能提醒,,已暂停,现有中文/翻译,已暂停,src/components/content/AutomationRunHistory.vue:54；src/threadGoal.ts:13
+NT0470,状态与功能提醒,,已中断,现有中文/翻译,已中断,src/components/content/ThreadProcessPanel.vue:95；src/subtasks.ts:25
+NT0471,状态与功能提醒,,已阻止,现有中文/翻译,已阻止,src/processActivity.ts:64
+NT0472,状态与功能提醒,,异步问题：已接入,现有中文/翻译,异步问题：已接入,src/App.vue:373
+NT0473,状态与功能提醒,,应用目录暂时无法读取（上游 HTTP 403）。,现有中文/翻译,应用目录暂时无法读取（上游 HTTP 403）。,src/directory.ts:11
+NT0474,状态与功能提醒,,与服务端版本不同，请刷新页面。,现有中文/翻译,与服务端版本不同，请刷新页面。,src/App.vue:371
+NT0475,状态与功能提醒,,预算换算后需至少为 1 个完整 token,现有中文/翻译,预算换算后需至少为 1 个完整 token,src/api/threadCommands.ts:14
+NT0476,状态与功能提醒,,预算请输入 token 数量，可使用 k、M、B,现有中文/翻译,预算请输入 token 数量，可使用 k、M、B,src/api/threadCommands.ts:8
+NT0477,状态与功能提醒,,预算需为有效正数，且不能超过可精确表示的 token 数量,现有中文/翻译,预算需为有效正数，且不能超过可精确表示的 token 数量,src/api/threadCommands.ts:16
+NT0478,状态与功能提醒,未能停止进程，请检查当前状态。,原生接口未停止该进程，请检查当前状态。,现有中文/翻译,原生接口未停止该进程，请检查当前状态。,src/components/content/ThreadProcessPanel.vue:217
+NT0479,状态与功能提醒,,运行中,现有中文/翻译,运行中,src/components/content/AutomationRunList.vue:23；src/processActivity.ts:64；src/subtasks.ts:25；src/threadGoal.ts:13
+NT0480,状态与功能提醒,,运行中…,现有中文/翻译,Running…,src/components/sidebar/SidebarThreadTree.vue:847
+NT0481,状态与功能提醒,,暂无激活记录,现有中文/翻译,暂无激活记录,src/components/settings/AccountActivation.vue:38
+NT0482,状态与功能提醒,,暂无可选模型,现有中文/翻译,暂无可选模型,src/components/content/ModelReasoningPicker.vue:10
+NT0483,状态与功能提醒,,暂无下次运行时间,现有中文/翻译,暂无下次运行时间,src/components/content/AutomationRunHistory.vue:54
+NT0484,状态与功能提醒,,暂无已保存的直属子任务。,现有中文/翻译,暂无已保存的直属子任务。,src/components/content/ThreadTasksPanel.vue:15
+NT0485,状态与功能提醒,,暂无用量,现有中文/翻译,暂无用量,src/components/accounts/AccountQuota.vue:11
+NT0486,状态与功能提醒,,暂无用量信息,现有中文/翻译,暂无用量信息,src/App.vue:3528
+NT0487,状态与功能提醒,"摘录包含最近 10 回合的用户与最终回复，最多 6,000 字符。","摘录只包含最近 10 回合的用户与最终回复，最多 6,000 字符；插入后可在草稿中编辑。",现有中文/翻译,"摘录只包含最近 10 回合的用户与最终回复，最多 6,000 字符；插入后可在草稿中编辑。",src/components/content/TaskSearchDialog.vue:24
+NT0488,状态与功能提醒,,账号或时刻数量无效,现有中文/翻译,账号或时刻数量无效,src/accountActivation.ts:9
+NT0489,状态与功能提醒,,找不到对应问题，请刷新会话后重试。,现有中文/翻译,找不到对应问题，请刷新会话后重试。,src/composables/useDesktopState.ts:4901
+NT0490,状态与功能提醒,提交可能已送达，停止跟踪不会取消队列消息或中止任务。,这次提交可能已经到达服务器。停止跟踪不会取消服务器上的队列消息或中止任务。,现有中文/翻译,这次提交可能已经到达服务器。停止跟踪不会取消服务器上的队列消息或中止任务。,src/components/content/DeliveryOutbox.vue:15
+NT0491,状态与功能提醒,,这里没有子文件夹。,现有中文/翻译,No subfolders found here.,src/App.vue:513
+NT0492,状态与功能提醒,,正在编辑队列消息,现有中文/翻译,正在编辑队列消息,src/App.vue:665
+NT0493,状态与功能提醒,,正在处理,现有中文/翻译,正在处理,src/components/api-proxy/ApiProxyPanel.vue:64
+NT0494,状态与功能提醒,,正在创建工作树并执行初始化。,现有中文/翻译,Creating a worktree and running setup.,src/App.vue:5071
+NT0495,状态与功能提醒,,正在读取代理状态…,现有中文/翻译,正在读取出口状态…,src/components/api-proxy/ApiProxyPanel.vue:4
+NT0496,状态与功能提醒,,正在读取所选账号模型目录,现有中文/翻译,正在读取所选账号模型目录,src/components/sidebar/SidebarThreadTree.vue:2152
+NT0497,状态与功能提醒,,正在发送,现有中文/翻译,正在发送,src/delivery.ts:39
+NT0498,状态与功能提醒,,正在加载 MCP 服务器…,现有中文/翻译,Loading MCP servers...,src/components/content/DirectoryHub.vue:62
+NT0499,状态与功能提醒,,正在加载分支…,现有中文/翻译,Loading branch...,src/components/content/HeaderGitBranchDropdown.vue:257
+NT0500,状态与功能提醒,,正在加载提交…,现有中文/翻译,Loading commits...,src/components/content/HeaderGitBranchDropdown.vue:105
+NT0501,状态与功能提醒,,正在加载文件…,现有中文/翻译,Loading files...,src/components/content/HeaderGitBranchDropdown.vue:65
+NT0502,状态与功能提醒,,正在加载自动化…,现有中文/翻译,Loading automations...,src/components/content/AutomationsPanel.vue:30
+NT0503,状态与功能提醒,,正在上传 {percent}%（{processed}/{total}）,现有中文/翻译,{percent}% uploading ({processed}/{total}),src/components/content/ThreadComposer.vue:35
+NT0504,状态与功能提醒,,正在为规划模式加载模型...,现有中文/翻译,Loading models for plan mode...,src/components/content/ThreadComposer.vue:808
+NT0505,状态与功能提醒,,正在压缩上下文…,现有中文/翻译,正在压缩上下文…,src/compaction.ts:11
+NT0506,状态与功能提醒,,正在运行命令,中文审核译文；当前源码为英文,Running command,src/composables/useDesktopState.ts:3231；src/composables/useDesktopState.ts:3254；src/composables/useDesktopState.ts:4023
+NT0507,状态与功能提醒,,只显示已记录的片段或尾部，最多 32k 字符。,现有中文/翻译,只显示已记录的片段或尾部，最多 32k 字符。,src/components/content/ThreadProcessPanel.vue:48
+NT0508,状态与功能提醒,,指定端口 {变量1} 不可用，正在使用 {变量2}。,中文审核译文；当前源码为英文模板,Requested port {变量1} was unavailable; using {变量2}.,src/cli/index.ts:299
+NT0509,状态与功能提醒,,至少需要一个允许的 Telegram 用户 ID 或 `*`。,现有中文/翻译,At least one allowed Telegram user ID or * is required.,src/App.vue:2312
+NT0510,状态与功能提醒,,重试回答,现有中文/翻译,重试回答,src/components/content/QueuedMessages.vue:25
+NT0511,状态与功能提醒,,重置机会到期提醒内容无效,现有中文/翻译,重置机会到期提醒内容无效,src/accountNotifications.ts:46
+NT0512,状态与功能提醒,,重置机会到期提醒选项无效,现有中文/翻译,重置机会到期提醒选项无效,src/accountNotifications.ts:45
+NT0513,状态与功能提醒,,重置机会增加提醒内容无效,现有中文/翻译,重置机会增加提醒内容无效,src/accountNotifications.ts:43
+NT0514,状态与功能提醒,,重置机会增加提醒选项无效,现有中文/翻译,重置机会增加提醒选项无效,src/accountNotifications.ts:42
+NT0515,状态与功能提醒,暂无模型上下文窗口信息。,最新使用事件中未提供模型上下文窗口。,现有中文/翻译,Model context window is unavailable in the latest usage event.,src/App.vue:1802
+NT0516,状态与功能提醒,,App 分页响应超过上限,现有中文/翻译,App 分页响应超过上限,src/api/codexGateway.ts:2344
+NT0517,状态与功能提醒,,App 运行状态响应无效,现有中文/翻译,App 运行状态响应无效,src/directory.ts:30
+NT0518,状态与功能提醒,,CLI 已重启，未收到这次执行的结束状态。,现有中文/翻译,CLI 已重启，未收到这次执行的结束状态。,src/components/content/HookRunCard.vue:7
+NT0519,状态与功能提醒,Codex 正在等待回应。,Codex 正在等待回应，回应后才能继续。,中文审核译文；当前源码为英文,Codex is waiting for a response before it can continue.,src/components/content/ThreadPendingRequestPanel.vue:379
+NT0520,状态与功能提醒,,Codex Web Local 已启动！,中文审核译文；当前源码为英文,Codex Web Local is running!,src/cli/index.ts:282
+NT0521,状态与功能提醒,,Hook 详细记录已不可用,现有中文/翻译,Hook 详细记录已不可用,src/components/content/HookRunCard.vue:43
+NT0522,状态与功能提醒,,Hooks 配置响应无效,现有中文/翻译,Hooks 配置响应无效,src/processActivity.ts:69
+NT0523,状态与功能提醒,,JSON请求体,现有中文/翻译,JSON请求体,src/components/settings/NotificationSettings.vue:7
+NT0524,状态与功能提醒,,MCP 服务器需要输入。,中文审核译文；当前源码为英文,MCP server input required,src/components/content/ThreadPendingRequestPanel.vue:365
+NT0525,状态与功能提醒,,MCP 状态响应缺少名称,现有中文/翻译,MCP 状态响应缺少名称,src/directory.ts:79
+NT0526,服务端与协议错误,,"{变量1}
+## 项目工作目录
+
+当前项目除主目录外，还包含以下工作目录。请根据任务在这些目录中查找和修改相关文件；操作各目录前先阅读适用于该目录的 AGENTS.md，不要把附加目录误当作主目录的子目录。
+
+```json
+{变量2}
+```
+{变量3}",现有中文/翻译,"{变量1}
+## 项目工作目录
+
+当前项目除主目录外，还包含以下工作目录。请根据任务在这些目录中查找和修改相关文件；操作各目录前先阅读适用于该目录的 AGENTS.md，不要把附加目录误当作主目录的子目录。
+
+```json
+{变量2}
+```
+{变量3}",src/server/projectDirectories.ts:21
+NT0527,服务端与协议错误,,{变量1} 必须为真实目录。,中文审核译文；当前源码为英文模板,{变量1} must be a real directory,src/server/codexAppServerBridge.ts:2079
+NT0528,服务端与协议错误,,{变量1} 必须在 1–{变量2} 之间。,现有中文/翻译,{变量1} 必须在 1–{变量2} 之间。,src/server/apiProxy/store.ts:103
+NT0529,服务端与协议错误,,{变量1} 在 {变量2} 毫秒后超时。,中文审核译文；当前源码为英文模板,{变量1} timed out after {变量2}ms,src/server/skillsRoutes.ts:205
+NT0530,服务端与协议错误,,"{变量1}：{变量2}
+实际开始时间：{变量3}
+以上时间已换算到任务时区，不要再次当作 UTC 换算；“今天、昨天、本周”等相对日期按上述参考时间及任务时区理解。",现有中文/翻译,"{变量1}：{变量2}
+实际开始时间：{变量3}
+以上时间已换算到任务时区，不要再次当作 UTC 换算；“今天、昨天、本周”等相对日期按上述参考时间及任务时区理解。",src/server/automationTime.ts:15
+NT0531,服务端与协议错误,,绑定账号已移除，请重新选择账号。,现有中文/翻译,绑定账号已移除，请重新选择账号。,src/server/accountExecution.ts:15
+NT0532,服务端与协议错误,,保存项目工作目录失败,现有中文/翻译,保存项目工作目录失败,src/server/codexAppServerBridge.ts:9217
+NT0533,服务端与协议错误,,保护开关无效。,现有中文/翻译,保护开关无效。,src/server/apiProxy/store.ts:108
+NT0534,服务端与协议错误,额度或速率受限,本次运行遇到额度或速率限制；请查看实际额度和恢复时间，恢复后再试,现有中文/翻译,本次运行遇到额度或速率限制；请查看实际额度和恢复时间，恢复后再试,src/server/automationEngine.ts:32
+NT0535,服务端与协议错误,,本次重试请求时间,现有中文/翻译,本次重试请求时间,src/server/automationTime.ts:14
+NT0536,服务端与协议错误,,必须提供 projectName、name、prompt 和 rrule。,中文审核译文；当前源码为英文,"projectName, name, prompt, and rrule are required",src/server/codexAppServerBridge.ts:4523；src/server/codexAppServerBridge.ts:9599
+NT0537,服务端与协议错误,,必须提供 threadId、name、prompt 和 rrule。,中文审核译文；当前源码为英文,"threadId, name, prompt, and rrule are required",src/server/codexAppServerBridge.ts:4407；src/server/codexAppServerBridge.ts:9577
+NT0538,服务端与协议错误,,必须提供 threadId。,中文审核译文；当前源码为英文,threadId is required,src/server/telegramThreadBridge.ts:340
+NT0539,服务端与协议错误,,必须提供登录会话和回调 URL。,中文审核译文；当前源码为英文,Login session and callback URL are required.,src/server/accountRoutes.ts:166
+NT0540,服务端与协议错误,,必须填写 baseUrl。,中文审核译文；当前源码为英文,baseUrl is required,src/server/codexAppServerBridge.ts:7668
+NT0541,服务端与协议错误,,必须填写 Telegram 机器人令牌。,中文审核译文；当前源码为英文,Telegram bot token is required,src/server/telegramThreadBridge.ts:313
+NT0542,服务端与协议错误,,必须填写提示词名称。,中文审核译文；当前源码为英文,Prompt name is required,src/server/codexAppServerBridge.ts:3647
+NT0543,服务端与协议错误,,必须填写提示词名称和内容。,中文审核译文；当前源码为英文,Prompt name and content are required,src/server/codexAppServerBridge.ts:9357
+NT0544,服务端与协议错误,,必须填写提示词内容。,中文审核译文；当前源码为英文,Prompt content is required,src/server/codexAppServerBridge.ts:3649
+NT0545,服务端与协议错误,,标题显示方式无效,现有中文/翻译,标题显示方式无效,src/server/webUiBrandingStore.ts:36
+NT0546,服务端与协议错误,,并发请求已达上限。,现有中文/翻译,并发请求已达上限。,src/server/apiProxy/activity.ts:43
+NT0547,服务端与协议错误,,并行账号数已达8个，请等待连接结束。,现有中文/翻译,并行账号数已达8个，请等待连接结束。,src/server/apiProxy/gateway.ts:104
+NT0548,服务端与协议错误,,不支持此 WebSocket 事件。,现有中文/翻译,不支持此 WebSocket 事件。,src/server/apiProxy/gateway.ts:556
+NT0549,服务端与协议错误,,不支持该连接器图标 URL。,中文审核译文；当前源码为英文,Unsupported connector logo URL,src/server/codexAppServerBridge.ts:5429
+NT0550,服务端与协议错误,,不支持该图像类型。,中文审核译文；当前源码为英文,Unsupported image type.,src/server/httpServer.ts:119
+NT0551,服务端与协议错误,,操作执行期间账号凭据发生了变化。,中文审核译文；当前源码为英文,The account credential changed while this operation was running.,src/server/accountAuthStore.ts:587
+NT0552,服务端与协议错误,,测试通知失败：HTTP {变量1},现有中文/翻译,测试通知失败：HTTP {变量1},src/server/accountNotificationService.ts:114
+NT0553,服务端与协议错误,,插件目录响应无效,现有中文/翻译,插件目录响应无效,src/server/directoryPluginCache.ts:74
+NT0554,服务端与协议错误,,插件目录暂不可用,现有中文/翻译,插件目录暂不可用,src/server/directoryPluginCache.ts:69
+NT0555,服务端与协议错误,,撤销 {变量1} 的补丁失败：{变量2},中文审核译文；当前源码为英文模板,Failed to revert patch for {变量1}: {变量2},src/server/codexAppServerBridge.ts:3455
+NT0556,服务端与协议错误,,持久化保存完成列表失败。,中文审核译文；当前源码为英文,Failed to persist completion list,src/server/codexAppServerBridge.ts:7206
+NT0557,服务端与协议错误,,创建登录会话失败。,中文审核译文；当前源码为英文,Failed to create login session,src/server/authMiddleware.ts:272
+NT0558,服务端与协议错误,,创建提示词失败。,中文审核译文；当前源码为英文,Failed to create prompt,src/server/codexAppServerBridge.ts:9364
+NT0559,服务端与协议错误,,此会话不支持撤回历史。可从已完成的回合创建分支。,现有中文/翻译,此会话不支持撤回历史。可从已完成的回合创建分支。,src/server/threadHistory.ts:220
+NT0560,服务端与协议错误,会话运行中，暂不能更换账号。,此会话仍在执行，请等当前回合结束后更换账号。其他会话不受影响。,现有中文/翻译,此会话仍在执行，请等当前回合结束后更换账号。其他会话不受影响。,src/server/codexAppServerBridge.ts:5580
+NT0561,服务端与协议错误,,此目标已有待执行任务，请等待队列,现有中文/翻译,此目标已有待执行任务，请等待队列,src/server/automationEngine.ts:239
+NT0562,服务端与协议错误,,此视图不支持该补丁操作。,中文审核译文；当前源码为英文,Unsupported patch action for this view,src/server/reviewGit.ts:885
+NT0563,服务端与协议错误,,此视图不支持该批量操作。,中文审核译文；当前源码为英文,Unsupported bulk action for this view,src/server/reviewGit.ts:914
+NT0564,服务端与协议错误,,此消息的编辑状态已变化,现有中文/翻译,此消息的编辑状态已变化,src/server/deliveryStore.ts:262
+NT0565,服务端与协议错误,,此主机无法使用集成终端。,中文审核译文；当前源码为英文,Integrated terminal is unavailable on this host,src/server/codexAppServerBridge.ts:7755；src/server/codexAppServerBridge.ts:7780；src/server/codexAppServerBridge.ts:7798；src/server/codexAppServerBridge.ts:7815；src/server/terminalManager.ts:230；src/server/terminalManager.ts:333；src/server/terminalManager.ts:373
+NT0566,服务端与协议错误,,此主机无法使用集成终端。{变量1},中文审核译文；当前源码为英文模板,Integrated terminal is unavailable on this host. {变量1},src/server/terminalManager.ts:384
+NT0567,服务端与协议错误,,从源码运行时，请执行 pnpm run build:frontend 构建前端资源。,中文审核译文；当前源码为英文,"If running from source, build frontend assets with: pnpm run build:frontend",src/server/httpServer.ts:255
+NT0568,服务端与协议错误,切换分支或重置前，请先提交、Stash 或丢弃已跟踪的改动；未跟踪文件仅在会被覆盖时需处理。,存在已跟踪但未提交的改动，无法切换分支或重置。请先提交、暂存或放弃这些改动。未跟踪文件可以保留，除非 Git 操作会覆盖它们。,中文审核译文；当前源码为英文,"Cannot switch branches or reset with tracked uncommitted changes. Commit, stash, or discard tracked changes first. Untracked files are allowed unless Git would overwrite them.",src/server/codexAppServerBridge.ts:3958
+NT0569,服务端与协议错误,,打开文件夹或创建 {变量1} 失败。,中文审核译文；当前源码为英文模板,Failed to open folder or create {变量1}.,src/server/localBrowseUi.ts:203
+NT0570,服务端与协议错误,,打开文件夹失败。,中文审核译文；当前源码为英文,Failed to open folder.,src/server/localBrowseUi.ts:204
+NT0571,服务端与协议错误,,代理错误：{变量1},中文审核译文；当前源码为英文模板,Proxy error: {变量1},src/server/unifiedResponsesProxy.ts:629
+NT0572,服务端与协议错误,,代理设置格式错误。,现有中文/翻译,出口设置格式错误。,src/server/apiProxy/store.ts:99
+NT0573,服务端与协议错误,,代理设置正在变更。,现有中文/翻译,出口设置正在变更。,src/server/apiProxy/gateway.ts:693
+NT0574,服务端与协议错误,,代理暂时不可用，正在等待重试窗口。,现有中文/翻译,出口暂时不可用，正在等待重试窗口。,src/server/apiProxy/component.ts:57
+NT0575,服务端与协议错误,,代理正在等待活动请求结束，请稍后重试。,现有中文/翻译,出口正在等待活动请求结束，请稍后重试。,src/server/apiProxy/activity.ts:30
+NT0576,服务端与协议错误,,代理正在等待活动请求结束。,现有中文/翻译,出口正在等待活动请求结束。,src/server/apiProxy/activity.ts:40
+NT0577,服务端与协议错误,,当前 Codex 凭据不可用。,中文审核译文；当前源码为英文,The active Codex credential is unavailable.,src/server/accountAuthCoordinator.ts:323
+NT0578,服务端与协议错误,,当前 Codex 上游不支持 {变量1}。,现有中文/翻译,当前 Codex 上游不支持 {变量1}。,src/server/apiProxy/gateway.ts:235
+NT0579,服务端与协议错误,,当前 Codex CLI 不支持按回合分支，请先更新 CLI。,现有中文/翻译,当前 Codex CLI 不支持按回合分支，请先更新 CLI。,src/server/threadHistory.ts:212
+NT0580,服务端与协议错误,,导入当前凭据失败。,中文审核译文；当前源码为英文,Failed to import the active credential.,src/server/accountRoutes.ts:119
+NT0581,服务端与协议错误,,到期时间必须晚于现在。,现有中文/翻译,到期时间必须晚于现在。,src/server/apiProxy/store.ts:130
+NT0582,服务端与协议错误,,登录进程失败。,中文审核译文；当前源码为英文,Login process failed.,src/server/accountAuthCoordinator.ts:401
+NT0583,服务端与协议错误,,登录已过期，请重新开始。,现有中文/翻译,登录已过期，请重新开始。,src/server/accountAuthCoordinator.ts:406
+NT0584,服务端与协议错误,,登录已取消。,现有中文/翻译,登录已取消。,src/server/accountAuthCoordinator.ts:1053
+NT0585,服务端与协议错误,,等待 Codex 登录 URL 超时。,中文审核译文；当前源码为英文,Timed out waiting for the Codex login URL.,src/server/accountAuthCoordinator.ts:1058
+NT0586,服务端与协议错误,,等待所选账号额度或该账号的自动化运行结束,现有中文/翻译,等待所选账号额度或该账号的自动化运行结束,src/server/automationEngine.ts:328
+NT0587,服务端与协议错误,,调度器初始化失败,现有中文/翻译,调度器初始化失败,src/server/automationEngine.ts:99
+NT0588,服务端与协议错误,,调度器已关闭,现有中文/翻译,调度器已关闭,src/server/accountActivationScheduler.ts:93
+NT0589,服务端与协议错误,,调度器正在交接，暂不接受新运行,现有中文/翻译,调度器正在交接，暂不接受新运行,src/server/automationEngine.ts:229
+NT0590,服务端与协议错误,,读取登录状态失败。,中文审核译文；当前源码为英文,Failed to read login status.,src/server/accountRoutes.ts:139
+NT0591,服务端与协议错误,,读取会话失败。,中文审核译文；当前源码为英文,failed to read thread,src/server/codexAppServerBridge.ts:909
+NT0592,服务端与协议错误,,读取免费模式状态失败。,中文审核译文；当前源码为英文,Failed to read free mode status,src/server/codexAppServerBridge.ts:7596
+NT0593,服务端与协议错误,,读取Git 分支失败。,中文审核译文；当前源码为英文,Failed to read Git branches,src/server/codexAppServerBridge.ts:8774
+NT0594,服务端与协议错误,,队列保存失败,现有中文/翻译,队列保存失败,src/server/codexAppServerBridge.ts:9092
+NT0595,服务端与协议错误,队列接口已更新，请刷新页面后重试,队列接口已更新，请刷新页面后重试；队列未修改,现有中文/翻译,队列接口已更新，请刷新页面后重试；队列未修改,src/server/codexAppServerBridge.ts:6813
+NT0596,服务端与协议错误,队列接口已更新，请刷新页面后重试,队列接口已更新，请刷新页面后重试；服务器队列未修改,现有中文/翻译,队列接口已更新，请刷新页面后重试；服务器队列未修改,src/server/codexAppServerBridge.ts:9082
+NT0597,服务端与协议错误,仅考虑最近一个漏跑时点,多个漏跑时点已合并；仅考虑最近一个时点,现有中文/翻译,多个漏跑时点已合并；仅考虑最近一个时点,src/server/automationEngine.ts:280
+NT0598,服务端与协议错误,,额度读取失败,现有中文/翻译,额度读取失败,src/server/accountAuthCoordinator.ts:599
+NT0599,服务端与协议错误,,额度读取失败，本次跳过,现有中文/翻译,额度读取失败，本次跳过,src/server/accountActivationAdmission.ts:23
+NT0600,服务端与协议错误,额度读取需等待 {变量1} 秒,额度读取退避中，请等待{变量1}秒,现有中文/翻译,额度读取退避中，请等待{变量1}秒,src/server/accountAuthCoordinator.ts:191
+NT0601,服务端与协议错误,,额度仍受限,现有中文/翻译,额度仍受限,src/server/codexAppServerBridge.ts:7154
+NT0602,服务端与协议错误,,额度校验失败,现有中文/翻译,额度校验失败,src/server/codexAppServerBridge.ts:6388
+NT0603,服务端与协议错误,,额度状态不可用，本次跳过,现有中文/翻译,额度状态不可用，本次跳过,src/server/accountActivationAdmission.ts:31
+NT0604,服务端与协议错误,,发送 ID 已过期或无效，请先核对历史，不能自动重发,现有中文/翻译,发送 ID 已过期或无效，请先核对历史，不能自动重发,src/server/deliveryStore.ts:191
+NT0605,服务端与协议错误,,发送服务已停止,现有中文/翻译,发送服务已停止,src/server/deliveryStore.ts:70；src/server/deliveryStore.ts:76；src/server/deliveryStore.ts:112
+NT0606,服务端与协议错误,,发送记录保存失败，已停止投递；请检查存储后重启服务核对。,现有中文/翻译,发送记录保存失败，已停止投递；请检查存储后重启服务核对。,src/server/deliveryStore.ts:143
+NT0607,服务端与协议错误,,发送记录内容无效，已停止投递,现有中文/翻译,发送记录内容无效，已停止投递,src/server/deliveryStore.ts:41
+NT0608,服务端与协议错误,,发送记录文件损坏，已停止投递,现有中文/翻译,发送记录文件损坏，已停止投递,src/server/deliveryStore.ts:34
+NT0609,服务端与协议错误,,发送记录写入租约已失效，已停止投递,现有中文/翻译,发送记录写入租约已失效，已停止投递,src/server/deliveryStore.ts:113
+NT0610,服务端与协议错误,,发送接口已更新，请刷新页面后重试,现有中文/翻译,发送接口已更新，请刷新页面后重试,src/server/codexAppServerBridge.ts:6786；src/server/codexAppServerBridge.ts:6795；src/server/codexAppServerBridge.ts:7871
+NT0611,服务端与协议错误,,发送结果未确认，不自动重试,现有中文/翻译,发送结果未确认，不自动重试,src/server/accountNotificationService.ts:216
+NT0612,服务端与协议错误,,发送前已拒绝,现有中文/翻译,发送前已拒绝,src/server/deliveryService.ts:82
+NT0613,服务端与协议错误,,发送确认记录损坏，已停止投递,现有中文/翻译,发送确认记录损坏，已停止投递,src/server/deliveryStore.ts:164
+NT0614,服务端与协议错误,,发送确认记录与待发送内容冲突,现有中文/翻译,发送确认记录与待发送内容冲突,src/server/deliveryStore.ts:104
+NT0615,服务端与协议错误,,发送首条用户消息前，无法使用 includeTurns。,中文审核译文；当前源码为英文,includeturns is unavailable before first user message,src/server/codexAppServerBridge.ts:914
+NT0616,服务端与协议错误,,发送状态读取失败,现有中文/翻译,发送状态读取失败,src/server/codexAppServerBridge.ts:6924
+NT0617,服务端与协议错误,,发送准备失败,现有中文/翻译,发送准备失败,src/server/deliveryService.ts:70
+NT0618,服务端与协议错误,反代组件连接失败。,反代组件连接失败，将为后续请求重新准备组件。,现有中文/翻译,反代组件连接失败，将为后续请求重新准备组件。,src/server/apiProxy/gateway.ts:453
+NT0619,服务端与协议错误,,反代组件未能就绪。,现有中文/翻译,反代组件未能就绪。,src/server/apiProxy/component.ts:135
+NT0620,服务端与协议错误,,反代组件校验失败。,现有中文/翻译,反代组件校验失败。,src/server/apiProxy/component.ts:89
+NT0621,服务端与协议错误,,分配名称唯一的工作树分支失败。,中文审核译文；当前源码为英文,Failed to allocate a unique branch name for worktree,src/server/codexAppServerBridge.ts:4006
+NT0622,服务端与协议错误,,分配唯一工作树 ID失败。,中文审核译文；当前源码为英文,Failed to allocate a unique worktree id,src/server/codexAppServerBridge.ts:8531
+NT0623,服务端与协议错误,,分钟/小时规则目前仅支持 INTERVAL；指定日历时点请使用 DAILY/WEEKLY,现有中文/翻译,分钟/小时规则目前仅支持 INTERVAL；指定日历时点请使用 DAILY/WEEKLY,src/server/automationSchedule.ts:70
+NT0624,服务端与协议错误,,服务曾在发送期间中断，需核对是否送达。,现有中文/翻译,服务曾在发送期间中断，需核对是否送达。,src/server/deliveryStore.ts:107
+NT0625,服务端与协议错误,,服务已停止，尚未提交,现有中文/翻译,服务已停止，尚未提交,src/server/automationEngine.ts:362
+NT0626,服务端与协议错误,,服务在提交前退出，请按需重试,现有中文/翻译,服务在提交前退出，请按需重试,src/server/automationEngine.ts:383
+NT0627,服务端与协议错误,,该回合超过 2000 个历史项目，请在 Codex CLI 中查看。,现有中文/翻译,该回合超过 2000 个历史项目，请在 Codex CLI 中查看。,src/server/threadHistory.ts:208
+NT0628,服务端与协议错误,,该回合内容超过 8 MB，请在 Codex CLI 中查看。,现有中文/翻译,该回合内容超过 8 MB，请在 Codex CLI 中查看。,src/server/threadHistory.ts:197
+NT0629,服务端与协议错误,,该会话正在执行自动化，请等待本次运行结束,现有中文/翻译,该会话正在执行自动化，请等待本次运行结束,src/server/codexAppServerBridge.ts:6313
+NT0630,服务端与协议错误,,该消息当前不能编辑,现有中文/翻译,该消息当前不能编辑,src/server/deliveryStore.ts:267
+NT0631,服务端与协议错误,,该消息当前不能发送,现有中文/翻译,该消息当前不能发送,src/server/deliveryStore.ts:213
+NT0632,服务端与协议错误,,该消息已发送或已移除，请刷新队列,现有中文/翻译,该消息已发送或已移除，请刷新队列,src/server/codexAppServerBridge.ts:6827
+NT0633,服务端与协议错误,,该消息已送达或已被移除，请刷新状态,现有中文/翻译,该消息已送达或已被移除，请刷新状态,src/server/deliveryStore.ts:200
+NT0634,服务端与协议错误,,该消息状态已变化，请刷新队列,现有中文/翻译,该消息状态已变化，请刷新队列,src/server/codexAppServerBridge.ts:6825
+NT0635,服务端与协议错误,,该账号剩余额度已保留给受保护任务。,现有中文/翻译,该账号剩余额度已保留给受保护任务。,src/server/apiProxy/quotaProtection.ts:12
+NT0636,服务端与协议错误,,工作目录必须是已有文件夹,现有中文/翻译,工作目录必须是已有文件夹,src/server/projectDirectories.ts:43
+NT0637,服务端与协议错误,,工作目录必须填写绝对路径,现有中文/翻译,工作目录必须填写绝对路径,src/server/codexAppServerBridge.ts:9173；src/server/projectDirectories.ts:39
+NT0638,服务端与协议错误,,工作目录不存在或不可访问,现有中文/翻译,工作目录不存在或不可访问,src/server/automationEngine.ts:35
+NT0639,服务端与协议错误,,工作树名称必须为单个文件夹名。,中文审核译文；当前源码为英文,Worktree name must be a single folder name,src/server/codexAppServerBridge.ts:8576
+NT0640,服务端与协议错误,观察记录保存失败，重启后可能丢失。,观察记录保存失败；刷新可读内存记录，重启后可能缺失。,现有中文/翻译,观察记录保存失败；刷新可读内存记录，重启后可能缺失。,src/server/processActivityStore.ts:166
+NT0641,服务端与协议错误,,观察记录格式无效,现有中文/翻译,观察记录格式无效,src/server/processActivityStore.ts:34
+NT0642,服务端与协议错误,,还原文件改动失败。,中文审核译文；当前源码为英文,Failed to revert file changes,src/server/codexAppServerBridge.ts:8310
+NT0643,服务端与协议错误,,核对期间运行状态已变化，请稍后重试,现有中文/翻译,核对期间运行状态已变化，请稍后重试,src/server/codexAppServerBridge.ts:6597
+NT0644,服务端与协议错误,,后台终端查询繁忙，请稍后重试,现有中文/翻译,后台终端查询繁忙，请稍后重试,src/server/backgroundTerminalReader.ts:77
+NT0645,服务端与协议错误,,后台终端超过 200 项，当前无法完整核对列表,现有中文/翻译,后台终端超过 200 项，当前无法完整核对列表,src/server/backgroundTerminalReader.ts:71
+NT0646,服务端与协议错误,,后台终端分页未前进，请重试,现有中文/翻译,后台终端分页未前进，请重试,src/server/backgroundTerminalReader.ts:67
+NT0647,服务端与协议错误,,后台终端分页响应无效,现有中文/翻译,后台终端分页响应无效,src/server/backgroundTerminalReader.ts:61
+NT0648,服务端与协议错误,,后台终端核对超时，请稍后重试,现有中文/翻译,后台终端核对超时，请稍后重试,src/server/backgroundTerminalReader.ts:8；src/server/backgroundTerminalReader.ts:13
+NT0649,服务端与协议错误,,后台终端核对响应无效,现有中文/翻译,后台终端核对响应无效,src/server/backgroundTerminalReader.ts:15
+NT0650,服务端与协议错误,,后台终端列表无效,现有中文/翻译,后台终端列表无效,src/server/backgroundTerminalReader.ts:40
+NT0651,服务端与协议错误,,后续请求将在等待窗口结束后重试。,现有中文/翻译,后续请求将在等待窗口结束后重试。,src/server/apiProxy/component.ts:176
+NT0652,服务端与协议错误,,忽略标记参数无效,现有中文/翻译,忽略标记参数无效,src/server/codexAppServerBridge.ts:9443
+NT0653,服务端与协议错误,,忽略标记读取失败,现有中文/翻译,忽略标记读取失败,src/server/ignoredQuotaErrors.ts:16
+NT0654,服务端与协议错误,,回调 URL 必须使用 localhost。,中文审核译文；当前源码为英文,The callback URL must use localhost.,src/server/accountAuthCoordinator.ts:434
+NT0655,服务端与协议错误,,会话分页未前进，暂不能切换账号,现有中文/翻译,会话分页未前进，暂不能切换账号,src/server/codexAppServerBridge.ts:6571
+NT0656,服务端与协议错误,,会话或回合 ID 无效,现有中文/翻译,会话或回合 ID 无效,src/server/ignoredQuotaErrors.ts:37
+NT0657,服务端与协议错误,,会话列表游标重复，请重试搜索。,现有中文/翻译,会话列表游标重复，请重试搜索。,src/server/threadSearch.ts:86
+NT0658,服务端与协议错误,,会话仍在更新，请重试搜索。,现有中文/翻译,会话仍在更新，请重试搜索。,src/server/threadSearch.ts:205
+NT0659,服务端与协议错误,,会话尚未空闲或未载入，请刷新会话后再压缩。,现有中文/翻译,会话尚未空闲或未载入，请刷新会话后再压缩。,src/server/threadCompactionGate.ts:34
+NT0660,服务端与协议错误,,会话运行状态未知，暂不能切换账号,现有中文/翻译,会话运行状态未知，暂不能切换账号,src/server/codexAppServerBridge.ts:6560
+NT0661,服务端与协议错误,,会话运行资源已满，请先结束一个活动会话后重试,现有中文/翻译,会话运行资源已满，请先结束一个活动会话后重试,src/server/codexAppServerBridge.ts:6352
+NT0662,服务端与协议错误,,获取技能中心失败。,中文审核译文；当前源码为英文,Failed to fetch skills hub,src/server/skillsRoutes.ts:551
+NT0663,服务端与协议错误,,获取连接器图标失败。,中文审核译文；当前源码为英文,Failed to fetch connector logo,src/server/codexAppServerBridge.ts:8345
+NT0664,服务端与协议错误,,获取连接器图标失败（{变量1}）。,中文审核译文；当前源码为英文模板,Connector logo fetch failed ({变量1}),src/server/codexAppServerBridge.ts:5443
+NT0665,服务端与协议错误,,获取SKILL.md失败。,中文审核译文；当前源码为英文,Failed to fetch SKILL.md,src/server/skillsRoutes.ts:597
+NT0666,服务端与协议错误,,激活调度器不可用,现有中文/翻译,激活调度器不可用,src/server/accountActivationScheduler.ts:49
+NT0667,服务端与协议错误,,激活调度状态保存失败，已停止执行,现有中文/翻译,激活调度状态保存失败，已停止执行,src/server/accountActivationScheduler.ts:67
+NT0668,服务端与协议错误,,激活回合未确认,现有中文/翻译,激活回合未确认,src/server/accountActivationSession.ts:111
+NT0669,服务端与协议错误,,激活会话已清理,现有中文/翻译,激活会话已清理,src/server/accountActivationSession.ts:133
+NT0670,服务端与协议错误,,激活计划保存失败,现有中文/翻译,激活计划保存失败,src/server/apiProxy/gateway.ts:660
+NT0671,服务端与协议错误,,激活计划文件损坏，已停止执行,现有中文/翻译,激活计划文件损坏，已停止执行,src/server/accountActivationScheduler.ts:56
+NT0672,服务端与协议错误,,激活凭据已过期,现有中文/翻译,激活凭据已过期,src/server/accountActivationSession.ts:66
+NT0673,服务端与协议错误,,激活请求未完成，不自动重发,现有中文/翻译,激活请求未完成，不自动重发,src/server/accountActivationRequest.ts:12；src/server/accountActivationRequest.ts:35
+NT0674,服务端与协议错误,激活结果未确认，不自动重发,激活未确认完成，已让出资源，不自动重发,现有中文/翻译,激活未确认完成，已让出资源，不自动重发,src/server/accountActivationRuntime.ts:39
+NT0675,服务端与协议错误,,激活响应无效，不自动重发,现有中文/翻译,激活响应无效，不自动重发,src/server/accountActivationRequest.ts:33
+NT0676,服务端与协议错误,,激活已中止,现有中文/翻译,激活已中止,src/server/accountActivationSession.ts:82
+NT0677,服务端与协议错误,,激活已中止，不自动重发,现有中文/翻译,激活已中止，不自动重发,src/server/accountActivationScheduler.ts:162
+NT0678,服务端与协议错误,,激活已中止或超时，不自动重发,现有中文/翻译,激活已中止或超时，不自动重发,src/server/accountActivationScheduler.ts:11
+NT0679,服务端与协议错误,,激活运行时不可用,现有中文/翻译,激活运行时不可用,src/server/accountActivationSession.ts:33；src/server/accountActivationSession.ts:79；src/server/accountActivationSession.ts:97
+NT0680,服务端与协议错误,,激活运行时已退出,现有中文/翻译,激活运行时已退出,src/server/accountActivationSession.ts:80
+NT0681,服务端与协议错误,,激活账号状态已变化，不自动重发,现有中文/翻译,激活账号状态已变化，不自动重发,src/server/accountActivationRuntime.ts:35
+NT0682,服务端与协议错误,,激活资源释放异常；本次不重发，继续后续计划,现有中文/翻译,激活资源释放异常；本次不重发，继续后续计划,src/server/accountActivationScheduler.ts:168
+NT0683,服务端与协议错误,,计划已变更或准备超时,现有中文/翻译,计划已变更或准备超时,src/server/accountActivationScheduler.ts:154
+NT0684,服务端与协议错误,技能已安装，但在本地找不到 {变量1}。,技能安装已完成，但在本地已安装技能中找不到 {变量1}。,中文审核译文；当前源码为英文模板,Skill install completed but {变量1} was not found in local installed skills,src/server/skillsRoutes.ts:618
+NT0685,服务端与协议错误,,加载当前账号失败。,中文审核译文；当前源码为英文,Failed to load the active account.,src/server/accountRoutes.ts:98
+NT0686,服务端与协议错误,,加载更早的会话消息失败。,中文审核译文；当前源码为英文,Failed to load earlier thread messages,src/server/codexAppServerBridge.ts:8059
+NT0687,服务端与协议错误,,加载账号失败。,中文审核译文；当前源码为英文,Failed to load accounts.,src/server/accountRoutes.ts:88
+NT0688,服务端与协议错误,,加载终端快捷命令失败。,中文审核译文；当前源码为英文,Failed to load terminal quick commands,src/server/codexAppServerBridge.ts:7747
+NT0689,服务端与协议错误,,结果不明的消息只能先核对，不能重新排队,现有中文/翻译,结果不明的消息只能先核对，不能重新排队,src/server/deliveryStore.ts:275
+NT0690,服务端与协议错误,,解决目标账号的问题后才能激活该账号。,中文审核译文；当前源码为英文,The target account cannot be activated until its account issue is resolved.,src/server/accountAuthCoordinator.ts:738
+NT0691,服务端与协议错误,,进程已对应另一条命令，请刷新后重新选择,现有中文/翻译,进程已对应另一条命令，请刷新后重新选择,src/server/backgroundTerminalReader.ts:91
+NT0692,服务端与协议错误,,旧队列包含冲突的发送 ID，迁移已停止,现有中文/翻译,旧队列包含冲突的发送 ID，迁移已停止,src/server/deliveryStore.ts:91
+NT0693,服务端与协议错误,,旧队列内容无效，已停止迁移,现有中文/翻译,旧队列内容无效，已停止迁移,src/server/codexAppServerBridge.ts:4778
+NT0694,服务端与协议错误,,旧会话超过 8 MB 回退上限，请使用支持原生分页的 Codex CLI。,现有中文/翻译,旧会话超过 8 MB 回退上限，请使用支持原生分页的 Codex CLI。,src/server/threadHistory.ts:62
+NT0695,服务端与协议错误,,旧会话缺少可核对的历史文件，无法加载全文回退。,现有中文/翻译,旧会话缺少可核对的历史文件，无法加载全文回退。,src/server/threadHistory.ts:60
+NT0696,服务端与协议错误,,旧会话响应超过 8 MB 回退上限。,现有中文/翻译,旧会话响应超过 8 MB 回退上限。,src/server/threadHistory.ts:77；src/server/threadHistory.ts:146
+NT0697,服务端与协议错误,,旧凭据连接仍在使用，请等待或关闭旧连接后重试。,现有中文/翻译,旧凭据连接仍在使用，请等待或关闭旧连接后重试。,src/server/apiProxy/component.ts:86
+NT0698,服务端与协议错误,,旧账号连接已撤销。,现有中文/翻译,旧账号连接已撤销。,src/server/accountAuthCoordinator.ts:663
+NT0699,服务端与协议错误,,旧账号探针已撤销。,现有中文/翻译,旧账号探针已撤销。,src/server/accountAuthCoordinator.ts:877
+NT0700,服务端与协议错误,,可能已经送达；停止跟踪不会中止已执行的任务,现有中文/翻译,可能已经送达；停止跟踪不会中止已执行的任务,src/server/deliveryStore.ts:293
+NT0701,服务端与协议错误,,历史观察记录无法读取；本次记录仅在内存中保留。,现有中文/翻译,历史观察记录无法读取；本次记录仅在内存中保留。,src/server/processActivityStore.ts:49
+NT0702,服务端与协议错误,,历史位置已变化，请刷新会话后重试。,现有中文/翻译,历史位置已变化，请刷新会话后重试。,src/server/threadHistory.ts:114
+NT0703,服务端与协议错误,,历史项目分页返回无效数据。,现有中文/翻译,历史项目分页返回无效数据。,src/server/threadHistory.ts:195
+NT0704,服务端与协议错误,,历史项目游标重复，请刷新后重试。,现有中文/翻译,历史项目游标重复，请刷新后重试。,src/server/threadHistory.ts:205
+NT0705,服务端与协议错误,,历史游标重复，请刷新后重试。,现有中文/翻译,历史游标重复，请刷新后重试。,src/server/threadHistory.ts:164
+NT0706,服务端与协议错误,,连接测试失败，请检查地址、模型和凭据,现有中文/翻译,连接测试失败，请检查地址、模型和凭据,src/server/customConnectionStore.ts:109
+NT0707,服务端与协议错误,,连接配置已变化，请重新发送,现有中文/翻译,连接配置已变化，请重新发送,src/server/codexAppServerBridge.ts:7377
+NT0708,服务端与协议错误,,连接器图标响应缺少图像数据。,中文审核译文；当前源码为英文,Connector logo response was missing image data,src/server/codexAppServerBridge.ts:5451
+NT0709,服务端与协议错误,,连接数已达上限。,现有中文/翻译,连接数已达上限。,src/server/apiProxy/activity.ts:32
+NT0710,服务端与协议错误,,连接正在使用，请等待任务完成,现有中文/翻译,连接正在使用，请等待任务完成,src/server/codexAppServerBridge.ts:7405
+NT0711,服务端与协议错误,,链接登录进程已结束，请重新开始登录。,现有中文/翻译,链接登录进程已结束，请重新开始登录。,src/server/accountAuthCoordinator.ts:521
+NT0712,服务端与协议错误,,列出分支失败。,中文审核译文；当前源码为英文,Failed to list branches,src/server/codexAppServerBridge.ts:8693
+NT0713,服务端与协议错误,,另一个进程正在管理此 CODEX_HOME 的发送记录,现有中文/翻译,另一个进程正在管理此 CODEX_HOME 的发送记录,src/server/deliveryStore.ts:77
+NT0714,服务端与协议错误,,另一个进程正在管理账号激活计划,现有中文/翻译,另一个进程正在管理账号激活计划,src/server/accountActivationScheduler.ts:53
+NT0715,服务端与协议错误,自动化等待其他实例释放调度锁,另一个实例持有调度锁；本实例等待锁释放后再执行自动化,现有中文/翻译,另一个实例持有调度锁；本实例等待锁释放后再执行自动化,src/server/automationEngine.ts:91
+NT0716,服务端与协议错误,,另一项变更正在进行。,现有中文/翻译,另一项变更正在进行。,src/server/apiProxy/gateway.ts:682
+NT0717,服务端与协议错误,,另一项账号变更正在进行。,现有中文/翻译,另一项账号变更正在进行。,src/server/accountAuthCoordinator.ts:1022
+NT0718,服务端与协议错误,,漏跑超过 24 小时，请按需手动补跑,现有中文/翻译,漏跑超过 24 小时，请按需手动补跑,src/server/automationEngine.ts:283
+NT0719,服务端与协议错误,,轮换密钥失败。,中文审核译文；当前源码为英文,Failed to rotate key,src/server/codexAppServerBridge.ts:7614
+NT0720,服务端与协议错误,,没有可用的当前账号凭据。,中文审核译文；当前源码为英文,No active account credential is available.,src/server/accountAuthCoordinator.ts:643；src/server/accountAuthCoordinator.ts:654
+NT0721,服务端与协议错误,,没有可用的会话日志。,中文审核译文；当前源码为英文,No session log available,src/server/codexAppServerBridge.ts:8264
+NT0722,服务端与协议错误,,没有可用的免费密钥。,中文审核译文；当前源码为英文,No free keys available,src/server/codexAppServerBridge.ts:7495；src/server/codexAppServerBridge.ts:7605
+NT0723,服务端与协议错误,,没有可用于获取连接器图标的认证令牌。,中文审核译文；当前源码为英文,No auth token available for connector logo,src/server/codexAppServerBridge.ts:5431
+NT0724,服务端与协议错误,,没有可用于转写的认证令牌。,中文审核译文；当前源码为英文,No auth token available for transcription,src/server/codexAppServerBridge.ts:8318
+NT0725,服务端与协议错误,,每次最多读取 100 个会话目标,现有中文/翻译,每次最多读取 100 个会话目标,src/server/codexAppServerBridge.ts:9467；src/server/threadGoalReader.ts:23
+NT0726,服务端与协议错误,,每次最多读取 100 个会话状态,现有中文/翻译,每次最多读取 100 个会话状态,src/server/codexAppServerBridge.ts:9456；src/server/sidebarThreadStatusReader.ts:67
+NT0727,服务端与协议错误,,每页数量必须为 1 至 100,现有中文/翻译,每页数量必须为 1 至 100,src/server/automationHistory.ts:67
+NT0728,服务端与协议错误,,密码无效。,中文审核译文；当前源码为英文,Invalid password,src/server/authMiddleware.ts:260
+NT0729,服务端与协议错误,,命令在 {变量1} 毫秒后超时（{变量2} {变量3}）。,中文审核译文；当前源码为英文模板,Command timed out after {变量1}ms ({变量2} {变量3}),src/server/codexAppServerBridge.ts:3719；src/server/skillsRoutes.ts:137；src/server/skillsRoutes.ts:178
+NT0730,服务端与协议错误,,命令执行失败（{变量1} {变量2}）{变量3},中文审核译文；当前源码为英文模板,Command failed ({变量1} {变量2}){变量3},src/server/codexAppServerBridge.ts:3728；src/server/codexAppServerBridge.ts:3786；src/server/codexAppServerBridge.ts:4028；src/server/reviewGit.ts:160；src/server/reviewGit.ts:168；src/server/reviewGit.ts:191；src/server/skillsRoutes.ts:157；src/server/skillsRoutes.ts:198
+NT0731,服务端与协议错误,,命令执行失败（git diff --no-index -- /dev/null {变量1}）{变量2},中文审核译文；当前源码为英文模板,Command failed (git diff --no-index -- /dev/null {变量1}){变量2},src/server/reviewGit.ts:334
+NT0732,服务端与协议错误,,模型不可用；请检查模型配置后重试,现有中文/翻译,模型不可用；请检查模型配置后重试,src/server/automationEngine.ts:34
+NT0733,服务端与协议错误,,模型目录不可用，请填写模型名,现有中文/翻译,模型目录不可用，请填写模型名,src/server/customConnectionStore.ts:91；src/server/customConnectionStore.ts:95
+NT0734,服务端与协议错误,,目标账号已移除。,现有中文/翻译,目标账号已移除。,src/server/accountAuthCoordinator.ts:745；src/server/accountAuthCoordinator.ts:764
+NT0735,服务端与协议错误,,内部线程 ID 无效。,中文审核译文；当前源码为英文,Invalid thread id,src/server/telegramThreadBridge.ts:583
+NT0736,服务端与协议错误,,凭据需要刷新，跳过本次激活。,现有中文/翻译,凭据需要刷新，跳过本次激活。,src/server/accountAuthCoordinator.ts:279
+NT0737,服务端与协议错误,,启动账号登录失败。,中文审核译文；当前源码为英文,Failed to start account login.,src/server/accountRoutes.ts:155
+NT0738,服务端与协议错误,,前一响应上下文不可用，请重连并发送完整上下文。,现有中文/翻译,前一响应上下文不可用，请重连并发送完整上下文。,src/server/apiProxy/gateway.ts:231
+NT0739,服务端与协议错误,,切换免费模式失败。,中文审核译文；当前源码为英文,Failed to toggle free mode,src/server/codexAppServerBridge.ts:7540
+NT0740,服务端与协议错误,,切换账号前，请先完成运行中的回合、队列消息和待处理请求。,中文审核译文；当前源码为英文,"Finish active turns, queued messages, and pending requests before switching accounts.",src/server/accountAuthCoordinator.ts:995
+NT0741,服务端与协议错误,,切换账号失败。,中文审核译文；当前源码为英文,Failed to switch account.,src/server/accountRoutes.ts:200
+NT0742,服务端与协议错误,,请等待当前回合结束后再撤回历史。,现有中文/翻译,请等待当前回合结束后再撤回历史。,src/server/threadHistory.ts:223
+NT0743,服务端与协议错误,,请检查请求参数。,现有中文/翻译,请检查请求参数。,src/server/apiProxy/component.ts:176
+NT0744,服务端与协议错误,,请求必须是 JSON 对象。,现有中文/翻译,请求必须是 JSON 对象。,src/server/apiProxy/gateway.ts:226
+NT0745,服务端与协议错误,,请求超时,现有中文/翻译,请求超时,src/server/automationEngine.ts:45
+NT0746,服务端与协议错误,,请求超时；请打开执行会话核对结果,现有中文/翻译,请求超时；请打开执行会话核对结果,src/server/automationEngine.ts:37
+NT0747,服务端与协议错误,,请求内容超过大小限制。,现有中文/翻译,请求内容超过大小限制。,src/server/apiProxy/gateway.ts:49
+NT0748,服务端与协议错误,,请求体必须是 JSON 对象。,现有中文/翻译,请求体必须是 JSON 对象。,src/server/apiProxy/gateway.ts:56
+NT0749,服务端与协议错误,,请求体无效：应包含 method 和可选的 params。,中文审核译文；当前源码为英文,"Invalid body: expected { method, params? }",src/server/codexAppServerBridge.ts:7853
+NT0750,服务端与协议错误,,请求体无效：应为对象。,中文审核译文；当前源码为英文,Invalid body: expected object,src/server/codexAppServerBridge.ts:8824；src/server/codexAppServerBridge.ts:9001；src/server/codexAppServerBridge.ts:9050；src/server/reviewGit.ts:926
+NT0751,服务端与协议错误,,请求体无效。,中文审核译文；当前源码为英文,Invalid request body,src/server/authMiddleware.ts:254
+NT0752,服务端与协议错误,,请求已完成；额度待同步,现有中文/翻译,请求已完成；额度待同步,src/server/accountActivationScheduler.ts:158
+NT0753,服务端与协议错误,请求已完成；额度同步失败,请求已完成；额度同步失败，不重发,现有中文/翻译,请求已完成；额度同步失败，不重发,src/server/accountActivationRuntime.ts:53；src/server/accountActivationScheduler.ts:178
+NT0754,服务端与协议错误,,请求已完成；额度已同步，5 小时窗口尚未确认,现有中文/翻译,请求已完成；额度已同步，5 小时窗口尚未确认,src/server/accountActivationRuntime.ts:57
+NT0755,服务端与协议错误,,请求已完成；额度已同步，5 小时窗口已确认,现有中文/翻译,请求已完成；额度已同步，5 小时窗口已确认,src/server/accountActivationRuntime.ts:56
+NT0756,服务端与协议错误,,请求已完成；账号忙碌，额度同步已跳过,现有中文/翻译,请求已完成；账号忙碌，额度同步已跳过,src/server/accountActivationRuntime.ts:50
+NT0757,服务端与协议错误,,请求在 {变量1} 毫秒后超时。,中文审核译文；当前源码为英文模板,request timed out after {变量1}ms,src/server/codexAppServerBridge.ts:2335
+NT0758,服务端与协议错误,,请求帧无效。,现有中文/翻译,请求帧无效。,src/server/apiProxy/gateway.ts:575
+NT0759,服务端与协议错误,,请输入有效的 Base URL,现有中文/翻译,请输入有效的 Base URL,src/server/customConnectionStore.ts:73；src/server/customConnectionStore.ts:74
+NT0760,服务端与协议错误,,请填写别名、API key 和有效模型,现有中文/翻译,请填写别名、API key 和有效模型,src/server/customConnectionStore.ts:75
+NT0761,服务端与协议错误,,请先保存Telegram设置，并与机器人开始会话。,现有中文/翻译,请先保存Telegram设置，并与机器人开始会话。,src/server/codexAppServerBridge.ts:9715
+NT0762,服务端与协议错误,,请先测试连接,现有中文/翻译,请先测试连接,src/server/customConnectionStore.ts:121
+NT0763,服务端与协议错误,,请先处理 Codex 后台终端，再切换提供方或密钥。,现有中文/翻译,请先处理 Codex 后台终端，再切换供应方或密钥。,src/server/codexAppServerBridge.ts:7474
+NT0764,服务端与协议错误,,请先处理 Codex 后台终端，再切换账号。,现有中文/翻译,请先处理 Codex 后台终端，再切换账号。,src/server/accountAuthCoordinator.ts:994
+NT0765,服务端与协议错误,,请先处理正在发送或等待确认的消息,现有中文/翻译,请先处理正在发送或等待确认的消息,src/server/deliveryStore.ts:283
+NT0766,服务端与协议错误,,请先登录并选择账号。,现有中文/翻译,请先登录并选择账号。,src/server/accountExecution.ts:15
+NT0767,服务端与协议错误,,请先结束当前任务并处理队列，再切换提供方或密钥,现有中文/翻译,请先结束当前任务并处理队列，再切换供应方或密钥,src/server/codexAppServerBridge.ts:7475
+NT0768,服务端与协议错误,,请先启用并保存通知配置。,现有中文/翻译,请先启用并保存通知配置。,src/server/accountNotificationService.ts:109
+NT0769,服务端与协议错误,,请先启用代理。,现有中文/翻译,请先启用出口。,src/server/apiProxy/gateway.ts:624
+NT0770,服务端与协议错误,,请先确认所选账号与重置机会。,现有中文/翻译,请先确认所选账号与重置机会。,src/server/accountRoutes.ts:107
+NT0771,服务端与协议错误,,请选择可用账号。,现有中文/翻译,请选择可用账号。,src/server/accountAuthCoordinator.ts:541
+NT0772,服务端与协议错误,,请选择链接或 Device 登录。,现有中文/翻译,请选择链接或 Device 登录。,src/server/accountRoutes.ts:147
+NT0773,服务端与协议错误,,请选择已登录的 Codex 账号。,现有中文/翻译,请选择已登录的 Codex 账号。,src/server/accountAuthCoordinator.ts:276
+NT0774,服务端与协议错误,,取消账号登录失败。,中文审核译文；当前源码为英文,Failed to cancel account login.,src/server/accountRoutes.ts:183
+NT0775,服务端与协议错误,,全局状态文件无效，已停止队列迁移,现有中文/翻译,全局状态文件无效，已停止队列迁移,src/server/codexAppServerBridge.ts:4792
+NT0776,服务端与协议错误,,缺少 basePath。,中文审核译文；当前源码为英文,Missing basePath,src/server/codexAppServerBridge.ts:9277
+NT0777,服务端与协议错误,,缺少 botToken。,中文审核译文；当前源码为英文,Missing botToken,src/server/codexAppServerBridge.ts:9647
+NT0778,服务端与协议错误,,缺少 branch。,中文审核译文；当前源码为英文,Missing branch,src/server/codexAppServerBridge.ts:8834；src/server/codexAppServerBridge.ts:8869；src/server/codexAppServerBridge.ts:9012
+NT0779,服务端与协议错误,,缺少 clone destination folder。,中文审核译文；当前源码为英文,Missing clone destination folder,src/server/codexAppServerBridge.ts:2144
+NT0780,服务端与协议错误,,缺少 Codex 网页界面资源。,中文审核译文；当前源码为英文,Codex web UI assets are missing.,src/server/httpServer.ts:253
+NT0781,服务端与协议错误,,缺少 commit。,中文审核译文；当前源码为英文,Missing commit,src/server/codexAppServerBridge.ts:9016；src/server/reviewGit.ts:808
+NT0782,服务端与协议错误,,缺少 custom endpoint API key。,中文审核译文；当前源码为英文,Missing custom endpoint API key,src/server/customEndpointProxy.ts:24
+NT0783,服务端与协议错误,,缺少 cwd。,中文审核译文；当前源码为英文,Missing cwd,src/server/codexAppServerBridge.ts:7741；src/server/codexAppServerBridge.ts:8701；src/server/codexAppServerBridge.ts:8782；src/server/codexAppServerBridge.ts:8830；src/server/codexAppServerBridge.ts:8865；src/server/codexAppServerBridge.ts:8913；src/server/codexAppServerBridge.ts:9008；src/server/codexAppServerBridge.ts:9100；src/server/codexAppServerBridge.ts:9317；src/server/reviewGit.ts:937；src/server/reviewGit.ts:978；src/server/reviewGit.ts:1003；src/server/reviewGit.ts:1033
+NT0784,服务端与协议错误,,缺少 GitHub repository URL。,中文审核译文；当前源码为英文,Missing GitHub repository URL,src/server/codexAppServerBridge.ts:2113
+NT0785,服务端与协议错误,,缺少 id。,中文审核译文；当前源码为英文,Missing id,src/server/codexAppServerBridge.ts:9541
+NT0786,服务端与协议错误,,缺少 multipart boundary。,中文审核译文；当前源码为英文,Missing multipart boundary,src/server/codexAppServerBridge.ts:5280
+NT0787,服务端与协议错误,,缺少 name or path。,中文审核译文；当前源码为英文,Missing name or path,src/server/skillsRoutes.ts:636
+NT0788,服务端与协议错误,,缺少 OpenCode Zen API key。,中文审核译文；当前源码为英文,Missing OpenCode Zen API key,src/server/zenProxy.ts:44
+NT0789,服务端与协议错误,,缺少 OpenRouter API key。,中文审核译文；当前源码为英文,Missing OpenRouter API key,src/server/openRouterProxy.ts:48
+NT0790,服务端与协议错误,,缺少 or invalid skill source。,中文审核译文；当前源码为英文,Missing or invalid skill source,src/server/skillsRoutes.ts:610
+NT0791,服务端与协议错误,,缺少 owner or name。,中文审核译文；当前源码为英文,Missing owner or name,src/server/skillsRoutes.ts:580
+NT0792,服务端与协议错误,,缺少 parent。,中文审核译文；当前源码为英文,Missing parent,src/server/codexAppServerBridge.ts:9140
+NT0793,服务端与协议错误,,缺少 patch payload。,中文审核译文；当前源码为英文,Missing patch payload,src/server/reviewGit.ts:960
+NT0794,服务端与协议错误,,缺少 path。,中文审核译文；当前源码为英文,Missing path,src/server/codexAppServerBridge.ts:9190；src/server/codexAppServerBridge.ts:9230；src/server/codexAppServerBridge.ts:9372
+NT0795,服务端与协议错误,,缺少 project ZIP。,中文审核译文；当前源码为英文,Missing project ZIP,src/server/codexAppServerBridge.ts:9158
+NT0796,服务端与协议错误,,缺少 projectName。,中文审核译文；当前源码为英文,Missing projectName,src/server/codexAppServerBridge.ts:9502；src/server/codexAppServerBridge.ts:9633
+NT0797,服务端与协议错误,,缺少 sessionId。,中文审核译文；当前源码为英文,Missing sessionId,src/server/codexAppServerBridge.ts:7787；src/server/codexAppServerBridge.ts:7804；src/server/codexAppServerBridge.ts:7821
+NT0798,服务端与协议错误,,缺少 sha。,中文审核译文；当前源码为英文,Missing sha,src/server/codexAppServerBridge.ts:8917
+NT0799,服务端与协议错误,,缺少 sourceCwd。,中文审核译文；当前源码为英文,Missing sourceCwd,src/server/codexAppServerBridge.ts:8483；src/server/codexAppServerBridge.ts:8568；src/server/codexAppServerBridge.ts:8641
+NT0800,服务端与协议错误,,缺少 src。,中文审核译文；当前源码为英文,Missing src,src/server/codexAppServerBridge.ts:8335
+NT0801,服务端与协议错误,,缺少 threadId or cwd。,中文审核译文；当前源码为英文,Missing threadId or cwd,src/server/codexAppServerBridge.ts:7762
+NT0802,服务端与协议错误,,缺少 threadId or lastTurnId。,中文审核译文；当前源码为英文,Missing threadId or lastTurnId,src/server/codexAppServerBridge.ts:8082
+NT0803,服务端与协议错误,,缺少 threadId or turnId。,中文审核译文；当前源码为英文,Missing threadId or turnId,src/server/codexAppServerBridge.ts:8068
+NT0804,服务端与协议错误,,"缺少 threadId, turnId, or cwd。",中文审核译文；当前源码为英文,"Missing threadId, turnId, or cwd",src/server/codexAppServerBridge.ts:8251
+NT0805,服务端与协议错误,,缺少 threadId。,中文审核译文；当前源码为英文,Missing threadId,src/server/codexAppServerBridge.ts:7832；src/server/codexAppServerBridge.ts:8044；src/server/codexAppServerBridge.ts:8094；src/server/codexAppServerBridge.ts:8124；src/server/codexAppServerBridge.ts:8135；src/server/codexAppServerBridge.ts:9488；src/server/codexAppServerBridge.ts:9620；src/server/terminalManager.ts:129
+NT0806,服务端与协议错误,,缺少 worktreeName。,中文审核译文；当前源码为英文,Missing worktreeName,src/server/codexAppServerBridge.ts:8572
+NT0807,服务端与协议错误,,缺少编辑标识,现有中文/翻译,缺少编辑标识,src/server/deliveryStore.ts:260
+NT0808,服务端与协议错误,,缺少回合 ID，无法确认送达,现有中文/翻译,缺少回合 ID，无法确认送达,src/server/deliveryStore.ts:241
+NT0809,服务端与协议错误,,缺少会话目录,现有中文/翻译,缺少会话目录,src/server/codexAppServerBridge.ts:7966
+NT0810,服务端与协议错误,,缺少进程或命令项 ID,现有中文/翻译,缺少进程或命令项 ID,src/server/codexAppServerBridge.ts:7977
+NT0811,服务端与协议错误,,缺少历史游标，请刷新会话后重试。,现有中文/翻译,缺少历史游标，请刷新会话后重试。,src/server/threadHistory.ts:157
+NT0812,服务端与协议错误,,缺少命令项 ID,现有中文/翻译,缺少命令项 ID,src/server/codexAppServerBridge.ts:7983
+NT0813,服务端与协议错误,,缺少任务 ID,现有中文/翻译,缺少任务 ID,src/server/codexAppServerBridge.ts:8025
+NT0814,服务端与协议错误,,缺少线程 ID,现有中文/翻译,缺少会话 ID,src/server/codexAppServerBridge.ts:6815；src/server/threadCompactionGate.ts:22；src/threadQueue.ts:71
+NT0815,服务端与协议错误,,缺少消息版本，请刷新队列,现有中文/翻译,缺少消息版本，请刷新队列,src/server/codexAppServerBridge.ts:6832
+NT0816,服务端与协议错误,,缺少有效的 API key。,现有中文/翻译,缺少有效的 API key。,src/server/apiProxy/gateway.ts:204
+NT0817,服务端与协议错误,,缺少有效的执行目标,现有中文/翻译,缺少有效的执行目标,src/server/automationEngine.ts:164
+NT0818,服务端与协议错误,,缺少有效线程 ID,现有中文/翻译,缺少有效会话 ID,src/server/codexAppServerBridge.ts:7950
+NT0819,服务端与协议错误,认证失败，请检查当前账号后重试,认证失败；请检查当前账号，然后手动重试,现有中文/翻译,认证失败；请检查当前账号，然后手动重试,src/server/automationEngine.ts:33
+NT0820,服务端与协议错误,,任务定义无效，已取消待执行记录,现有中文/翻译,任务定义无效，已取消待执行记录,src/server/automationEngine.ts:181
+NT0821,服务端与协议错误,,任务已删除,现有中文/翻译,任务已删除,src/server/automationEngine.ts:185
+NT0822,服务端与协议错误,,任务已修改,现有中文/翻译,任务已修改,src/server/automationEngine.ts:311
+NT0823,服务端与协议错误,,任务已修改，旧的待执行记录已取消,现有中文/翻译,任务已修改，旧的待执行记录已取消,src/server/automationEngine.ts:171
+NT0824,服务端与协议错误,,仍有活动请求，已保留原路由并恢复接入。,现有中文/翻译,仍有活动请求，已保留原路由并恢复接入。,src/server/apiProxy/activity.ts:87
+NT0825,服务端与协议错误,,上传流错误,中文审核译文；当前源码为英文,Upload stream error,src/server/codexAppServerBridge.ts:5319
+NT0826,服务端与协议错误,,上传失败,中文审核译文；当前源码为英文,Upload failed,src/server/codexAppServerBridge.ts:5315
+NT0827,服务端与协议错误,,上游连接暂时不可用,现有中文/翻译,上游连接暂时不可用,src/server/automationEngine.ts:38
+NT0828,服务端与协议错误,,上游请求头 Hook 错误,中文审核译文；当前源码为英文,Upstream header hook error,src/server/unifiedResponsesProxy.ts:544
+NT0829,服务端与协议错误,,上游状态无法核对，请检查执行会话,现有中文/翻译,上游状态无法核对，请检查执行会话,src/server/automationEngine.ts:402
+NT0830,服务端与协议错误,待处理发送记录超过 500 条上限,尚未处理的发送记录超过 500 条，请先处理现有记录,现有中文/翻译,尚未处理的发送记录超过 500 条，请先处理现有记录,src/server/deliveryStore.ts:126
+NT0831,服务端与协议错误,待处理发送内容超过 32 MB 上限,尚未处理的发送内容超过 32 MB，请先处理现有记录,现有中文/翻译,尚未处理的发送内容超过 32 MB，请先处理现有记录,src/server/deliveryStore.ts:128
+NT0832,服务端与协议错误,,尚未生成持久化记录。,中文审核译文；当前源码为英文,not materialized yet,src/server/codexAppServerBridge.ts:914
+NT0833,服务端与协议错误,,设置自定义密钥失败。,中文审核译文；当前源码为英文,Failed to set custom key,src/server/codexAppServerBridge.ts:7651
+NT0834,服务端与协议错误,,设置自定义提供方失败。,中文审核译文；当前源码为英文,Failed to set custom provider,src/server/codexAppServerBridge.ts:7702
+NT0835,服务端与协议错误,,审阅操作级别无效。,中文审核译文；当前源码为英文,Invalid review action level,src/server/reviewGit.ts:946
+NT0836,服务端与协议错误,,审阅操作无效。,中文审核译文；当前源码为英文,Invalid review action,src/server/reviewGit.ts:943
+NT0837,服务端与协议错误,,生成项目名称建议失败。,中文审核译文；当前源码为英文,Failed to compute project name suggestion,src/server/codexAppServerBridge.ts:9306
+NT0838,服务端与协议错误,,手动请求时间,现有中文/翻译,手动请求时间,src/server/automationTime.ts:14
+NT0839,服务端与协议错误,,授权后账号验证失败，请重新登录。,现有中文/翻译,授权后账号验证失败，请重新登录。,src/server/accountAuthCoordinator.ts:530
+NT0840,服务端与协议错误,,数据载荷无效。,中文审核译文；当前源码为英文,invalid payload,src/server/codexAppServerBridge.ts:2370
+NT0841,服务端与协议错误,,刷新 ChatGPT 令牌失败，HTTP {变量1}。,中文审核译文；当前源码为英文模板,ChatGPT token refresh failed with HTTP {变量1},src/server/accountTokenRefresh.ts:105
+NT0842,服务端与协议错误,,刷新账号额度失败。,中文审核译文；当前源码为英文,Failed to refresh account quota.,src/server/accountAuthCoordinator.ts:625；src/server/accountRoutes.ts:132
+NT0843,服务端与协议错误,,刷新账号凭据失败。,中文审核译文；当前源码为英文,Failed to refresh account credentials.,src/server/accountAppServerProbe.ts:94
+NT0844,服务端与协议错误,,刷新ChatGPT 认证令牌失败。,中文审核译文；当前源码为英文,Failed to refresh ChatGPT auth tokens,src/server/codexAppServerBridge.ts:6212
+NT0845,服务端与协议错误,,搜索内容不能超过 500 个字符。,现有中文/翻译,搜索内容不能超过 500 个字符。,src/server/threadSearch.ts:199
+NT0846,服务端与协议错误,,所选连接不支持此接口。,中文审核译文；当前源码为英文,This endpoint is not supported by the selected connection,src/server/customConnectionProxy.ts:14
+NT0847,服务端与协议错误,,所选账号连接已关闭。,现有中文/翻译,所选账号连接已关闭。,src/server/apiProxy/component.ts:69
+NT0848,服务端与协议错误,,所选账号仍有活动请求，已保留原路由。,现有中文/翻译,所选账号仍有活动请求，已保留原路由。,src/server/apiProxy/activity.ts:70
+NT0849,服务端与协议错误,,所选账号需要处理认证或额度问题。,现有中文/翻译,所选账号需要处理认证或额度问题。,src/server/accountAuthCoordinator.ts:287
+NT0850,服务端与协议错误,,所选账号已移除，请重新选择,现有中文/翻译,所选账号已移除，请重新选择,src/server/accountActivationScheduler.ts:95
+NT0851,服务端与协议错误,,所选账号正在变更，请稍后重试。,现有中文/翻译,所选账号正在变更，请稍后重试。,src/server/accountAuthCoordinator.ts:272；src/server/accountAuthCoordinator.ts:1005；src/server/apiProxy/component.ts:59；src/server/apiProxy/gateway.ts:206；src/server/apiProxy/gateway.ts:554
+NT0852,服务端与协议错误,,提供方 /models 请求失败。,中文审核译文；当前源码为英文,provider /models request failed,src/server/codexAppServerBridge.ts:2333
+NT0853,服务端与协议错误,,提供方 /models 响应缺少 data/models 数组。,中文审核译文；当前源码为英文,provider /models payload is missing a data/models array,src/server/codexAppServerBridge.ts:2208
+NT0854,服务端与协议错误,,提供方 /models 响应数据无效。,中文审核译文；当前源码为英文,provider /models payload was invalid,src/server/codexAppServerBridge.ts:2368
+NT0855,服务端与协议错误,,提供方 /models URL 无效。,中文审核译文；当前源码为英文,provider /models URL was invalid,src/server/codexAppServerBridge.ts:2318
+NT0856,服务端与协议错误,提交结果待核对,提交结果待核对；不会自动重复提交,现有中文/翻译,提交结果待核对；不会自动重复提交,src/server/automationEngine.ts:373
+NT0857,服务端与协议错误,,提交消息失败,现有中文/翻译,提交消息失败,src/server/codexAppServerBridge.ts:9076
+NT0858,服务端与协议错误,,提示词路径无效。,中文审核译文；当前源码为英文,Invalid prompt path,src/server/codexAppServerBridge.ts:3676
+NT0859,服务端与协议错误,,停止操作正在处理，请先刷新状态,现有中文/翻译,停止操作正在处理，请先刷新状态,src/server/backgroundTerminalReader.ts:85
+NT0860,服务端与协议错误,,停止结果无法确认，请刷新状态,现有中文/翻译,停止结果无法确认，请刷新状态,src/server/backgroundTerminalReader.ts:94
+NT0861,服务端与协议错误,,通过 npx 运行时，请清除 npx 缓存并重新安装 codexapp。,中文审核译文；当前源码为英文,"If running with npx, clear the npx cache and reinstall codexapp.",src/server/httpServer.ts:256
+NT0862,服务端与协议错误,,通知配置无效，请检查URL、JSON请求体、占位符和时段。,现有中文/翻译,通知配置无效，请检查URL、JSON请求体、占位符和时段。,src/server/apiProxy/gateway.ts:651
+NT0863,服务端与协议错误,,通知失败：HTTP {变量1},现有中文/翻译,通知失败：HTTP {变量1},src/server/accountNotificationService.ts:220
+NT0864,服务端与协议错误,,通知状态版本无效,现有中文/翻译,通知状态版本无效,src/server/accountNotificationService.ts:31
+NT0865,服务端与协议错误,,同一发送 ID 的内容已变化，请刷新状态,现有中文/翻译,同一发送 ID 的内容已变化，请刷新状态,src/server/deliveryStore.ts:187
+NT0866,服务端与协议错误,统计读取失败，原文件已保留；本次统计暂存于内存。,统计数据无法读取，原文件已保留；代理可继续使用，本次统计暂存于内存。,现有中文/翻译,统计数据无法读取，原文件已保留；出口可继续使用，本次统计暂存于内存。,src/server/apiProxy/usage.ts:52
+NT0867,服务端与协议错误,统计写入失败，本次数据暂存于内存。,统计写入失败，本次数据暂存于内存；代理可继续使用。,现有中文/翻译,统计写入失败，本次数据暂存于内存；出口可继续使用。,src/server/apiProxy/usage.ts:138
+NT0868,服务端与协议错误,,完成账号登录失败。,中文审核译文；当前源码为英文,Failed to complete account login.,src/server/accountRoutes.ts:171
+NT0869,服务端与协议错误,,网关错误：无法解析上游响应。,中文审核译文；当前源码为英文,Bad gateway: failed to parse upstream response,src/server/unifiedResponsesProxy.ts:619
+NT0870,服务端与协议错误,,网络错误,中文审核译文；当前源码为英文,network error,src/server/codexAppServerBridge.ts:2335
+NT0871,服务端与协议错误,,为 {变量1} 应用补丁失败：{变量2},中文审核译文；当前源码为英文模板,Failed to apply patch for {变量1}: {变量2},src/server/codexAppServerBridge.ts:3319
+NT0872,服务端与协议错误,,未收到回合 ID，请核对发送状态,现有中文/翻译,未收到回合 ID，请核对发送状态,src/server/codexAppServerBridge.ts:6716
+NT0873,服务端与协议错误,,未找到,中文审核译文；当前源码为英文,Not found,src/server/frontendAssets.ts:36
+NT0874,服务端与协议错误,,未找到会话。发送 /newthread 创建一个。,中文审核译文；当前源码为英文,No threads found. Send /newthread to create one.,src/server/telegramThreadBridge.ts:634
+NT0875,服务端与协议错误,,未知错误。,中文审核译文；当前源码为英文,Unknown error,src/server/unifiedResponsesProxy.ts:637
+NT0876,服务端与协议错误,,未知桥接错误。,中文审核译文；当前源码为英文,Unknown bridge error,src/server/codexAppServerBridge.ts:9780
+NT0877,服务端与协议错误,,无法撤销未跟踪文件的补丁：{变量1},中文审核译文；当前源码为英文模板,Could not reverse patch for untracked file: {变量1},src/server/codexAppServerBridge.ts:3435
+NT0878,服务端与协议错误,,无法创建名称唯一的新会话目录。,中文审核译文；当前源码为英文,Unable to create a unique new chat folder,src/server/codexAppServerBridge.ts:2108
+NT0879,服务端与协议错误,,无法读取发送记录,现有中文/翻译,无法读取发送记录,src/server/codexAppServerBridge.ts:6879
+NT0880,服务端与协议错误,,无法读取会话日志。,中文审核译文；当前源码为英文,Could not read session log,src/server/codexAppServerBridge.ts:8291
+NT0881,服务端与协议错误,,无法读取会话状态,现有中文/翻译,无法读取会话状态,src/server/codexAppServerBridge.ts:6946
+NT0882,服务端与协议错误,,无法读取任务,现有中文/翻译,无法读取任务,src/server/automationEngine.ts:180
+NT0883,服务端与协议错误,,无法还原：{变量1},中文审核译文；当前源码为英文模板,Could not revert: {变量1},src/server/codexAppServerBridge.ts:3431
+NT0884,服务端与协议错误,,无法核对当前会话状态，请稍后重试,现有中文/翻译,无法核对当前会话状态，请稍后重试,src/server/codexAppServerBridge.ts:6551
+NT0885,服务端与协议错误,,无法恢复已删除文件：{变量1},中文审核译文；当前源码为英文模板,Could not restore deleted file: {变量1},src/server/codexAppServerBridge.ts:3449
+NT0886,服务端与协议错误,,无法恢复由命令修改的文件：{变量1},中文审核译文；当前源码为英文模板,Could not restore command-modified file: {变量1},src/server/codexAppServerBridge.ts:3470
+NT0887,服务端与协议错误,,无法计算有效的下次执行时间，请检查规则与时区,现有中文/翻译,无法计算有效的下次执行时间，请检查规则与时区,src/server/automationSchedule.ts:87
+NT0888,服务端与协议错误,,无法加载原生 PTY 支持。,中文审核译文；当前源码为英文,Native PTY support could not be loaded.,src/server/terminalManager.ts:391
+NT0889,服务端与协议错误,,无法确认反代组件退出。,现有中文/翻译,无法确认反代组件退出。,src/server/apiProxy/component.ts:198
+NT0890,服务端与协议错误,提交结果未确认，请先核对会话,无法确认提交结果，请检查会话后再决定是否重试,现有中文/翻译,无法确认提交结果，请检查会话后再决定是否重试,src/server/automationEngine.ts:388
+NT0891,服务端与协议错误,,无法确认账号长期额度，请刷新账号。,现有中文/翻译,无法确认账号长期限额，请刷新账号。,src/server/apiProxy/quotaProtection.ts:9
+NT0892,服务端与协议错误,,无法完整核对后台终端，暂不能切换账号,现有中文/翻译,无法完整核对后台终端，暂不能切换账号,src/server/codexAppServerBridge.ts:7119
+NT0893,服务端与协议错误,,无法为 {变量1} 应用补丁。,中文审核译文；当前源码为英文模板,Could not apply patch for {变量1},src/server/codexAppServerBridge.ts:3298
+NT0894,服务端与协议错误,,无效的 IANA 时区，例如 Asia/Shanghai,现有中文/翻译,无效的 IANA 时区，例如 Asia/Shanghai,src/server/automationSchedule.ts:10
+NT0895,服务端与协议错误,,无效的编辑内容,现有中文/翻译,无效的编辑内容,src/server/codexAppServerBridge.ts:6839
+NT0896,服务端与协议错误,,无效的到期时间。,现有中文/翻译,无效的到期时间。,src/server/apiProxy/store.ts:155
+NT0897,服务端与协议错误,,无效的队列操作,现有中文/翻译,无效的队列操作,src/server/codexAppServerBridge.ts:6849；src/threadQueue.ts:93
+NT0898,服务端与协议错误,,无效的发送 ID,现有中文/翻译,无效的发送 ID,src/server/deliveryStore.ts:29
+NT0899,服务端与协议错误,,无效的发送方式,现有中文/翻译,无效的发送方式,src/server/deliveryStore.ts:176
+NT0900,服务端与协议错误,,无效的发送内容,现有中文/翻译,无效的发送内容,src/server/deliveryStore.ts:174
+NT0901,服务端与协议错误,,无效的发送内容或缺少账号快照，请刷新页面,现有中文/翻译,无效的发送内容或缺少账号快照，请刷新页面,src/server/codexAppServerBridge.ts:6791
+NT0902,服务端与协议错误,,无效的历史分页游标,现有中文/翻译,无效的历史分页游标,src/server/automationHistory.ts:69
+NT0903,服务端与协议错误,,无效的排队消息或缺少账号快照，请刷新页面,现有中文/翻译,无效的排队消息或缺少账号快照，请刷新页面,src/server/codexAppServerBridge.ts:6820
+NT0904,服务端与协议错误,,线程ID无效,现有中文/翻译,会话ID无效,src/server/threadQuotaResume.ts:61
+NT0905,服务端与协议错误,,响应数据无效：应包含 result 或 error。,中文审核译文；当前源码为英文,"Invalid response payload: expected ""result"" or ""error""",src/server/codexAppServerBridge.ts:6494
+NT0906,服务端与协议错误,,响应数据无效：应为对象。,中文审核译文；当前源码为英文,Invalid response payload: expected object,src/server/codexAppServerBridge.ts:6469
+NT0907,服务端与协议错误,,响应数据无效：id 必须为整数。,中文审核译文；当前源码为英文,"Invalid response payload: ""id"" must be an integer",src/server/codexAppServerBridge.ts:6474
+NT0908,服务端与协议错误,,项目 AGENTS.md 是符号链接，请先改为项目独立文件再维护工作目录,现有中文/翻译,项目 AGENTS.md 是符号链接，请先改为项目独立文件再维护工作目录,src/server/projectDirectories.ts:50
+NT0909,服务端与协议错误,,项目 ZIP 本地文件头无效。,中文审核译文；当前源码为英文,Project ZIP local header is invalid,src/server/codexAppServerBridge.ts:1923
+NT0910,服务端与协议错误,,项目 ZIP 缺少中央目录。,中文审核译文；当前源码为英文,Project ZIP is missing a central directory,src/server/codexAppServerBridge.ts:1903
+NT0911,服务端与协议错误,,项目 ZIP 无效。,中文审核译文；当前源码为英文,Invalid project ZIP,src/server/codexAppServerBridge.ts:1882；src/server/codexAppServerBridge.ts:1887
+NT0912,服务端与协议错误,,项目 ZIP 中央目录无效。,中文审核译文；当前源码为英文,Project ZIP central directory is invalid,src/server/codexAppServerBridge.ts:1910
+NT0913,服务端与协议错误,,项目自动化的 cwd 必须为绝对路径。,中文审核译文；当前源码为英文,Project automation cwd must be an absolute path,src/server/codexAppServerBridge.ts:4526；src/server/codexAppServerBridge.ts:9603
+NT0914,服务端与协议错误,,消息尚未发送；请检查任务配置后重试,现有中文/翻译,消息尚未发送；请检查任务配置后重试,src/server/automationEngine.ts:378
+NT0915,服务端与协议错误,,消息状态已变化，请刷新后重试,现有中文/翻译,消息状态已变化，请刷新后重试,src/server/deliveryStore.ts:201
+NT0916,服务端与协议错误,,需要从账号面板重新认证。,中文审核译文；当前源码为英文,The account credential must be renewed from the account panel.,src/server/accountAuthStore.ts:180
+NT0917,服务端与协议错误,,需要认证,中文审核译文；当前源码为英文,authentication required,src/server/codexAppServerBridge.ts:904
+NT0918,服务端与协议错误,需要有效的 requestId,需要有效的 requestId 以避免重复提交,现有中文/翻译,需要有效的 requestId 以避免重复提交,src/server/automationEngine.ts:230
+NT0919,服务端与协议错误,,需要指定自动化任务,现有中文/翻译,需要指定自动化任务,src/server/automationHistory.ts:66
+NT0920,服务端与协议错误,,续跑标记参数无效,现有中文/翻译,续跑标记参数无效,src/server/codexAppServerBridge.ts:9431
+NT0921,服务端与协议错误,,续跑标记数量已达上限,现有中文/翻译,续跑标记数量已达上限,src/server/threadQuotaResume.ts:67
+NT0922,服务端与协议错误,,续跑标记文件格式无效,现有中文/翻译,续跑标记文件格式无效,src/server/threadQuotaResume.ts:34
+NT0923,服务端与协议错误,,续跑参数准备未完成，稍后重试,现有中文/翻译,续跑参数准备未完成，稍后重试,src/server/codexAppServerBridge.ts:7148
+NT0924,服务端与协议错误,,续跑提交失败，结果未确认,现有中文/翻译,续跑提交失败，结果未确认,src/server/threadQuotaResume.ts:159
+NT0925,服务端与协议错误,,续跑准备失败，请核对会话,现有中文/翻译,续跑准备失败，请核对会话,src/server/codexAppServerBridge.ts:7156
+NT0926,服务端与协议错误,,选择无效。,中文审核译文；当前源码为英文,Invalid selection,src/server/telegramThreadBridge.ts:577
+NT0927,服务端与协议错误,,压缩请求正在提交，请先检查结果。,现有中文/翻译,压缩请求正在提交，请先检查结果。,src/server/threadCompactionGate.ts:24
+NT0928,服务端与协议错误,,验证目标账号失败。,中文审核译文；当前源码为英文,Failed to validate the target account.,src/server/accountAuthCoordinator.ts:952
+NT0929,服务端与协议错误,,验证项目失败。,中文审核译文；当前源码为英文,Failed to validate project,src/server/codexAppServerBridge.ts:9107
+NT0930,服务端与协议错误,,移除提示词失败。,中文审核译文；当前源码为英文,Failed to remove prompt,src/server/codexAppServerBridge.ts:9379
+NT0931,服务端与协议错误,,移除账号失败。,中文审核译文；当前源码为英文,Failed to remove account.,src/server/accountRoutes.ts:212
+NT0932,服务端与协议错误,,已安装的技能无效。,中文审核译文；当前源码为英文,Installed skill is invalid,src/server/skillsRoutes.ts:221
+NT0933,服务端与协议错误,,已加载会话超过核对范围，请先处理后台任务,现有中文/翻译,已加载会话超过核对范围，请先处理后台任务,src/server/backgroundTerminalReader.ts:31
+NT0934,服务端与协议错误,,已加载会话分页未前进,现有中文/翻译,已加载会话分页未前进,src/server/backgroundTerminalReader.ts:29
+NT0935,服务端与协议错误,,已加载会话列表无效,现有中文/翻译,已加载会话列表无效,src/server/backgroundTerminalReader.ts:26
+NT0936,服务端与协议错误,,已有待执行记录，合并本次触发,现有中文/翻译,已有待执行记录，合并本次触发,src/server/automationEngine.ts:284
+NT0937,服务端与协议错误,,原生历史分页返回无效数据。,现有中文/翻译,原生历史分页返回无效数据。,src/server/threadHistory.ts:98
+NT0938,服务端与协议错误,,运行记录保存失败，调度已暂停,现有中文/翻译,运行记录保存失败，调度已暂停,src/server/automationEngine.ts:300
+NT0939,服务端与协议错误,,运行记录写入失败，调度已停止,现有中文/翻译,运行记录写入失败，调度已停止,src/server/automationEngine.ts:423
+NT0940,服务端与协议错误,运行超时，已请求中止，等待上游确认,运行已超时，已请求中止，等待上游确认,现有中文/翻译,运行已超时，已请求中止，等待上游确认,src/server/automationEngine.ts:398
+NT0941,服务端与协议错误,,暂不支持此 RRULE 字段；支持 FREQ、INTERVAL、BYDAY、BYHOUR、BYMINUTE、WKST,现有中文/翻译,暂不支持此 RRULE 字段；支持 FREQ、INTERVAL、BYDAY、BYHOUR、BYMINUTE、WKST,src/server/automationSchedule.ts:56
+NT0942,服务端与协议错误,,账号标识无效。,现有中文/翻译,账号标识无效。,src/server/accountAuthCoordinator.ts:826；src/server/accountAuthStore.ts:638
+NT0943,服务端与协议错误,,账号操作或待发送队列尚未结束，请稍后压缩。,现有中文/翻译,账号操作或待发送队列尚未结束，请稍后压缩。,src/server/threadCompactionGate.ts:31；src/server/threadCompactionGate.ts:35
+NT0944,服务端与协议错误,,账号操作期间暂不能提交消息,现有中文/翻译,账号操作期间暂不能提交消息,src/server/deliveryService.ts:35
+NT0945,服务端与协议错误,,账号操作期间暂不能引导消息,现有中文/翻译,账号操作期间暂不能引导消息,src/server/deliveryService.ts:126
+NT0946,服务端与协议错误,,账号登录会话未运行。,中文审核译文；当前源码为英文,The account login session is not running.,src/server/accountAuthCoordinator.ts:428
+NT0947,服务端与协议错误,,账号额度暂不可确认，无法使用受保护账号。,现有中文/翻译,账号额度暂不可确认，无法使用受保护账号。,src/server/apiProxy/quotaProtection.ts:5
+NT0948,服务端与协议错误,,账号或提供方已变化，请核对后重新提交,现有中文/翻译,账号或供应方已变化，请核对后重新提交,src/server/deliveryStore.ts:214
+NT0949,服务端与协议错误,,账号或提供方正在切换，请稍后重试,现有中文/翻译,账号或供应方正在切换，请稍后重试,src/server/backgroundTerminalReader.ts:88；src/server/backgroundTerminalReader.ts:92；src/server/codexAppServerBridge.ts:6762
+NT0950,服务端与协议错误,,账号或组件准备失败。,现有中文/翻译,账号或组件准备失败。,src/server/apiProxy/component.ts:148
+NT0951,服务端与协议错误,,账号检查在 {变量1} 毫秒后超时。,中文审核译文；当前源码为英文模板,Account inspection timed out after {变量1}ms.,src/server/accountAuthCoordinator.ts:1096
+NT0952,服务端与协议错误,,账号连接已变更，请重新核对认证,现有中文/翻译,账号连接已变更，请重新核对认证,src/server/codexAppServerBridge.ts:6197
+NT0953,服务端与协议错误,,账号模型目录读取失败。,现有中文/翻译,账号模型目录读取失败。,src/server/accountRoutes.ts:80
+NT0954,服务端与协议错误,,账号模型目录分页无效,现有中文/翻译,账号模型目录分页无效,src/server/accountAppServerProbe.ts:158
+NT0955,服务端与协议错误,,账号模型目录格式无效,现有中文/翻译,账号模型目录格式无效,src/server/accountAppServerProbe.ts:154
+NT0956,服务端与协议错误,,账号凭据配置不存在。,中文审核译文；当前源码为英文,The account credential profile is missing.,src/server/accountAuthStore.ts:356
+NT0957,服务端与协议错误,,账号凭据缺少访问令牌。,中文审核译文；当前源码为英文,The account credential is missing an access token.,src/server/accountAuthStore.ts:178
+NT0958,服务端与协议错误,,账号凭据缺少账号身份信息。,中文审核译文；当前源码为英文,The account credential is missing its account identity.,src/server/accountAuthStore.ts:176
+NT0959,服务端与协议错误,,账号切换失败，已恢复原账号。,中文审核译文；当前源码为英文,Account switch failed and the previous account was restored.,src/server/accountAuthCoordinator.ts:813
+NT0960,服务端与协议错误,,账号切换失败，自动恢复尚未完成。,中文审核译文；当前源码为英文,Account switch failed and automatic recovery is incomplete.,src/server/accountAuthCoordinator.ts:813
+NT0961,服务端与协议错误,,账号认证状态不可用,现有中文/翻译,账号认证状态不可用,src/server/accountActivationAdmission.ts:30
+NT0962,服务端与协议错误,,账号探测请求失败。,中文审核译文；当前源码为英文,Account probe request failed.,src/server/accountAppServerProbe.ts:72
+NT0963,服务端与协议错误,,账号通知规则无效。,现有中文/翻译,账号通知规则无效。,src/server/accountNotificationService.ts:69
+NT0964,服务端与协议错误,,账号选择无效。,现有中文/翻译,账号选择无效。,src/server/apiProxy/store.ts:107
+NT0965,服务端与协议错误,,账号选择已变化，请重新连接。,现有中文/翻译,账号选择已变化，请重新连接。,src/server/apiProxy/gateway.ts:563
+NT0966,服务端与协议错误,,账号已移除，本次登录已取消。,现有中文/翻译,账号已移除，本次登录已取消。,src/server/accountAuthCoordinator.ts:475
+NT0967,服务端与协议错误,,账号已移除，关联连接已关闭。,现有中文/翻译,账号已移除，关联连接已关闭。,src/server/accountExecution.ts:41
+NT0968,服务端与协议错误,账号已移除，请核对会话历史,账号已移除，已切断执行连接；请核对会话历史,现有中文/翻译,账号已移除，已切断执行连接；请核对会话历史,src/server/codexAppServerBridge.ts:6738
+NT0969,服务端与协议错误,账号已移除，请登录后重新发送,账号已移除；请登录后手动重新发送,现有中文/翻译,账号已移除；请登录后手动重新发送,src/server/codexAppServerBridge.ts:6739
+NT0970,服务端与协议错误,,账号已移除。,现有中文/翻译,账号已移除。,src/server/accountAuthCoordinator.ts:283；src/server/accountAuthCoordinator.ts:1002；src/server/accountAuthStore.ts:386
+NT0971,服务端与协议错误,,账号正在切换，稍后读取额度,现有中文/翻译,账号正在切换，稍后读取额度,src/server/codexAppServerBridge.ts:5490
+NT0972,服务端与协议错误,,账号正在使用或凭据正在变更，本次跳过,现有中文/翻译,账号正在使用或凭据正在变更，本次跳过,src/server/accountActivationAdmission.ts:11；src/server/accountActivationAdmission.ts:29；src/server/accountActivationScheduler.ts:145
+NT0973,服务端与协议错误,,找不到 ID 为 {变量1} 的待处理服务器请求。,中文审核译文；当前源码为英文模板,No pending server request found for id {变量1},src/server/codexAppServerBridge.ts:6151
+NT0974,服务端与协议错误,,找不到对应历史回合。,现有中文/翻译,找不到对应历史回合。,src/server/threadHistory.ts:179
+NT0975,服务端与协议错误,,找不到发送记录，请核对状态,现有中文/翻译,找不到发送记录，请核对状态,src/server/codexAppServerBridge.ts:6805
+NT0976,服务端与协议错误,,找不到该内部线程的会话记录。,中文审核译文；当前源码为英文,no rollout found for thread id,src/server/codexAppServerBridge.ts:919
+NT0977,服务端与协议错误,,找不到该消息，请刷新状态,现有中文/翻译,找不到该消息，请刷新状态,src/server/deliveryService.ts:128
+NT0978,服务端与协议错误,,找不到会话记录。,中文审核译文；当前源码为英文,no rollout found,src/server/codexAppServerBridge.ts:2463
+NT0979,服务端与协议错误,,找不到模块,中文审核译文；当前源码为英文,Cannot find module,src/server/terminalManager.ts:379
+NT0980,服务端与协议错误,,找不到目录。,中文审核译文；当前源码为英文,Directory not found.,src/server/httpServer.ts:168
+NT0981,服务端与协议错误,,找不到内部线程。,中文审核译文；当前源码为英文,thread not found,src/server/codexAppServerBridge.ts:919
+NT0982,服务端与协议错误,,找不到前端入口文件。,中文审核译文；当前源码为英文,Frontend entry file not found.,src/server/httpServer.ts:264
+NT0983,服务端与协议错误,,找不到所选账号。,中文审核译文；当前源码为英文,The selected account was not found.,src/server/accountAuthCoordinator.ts:339；src/server/accountAuthCoordinator.ts:591；src/server/accountAuthCoordinator.ts:711；src/server/accountAuthCoordinator.ts:918；src/server/accountAuthCoordinator.ts:930
+NT0984,服务端与协议错误,,找不到图像文件。,中文审核译文；当前源码为英文,Image file not found.,src/server/httpServer.ts:127
+NT0985,服务端与协议错误,,找不到文件。,中文审核译文；当前源码为英文,File not found.,src/server/httpServer.ts:144；src/server/httpServer.ts:193；src/server/httpServer.ts:196；src/server/httpServer.ts:217；src/server/httpServer.ts:237
+NT0986,服务端与协议错误,,找不到有效任务或执行目标,现有中文/翻译,找不到有效任务或执行目标,src/server/automationEngine.ts:233
+NT0987,服务端与协议错误,正在发送,正在发送，请等待结果后再操作,现有中文/翻译,正在发送，请等待结果后再操作,src/server/deliveryStore.ts:292
+NT0988,服务端与协议错误,正在验证账号。,正在验证账号，请等待结果。,现有中文/翻译,正在验证账号，请等待结果。,src/server/accountAuthCoordinator.ts:436；src/server/accountAuthCoordinator.ts:505
+NT0989,服务端与协议错误,,执行会话无法加载；请检查目标会话后重试,现有中文/翻译,执行会话无法加载；请检查目标会话后重试,src/server/automationEngine.ts:36
+NT0990,服务端与协议错误,,执行历史文件损坏，请检查日志归档,现有中文/翻译,执行历史文件损坏，请检查日志归档,src/server/automationHistory.ts:48
+NT0991,服务端与协议错误,,执行连接已关闭，请重新发起请求。,现有中文/翻译,执行连接已关闭，请重新发起请求。,src/server/accountExecution.ts:53
+NT0992,服务端与协议错误,执行未完成，请打开会话查看错误,执行未完成；请打开会话查看错误并处理,现有中文/翻译,执行未完成；请打开会话查看错误并处理,src/server/automationEngine.ts:39
+NT0993,服务端与协议错误,,执行账号已移除，关联连接已关闭,现有中文/翻译,执行账号已移除，关联连接已关闭,src/server/automationEngine.ts:216
+NT0994,服务端与协议错误,,至少需要填写一个允许的 Telegram 用户 ID。,中文审核译文；当前源码为英文,At least one allowed Telegram user ID is required,src/server/codexAppServerBridge.ts:9660
+NT0995,服务端与协议错误,,终端会话不存在。,中文审核译文；当前源码为英文,Terminal session missing,src/server/terminalManager.ts:326
+NT0996,服务端与协议错误,重置结果未确认，请刷新额度后核对。,重置结果未确认，请刷新额度后核对；不要重复使用其他重置机会。,现有中文/翻译,重置结果未确认，请刷新额度后核对；不要重复使用其他重置机会。,src/server/accountRoutes.ts:111
+NT0997,服务端与协议错误,,转发失败：{变量1},中文审核译文；当前源码为英文模板,Forward failed: {变量1},src/server/telegramThreadBridge.ts:553
+NT0998,服务端与协议错误,,转发消息到会话失败。,中文审核译文；当前源码为英文,Failed to forward message to thread,src/server/telegramThreadBridge.ts:552
+NT0999,服务端与协议错误,,自定义连接请使用 HTTP 或 SSE。,现有中文/翻译,自定义连接请使用 HTTP 或 SSE。,src/server/apiProxy/gateway.ts:475
+NT1000,服务端与协议错误,,自定义连接缺少 API 密钥。,中文审核译文；当前源码为英文,Custom connection API key is missing,src/server/customConnectionProxy.ts:31
+NT1001,服务端与协议错误,,自定义连接数量已达上限,现有中文/翻译,自定义连接数量已达上限,src/server/customConnectionStore.ts:124
+NT1002,服务端与协议错误,,自定义连接已移除,现有中文/翻译,自定义连接已移除,src/server/customConnectionStore.ts:68；src/server/customConnectionStore.ts:132
+NT1003,服务端与协议错误,,自动化调度锁已失效,现有中文/翻译,自动化调度锁已失效,src/server/automationStore.ts:67
+NT1004,服务端与协议错误,自动化状态文件损坏，调度已停止，请检查 state.json,自动化运行状态文件损坏，请检查 state.json；调度已停止以避免重复执行,现有中文/翻译,自动化运行状态文件损坏，请检查 state.json；调度已停止以避免重复执行,src/server/automationStore.ts:81
+NT1005,服务端与协议错误,,自动化账号连接已释放，本次操作未发送,现有中文/翻译,自动化账号连接已释放，本次操作未发送,src/server/codexAppServerBridge.ts:5669
+NT1006,服务端与协议错误,,组件模型目录格式无效。,现有中文/翻译,组件模型目录格式无效。,src/server/apiProxy/gateway.ts:428
+NT1007,服务端与协议错误,,最多保留 256 把 key。,现有中文/翻译,最多保留 256 把 key。,src/server/apiProxy/store.ts:137
+NT1008,服务端与协议错误,,最近一次错误：{变量1},中文审核译文；当前源码为英文模板,last error: {变量1},src/server/telegramThreadBridge.ts:516
+NT1009,服务端与协议错误,,最终回合元数据无效。,中文审核译文；当前源码为英文,Invalid final turn metadata,src/server/codexAppServerBridge.ts:7256；src/server/sidebarThreadStatusReader.ts:36
+NT1010,服务端与协议错误,,AGENTS.md 工作目录区块不完整，请先修复,现有中文/翻译,AGENTS.md 工作目录区块不完整，请先修复,src/server/projectDirectories.ts:12；src/server/projectDirectories.ts:24
+NT1011,服务端与协议错误,,AGENTS.md 工作目录区块格式无效,现有中文/翻译,AGENTS.md 工作目录区块格式无效,src/server/projectDirectories.ts:15
+NT1012,服务端与协议错误,,API 代理设置正在变更。,现有中文/翻译,API 出口设置正在变更。,src/server/apiProxy/gateway.ts:177
+NT1013,服务端与协议错误,,API 代理暂时不可用，请在管理页面检查账号和组件状态。,现有中文/翻译,API 出口暂时不可用，请在管理页面检查账号和组件状态。,src/server/apiProxy/gateway.ts:41
+NT1014,服务端与协议错误,,API 代理状态文件无效。,现有中文/翻译,API 出口状态文件无效。,src/server/apiProxy/store.ts:67
+NT1015,服务端与协议错误,,API key 已停用、撤销或到期。,现有中文/翻译,API key 已停用、撤销或到期。,src/server/apiProxy/gateway.ts:551
+NT1016,服务端与协议错误,,API key 状态文件无效。,现有中文/翻译,API key 状态文件无效。,src/server/apiProxy/store.ts:73
+NT1017,服务端与协议错误,,automation.toml 无效或 ID 与目录不符,现有中文/翻译,automation.toml 无效或 ID 与目录不符,src/server/automationEngine.ts:163
+NT1018,服务端与协议错误,,chatId 必须为数字。,中文审核译文；当前源码为英文,chatId must be a number,src/server/telegramThreadBridge.ts:343
+NT1019,服务端与协议错误,,Codex 需要 Responses API,现有中文/翻译,Codex 需要 Responses API,src/server/codexAppServerBridge.ts:5629；src/server/customConnectionStore.ts:150
+NT1020,服务端与协议错误,,Codex app-server 未运行。,中文审核译文；当前源码为英文,codex app-server is not running,src/server/codexAppServerBridge.ts:5875
+NT1021,服务端与协议错误,,compact 不支持流式返回。,现有中文/翻译,compact 不支持流式返回。,src/server/apiProxy/gateway.ts:319
+NT1022,服务端与协议错误,,compact 的 input 必须为数组。,现有中文/翻译,compact 的 input 必须为数组。,src/server/apiProxy/gateway.ts:320
+NT1023,服务端与协议错误,,Device 授权未完成或已失效，请重试；若账号未开启设备码登录，可改用链接登录。,现有中文/翻译,Device 授权未完成或已失效，请重试；若账号未开启设备码登录，可改用链接登录。,src/server/accountAuthCoordinator.ts:521
+NT1024,服务端与协议错误,,draining 必须为布尔值。,现有中文/翻译,draining 必须为布尔值。,src/server/apiProxy/gateway.ts:683
+NT1025,服务端与协议错误,,GitHub 仓库所有者或仓库名称包含不支持的字符。,中文审核译文；当前源码为英文,GitHub repository owner or name contains unsupported characters,src/server/codexAppServerBridge.ts:2137
+NT1026,服务端与协议错误,,HEAD 引用无效。,中文审核译文；当前源码为英文,invalid reference: head,src/server/codexAppServerBridge.ts:3738
+NT1027,服务端与协议错误,,Hook 记录已不在保留范围内,现有中文/翻译,Hook 记录已不在保留范围内,src/server/codexAppServerBridge.ts:7961
+NT1028,服务端与协议错误,,HTTP 续接请发送完整 input；增量续接使用 WebSocket。,现有中文/翻译,HTTP 续接请发送完整 input；增量续接使用 WebSocket。,src/server/apiProxy/gateway.ts:228
+NT1029,服务端与协议错误,,INTERVAL 必须为 1–10000 的整数,现有中文/翻译,INTERVAL 必须为 1–10000 的整数,src/server/automationSchedule.ts:60
+NT1030,服务端与协议错误,,JSON 无效。,中文审核译文；当前源码为英文,invalid json,src/server/codexAppServerBridge.ts:2347
+NT1031,服务端与协议错误,,Key账号设置已变化，请重试。,现有中文/翻译,Key账号设置已变化，请重试。,src/server/apiProxy/gateway.ts:278；src/server/apiProxy/gateway.ts:298
+NT1032,服务端与协议错误,,Logo尺寸无效,现有中文/翻译,Logo尺寸无效,src/server/webUiBrandingStore.ts:50
+NT1033,服务端与协议错误,,Logo格式无效,现有中文/翻译,Logo格式无效,src/server/webUiBrandingStore.ts:43；src/server/webUiBrandingStore.ts:47
+NT1034,服务端与协议错误,,MCP 查询繁忙，请稍后重试,现有中文/翻译,MCP 查询繁忙，请稍后重试,src/server/directoryMcpReader.ts:17
+NT1035,服务端与协议错误,,MCP 分页响应无效,现有中文/翻译,MCP 分页响应无效,src/server/directoryMcpReader.ts:22
+NT1036,服务端与协议错误,,model_providers 中缺少已配置的提供方。,中文审核译文；当前源码为英文,configured provider is missing from model_providers,src/server/codexAppServerBridge.ts:2274
+NT1037,服务端与协议错误,,Responses 提供方缺少 base_url。,中文审核译文；当前源码为英文,responses provider is missing base_url,src/server/codexAppServerBridge.ts:2285
+NT1038,服务端与协议错误,,rg --files 执行失败。,中文审核译文；当前源码为英文,rg --files failed,src/server/codexAppServerBridge.ts:3579
+NT1039,服务端与协议错误,,Telegram 轮询失败。,中文审核译文；当前源码为英文,Telegram polling failed,src/server/telegramThreadBridge.ts:282
+NT1040,服务端与协议错误,,Telegram API {变量1} 调用失败。,中文审核译文；当前源码为英文模板,Telegram API {变量1} failed,src/server/telegramThreadBridge.ts:425
+NT1041,服务端与协议错误,,Telegram通知已关闭。,现有中文/翻译,Telegram通知已关闭。,src/server/codexAppServerBridge.ts:9709
+NT1042,服务端与协议错误,,thread/read 请求失败。,中文审核译文；当前源码为英文,thread/read failed,src/server/codexAppServerBridge.ts:8219；src/server/codexAppServerBridge.ts:8230
+NT1043,服务端与协议错误,,URL 无效。,中文审核译文；当前源码为英文,invalid url,src/server/codexAppServerBridge.ts:2320
+NT1044,服务端与协议错误,,ZIP 导出过程中响应失败。,中文审核译文；当前源码为英文,Response failed during ZIP export,src/server/codexAppServerBridge.ts:1242
