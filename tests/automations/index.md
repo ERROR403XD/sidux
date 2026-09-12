@@ -17,4 +17,4 @@ Return to the [manual test index](../../tests.md).
 
 - [自动化账号选择与额度恢复续跑](account-routing-quota-resume.md)
 
-| [0.2.19 调度可靠性与账号出口保护](stabilization-0.2.19.md) |
+- [0.2.19 调度可靠性与账号出口保护](stabilization-0.2.19.md)

@@ -1,0 +1,36 @@
+{
+  "image": "codexapp-final-test:0.2.19",
+  "native": "0.153.4",
+  "cases": [
+    {
+      "name": "noauth",
+      "base": "http://127.0.0.1:4195",
+      "provider": "opencode_zen",
+      "switchedProvider": "openrouter_free"
+    },
+    {
+      "name": "malformed",
+      "base": "http://127.0.0.1:4196",
+      "provider": "opencode_zen"
+    },
+    {
+      "name": "invalid",
+      "base": "http://127.0.0.1:4197",
+      "provider": "openai",
+      "failureClass": "authentication",
+      "systemCaBundleMounted": true,
+      "nativeFailure": true,
+      "url": "http://127.0.0.1:4197/#/thread/01a096ee-591b-78e0-9ea5-31008203b83e",
+      "persistedAfterReload": true,
+      "duplicateLiveOverlayCount": 0,
+      "screenshots": [
+        "/home/Code/codexapp/output/playwright/0219-packaged-invalid-auth-light.png",
+        "/home/Code/codexapp/output/playwright/0219-packaged-invalid-auth-dark.png"
+      ],
+      "authUnchanged": true
+    }
+  ],
+  "actualCloudSuccessTested": false,
+  "passed": true,
+  "temporaryResourcesRemoved": true
+}

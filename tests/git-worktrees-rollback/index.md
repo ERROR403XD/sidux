@@ -34,5 +34,4 @@ Return to the [manual test index](../../tests.md).
 | [Hide worktree controls for non-Git folders](hide-worktree-controls-for-non-git-folders.md) |
 | [Project worktree threads under canonical project](project-worktree-threads-under-canonical-project.md) |
 | [Worktree creation persists across refresh](worktree-creation-persists-across-refresh.md) |
-
 | [主动文件预览兼容性边界](preview-isolation-compatibility.md) |
