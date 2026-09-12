@@ -1,0 +1,255 @@
+{
+  "targetUrl": "http://127.0.0.1:4173/",
+  "finalUrl": "http://127.0.0.1:4173/#/",
+  "duplicateCounts": {
+    "threadList": 1,
+    "threadListFirstPage": 1,
+    "threadListCursor": 0,
+    "threadResume": 0,
+    "threadRead": 0,
+    "threadReadWithTurns": 0,
+    "threadReadDuplicateKeys": 0,
+    "skillsList": 1,
+    "rateLimitsRead": 1,
+    "providerModels": 1
+  },
+  "warnings": [],
+  "pageState": {
+    "threadLoadingText": "Loading threads...",
+    "threadLoadTimeoutMs": 15000,
+    "stillLoadingThreads": false
+  },
+  "totalApiKB": 14.8,
+  "topApiSummary": [
+    {
+      "key": "/codex-api/free-mode/status",
+      "count": 1,
+      "minMs": 1810.9,
+      "avgMs": 1810.9,
+      "p95Ms": 1810.9,
+      "maxMs": 1810.9,
+      "totalKB": 0.4
+    },
+    {
+      "key": "/codex-api/provider-models",
+      "count": 1,
+      "minMs": 969.5,
+      "avgMs": 969.5,
+      "p95Ms": 969.5,
+      "maxMs": 969.5,
+      "totalKB": 0.3
+    },
+    {
+      "key": "/codex-api/thread-terminal/status",
+      "count": 1,
+      "minMs": 75.4,
+      "avgMs": 75.4,
+      "p95Ms": 75.4,
+      "maxMs": 75.4,
+      "totalKB": 0
+    },
+    {
+      "key": "/codex-api/prompts",
+      "count": 1,
+      "minMs": 74.7,
+      "avgMs": 74.7,
+      "p95Ms": 74.7,
+      "maxMs": 74.7,
+      "totalKB": 0
+    },
+    {
+      "key": "/codex-api/thread-pins",
+      "count": 1,
+      "minMs": 74.6,
+      "avgMs": 74.6,
+      "p95Ms": 74.6,
+      "maxMs": 74.6,
+      "totalKB": 0
+    },
+    {
+      "key": "/codex-api/accounts/login/status",
+      "count": 1,
+      "minMs": 74,
+      "avgMs": 74,
+      "p95Ms": 74,
+      "maxMs": 74,
+      "totalKB": 0
+    },
+    {
+      "key": "/codex-api/home-directory",
+      "count": 1,
+      "minMs": 74,
+      "avgMs": 74,
+      "p95Ms": 74,
+      "maxMs": 74,
+      "totalKB": 0
+    },
+    {
+      "key": "/codex-api/workspace-roots-state",
+      "count": 1,
+      "minMs": 74,
+      "avgMs": 74,
+      "p95Ms": 74,
+      "maxMs": 74,
+      "totalKB": 0.1
+    },
+    {
+      "key": "/codex-api/telegram/config",
+      "count": 1,
+      "minMs": 74,
+      "avgMs": 74,
+      "p95Ms": 74,
+      "maxMs": 74,
+      "totalKB": 0.2
+    },
+    {
+      "key": "/codex-api/telegram/status",
+      "count": 1,
+      "minMs": 74,
+      "avgMs": 74,
+      "p95Ms": 74,
+      "maxMs": 74,
+      "totalKB": 0.1
+    },
+    {
+      "key": "/codex-api/custom-connections",
+      "count": 1,
+      "minMs": 74,
+      "avgMs": 74,
+      "p95Ms": 74,
+      "maxMs": 74,
+      "totalKB": 0
+    },
+    {
+      "key": "/codex-api/thread-queue-state",
+      "count": 1,
+      "minMs": 68.1,
+      "avgMs": 68.1,
+      "p95Ms": 68.1,
+      "maxMs": 68.1,
+      "totalKB": 0
+    }
+  ],
+  "slowestApiRows": [
+    {
+      "method": "GET",
+      "path": "/codex-api/free-mode/status",
+      "rpc": "",
+      "cursor": "",
+      "threadId": "",
+      "status": 200,
+      "ms": 1810.9,
+      "requestBytes": 0,
+      "responseBytes": 397,
+      "responseKB": 0.4
+    },
+    {
+      "method": "GET",
+      "path": "/codex-api/provider-models",
+      "rpc": "",
+      "cursor": "",
+      "threadId": "",
+      "status": 200,
+      "ms": 969.5,
+      "requestBytes": 0,
+      "responseBytes": 278,
+      "responseKB": 0.3
+    },
+    {
+      "method": "GET",
+      "path": "/codex-api/thread-terminal/status",
+      "rpc": "",
+      "cursor": "",
+      "threadId": "",
+      "status": 200,
+      "ms": 75.4,
+      "requestBytes": 0,
+      "responseBytes": 32,
+      "responseKB": 0
+    },
+    {
+      "method": "GET",
+      "path": "/codex-api/thread-quota-resume",
+      "rpc": "",
+      "cursor": "",
+      "threadId": "",
+      "status": 200,
+      "ms": 75.4,
+      "requestBytes": 0,
+      "responseBytes": 11,
+      "responseKB": 0
+    },
+    {
+      "method": "GET",
+      "path": "/codex-api/prompts",
+      "rpc": "",
+      "cursor": "",
+      "threadId": "",
+      "status": 200,
+      "ms": 74.7,
+      "requestBytes": 0,
+      "responseBytes": 11,
+      "responseKB": 0
+    },
+    {
+      "method": "GET",
+      "path": "/codex-api/thread-pins",
+      "rpc": "",
+      "cursor": "",
+      "threadId": "",
+      "status": 200,
+      "ms": 74.6,
+      "requestBytes": 0,
+      "responseBytes": 25,
+      "responseKB": 0
+    },
+    {
+      "method": "GET",
+      "path": "/codex-api/accounts/login/status",
+      "rpc": "",
+      "cursor": "",
+      "threadId": "",
+      "status": 200,
+      "ms": 74,
+      "requestBytes": 0,
+      "responseBytes": 13,
+      "responseKB": 0
+    },
+    {
+      "method": "GET",
+      "path": "/codex-api/home-directory",
+      "rpc": "",
+      "cursor": "",
+      "threadId": "",
+      "status": 200,
+      "ms": 74,
+      "requestBytes": 0,
+      "responseBytes": 25,
+      "responseKB": 0
+    },
+    {
+      "method": "GET",
+      "path": "/codex-api/workspace-roots-state",
+      "rpc": "",
+      "cursor": "",
+      "threadId": "",
+      "status": 200,
+      "ms": 74,
+      "requestBytes": 0,
+      "responseBytes": 83,
+      "responseKB": 0.1
+    },
+    {
+      "method": "GET",
+      "path": "/codex-api/telegram/config",
+      "rpc": "",
+      "cursor": "",
+      "threadId": "",
+      "status": 200,
+      "ms": 74,
+      "requestBytes": 0,
+      "responseBytes": 161,
+      "responseKB": 0.2
+    }
+  ]
+}

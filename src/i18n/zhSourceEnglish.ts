@@ -1,6 +1,12 @@
 // English translations for application UI messages originally authored in Chinese.
 // User content, saved prompts, and outbound notification templates are intentionally excluded.
 export const zhSourceEnglish: Record<string, string> = {
+  '筛选会话': 'Filter conversations',
+  '活跃中': 'Active',
+  '未读': 'Unread',
+  '会话状态读取失败，请重试': 'Could not load conversation status. Retry.',
+  '部分会话状态未能确认，请重试': 'Some conversation statuses could not be verified. Retry.',
+
   '仅 API key 出口': 'API key outlet only',
   '仅支持 Chat Completions，可用作 API key 出口': 'Chat Completions only; available as an API key outlet',
   'Codex 需要 Responses API': 'Codex requires the Responses API',

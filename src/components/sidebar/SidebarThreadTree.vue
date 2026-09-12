@@ -178,7 +178,7 @@
       <template v-if="isProjectsSectionExpanded || isSearchActive">
       <p v-if="projectAutomationActionError" class="thread-tree-action-error">{{ t(projectAutomationActionError) }}</p>
 
-      <p v-if="isSearchActive && searchState !== 'loading' && searchState !== 'error' && filteredGroups.length === 0 && globalThreads.length === 0 && pinnedThreads.length === 0" class="thread-tree-no-results">{{ t('No matching threads') }}</p>
+      <p v-if="(isSearchActive || isStatusFilterActive) && !filterLoading && searchState !== 'loading' && searchState !== 'error' && filteredGroups.length === 0 && globalThreads.length === 0 && pinnedThreads.length === 0" class="thread-tree-no-results">{{ t('No matching threads') }}</p>
 
       <p v-else-if="isLoading && groups.length === 0" class="thread-tree-loading">{{ t('Loading threads...') }}</p>
 
@@ -869,6 +869,7 @@
 </template>
 
 <script setup lang="ts">
+import { matchesSidebarThreadFilter, type SidebarThreadFilter } from '../../sidebarThreadFilter'
 import AppSwitch from '../common/AppSwitch.vue'
 import { createThreadMatcher } from '../../threadSearchMatch'
 import { useTransientNotice } from '../../composables/useTransientNotice'
@@ -918,6 +919,10 @@ import { reconcilePinnedThreadIds } from './pinnedThreadUtils'
 
 const props = defineProps<{
   groups: UiProjectGroup[]
+  statusFilter?: SidebarThreadFilter
+  retainedUnreadId?: string
+  quotaInterrupted?: Record<string, boolean | null>
+  filterLoading?: boolean
   accounts?: { storageId: string; alias?: string; email: string | null; accountId: string }[]
   models?: string[]
   modelCapabilities?: ModelCapability[]
@@ -1292,6 +1297,12 @@ watch(chatSortMode, (value) => {
 
 watch([isPinnedSectionExpanded, isProjectsSectionExpanded, isChatsSectionExpanded], persistSectionExpansionState)
 
+const isStatusFilterActive = computed(() => !!props.statusFilter && props.statusFilter !== 'all')
+
+function threadMatchesStatus(thread: UiThread): boolean {
+  return matchesSidebarThreadFilter(thread, props.statusFilter || 'all', props.retainedUnreadId || '', props.quotaInterrupted || {})
+}
+
 const normalizedSearchQuery = computed(() => props.searchQuery.trim().toLowerCase())
 
 const isSearchActive = computed(() => normalizedSearchQuery.value.length > 0)
@@ -1311,6 +1322,7 @@ const optimisticallyArchivedThreadIdSet = computed(() => new Set(optimisticallyA
 
 function threadMatchesSearch(thread: UiThread): boolean {
   if (optimisticallyArchivedThreadIdSet.value.has(thread.id)) return false
+  if (!threadMatchesStatus(thread)) return false
   if (!isSearchActive.value) return true
   if (matchedThreadIdSet.value) {
     return matchedThreadIdSet.value.has(thread.id)
@@ -1322,7 +1334,7 @@ const filteredGroups = computed<UiProjectGroup[]>(() => {
   return props.groups.flatMap((group) => {
     const threads = group.threads.filter((thread) => !isProjectlessChatPath(thread.cwd) && threadMatchesSearch(thread)).sort(compareSearchRank)
     if (threads.length > 0) return [{ ...group, threads }]
-    return !isSearchActive.value && group.threads.length === 0 ? [{ ...group, threads }] : []
+    return !isSearchActive.value && !isStatusFilterActive.value && group.threads.length === 0 ? [{ ...group, threads }] : []
   }).sort((first, second) => isSearchActive.value ? compareSearchRank(first.threads[0]!, second.threads[0]!) : 0)
 })
 
@@ -1472,7 +1484,7 @@ const threadProjectNameById = computed(() => {
 const unpinnedThreadsByProjectName = computed(() => {
   const map = new Map<string, UiThread[]>()
   for (const group of props.groups) {
-    const rows = group.threads.filter((thread) => !pinnedThreadIdSet.value.has(thread.id) && !optimisticallyArchivedThreadIdSet.value.has(thread.id))
+    const rows = group.threads.filter((thread) => !pinnedThreadIdSet.value.has(thread.id) && !optimisticallyArchivedThreadIdSet.value.has(thread.id) && threadMatchesStatus(thread))
     map.set(group.projectName, rows)
   }
   return map
@@ -1524,7 +1536,7 @@ const projectedDropProjectIndex = computed<number | null>(() => {
 })
 
 const layoutProjectOrder = computed<string[]>(() => {
-  const sourceGroups = isSearchActive.value ? filteredGroups.value : props.groups
+  const sourceGroups = isSearchActive.value || isStatusFilterActive.value ? filteredGroups.value : props.groups
   const names = sourceGroups.map((group) => group.projectName)
   const drag = activeProjectDrag.value
   const projectedIndex = projectedDropProjectIndex.value
@@ -2712,7 +2724,7 @@ function setProjectGroupRef(projectName: string, element: Element | ComponentPub
 
 function onProjectHandleMouseDown(event: MouseEvent, projectName: string): void {
   if (event.button !== 0) return
-  if (isSearchActive.value) return
+  if (isSearchActive.value || isStatusFilterActive.value) return
   if (pendingProjectDrag.value || activeProjectDrag.value) return
 
   const fromIndex = props.groups.findIndex((group) => group.projectName === projectName)

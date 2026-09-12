@@ -1,0 +1,23 @@
+const {spawn}=require('node:child_process');const fs=require('node:fs/promises');const os=require('node:os');const path=require('node:path');const http=require('node:http');const assert=require('node:assert/strict');
+(async()=>{
+ const home=await fs.mkdtemp(path.join(os.tmpdir(),'sidebar-native-'));let requests=0;let mode='quota';
+ const server=http.createServer(async(req,res)=>{for await(const chunk of req){}requests++;if(mode==='quota'){res.writeHead(429,{'Content-Type':'application/json'});res.end(JSON.stringify({error:{type:'insufficient_quota',code:'insufficient_quota',message:'Quota exceeded for isolated test'}}));return}
+ const message={id:'msg-test',type:'message',role:'assistant',content:[{type:'output_text',text:'OK',annotations:[]}]};const completed={id:'resp-test',object:'response',status:'completed',output:[message],usage:{input_tokens:3,output_tokens:1,total_tokens:4}};
+ res.writeHead(200,{'Content-Type':'text/event-stream'});for(const event of [{type:'response.created',response:{...completed,status:'in_progress',output:[]}},{type:'response.output_item.added',output_index:0,item:{...message,content:[]}},{type:'response.output_text.delta',item_id:message.id,output_index:0,content_index:0,delta:'OK'},{type:'response.output_item.done',output_index:0,item:message},{type:'response.completed',response:completed}])res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);res.end();
+ });await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ const env={...process.env,CODEX_HOME:home};delete env.OPENAI_API_KEY;delete env.CODEX_API_KEY;
+ const child=spawn('codex',['app-server','-c','model_provider="fixture"','-c','model_providers.fixture.name="Local fixture"','-c',`model_providers.fixture.base_url="http://127.0.0.1:${server.address().port}/v1"`,'-c','model_providers.fixture.wire_api="responses"','-c','model_providers.fixture.request_max_retries=0','-c','model_providers.fixture.stream_max_retries=0'],{env,stdio:['pipe','pipe','pipe']});
+ let id=0,buffer='';const pending=new Map();const completed=[];const waiters=[];
+ child.stdout.on('data',d=>{buffer+=d;let n;while((n=buffer.indexOf('\n'))>=0){const line=buffer.slice(0,n);buffer=buffer.slice(n+1);let j;try{j=JSON.parse(line)}catch{continue}if(j.method==='turn/completed'){completed.push(j.params);for(const w of waiters.splice(0))w()}if(pending.has(j.id)){const {resolve,reject,timer}=pending.get(j.id);pending.delete(j.id);clearTimeout(timer);j.error?reject(Error(j.error.message)):resolve(j.result)}}});child.stderr.resume();
+ const rpc=(method,params)=>new Promise((resolve,reject)=>{const requestId=++id;const timer=setTimeout(()=>reject(Error(method+' timeout')),15000);pending.set(requestId,{resolve,reject,timer});child.stdin.write(JSON.stringify({id:requestId,method,params})+'\n')});
+ async function waitTurn(count){if(completed.length>=count)return;let timer;try{await Promise.race([new Promise(r=>waiters.push(r)),new Promise((_,j)=>{timer=setTimeout(()=>j(Error('turn timeout')),20000)})])}finally{clearTimeout(timer)}}
+ try{
+ await rpc('initialize',{clientInfo:{name:'sidebar-status-test',version:'0.2.18'},capabilities:{experimentalApi:true}});
+ const created=await rpc('thread/start',{cwd:home,model:'gpt-5.6',modelProvider:'fixture',approvalPolicy:'never',sandbox:'read-only'});const threadId=created.thread.id;
+ await rpc('turn/start',{threadId,input:[{type:'text',text:'Local fixture only',text_elements:[]}]});await waitTurn(1);
+ const first=await rpc('thread/turns/list',{threadId,limit:1,sortDirection:'desc',itemsView:'notLoaded'});assert.equal(first.data.length,1);assert.equal(first.data[0].status,'failed');assert.match(JSON.stringify(first.data[0].error),/quota|429/i);assert.equal(first.data[0].items.length,0);
+ mode='success';await rpc('turn/start',{threadId,input:[{type:'text',text:'Local recovery fixture',text_elements:[]}]});await waitTurn(2);
+ const last=await rpc('thread/turns/list',{threadId,limit:1,sortDirection:'desc',itemsView:'notLoaded'});assert.equal(last.data.length,1);assert.equal(last.data[0].status,'completed');assert.notEqual(last.data[0].id,first.data[0].id);assert.equal(last.data[0].error,null);assert.equal(last.data[0].items.length,0);
+ console.log('NATIVE_FINAL_TURN_METADATA_PASS',JSON.stringify({requests,failedThenRecovered:true,itemsReturned:0,allRequestsLocal:true}));
+ }finally{for(const p of pending.values())clearTimeout(p.timer);child.kill('SIGTERM');await new Promise(r=>child.once('exit',r));await new Promise(r=>server.close(r));await fs.rm(home,{recursive:true,force:true})}
+})().catch(e=>{console.error(e.message);process.exitCode=1});

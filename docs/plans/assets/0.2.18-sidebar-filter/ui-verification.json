@@ -1,0 +1,20 @@
+{
+  "statusCalls": 2,
+  "threadReads": 7,
+  "filterExtraThreadReads": 0,
+  "unreadRetention": true,
+  "mobileRetention": true,
+  "pinsPreserved": true,
+  "english": true,
+  "groupOrderPreserved": true,
+  "collapsedPreserved": true,
+  "errors": [],
+  "screenshots": [
+    "output/playwright/0218-sidebar-filter-1440-light.png",
+    "output/playwright/0218-sidebar-filter-1440-dark.png",
+    "output/playwright/0218-sidebar-filter-768-light.png",
+    "output/playwright/0218-sidebar-filter-768-dark.png",
+    "output/playwright/0218-sidebar-filter-375-light.png",
+    "output/playwright/0218-sidebar-filter-375-dark.png"
+  ]
+}

@@ -1,3 +1,4 @@
+import { SidebarThreadStatusReader } from './sidebarThreadStatusReader.js'
 import { getCustomConnectionStore, customRuntimeConfig } from './customConnectionStore.js'
 import { getWebUiBrandingStore } from './webUiBrandingStore.js'
 import { customConnectionModels } from '../customConnections.js'
@@ -7225,10 +7226,26 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
     (method, params) => callRpcWithArchiveRecovery(appServer, method, params),
     async () => (await methodCatalog.snapshot()).features,
   )
-  const unsubscribeHistory = appServer.onNotification(({ params }) => {
+  const sidebarThreadStatus = new SidebarThreadStatusReader(async (method, params) => {
+    const result = asRecord(await appServer.rpc(method, params))
+    const turns = Array.isArray(result?.data) ? result.data : null
+    if (!turns) throw new Error('Invalid final turn metadata')
+    const turn = asRecord(turns[0])
+    // Only enrich an already terminal failure. A recovered/completed turn must
+    // never become a quota interruption because of an earlier retry error.
+    if (turn && ['failed', 'interrupted'].includes(String(turn.status)) && !turn.error) {
+      const merged = asRecord(mergeStreamTurnErrorsIntoThreadResult(appServer, { thread: { id: params.threadId, turns } }))
+      return { data: asRecord(merged?.thread)?.turns }
+    }
+    return result
+  })
+  const unsubscribeHistory = appServer.onNotification(({ method, params }) => {
     const value = asRecord(params)
     const threadId = readNonEmptyString(value?.threadId) || readNonEmptyString(value?.thread_id) || readNonEmptyString(asRecord(value?.thread)?.id)
-    if (threadId) history.invalidate(threadId)
+    if (threadId) {
+      history.invalidate(threadId)
+      if (['turn/started', 'turn/completed', 'turn/cancelled', 'thread/status/changed'].includes(method)) sidebarThreadStatus.invalidate(threadId)
+    }
   })
   const search = new ThreadSearch({
     list: async cursor => {
@@ -9389,6 +9406,17 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           await quotaResume.set(input.threadId, input.enabled)
         }
         setJson(res, 200, { data: await quotaResume.snapshot() })
+        return
+      }
+      if (req.method === 'POST' && url.pathname === '/codex-api/sidebar-thread-status') {
+        const payload = asRecord(await readJsonBody(req))
+        if (!Array.isArray(payload?.threadIds) || payload.threadIds.length > 100 || payload.threadIds.some(id => typeof id !== 'string' || !id || id.length > 200)) {
+          setJson(res, 400, { error: '每次最多读取 100 个会话状态' })
+          return
+        }
+        const rawVersions = asRecord(payload.versions)
+        const versions = Object.fromEntries((payload.threadIds as string[]).map(id => [id, readNonEmptyString(rawVersions?.[id]).slice(0, 80)]))
+        setJson(res, 200, { data: await sidebarThreadStatus.snapshot(payload.threadIds as string[], versions) })
         return
       }
       if (req.method === 'POST' && url.pathname === '/codex-api/thread-goals') {

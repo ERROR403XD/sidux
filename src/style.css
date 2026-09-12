@@ -2858,3 +2858,18 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .app-time-input[aria-invalid="true"] { border-color: var(--ui-danger); }
 
 :root.dark .app-time-input { color-scheme: dark; }
+
+/* Status tags mask rows without changing sidebar grouping or expansion. */
+.sidebar-thread-filter { display: flex; gap: 6px; margin: 8px 8px 6px; }
+.sidebar-filter-tag {
+  flex: 1; min-width: 0; min-height: 28px; padding: 4px 8px;
+  color: var(--ui-text); background: transparent;
+  border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control);
+  font-size: 12px; line-height: 18px; cursor: pointer;
+}
+.sidebar-filter-tag:hover { background: var(--ui-hover); }
+.sidebar-filter-tag.is-active { color: #fff; border-color: #fff; background: #27272a; }
+:root:not(.dark) .sidebar-filter-tag.is-active { box-shadow: 0 0 0 1px #52525b; }
+.sidebar-filter-tag:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 2px; }
+.sidebar-filter-error { margin: 4px 8px; color: var(--ui-danger); font-size: 12px; }
+.sidebar-filter-error button { text-decoration: underline; }

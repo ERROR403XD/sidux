@@ -26,3 +26,4 @@ Return to the [manual test index](../../tests.md).
 | [Toolbar new thread keeps active project](toolbar-new-thread-keeps-active-project.md) |
 | [0.1.89 项目级关联目录](project-related-directories.md) |
 | [0.2.16：会话完成列表与线程菜单](thread-completion-list.md) |
+| [0.2.18：侧边栏状态筛选](sidebar-status-filter.md) |

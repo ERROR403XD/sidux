@@ -102,7 +102,18 @@
             </span>
           </button>
 
-          <SidebarThreadTree ref="sidebarThreadTreeRef" :groups="sidebarThreadGroups" :accounts="executionAccounts" :models="availableModelIds" :model-capabilities="availableModels" :goals="threadGoals" :quota-resume-marks="quotaResumeMarks" :quota-resume-error="quotaResumeError" @toggle-quota-resume="toggleQuotaResume" :project-display-name-by-id="projectDisplayNameById"
+          <div v-if="!isSidebarCollapsed" class="sidebar-thread-filter" role="group" :aria-label="t('筛选会话')">
+            <button v-for="option in sidebarFilterOptions" :key="option.value" type="button"
+              class="sidebar-filter-tag" :class="{ 'is-active': sidebarFilter === option.value }"
+              :aria-pressed="sidebarFilter === option.value"
+              @click="sidebarFilter = sidebarFilter === option.value ? 'all' : option.value">
+              {{ option.label }}
+            </button>
+          </div>
+          <p v-if="!isSidebarCollapsed && sidebarFilter === 'interrupted' && sidebarFilterError" class="sidebar-filter-error" role="alert">
+            {{ t(sidebarFilterError) }} <button type="button" @click="refreshSidebarFilter">{{ t('重试') }}</button>
+          </p>
+          <SidebarThreadTree :status-filter="sidebarFilter" :retained-unread-id="retainedUnreadId" :quota-interrupted="sidebarInterrupted" :filter-loading="sidebarFilterLoading" ref="sidebarThreadTreeRef" :groups="sidebarThreadGroups" :accounts="executionAccounts" :models="availableModelIds" :model-capabilities="availableModels" :goals="threadGoals" :quota-resume-marks="quotaResumeMarks" :quota-resume-error="quotaResumeError" @toggle-quota-resume="toggleQuotaResume" :project-display-name-by-id="projectDisplayNameById"
             :project-git-repo-by-name="projectGitRepoByName"
             :project-cwd-by-name="projectCwdByName"
             v-if="!isSidebarCollapsed"
@@ -911,6 +922,7 @@ import TaskSearchDialog from './components/content/TaskSearchDialog.vue'
 import { taskId } from './subtasks'
 import { compactionRequests } from './api/threadCompaction'
 import { useAccountQuotaUpdates } from './composables/useAccountQuotaUpdates'
+import { useSidebarThreadFilter } from './composables/useSidebarThreadFilter'
 import { useQuotaResume } from './composables/useQuotaResume'
 import { useThreadGoals } from './composables/useThreadGoals'
 import ThreadPendingRequestPanel from './components/content/ThreadPendingRequestPanel.vue'
@@ -1400,6 +1412,13 @@ const sidebarThreadGroups = computed(() => {
   }
   return groups
 })
+
+const { filter: sidebarFilter, retainedUnreadId, interrupted: sidebarInterrupted, loading: sidebarFilterLoading, error: sidebarFilterError, refresh: refreshSidebarFilter, retainBeforeRead } = useSidebarThreadFilter(sidebarThreadGroups, selectedThreadId)
+const sidebarFilterOptions = computed(() => [
+  { value: 'active', label: t('活跃中') },
+  { value: 'unread', label: t('未读') },
+  { value: 'interrupted', label: t('中断') },
+] as const)
 
 function setSidebarSearchMode(value: string): void {
   if (value === 'title' || value === 'body') sidebarSearchMode.value = value
@@ -2430,6 +2449,7 @@ function onSidebarSearchKeydown(event: KeyboardEvent): void {
 
 function onSelectThread(threadId: string): void {
   if (!threadId) return
+  retainBeforeRead(threadId)
   markThreadAsRead(threadId)
   if (route.name === 'thread' && routeThreadId.value === threadId) return
   void router.push({ name: 'thread', params: { threadId } })
