@@ -436,7 +436,10 @@ prepare_release() {
 
   mkdir -p "$release"
   tar -xzf "$pack_path" -C "$release" --strip-components=1
-  npm --prefix "$release" install --omit=dev --no-package-lock
+  # Record the exact deployment tree; recovery of this release can use npm ci
+  # instead of resolving transitive ranges again. Do not upgrade at activation.
+  npm --prefix "$release" install --omit=dev --package-lock
+  [[ -f "$release/package-lock.json" ]] || die "Prepared dependency lock is missing."
 
   if [[ -f "$REPO_DIR/resources/api-proxy/manifest.json" ]]; then
     "$NODE_BIN" "$REPO_DIR/scripts/install-api-proxy.cjs" "$REPO_DIR/output/api-proxy-component"

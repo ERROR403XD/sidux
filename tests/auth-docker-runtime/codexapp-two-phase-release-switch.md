@@ -134,3 +134,10 @@ Validate `scripts/codexapp-release-switch.sh`: prepare an immutable release whil
 - 预期：未结束的底层工作与迟到清理均阻止发布；冻结不改变计划持久设置。解除后后续计划恢复。固定账号 API 流不断开，普通切换/额度保护及默认出口的原有拒绝规则不变；旧版本缺失统计标为 unsupported，不能声称检查了激活。
 - 清理：对同一隔离服务 POST `{"draining":false}` 到激活、API、自动化各自的 drain 入口；释放 fixture，停止自有测试进程。只读 check 不改变准入状态。
 - 性能：仅发布检查新增两次小型只读请求；不计入普通 API 请求/用量。激活执行增加有界 Promise 跟踪，超时后未结束的工作继续被看见；无新轮询、无账号刷新次数增加。
+
+## 0.2.19：运行依赖与部署锁
+
+- 前置：使用当前已验证的 Node 24 和隔离安装目录；不用生产 node_modules。
+- 操作：build/pack 后安装 tarball，确认九个直接运行/可选依赖与本次开发基线一致；prepare 产物应包含 package-lock.json。在第二个临时目录用该锁执行 npm ci --omit=dev，比较依赖清单；执行 CLI --help、CJS require 和真实 PTY 输出。
+- 预期：固定已安装版本，不升级版本；prepare 记录传递依赖，切换阶段不重新解析或安装依赖。Node 18 的完整支持仍未验证，不据清单声明宣传已经验收。
+- 清理：只删除本次自有临时安装目录；保留候选 home 和精确 prepare 目录。此操作不改生产服务。
