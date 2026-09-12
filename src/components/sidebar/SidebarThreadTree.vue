@@ -779,14 +779,18 @@
               </AppButton>
             </div>
 
-            <div v-if="automationScheduleDraft.mode === 'daily'" class="automation-schedule-row">
-              <span class="automation-schedule-copy">{{ t('Run every day at') }}</span>
-              <AppTimeInput
-                v-model="automationScheduleDraft.dailyTime"
-                class="automation-schedule-time"
-                :aria-label="t('Run every day at')"
-                @change="syncAutomationRruleFromScheduleDraft"
-              />
+            <div v-if="automationScheduleDraft.mode === 'daily'" class="automation-daily-times">
+              <div class="activation-times-heading">
+                <span>{{ t('Run every day at') }}</span>
+                <AppButton :disabled="automationScheduleDraft.dailyTimes.length >= MAX_DAILY_TIMES" @click="addAutomationDailyTime">{{ t('添加时间') }}</AppButton>
+              </div>
+              <div class="activation-time-list">
+                <p v-if="!automationScheduleDraft.dailyTimes.length">{{ t('尚未添加时间') }}</p>
+                <div v-for="(_, index) in automationScheduleDraft.dailyTimes" :key="index" class="activation-time-row">
+                  <AppTimeInput :model-value="automationScheduleDraft.dailyTimes[index] || ''" :aria-label="t('Run every day at') + ` ${index + 1}`" @update:model-value="automationScheduleDraft.dailyTimes[index] = $event" @change="syncAutomationRruleFromScheduleDraft" />
+                  <AppButton @click="removeAutomationDailyTime(index)">{{ t('移除') }}</AppButton>
+                </div>
+              </div>
             </div>
 
             <div v-else-if="automationScheduleDraft.mode === 'interval'" class="automation-schedule-row">
@@ -808,11 +812,11 @@
               />
             </div>
 
-            <input
+            <textarea
               v-if="automationScheduleDraft.mode === 'advanced'"
               v-model="automationDraft.rrule"
               class="rename-thread-input"
-              type="text"
+              rows="3"
               placeholder="FREQ=DAILY;BYHOUR=9;BYMINUTE=0"
               @input="syncAutomationScheduleDraftFromRrule"
             />
@@ -906,7 +910,7 @@ import { useUiLanguage } from '../../composables/useUiLanguage'
 import { useFeedbackDiagnostics } from '../../composables/useFeedbackDiagnostics'
 import { getPathLeafName, getPathParent, isAbsoluteLikePath, isProjectlessChatPath } from '../../pathUtils.js'
 import AppTimeInput from '../common/AppTimeInput.vue'
-import { isValidTimeInput } from '../common/timeInput'
+import { MAX_DAILY_TIMES, normalizeDailyTimes, buildDailyTimesRule, readDailyTimesRule } from '../../automationDailyTimes'
 import AppSelect from '../common/AppSelect.vue'
 import { normalizeModelCapability, reasoningUnavailable, fastModeControl, effortOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
 import SidebarMenuRow from './SidebarMenuRow.vue'
@@ -995,7 +999,7 @@ type AutomationTargetMode = 'thread' | 'project'
 
 type AutomationScheduleDraft = {
   mode: AutomationScheduleMode
-  dailyTime: string
+  dailyTimes: string[]
   interval: number
   intervalUnit: AutomationIntervalUnit
 }
@@ -1096,7 +1100,7 @@ const automationFastControl = computed(() => fastModeControl(automationModelCapa
 const automationEffortOptions = computed(() => effortOptions(automationModelCapability.value, automationDraft.value.reasoningEffort))
 const automationScheduleDraft = ref<AutomationScheduleDraft>({
   mode: 'daily',
-  dailyTime: '09:00',
+  dailyTimes: ['09:00'],
   interval: 1,
   intervalUnit: 'hours',
 })
@@ -1659,13 +1663,6 @@ function parsePositiveInteger(value: unknown, fallback: number): number {
   return Math.max(1, Math.floor(parsed))
 }
 
-function buildDailyRrule(time: string): string {
-  const [rawHour, rawMinute] = time.split(':')
-  const hour = Math.min(23, Math.max(0, Number(rawHour) || 0))
-  const minute = Math.min(59, Math.max(0, Number(rawMinute) || 0))
-  return `FREQ=DAILY;BYHOUR=${hour};BYMINUTE=${minute}`
-}
-
 function buildIntervalRrule(interval: number, unit: AutomationIntervalUnit): string {
   const normalizedInterval = parsePositiveInteger(interval, 1)
   if (unit === 'minutes') return `FREQ=MINUTELY;INTERVAL=${normalizedInterval}`
@@ -1691,27 +1688,19 @@ function createScheduleDraftFromRrule(rrule: string): AutomationScheduleDraft {
   const parts = parseRruleParts(rrule)
   const frequency = parts.FREQ?.toUpperCase()
   const interval = parsePositiveInteger(parts.INTERVAL, 1)
-  if (frequency === 'DAILY' && parts.BYHOUR !== undefined && parts.BYMINUTE !== undefined && interval === 1) {
-    const hour = Math.min(23, Math.max(0, Number(parts.BYHOUR) || 0))
-    const minute = Math.min(59, Math.max(0, Number(parts.BYMINUTE) || 0))
-    return {
-      mode: 'daily',
-      dailyTime: `${padRruleNumber(hour)}:${padRruleNumber(minute)}`,
-      interval: 1,
-      intervalUnit: 'hours',
-    }
-  }
-  if (frequency === 'MINUTELY' || frequency === 'HOURLY' || (frequency === 'DAILY' && parts.INTERVAL !== undefined)) {
+  const dailyTimes = readDailyTimesRule(rrule)
+  if (dailyTimes) return { mode: 'daily', dailyTimes, interval: 1, intervalUnit: 'hours' }
+  if (!rrule.includes('\n') && Object.keys(parts).every(key => ['FREQ', 'INTERVAL'].includes(key)) && (frequency === 'MINUTELY' || frequency === 'HOURLY' || (frequency === 'DAILY' && parts.INTERVAL !== undefined))) {
     return {
       mode: 'interval',
-      dailyTime: '09:00',
+      dailyTimes: ['09:00'],
       interval,
       intervalUnit: frequency === 'MINUTELY' ? 'minutes' : frequency === 'HOURLY' ? 'hours' : 'days',
     }
   }
   return {
     mode: 'advanced',
-    dailyTime: '09:00',
+    dailyTimes: ['09:00'],
     interval: 1,
     intervalUnit: 'hours',
   }
@@ -1721,11 +1710,8 @@ function describeAutomationSchedule(rrule: string): string {
   const parts = parseRruleParts(rrule)
   const frequency = parts.FREQ?.toUpperCase()
   const interval = parsePositiveInteger(parts.INTERVAL, 1)
-  if (frequency === 'DAILY' && parts.BYHOUR !== undefined && parts.BYMINUTE !== undefined && interval === 1) {
-    const hour = Math.min(23, Math.max(0, Number(parts.BYHOUR) || 0))
-    const minute = Math.min(59, Math.max(0, Number(parts.BYMINUTE) || 0))
-    return t('RRULE: {rrule} · runs daily at {time}', { rrule, time: `${padRruleNumber(hour)}:${padRruleNumber(minute)}` })
-  }
+  const dailyTimes = readDailyTimesRule(rrule)
+  if (dailyTimes) return `${t('Run every day at')} ${dailyTimes.join('、')}`
   if (frequency === 'MINUTELY') return t('RRULE: {rrule} · runs every {count} minutes', { rrule, count: interval })
   if (frequency === 'HOURLY') return t('RRULE: {rrule} · runs every {count} hours', { rrule, count: interval })
   if (frequency === 'DAILY' && parts.INTERVAL !== undefined) return t('RRULE: {rrule} · runs every {count} days', { rrule, count: interval })
@@ -1735,15 +1721,33 @@ function describeAutomationSchedule(rrule: string): string {
 function syncAutomationRruleFromScheduleDraft(): void {
   const draft = automationScheduleDraft.value
   if (draft.mode === 'daily') {
-    if (!isValidTimeInput(draft.dailyTime)) {
-      automationDialogError.value = '时间格式应为 HH:mm'
-      return
+    try {
+      automationDraft.value.rrule = buildDailyTimesRule(draft.dailyTimes)
+      automationDialogError.value = ''
+    } catch (cause) {
+      automationDialogError.value = cause instanceof Error ? cause.message : '时间格式应为 HH:mm'
     }
-    automationDialogError.value = ''
-    automationDraft.value.rrule = buildDailyRrule(draft.dailyTime)
   } else if (draft.mode === 'interval') {
     automationDraft.value.rrule = buildIntervalRrule(draft.interval, draft.intervalUnit)
   }
+}
+
+function addAutomationDailyTime(): void {
+  const times = automationScheduleDraft.value.dailyTimes
+  if (times.length >= MAX_DAILY_TIMES) return
+  for (let hour = 8; hour < 32; hour++) {
+    const time = `${String(hour % 24).padStart(2, '0')}:00`
+    if (!times.includes(time)) {
+      times.push(time)
+      syncAutomationRruleFromScheduleDraft()
+      return
+    }
+  }
+}
+
+function removeAutomationDailyTime(index: number): void {
+  automationScheduleDraft.value.dailyTimes.splice(index, 1)
+  syncAutomationRruleFromScheduleDraft()
 }
 
 function onAutomationIntervalUnitChange(value: string): void {
@@ -2112,7 +2116,7 @@ async function submitAutomationDialog(): Promise<void> {
   automationDialogError.value = ''
   automationDialogNotice.value = ''
   try {
-    if (automationScheduleDraft.value.mode === 'daily' && !isValidTimeInput(automationScheduleDraft.value.dailyTime)) throw new Error('时间格式应为 HH:mm')
+    if (automationScheduleDraft.value.mode === 'daily') normalizeDailyTimes(automationScheduleDraft.value.dailyTimes)
     syncAutomationRruleFromScheduleDraft()
     if (automationTargetPickerVisible.value && automationDialogMode.value === 'create') {
       if (automationTargetMode.value === 'thread') {

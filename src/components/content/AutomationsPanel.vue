@@ -117,6 +117,7 @@
 </template>
 
 <script setup lang="ts">
+import { readDailyTimesRule } from '../../automationDailyTimes'
 import { formatLocalDateTime } from '../../dateTime'
 import AppButton from '../common/AppButton.vue'
 import AppSwitch from '../common/AppSwitch.vue'
@@ -386,6 +387,8 @@ function describeAutomationSchedule(automation: UiThreadAutomation): string {
   if (automation.status === 'PAUSED') return t('Paused')
   if (automation.nextRunAtMs) return `下次 ${formatLocalDateTime(automation.nextRunAtMs)}`
   const rrule = automation.rrule.trim()
+  const dailyTimes = readDailyTimesRule(rrule)
+  if (dailyTimes) return `${t('Daily')} ${dailyTimes.join('、')}`
   if (/FREQ=MINUTELY/i.test(rrule)) {
     const interval = /INTERVAL=(\d+)/i.exec(rrule)?.[1] ?? '1'
     return interval === '1' ? t('Every minute') : t('Every {count} minutes', { count: interval })

@@ -1473,4 +1473,6 @@ export const zhSourceEnglish: Record<string, string> = {
   "关闭提示": "Dismiss notification",
   "复制草稿": "Copy draft",
   "保存中…": "Saving\u2026",
+  "请选择 1–24 个有效时间（HH:mm）": "Choose 1–24 valid times (HH:mm).",
+  "多时间规则仅支持 1–24 个每日时刻": "Multiple rules support 1–24 daily times only.",
 }

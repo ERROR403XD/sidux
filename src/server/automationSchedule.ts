@@ -1,4 +1,5 @@
 import rrulePackage from 'rrule'
+import { buildDailyTimesRule, readDailyTimesRule } from '../automationDailyTimes.js'
 const { RRule } = rrulePackage
 
 const formatters = new Map<string, Intl.DateTimeFormat>()
@@ -27,7 +28,26 @@ function fromWall(ms: number, zone: string): number | null {
   return values.length ? Math.min(...values) : null
 }
 
-export function createAutomationSchedule(text: string, timezone: string, anchor: number) {
+export function createAutomationSchedule(text: string, timezone: string, anchor: number): { next: (after: number) => number | null; previous: (before: number) => number | null } {
+  if (text.trim().includes('\n')) {
+    const times = readDailyTimesRule(text)
+    if (!times) throw new Error('多时间规则仅支持 1–24 个每日时刻')
+    const schedules = times.map(time => createSingleAutomationSchedule(buildDailyTimesRule([time]), timezone, anchor))
+    return {
+      next: after => {
+        const values = schedules.map(schedule => schedule.next(after)).filter((value): value is number => value !== null)
+        return values.length ? Math.min(...values) : null
+      },
+      previous: before => {
+        const values = schedules.map(schedule => schedule.previous(before)).filter((value): value is number => value !== null)
+        return values.length ? Math.max(...values) : null
+      },
+    }
+  }
+  return createSingleAutomationSchedule(text, timezone, anchor)
+}
+
+function createSingleAutomationSchedule(text: string, timezone: string, anchor: number) {
   validateAutomationTimezone(timezone)
   const raw = text.trim().replace(/^RRULE:/u, '')
   const fields = raw.split(';')
