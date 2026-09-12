@@ -49,3 +49,12 @@ Thread composer expand control is always visible, including empty drafts.
 预期：按钮始终可见；按钮和滚动条在独立布局列中，拖动滚动条不触发展开；草稿及选择范围保留。
 
 清理：清空本轮草稿。性能：移除为按钮出现条件而执行的逐次输入 scrollHeight/clientHeight 读取、行数计算和 draft watcher；无新增监听或 API。
+
+
+### 0.2.19 封测：扩大后缩放窗口
+
+前置：4173 当前工作树；使用普通鼠标的桌面，以及触屏键盘几何单测。
+操作：先扩大，再把窗口从 1440×1000 缩到 1440×620、1100×620，转到 768×1024 / 375×812 / 375×500，最后恢复；浅深各一轮，输入框保持焦点。然后选中草稿中段，继续改变尺寸并收起。
+预期：编辑区底边与内容区底边一致，位于测量后的标题下方，文字和选区不丢；不能把桌面窗口减少的高度误算为键盘占位。触屏且文本输入聚焦、宽度不变时仍允许保留键盘展开前的高度；旋转或退出输入状态时重置。
+验证：`pnpm exec vitest run src/virtualKeyboardViewport.test.ts src/components/content/composerCommands.test.ts` 及 `node scripts/test-expanded-composer-ui.cjs`。真实操作系统软键盘未在 headless 浏览器中模拟成实机验收；几何规则单测和现有手机布局分开记录。
+清理：清空测试草稿，关闭自建浏览器；无服务器状态修改。

@@ -9,7 +9,7 @@ describe('slash command input contract', () => {
     expect(findSlashToken(text, text.length)).toBeNull()
   })
   it('detects a token at the cursor without consuming neighboring text', () => {
-    expect(findSlashToken('/plan 后文', 5)).toEqual({ start: 0, end: 5, query: 'plan', text: '/plan' })
+    expect(findSlashToken('/plan 后文', 5)).toBeNull()
     expect(findSlashToken('/plan', 3, 4)).toBeNull()
     expect(findSlashToken('/plan', 3)?.end).toBe(5)
   })
@@ -48,6 +48,20 @@ describe('slash command input contract', () => {
     picker.update('/plan ', 6); picker.update('/plan /', 7); expect(picker.visible.value).toBe(false)
     picker.update('', 0); picker.update('/', 1); expect(picker.visible.value).toBe(true)
   })
+})
+
+it('only starts a command-input session from a slash typed into an empty draft', () => {
+  const picker = useComposerCommandPicker(ref(buildComposerCommands([], [])), () => {})
+  picker.update('/existing', 1, 1, false, false)
+  expect(picker.visible.value).toBe(false)
+  picker.update('', 0, 0, false, false)
+  picker.update('/', 1, 1, false, true)
+  picker.update('/plan', 5, 5, false, false)
+  expect(picker.visible.value).toBe(true)
+  picker.update('/plan body', 5, 5, false, false)
+  expect(picker.visible.value).toBe(false)
+  picker.update('/plan', 5, 5, false, false)
+  expect(picker.visible.value).toBe(false)
 })
 
 

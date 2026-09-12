@@ -35,6 +35,7 @@ export function findSlashToken(text: string, cursor: number, selectionEnd = curs
   const start = 0
   const tail = /^[^\s]*/u.exec(text.slice(cursor))?.[0] ?? ''
   if (!/^[\p{L}\p{N}_:.-]*$/u.test(tail)) return null
+  if (cursor + tail.length !== text.length) return null
   return { start, end: cursor + tail.length, query: match[1]!.slice(1), text: text.slice(start, cursor + tail.length) }
 }
 

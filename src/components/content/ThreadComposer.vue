@@ -123,7 +123,7 @@
           </template>
           <div v-else class="thread-composer-file-mention-empty">{{ t('No matching files') }}</div>
         </div>
-        <ComposerCommandPicker v-if="commandPicker.visible.value" :commands="commandPicker.results.value" :selected-index="commandPicker.selectedIndex.value" :anchor="inputRef" :list-id="commandListId" @choose="commandPicker.choose" @dismiss="commandPicker.dismiss" />
+        <ComposerCommandPicker v-if="commandPicker.visible.value" :commands="commandPicker.results.value" :selected-index="commandPicker.selectedIndex.value" :anchor="inputRef" :expanded="isComposerExpanded" :list-id="commandListId" @choose="commandPicker.choose" @dismiss="commandPicker.dismiss" />
         <textarea
           ref="inputRef"
           v-model="draft"
@@ -140,6 +140,7 @@
           @click="updateCommandPicker()"
           @keyup="onComposerCursorKeyup"
           @select="updateCommandPicker()"
+          @beforeinput="onBeforeComposerInput"
           @input="onInputChange"
           @keydown="onInputKeydown"
           @paste="onInputPaste"
@@ -617,11 +618,16 @@ const commandEntries = computed(() => buildComposerCommands(props.skills ?? [], 
 const commandPicker = useComposerCommandPicker(commandEntries, applyComposerCommand)
 let isComposingInput = false
 let pastedInput = false
+let commandOpeningAllowed = false
 let commandContext: { token: SlashToken; draft: string; menu: 'model' | 'skills' } | null = null
-function updateCommandPicker(paste = false) {
+function onBeforeComposerInput(event: Event): void {
+  const input = event as InputEvent
+  commandOpeningAllowed = draft.value === '' && input.data === '/' && input.inputType === 'insertText' && !input.isComposing
+}
+function updateCommandPicker(paste = false, allowOpening = false) {
   const input = inputRef.value
   if (!input || isComposingInput || isInteractionDisabled.value) { commandPicker.dismiss(); return }
-  commandPicker.update(draft.value, input.selectionStart, input.selectionEnd, paste)
+  commandPicker.update(draft.value, input.selectionStart, input.selectionEnd, paste, allowOpening)
   if (commandPicker.visible.value) {
     closeFileMention(); isAttachMenuOpen.value = false
     commandModelRef.value?.close(); commandSkillsRef.value?.close()
@@ -1515,7 +1521,8 @@ function onInputChange(event?: Event): void {
 
   if (isComposingInput || (event as InputEvent)?.isComposing) return
   updateFileMentionState()
-  updateCommandPicker(pastedInput || (event as InputEvent)?.inputType === 'insertFromPaste')
+  updateCommandPicker(pastedInput || (event as InputEvent)?.inputType === 'insertFromPaste', commandOpeningAllowed)
+  commandOpeningAllowed = false
   pastedInput = false
 }
 

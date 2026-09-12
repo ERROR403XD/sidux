@@ -6,17 +6,20 @@ export function useComposerCommandPicker(commands: Ref<ComposerCommand[]>, apply
   const visible = ref(false)
   const selectedIndex = ref(-1)
   let suppressedStart: number | null = null
+  let activeCommandInput = false
   const results = computed(() => filterComposerCommands(commands.value, token.value?.query ?? ''))
-  function update(text: string, cursor: number, end = cursor, paste = false) {
+  function update(text: string, cursor: number, end = cursor, paste = false, allowOpening = true) {
     const next = findSlashToken(text, cursor, end)
+    if (!next) activeCommandInput = false
+    else if (allowOpening && !paste) activeCommandInput = true
     if (!next || next.start !== token.value?.start) suppressedStart = null
     if (paste && next) suppressedStart = next.start
     if (next?.query !== token.value?.query || next?.start !== token.value?.start) selectedIndex.value = -1
     token.value = next
-    visible.value = Boolean(next && suppressedStart !== next.start)
+    visible.value = Boolean(next && activeCommandInput && suppressedStart !== next.start)
   }
-  function reset() { token.value = null; suppressedStart = null; visible.value = false; selectedIndex.value = -1 }
-  function dismiss() { suppressedStart = token.value?.start ?? null; visible.value = false; selectedIndex.value = -1 }
+  function reset() { token.value = null; suppressedStart = null; activeCommandInput = false; visible.value = false; selectedIndex.value = -1 }
+  function dismiss() { suppressedStart = token.value?.start ?? null; activeCommandInput = false; visible.value = false; selectedIndex.value = -1 }
   function choose(command: ComposerCommand) {
     const current = token.value
     if (!current || !visible.value) return

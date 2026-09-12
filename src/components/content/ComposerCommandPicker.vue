@@ -20,7 +20,7 @@ import { t } from '../../composables/useUiLanguage'
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { ComposerCommand } from './composerCommands'
-const props = defineProps<{ commands: ComposerCommand[]; selectedIndex: number; anchor: HTMLTextAreaElement | null; listId: string }>()
+const props = defineProps<{ commands: ComposerCommand[]; selectedIndex: number; anchor: HTMLTextAreaElement | null; expanded?: boolean; listId: string }>()
 const emit = defineEmits<{ choose: [command: ComposerCommand]; dismiss: [] }>()
 const root = ref<HTMLElement | null>(null)
 const optionsRoot = ref<HTMLElement | null>(null)
@@ -29,11 +29,33 @@ const windowStart = ref(0)
 const windowCommands = computed(() => props.commands.slice(windowStart.value, windowStart.value + 12).map((command, index) => ({ command, index: index + windowStart.value })))
 function onScroll() { windowStart.value = Math.max(0, Math.floor((optionsRoot.value?.scrollTop ?? 0) / rowHeight) - 2) }
 const placement = ref<Record<string, string>>({ visibility: 'hidden' })
+let observer: ResizeObserver | undefined
+let positionFrame = 0
+function schedulePosition() {
+  if (!positionFrame) positionFrame = requestAnimationFrame(position)
+}
 function position() {
+  positionFrame = 0
   if (!props.anchor || !root.value) return
   const rect = props.anchor.getBoundingClientRect()
   const viewport = window.visualViewport
   const top = viewport?.offsetTop ?? 0, height = viewport?.height ?? window.innerHeight
+  if (props.expanded) {
+    const leftEdge = Math.max(viewport?.offsetLeft ?? 0, rect.left)
+    const rightEdge = Math.min((viewport?.offsetLeft ?? 0) + (viewport?.width ?? window.innerWidth), rect.right)
+    const width = Math.min(380, Math.max(0, rightEdge - leftEdge - 16))
+    const available = Math.max(90, Math.min(380, rect.height - 64, height - 16))
+    const panelHeight = Math.min(root.value.getBoundingClientRect().height, available)
+    const centeredTop = rect.top + Math.max(40, (rect.height - panelHeight) * .6)
+    placement.value = {
+      left: `${leftEdge + (rightEdge - leftEdge - width) / 2}px`,
+      width: `${width}px`,
+      maxHeight: `${available}px`,
+      top: `${Math.max(top + 8, Math.min(centeredTop, top + height - panelHeight - 8))}px`,
+      bottom: 'auto',
+    }
+    return
+  }
   const width = Math.min(380, window.innerWidth - 16)
   const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8))
   const above = rect.top - top - 8, below = top + height - rect.bottom - 8
@@ -50,7 +72,26 @@ watch(() => props.selectedIndex, (index) => {
   else if (top + rowHeight > list.scrollTop + list.clientHeight) list.scrollTop = top + rowHeight - list.clientHeight
   onScroll()
 })
-watch(() => props.commands, () => { windowStart.value = 0; if (optionsRoot.value) optionsRoot.value.scrollTop = 0; void nextTick(position) })
-onMounted(() => { position(); window.addEventListener('resize', position); window.addEventListener('scroll', position, true); window.visualViewport?.addEventListener('resize', position); document.addEventListener('pointerdown', outside) })
-onBeforeUnmount(() => { window.removeEventListener('resize', position); window.removeEventListener('scroll', position, true); window.visualViewport?.removeEventListener('resize', position); document.removeEventListener('pointerdown', outside) })
+watch(() => props.commands, () => { windowStart.value = 0; if (optionsRoot.value) optionsRoot.value.scrollTop = 0; void nextTick(schedulePosition) })
+watch(() => props.expanded, () => { void nextTick(schedulePosition) })
+onMounted(() => {
+  position()
+  observer = new ResizeObserver(schedulePosition)
+  if (props.anchor) observer.observe(props.anchor)
+  if (root.value) observer.observe(root.value)
+  window.addEventListener('resize', schedulePosition)
+  window.addEventListener('scroll', schedulePosition, true)
+  window.visualViewport?.addEventListener('resize', schedulePosition)
+  window.visualViewport?.addEventListener('scroll', schedulePosition)
+  document.addEventListener('pointerdown', outside)
+})
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  cancelAnimationFrame(positionFrame)
+  window.removeEventListener('resize', schedulePosition)
+  window.removeEventListener('scroll', schedulePosition, true)
+  window.visualViewport?.removeEventListener('resize', schedulePosition)
+  window.visualViewport?.removeEventListener('scroll', schedulePosition)
+  document.removeEventListener('pointerdown', outside)
+})
 </script>

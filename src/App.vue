@@ -940,6 +940,7 @@ import IconTablerTerminal from './components/icons/IconTablerTerminal.vue'
 import IconTablerX from './components/icons/IconTablerX.vue'
 import { useDesktopState } from './composables/useDesktopState'
 import { useMobile } from './composables/useMobile'
+import { nextLayoutViewportHeight } from './virtualKeyboardViewport'
 import { useUiLanguage } from './composables/useUiLanguage'
 import { useFeedbackDiagnostics } from './composables/useFeedbackDiagnostics'
 import {
@@ -1657,6 +1658,7 @@ const mobileResumeSyncInProgress = ref(false)
 const visualViewportHeight = ref(typeof window !== 'undefined' ? window.visualViewport?.height ?? window.innerHeight : 0)
 const visualViewportOffsetTop = ref(typeof window !== 'undefined' ? window.visualViewport?.offsetTop ?? 0 : 0)
 const layoutViewportHeight = ref(typeof window !== 'undefined' ? window.innerHeight : 0)
+let layoutViewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0
 let accountStatePollTimer: number | null = null
 let isAccountStatePollInFlight = false
 let externalCodexAuthAvailable = false
@@ -2065,10 +2067,10 @@ const terminalHeaderDropdownOptions = computed(() => [
 ])
 const contentStyle = computed(() => {
   const preset = CHAT_WIDTH_PRESETS[chatWidth.value]
-  const keyboardInset = Math.max(
+  const keyboardInset = isVirtualKeyboardOpen.value ? Math.max(
     0,
     layoutViewportHeight.value - visualViewportHeight.value - visualViewportOffsetTop.value,
-  )
+  ) : 0
   return {
     '--chat-column-max': preset.columnMax,
     '--chat-card-max': preset.cardMax,
@@ -2155,7 +2157,16 @@ onUnmounted(() => {
 
 function updateVisualViewportState(): void {
   if (typeof window === 'undefined') return
-  layoutViewportHeight.value = Math.max(layoutViewportHeight.value, window.innerHeight)
+  layoutViewportHeight.value = nextLayoutViewportHeight(
+    { width: layoutViewportWidth, height: layoutViewportHeight.value },
+    {
+      width: window.innerWidth,
+      height: window.innerHeight,
+      coarsePointer: window.matchMedia('(pointer: coarse)').matches,
+      editing: document.activeElement?.matches('textarea, input, [contenteditable="true"]') === true,
+    },
+  )
+  layoutViewportWidth = window.innerWidth
   visualViewportHeight.value = window.visualViewport?.height ?? window.innerHeight
   visualViewportOffsetTop.value = window.visualViewport?.offsetTop ?? 0
 }
