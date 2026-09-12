@@ -1,0 +1,1269 @@
+{
+  "base": "http://127.0.0.1:59001",
+  "cases": [
+    "queue-to-steer appears before HTTP completion; switch away/back and reload while request is pending",
+    "sending, unknown and failed states survive reload with one visible message",
+    "history and queue read failures preserve visible content from display cache",
+    "accepted receipt survives missing history, then one native echo replaces presentation through refresh"
+  ],
+  "requests": [
+    {
+      "path": "thread-pins",
+      "method": "GET"
+    },
+    {
+      "path": "prompts",
+      "method": "GET"
+    },
+    {
+      "path": "accounts/login/status",
+      "method": "GET"
+    },
+    {
+      "path": "home-directory",
+      "method": "GET"
+    },
+    {
+      "path": "workspace-roots-state",
+      "method": "GET"
+    },
+    {
+      "path": "telegram/config",
+      "method": "GET"
+    },
+    {
+      "path": "telegram/status",
+      "method": "GET"
+    },
+    {
+      "path": "custom-connections",
+      "method": "GET"
+    },
+    {
+      "path": "free-mode/status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-terminal/status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "path": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "path": "thread-interruptions",
+      "method": "GET"
+    },
+    {
+      "path": "thread-automations",
+      "method": "GET"
+    },
+    {
+      "path": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/list"
+    },
+    {
+      "path": "thread-titles",
+      "method": "GET"
+    },
+    {
+      "path": "project-automations",
+      "method": "GET"
+    },
+    {
+      "path": "thread-terminal/quick-commands",
+      "method": "GET"
+    },
+    {
+      "path": "git/repository-status",
+      "method": "GET"
+    },
+    {
+      "path": "git/branches",
+      "method": "GET"
+    },
+    {
+      "path": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/resume"
+    },
+    {
+      "path": "accounts",
+      "method": "GET"
+    },
+    {
+      "path": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "account/rateLimits/read"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "collaborationMode/list"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "skills/list"
+    },
+    {
+      "path": "accounts/models",
+      "method": "GET"
+    },
+    {
+      "path": "thread-completions",
+      "method": "GET"
+    },
+    {
+      "path": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "path": "thread-queue-state",
+      "method": "POST",
+      "operation": "steer"
+    },
+    {
+      "path": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/resume"
+    },
+    {
+      "path": "git/branches",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "path": "git/branches",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "path": "thread-pins",
+      "method": "GET"
+    },
+    {
+      "path": "prompts",
+      "method": "GET"
+    },
+    {
+      "path": "accounts/login/status",
+      "method": "GET"
+    },
+    {
+      "path": "home-directory",
+      "method": "GET"
+    },
+    {
+      "path": "workspace-roots-state",
+      "method": "GET"
+    },
+    {
+      "path": "telegram/config",
+      "method": "GET"
+    },
+    {
+      "path": "telegram/status",
+      "method": "GET"
+    },
+    {
+      "path": "custom-connections",
+      "method": "GET"
+    },
+    {
+      "path": "free-mode/status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-terminal/status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "path": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "path": "thread-automations",
+      "method": "GET"
+    },
+    {
+      "path": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/list"
+    },
+    {
+      "path": "thread-titles",
+      "method": "GET"
+    },
+    {
+      "path": "thread-interruptions",
+      "method": "GET"
+    },
+    {
+      "path": "project-automations",
+      "method": "GET"
+    },
+    {
+      "path": "thread-terminal/quick-commands",
+      "method": "GET"
+    },
+    {
+      "path": "git/repository-status",
+      "method": "GET"
+    },
+    {
+      "path": "git/branches",
+      "method": "GET"
+    },
+    {
+      "path": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/resume"
+    },
+    {
+      "path": "accounts",
+      "method": "GET"
+    },
+    {
+      "path": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "account/rateLimits/read"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "collaborationMode/list"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "skills/list"
+    },
+    {
+      "path": "accounts/models",
+      "method": "GET"
+    },
+    {
+      "path": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "path": "thread-completions",
+      "method": "GET"
+    },
+    {
+      "path": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "path": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "path": "thread-pins",
+      "method": "GET"
+    },
+    {
+      "path": "prompts",
+      "method": "GET"
+    },
+    {
+      "path": "accounts/login/status",
+      "method": "GET"
+    },
+    {
+      "path": "home-directory",
+      "method": "GET"
+    },
+    {
+      "path": "workspace-roots-state",
+      "method": "GET"
+    },
+    {
+      "path": "telegram/config",
+      "method": "GET"
+    },
+    {
+      "path": "telegram/status",
+      "method": "GET"
+    },
+    {
+      "path": "custom-connections",
+      "method": "GET"
+    },
+    {
+      "path": "free-mode/status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-terminal/status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "path": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "path": "thread-automations",
+      "method": "GET"
+    },
+    {
+      "path": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/list"
+    },
+    {
+      "path": "thread-titles",
+      "method": "GET"
+    },
+    {
+      "path": "project-automations",
+      "method": "GET"
+    },
+    {
+      "path": "thread-terminal/quick-commands",
+      "method": "GET"
+    },
+    {
+      "path": "git/repository-status",
+      "method": "GET"
+    },
+    {
+      "path": "git/branches",
+      "method": "GET"
+    },
+    {
+      "path": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/resume"
+    },
+    {
+      "path": "thread-interruptions",
+      "method": "GET"
+    },
+    {
+      "path": "accounts",
+      "method": "GET"
+    },
+    {
+      "path": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "account/rateLimits/read"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "collaborationMode/list"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "skills/list"
+    },
+    {
+      "path": "accounts/models",
+      "method": "GET"
+    },
+    {
+      "path": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "path": "thread-completions",
+      "method": "GET"
+    },
+    {
+      "path": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "path": "thread-pins",
+      "method": "GET"
+    },
+    {
+      "path": "prompts",
+      "method": "GET"
+    },
+    {
+      "path": "accounts/login/status",
+      "method": "GET"
+    },
+    {
+      "path": "home-directory",
+      "method": "GET"
+    },
+    {
+      "path": "workspace-roots-state",
+      "method": "GET"
+    },
+    {
+      "path": "telegram/config",
+      "method": "GET"
+    },
+    {
+      "path": "telegram/status",
+      "method": "GET"
+    },
+    {
+      "path": "custom-connections",
+      "method": "GET"
+    },
+    {
+      "path": "free-mode/status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-terminal/status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "path": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "path": "thread-automations",
+      "method": "GET"
+    },
+    {
+      "path": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/list"
+    },
+    {
+      "path": "thread-titles",
+      "method": "GET"
+    },
+    {
+      "path": "project-automations",
+      "method": "GET"
+    },
+    {
+      "path": "thread-terminal/quick-commands",
+      "method": "GET"
+    },
+    {
+      "path": "git/repository-status",
+      "method": "GET"
+    },
+    {
+      "path": "git/branches",
+      "method": "GET"
+    },
+    {
+      "path": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/resume"
+    },
+    {
+      "path": "thread-interruptions",
+      "method": "GET"
+    },
+    {
+      "path": "accounts",
+      "method": "GET"
+    },
+    {
+      "path": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "account/rateLimits/read"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "collaborationMode/list"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "skills/list"
+    },
+    {
+      "path": "accounts/models",
+      "method": "GET"
+    },
+    {
+      "path": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "path": "thread-completions",
+      "method": "GET"
+    },
+    {
+      "path": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "path": "thread-pins",
+      "method": "GET"
+    },
+    {
+      "path": "prompts",
+      "method": "GET"
+    },
+    {
+      "path": "accounts/login/status",
+      "method": "GET"
+    },
+    {
+      "path": "home-directory",
+      "method": "GET"
+    },
+    {
+      "path": "workspace-roots-state",
+      "method": "GET"
+    },
+    {
+      "path": "telegram/config",
+      "method": "GET"
+    },
+    {
+      "path": "telegram/status",
+      "method": "GET"
+    },
+    {
+      "path": "custom-connections",
+      "method": "GET"
+    },
+    {
+      "path": "free-mode/status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-terminal/status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "path": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "path": "thread-automations",
+      "method": "GET"
+    },
+    {
+      "path": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/list"
+    },
+    {
+      "path": "thread-titles",
+      "method": "GET"
+    },
+    {
+      "path": "project-automations",
+      "method": "GET"
+    },
+    {
+      "path": "thread-terminal/quick-commands",
+      "method": "GET"
+    },
+    {
+      "path": "git/repository-status",
+      "method": "GET"
+    },
+    {
+      "path": "git/branches",
+      "method": "GET"
+    },
+    {
+      "path": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/resume"
+    },
+    {
+      "path": "thread-interruptions",
+      "method": "GET"
+    },
+    {
+      "path": "accounts",
+      "method": "GET"
+    },
+    {
+      "path": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "path": "thread-pins",
+      "method": "GET"
+    },
+    {
+      "path": "prompts",
+      "method": "GET"
+    },
+    {
+      "path": "accounts/login/status",
+      "method": "GET"
+    },
+    {
+      "path": "home-directory",
+      "method": "GET"
+    },
+    {
+      "path": "workspace-roots-state",
+      "method": "GET"
+    },
+    {
+      "path": "telegram/config",
+      "method": "GET"
+    },
+    {
+      "path": "telegram/status",
+      "method": "GET"
+    },
+    {
+      "path": "custom-connections",
+      "method": "GET"
+    },
+    {
+      "path": "free-mode/status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-terminal/status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "path": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "path": "thread-automations",
+      "method": "GET"
+    },
+    {
+      "path": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/list"
+    },
+    {
+      "path": "thread-titles",
+      "method": "GET"
+    },
+    {
+      "path": "project-automations",
+      "method": "GET"
+    },
+    {
+      "path": "thread-terminal/quick-commands",
+      "method": "GET"
+    },
+    {
+      "path": "git/repository-status",
+      "method": "GET"
+    },
+    {
+      "path": "git/branches",
+      "method": "GET"
+    },
+    {
+      "path": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "path": "delivery-status",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/resume"
+    },
+    {
+      "path": "thread-interruptions",
+      "method": "GET"
+    },
+    {
+      "path": "accounts",
+      "method": "GET"
+    },
+    {
+      "path": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "account/rateLimits/read"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "collaborationMode/list"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "skills/list"
+    },
+    {
+      "path": "thread-pins",
+      "method": "GET"
+    },
+    {
+      "path": "prompts",
+      "method": "GET"
+    },
+    {
+      "path": "accounts/login/status",
+      "method": "GET"
+    },
+    {
+      "path": "home-directory",
+      "method": "GET"
+    },
+    {
+      "path": "workspace-roots-state",
+      "method": "GET"
+    },
+    {
+      "path": "telegram/config",
+      "method": "GET"
+    },
+    {
+      "path": "telegram/status",
+      "method": "GET"
+    },
+    {
+      "path": "custom-connections",
+      "method": "GET"
+    },
+    {
+      "path": "free-mode/status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-terminal/status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "path": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "path": "thread-automations",
+      "method": "GET"
+    },
+    {
+      "path": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/list"
+    },
+    {
+      "path": "thread-titles",
+      "method": "GET"
+    },
+    {
+      "path": "project-automations",
+      "method": "GET"
+    },
+    {
+      "path": "thread-terminal/quick-commands",
+      "method": "GET"
+    },
+    {
+      "path": "git/repository-status",
+      "method": "GET"
+    },
+    {
+      "path": "git/branches",
+      "method": "GET"
+    },
+    {
+      "path": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/resume"
+    },
+    {
+      "path": "thread-interruptions",
+      "method": "GET"
+    },
+    {
+      "path": "accounts",
+      "method": "GET"
+    },
+    {
+      "path": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "account/rateLimits/read"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "collaborationMode/list"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "skills/list"
+    },
+    {
+      "path": "accounts/models",
+      "method": "GET"
+    },
+    {
+      "path": "thread-completions",
+      "method": "GET"
+    },
+    {
+      "path": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "path": "thread-goals",
+      "method": "POST"
+    },
+    {
+      "path": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "path": "thread-pins",
+      "method": "GET"
+    },
+    {
+      "path": "thread-automations",
+      "method": "GET"
+    },
+    {
+      "path": "project-automations",
+      "method": "GET"
+    },
+    {
+      "path": "thread-pins",
+      "method": "GET"
+    },
+    {
+      "path": "thread-automations",
+      "method": "GET"
+    },
+    {
+      "path": "project-automations",
+      "method": "GET"
+    },
+    {
+      "path": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "path": "delivery-status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-pins",
+      "method": "GET"
+    },
+    {
+      "path": "prompts",
+      "method": "GET"
+    },
+    {
+      "path": "accounts/login/status",
+      "method": "GET"
+    },
+    {
+      "path": "home-directory",
+      "method": "GET"
+    },
+    {
+      "path": "workspace-roots-state",
+      "method": "GET"
+    },
+    {
+      "path": "telegram/config",
+      "method": "GET"
+    },
+    {
+      "path": "telegram/status",
+      "method": "GET"
+    },
+    {
+      "path": "custom-connections",
+      "method": "GET"
+    },
+    {
+      "path": "free-mode/status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-terminal/status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "path": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "path": "thread-automations",
+      "method": "GET"
+    },
+    {
+      "path": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/list"
+    },
+    {
+      "path": "thread-titles",
+      "method": "GET"
+    },
+    {
+      "path": "project-automations",
+      "method": "GET"
+    },
+    {
+      "path": "thread-terminal/quick-commands",
+      "method": "GET"
+    },
+    {
+      "path": "git/repository-status",
+      "method": "GET"
+    },
+    {
+      "path": "git/branches",
+      "method": "GET"
+    },
+    {
+      "path": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/resume"
+    },
+    {
+      "path": "thread-interruptions",
+      "method": "GET"
+    },
+    {
+      "path": "accounts",
+      "method": "GET"
+    },
+    {
+      "path": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "account/rateLimits/read"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "collaborationMode/list"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "skills/list"
+    },
+    {
+      "path": "accounts/models",
+      "method": "GET"
+    },
+    {
+      "path": "thread-pins",
+      "method": "GET"
+    },
+    {
+      "path": "prompts",
+      "method": "GET"
+    },
+    {
+      "path": "accounts/login/status",
+      "method": "GET"
+    },
+    {
+      "path": "home-directory",
+      "method": "GET"
+    },
+    {
+      "path": "workspace-roots-state",
+      "method": "GET"
+    },
+    {
+      "path": "telegram/config",
+      "method": "GET"
+    },
+    {
+      "path": "telegram/status",
+      "method": "GET"
+    },
+    {
+      "path": "custom-connections",
+      "method": "GET"
+    },
+    {
+      "path": "free-mode/status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-terminal/status",
+      "method": "GET"
+    },
+    {
+      "path": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "path": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "path": "thread-automations",
+      "method": "GET"
+    },
+    {
+      "path": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/list"
+    },
+    {
+      "path": "thread-titles",
+      "method": "GET"
+    },
+    {
+      "path": "project-automations",
+      "method": "GET"
+    },
+    {
+      "path": "thread-terminal/quick-commands",
+      "method": "GET"
+    },
+    {
+      "path": "git/repository-status",
+      "method": "GET"
+    },
+    {
+      "path": "git/branches",
+      "method": "GET"
+    },
+    {
+      "path": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "thread/resume"
+    },
+    {
+      "path": "thread-interruptions",
+      "method": "GET"
+    },
+    {
+      "path": "accounts",
+      "method": "GET"
+    },
+    {
+      "path": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "account/rateLimits/read"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "collaborationMode/list"
+    },
+    {
+      "path": "rpc",
+      "method": "POST",
+      "rpc": "skills/list"
+    },
+    {
+      "path": "accounts/models",
+      "method": "GET"
+    }
+  ],
+  "errors": [],
+  "screenshots": [
+    "output/playwright/0219-steering-packaged-1440-light.png",
+    "output/playwright/0219-steering-packaged-1440-dark.png",
+    "output/playwright/0219-steering-packaged-768-light.png",
+    "output/playwright/0219-steering-packaged-768-dark.png",
+    "output/playwright/0219-steering-packaged-375-light.png",
+    "output/playwright/0219-steering-packaged-375-dark.png",
+    "output/playwright/testchat-steering-visibility-packaged-cjs.png"
+  ],
+  "testChat": {
+    "hrefOk": true,
+    "titleOk": true,
+    "textOk": true
+  },
+  "presentationPerformance": {
+    "measured": false,
+    "reason": "Source microbenchmark runs separately on the development server"
+  },
+  "passed": true
+}
