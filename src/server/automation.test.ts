@@ -46,7 +46,7 @@ describe('automation definitions and time', () => {
   })
 })
 
-async function fixture(options: { rule?: string; heartbeat?: boolean } = {}) {
+async function fixture(options: { rule?: string; heartbeat?: boolean; preparationTimeoutMs?: number } = {}) {
   const home = await mkdtemp(join(tmpdir(), 'automation-0190-')); roots.push(home)
   const dir = join(home, 'automations', 'test'); await mkdir(dir, { recursive: true })
   let now = Date.parse('2026-09-06T00:00:30Z')
@@ -60,7 +60,7 @@ async function fixture(options: { rule?: string; heartbeat?: boolean } = {}) {
     prepare: vi.fn(async () => ({})), start: vi.fn(async () => ({ turnId: 'turn-1' })),
     inspect: vi.fn(async () => inspection), interrupt: vi.fn(async () => {}),
   }
-  const make = async () => { const engine = new AutomationEngine(home, runtime, () => now, false); engines.push(engine); await engine.readyPromise; return engine }
+  const make = async () => { const engine = new AutomationEngine(home, runtime, () => now, false, undefined, options.preparationTimeoutMs); engines.push(engine); await engine.readyPromise; return engine }
   const engine = await make()
   return { home, path, engine, make, runtime, advance: (ms: number) => { now += ms }, inspect: (value: AutomationInspection) => { inspection = value } }
 }
@@ -361,7 +361,7 @@ it('dispatches an independent fixed account while another run inspection is stal
     const other = await f.engine.manual('independent', f.home, 'independent-request')
     nextTick = f.engine.tick()
     await vi.waitFor(() => expect(f.runtime.start).toHaveBeenCalledTimes(2))
-    expect(f.runtime.acquireAccount).toHaveBeenLastCalledWith(other.runId, expect.objectContaining({ accountStorageId: 'b'.repeat(64) }))
+    expect(vi.mocked(f.runtime.acquireAccount!).mock.calls.at(-1)?.slice(0, 2)).toEqual([other.runId, expect.objectContaining({ accountStorageId: 'b'.repeat(64) })])
     await f.engine.cancelAccount('a'.repeat(64), false, [first.runId])
     release({ status: 'running', turnId: 'old' })
     await Promise.all([tick, nextTick])
@@ -369,4 +369,72 @@ it('dispatches an independent fixed account while another run inspection is stal
     expect(f.runtime.interrupt).not.toHaveBeenCalled()
     expect(f.engine.snapshot().activeCount).toBe(1)
   } finally { release({ status: 'unknown' }); await Promise.all([tick, nextTick]) }
+})
+
+it('counts cancelled preparations until effects and cleanup settle; a fifth run cannot use a fictitious free slot', async () => {
+  const f = await fixture({ rule: 'FREQ=DAILY' })
+  const definition = parseAutomationToml(await readFile(f.path, 'utf8'))!
+  const runs: string[] = []
+  for (let i = 0; i < 5; i++) {
+    const id = `held-${i}`
+    await mkdir(join(f.home, 'automations', id))
+    await writeFile(join(f.home, 'automations', id, 'automation.toml'), serializeAutomationToml({ ...definition, id }))
+    runs.push((await f.engine.manual(id, f.home, `request-${i}`)).runId)
+  }
+  const effects: (() => void)[] = []
+  const cleanups: (() => void)[] = []
+  f.runtime.acquireAccount = vi.fn(async () => {
+    if (effects.length >= 4) return true
+    return new Promise<boolean>(resolve => { effects.push(() => resolve(true)) })
+  })
+  f.runtime.beginPreparation = (_id, scope) => {
+    const index = cleanups.length
+    if (index >= 4) return
+    const cleanup = new Promise<void>(resolve => { cleanups.push(resolve) })
+    scope.onCancel(() => cleanup)
+  }
+  const released = vi.fn()
+  f.runtime.releaseAccount = released
+  const tick = f.engine.tick()
+  try {
+    await vi.waitFor(() => expect(effects).toHaveLength(4))
+    await f.engine.cancelAccount('unrelated', false, runs.slice(0, 4))
+    expect(f.engine.runs('').data.filter(row => row.status === 'cancelled')).toHaveLength(4)
+    expect(f.engine.snapshot()).toMatchObject({ activeCount: 4, queuedCount: 1 })
+    expect(released).not.toHaveBeenCalled()
+    for (const finish of effects) finish()
+    await f.engine.tick()
+    expect(f.runtime.start).not.toHaveBeenCalled()
+    expect(f.engine.snapshot().activeCount).toBe(4)
+    cleanups[0]!()
+    await vi.waitFor(() => expect(released).toHaveBeenCalledTimes(1))
+    await f.engine.tick()
+    expect(f.runtime.start).toHaveBeenCalledTimes(1)
+    expect(f.engine.snapshot().activeCount).toBe(4)
+  } finally {
+    for (const finish of effects) finish()
+    for (const cleanup of cleanups) cleanup()
+    await tick
+  }
+  expect(f.engine.snapshot()).toMatchObject({ activeCount: 1, queuedCount: 0 })
+  expect(released).toHaveBeenCalledTimes(4)
+})
+
+it('never discards an existing heartbeat target when a preparation-only process is closed before submission', async () => {
+  const f = await fixture({ heartbeat: true, rule: 'FREQ=DAILY', preparationTimeoutMs: 30 })
+  let complete!: (params: unknown) => void
+  vi.mocked(f.runtime.prepare).mockImplementationOnce(() => new Promise(resolve => { complete = resolve }))
+  f.runtime.beginPreparation = (_id, scope) => {
+    scope.discardedThreadIds.add('thread-existing')
+    scope.onCancel(() => { complete?.({}) })
+  }
+  await f.engine.manual('test', 'thread-existing', 'prepare-timeout')
+  await f.engine.tick()
+  expect(f.engine.runs('test').data[0]).toMatchObject({ status: 'queued', threadId: 'thread-existing', attempt: 2 })
+  expect(f.runtime.start).not.toHaveBeenCalled()
+  expect(f.runtime.createThread).not.toHaveBeenCalled()
+  f.advance(5000)
+  await f.engine.tick()
+  expect(f.runtime.start).toHaveBeenCalledTimes(1)
+  expect(f.runtime.createThread).not.toHaveBeenCalled()
 })

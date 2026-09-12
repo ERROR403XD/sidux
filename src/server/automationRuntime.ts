@@ -3,12 +3,15 @@ import type { AutomationRun } from './automationStore.js'
 import { stat } from 'node:fs/promises'
 import { isAbsolute } from 'node:path'
 import { isVirtualProjectId } from '../projectOrganization.js'
+import type { AutomationPreparation } from './automationPreparation.js'
 
-type Rpc = (method: string, params: unknown, runId?: string) => Promise<unknown>
+type Rpc = (method: string, params: unknown, runId?: string, scope?: AutomationPreparation) => Promise<unknown>
 const record = (value: unknown) => value && typeof value === 'object' ? value as Record<string, unknown> : {}
 
 export function createAutomationRuntime(options: {
   rpc: Rpc
+  beginPreparation?: AutomationRuntime['beginPreparation']
+  endPreparation?: AutomationRuntime['endPreparation']
   resolveCwd?: (cwd: string, name: string) => Promise<string>
   acquireAccount?: AutomationRuntime['acquireAccount']
   releaseAccount?: AutomationRuntime['releaseAccount']
@@ -21,13 +24,16 @@ export function createAutomationRuntime(options: {
 }): AutomationRuntime {
   const rpc = options.rpc
   return {
+    beginPreparation: options.beginPreparation,
+    endPreparation: options.endPreparation,
     acquireAccount: options.acquireAccount,
     releaseAccount: options.releaseAccount,
     accountStorageId: options.accountStorageId,
     accountBusy: options.accountBusy,
-    async canStart(threadId) {
+    async canStart(threadId, scope) {
       if (await options.hasQueuedMessages(threadId)) return false
-      const result = record(await rpc('thread/read', { threadId, includeTurns: false }))
+      scope?.assertActive()
+      const result = record(await rpc('thread/read', { threadId, includeTurns: false }, undefined, scope))
       const thread = record(result.thread)
       const status = record(thread.status).type ?? thread.status
       return !['active', 'running', 'inProgress'].includes(String(status))

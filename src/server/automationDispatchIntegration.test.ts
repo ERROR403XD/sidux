@@ -64,11 +64,13 @@ it.each([
     nextRunAtMs: null, extraTomlLines: [], model: 'fixture', reasoningEffort: 'low',
     ...(fixed ? { accountStorageId: b.account.storageId } : {}),
   }))
-  const rpc = vi.fn((method: string, params: unknown, runId?: string) => runtimeApp.automationRpc(method, params, runId))
+  const rpc = vi.fn((method: string, params: unknown, runId?: string, scope?: import('./automationPreparation.js').AutomationPreparation) => runtimeApp.automationRpc(method, params, runId, scope))
   const runtime = createAutomationRuntime({
     resolveCwd: async cwd => organized && cwd === projectId ? home : cwd,
     rpc,
-    acquireAccount: (id, settings) => runtimeApp.acquireTaskAccount(id, settings),
+    beginPreparation: (id, scope) => runtimeApp.beginTaskPreparation(id, scope),
+    endPreparation: id => runtimeApp.endTaskPreparation(id),
+    acquireAccount: (id, settings, scope) => runtimeApp.acquireTaskAccount(id, settings, scope),
     releaseAccount: id => runtimeApp.releaseTaskAccount(id),
     accountStorageId: id => runtimeApp.taskAccountStorageId(id),
     accountBusy: () => false, hasQueuedMessages: async () => false,

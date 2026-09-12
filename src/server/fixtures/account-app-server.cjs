@@ -16,7 +16,21 @@ let nextRefreshId = 900000
 const save = thread => writeFileSync(process.env.CODEX_HOME + '/fixture-thread-' + thread.id + '.json', JSON.stringify(thread))
 const send = value => process.stdout.write(JSON.stringify(value) + '\n')
 const notify = (method, params) => send({ method, params })
-createInterface({ input: process.stdin }).on('line', line => {
+async function pause(method, phase, params) {
+  const path = process.env.CODEXAPP_FIXTURE_PAUSE_FILE
+  if (!path) return
+  const matches = () => {
+    try {
+      const setting = JSON.parse(readFileSync(path, 'utf8'))
+      return setting.method === method && (setting.phase || 'before') === phase
+        && (!setting.account || setting.account === (params.chatgptAccountId || account))
+    } catch { return false }
+  }
+  if (!matches()) return
+  writeFileSync(path + '.' + process.pid + '.waiting', JSON.stringify({ pid: process.pid, method, phase }))
+  while (matches()) await new Promise(resolve => setTimeout(resolve, 10))
+}
+createInterface({ input: process.stdin }).on('line', async line => {
   const message = JSON.parse(line)
   const { id, method, params: p = {} } = message
   if (!method && refreshReplies.has(id)) {
@@ -26,6 +40,7 @@ createInterface({ input: process.stdin }).on('line', line => {
     return
   }
   if (!method || id === undefined) return
+  await pause(method, 'before', p)
   let result = {}
   if (method === 'account/login/start') {
     if (/^custom_[a-f0-9]{64}$/.test(configuredProvider)) { send({ id, error: { message: 'custom_runtime_must_not_login' } }); return }
@@ -92,5 +107,6 @@ createInterface({ input: process.stdin }).on('line', line => {
     const turn = thread?.turns.find(turn => turn.id === p.turnId)
     if (turn) { turn.status = 'interrupted'; thread.status.type = 'idle'; notify('turn/completed', { threadId: thread.id, turn }) }
   }
+  await pause(method, 'after', p)
   send({ id, result })
 })

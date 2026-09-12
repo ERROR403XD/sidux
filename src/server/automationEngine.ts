@@ -2,6 +2,7 @@ import { isVirtualProjectId } from '../projectOrganization.js'
 import { DEFAULT_TIME_ZONE } from '../timeZoneConstants.js'
 import { buildAutomationMessage } from '../automationMessage.js'
 import { AutomationHistory } from './automationHistory.js'
+import { AutomationPreparation } from './automationPreparation.js'
 import type { AutomationModelSettings } from '../automationOptions.js'
 import { automationTimeContext, formatAutomationTime } from './automationTime.js'
 import { createHash, randomUUID } from 'node:crypto'
@@ -13,11 +14,13 @@ import { AutomationStore, isActiveAutomationRun, isPendingAutomationRun, pruneAu
 
 export type AutomationInspection = { status: 'running' | 'waiting_input' | 'completed' | 'failed' | 'interrupted' | 'unknown'; turnId?: string; error?: string }
 export interface AutomationRuntime {
-  acquireAccount?(runId: string, settings: AutomationModelSettings): Promise<boolean>
+  beginPreparation?(runId: string, scope: AutomationPreparation): void
+  endPreparation?(runId: string): void
+  acquireAccount?(runId: string, settings: AutomationModelSettings, scope?: AutomationPreparation): Promise<boolean>
   releaseAccount?(runId: string): void
   accountStorageId?(runId: string): string | null | undefined
   accountBusy(): boolean
-  canStart(threadId: string): Promise<boolean>
+  canStart(threadId: string, scope?: AutomationPreparation): Promise<boolean>
   createThread(cwd: string, name: string, settings?: AutomationModelSettings, runId?: string): Promise<{ threadId: string; model?: string }>
   prepare(threadId: string, text: string, runId: string, settings?: AutomationModelSettings): Promise<unknown>
   start(params: unknown): Promise<{ turnId: string }>
@@ -54,6 +57,7 @@ export class AutomationEngine {
   private chain: Promise<unknown> = Promise.resolve()
   private saving: Promise<unknown> = Promise.resolve()
   private readonly dispatches = new Map<string, Promise<void>>()
+  private readonly preparations = new Map<string, { scope: AutomationPreparation; terminal?: { status: AutomationRun['status']; error?: string; errorCode?: string } }>()
   private readonly inspections = new Map<string, Promise<void>>()
   private readonly inspectionVersions = new WeakMap<AutomationRun, number>()
   private timer: ReturnType<typeof setInterval> | null = null
@@ -69,7 +73,7 @@ export class AutomationEngine {
   private listeners = new Set<() => void>()
   timezone = validateAutomationTimezone(process.env.CODEXAPP_DEFAULT_TIMEZONE || DEFAULT_TIME_ZONE)
   readonly readyPromise: Promise<void>
-  constructor(private home: string, private runtime: AutomationRuntime, private now = Date.now, private automatic = true, previousRuntimeStopped?: Promise<void>) {
+  constructor(private home: string, private runtime: AutomationRuntime, private now = Date.now, private automatic = true, previousRuntimeStopped?: Promise<void>, private preparationTimeoutMs = 90_000) {
     this.store = new AutomationStore(join(home, 'codexapp-automations'))
     this.readyPromise = this.serial(async () => {
       await previousRuntimeStopped
@@ -113,7 +117,8 @@ export class AutomationEngine {
     return next
   }
   private async persistNow() {
-    const hot = pruneAutomationRuns(this.state.runs, this.now())
+    const pruned = new Set(pruneAutomationRuns(this.state.runs, this.now()).map(run => run.runId))
+    const hot = this.state.runs.filter(run => pruned.has(run.runId) || this.preparations.has(run.runId))
     const retained = new Set(hot.map(run => run.runId))
     await this.store.assertOwnership()
     await this.history.archive(this.state.runs.filter(run => !retained.has(run.runId)))
@@ -124,12 +129,15 @@ export class AutomationEngine {
   snapshot() {
     return {
       ready: this.ready && !this.stopped && !this.error, draining: this.drained, error: this.error, timezone: this.timezone,
-      activeCount: this.state.runs.filter(isActiveAutomationRun).length,
+      activeCount: this.activeRunCount(),
       queuedCount: this.state.runs.filter((run) => run.status === 'queued').length,
       definitions: [...this.definitions].map(([id, value]) => ({ id, error: value.error, ...this.state.definitions[id] })),
     }
   }
-  activity() { return this.state.runs.filter(isPendingAutomationRun).map((run) => run.threadId || `automation:${run.runId}`) }
+  activity() { return this.state.runs.filter(run => isPendingAutomationRun(run) || this.preparations.has(run.runId)).map((run) => run.threadId || `automation:${run.runId}`) }
+  private activeRunCount(): number {
+    return new Set([...this.state.runs.filter(isActiveAutomationRun).map(run => run.runId), ...this.preparations.keys()]).size
+  }
   decorate(record: ThreadAutomationRecord) {
     const meta = this.state.definitions[record.id]
     return { ...record, timezone: meta?.timezone ?? this.timezone, nextRunAtMs: record.status === 'ACTIVE' ? meta?.nextRunAtMs ?? null : null }
@@ -190,6 +198,19 @@ export class AutomationEngine {
   }
   private finish(run: AutomationRun, status: AutomationRun['status'], error?: string, errorCode?: string) {
     this.inspectionVersions.set(run, (this.inspectionVersions.get(run) ?? 0) + 1)
+    const preparation = this.preparations.get(run.runId)
+    if (preparation) {
+      if (preparation.terminal) return
+      preparation.terminal = { status, error, errorCode }
+      preparation.scope.cancel(new Error(error || '自动化准备已取消'))
+      if (status === 'cancelled') {
+        run.status = status
+        run.finishedAt = this.now()
+      }
+      run.error = error ?? null
+      run.errorCode = errorCode ?? null
+      return
+    }
     this.runtime.releaseAccount?.(run.runId)
     run.status = status; run.finishedAt = this.now(); run.error = error ?? null; run.errorCode = errorCode ?? null
   }
@@ -314,8 +335,9 @@ export class AutomationEngine {
     if (!this.ready || this.stopped || this.error) return
     if (!this.runtime.accountBusy()) {
       for (const run of this.state.runs.filter((row) => row.status === 'queued' && (!row.retryAfter || row.retryAfter <= now))) {
-        if (this.state.runs.filter(isActiveAutomationRun).length >= 4) break
-        if (this.state.runs.some(other => isActiveAutomationRun(other) && other.automationId === run.automationId && other.target === run.target)) continue
+        if (this.activeRunCount() >= 4) break
+        if (this.dispatches.has(run.runId)) continue
+        if (this.state.runs.some(other => (isActiveAutomationRun(other) || this.preparations.has(other.runId)) && other.automationId === run.automationId && other.target === run.target)) continue
         if (this.runtime.accountBusy() || this.stopped) break
         run.status = 'starting'
         await this.persist()
@@ -327,11 +349,36 @@ export class AutomationEngine {
     }
   }
   private async dispatch(run: AutomationRun) {
+    const scope = new AutomationPreparation(this.preparationTimeoutMs, () => {
+      run.error = '准备超时，正在等待已发出的操作结束'
+      run.errorCode = 'PREPARATION_TIMEOUT'
+      void this.persist().catch(() => { this.ready = false; this.error = '运行记录保存失败，调度已暂停' })
+    })
+    const preparation = { scope } as { scope: AutomationPreparation; terminal?: { status: AutomationRun['status']; error?: string; errorCode?: string } }
+    this.preparations.set(run.runId, preparation)
+    try {
+      this.runtime.beginPreparation?.(run.runId, scope)
+      await this.dispatchAttempt(run, scope)
+    } finally {
+      await scope.settle()
+      this.runtime.endPreparation?.(run.runId)
+      this.preparations.delete(run.runId)
+      if (this.stopped && !run.submittedAt && preparation.terminal?.status !== 'cancelled') {
+        preparation.terminal = { status: 'interrupted', error: '服务已停止，尚未提交', errorCode: 'SERVICE_STOPPED' }
+      }
+      if (preparation.terminal) {
+        const { status, error, errorCode } = preparation.terminal
+        this.finish(run, status, error, errorCode)
+        await this.persist()
+      }
+    }
+  }
+  private async dispatchAttempt(run: AutomationRun, scope: AutomationPreparation) {
     const record = this.definitions.get(run.automationId)?.record
     if (!record || this.state.definitions[record.id]?.revision !== run.revision) { this.finish(run, 'cancelled', '任务已修改'); await this.persist(); return }
     if (run.kind === 'heartbeat') {
       try {
-        if (!await bounded(this.runtime.canStart(run.target))) { if (isCancelledRun(run)) return; run.status = 'queued'; await this.persist(); return }
+        if (!await scope.read(() => this.runtime.canStart(run.target, scope))) { if (isCancelledRun(run)) return; run.status = 'queued'; await this.persist(); return }
       } catch (error) {
         const info = automationError(error)
         this.finish(run, 'failed', info.error, info.errorCode)
@@ -341,7 +388,7 @@ export class AutomationEngine {
     }
     if (this.runtime.acquireAccount) {
       try {
-        if (!await this.runtime.acquireAccount(run.runId, record)) {
+        if (!await scope.effect(() => this.runtime.acquireAccount!(run.runId, record, scope))) {
           if (isCancelledRun(run)) return
           run.status = 'queued'
           run.retryAfter = this.now() + 30_000
@@ -351,8 +398,9 @@ export class AutomationEngine {
           return
         }
       } catch (error) {
+        if (this.preparations.get(run.runId)?.terminal) return
         if (isCancelledRun(run)) return
-        this.finish(run, 'failed', automationError(error).error, 'ACCOUNT_UNAVAILABLE')
+        this.finish(run, 'failed', automationError(error).error, scope.signal.aborted ? automationError(error).errorCode : 'ACCOUNT_UNAVAILABLE')
         await this.persist()
         return
       }
@@ -363,8 +411,8 @@ export class AutomationEngine {
     await this.persist()
     try {
       if (!run.threadId) {
-        if (!isVirtualProjectId(run.target) && !(await stat(run.target)).isDirectory()) throw new Error('cwd 不是目录')
-        const thread = await bounded(this.runtime.createThread(run.target, `${record.name} · ${formatAutomationTime(run.scheduledAt, run.timezone)}`, record, run.runId))
+        if (!isVirtualProjectId(run.target) && !(await scope.read(() => stat(run.target))).isDirectory()) throw new Error('cwd 不是目录')
+        const thread = await scope.effect(() => this.runtime.createThread(run.target, `${record.name} · ${formatAutomationTime(run.scheduledAt, run.timezone)}`, record, run.runId))
         run.threadId = thread.threadId; run.model = thread.model ?? null
         await this.persist()
       }
@@ -372,7 +420,7 @@ export class AutomationEngine {
         runId: run.runId, automationId: record.id, name: record.name,
         scheduledAt: run.scheduledAt, startedAt: run.startedAt ?? run.scheduledAt, timezone: run.timezone,
       }, automationTimeContext(run), record.prompt)
-      const params = await bounded(this.runtime.prepare(run.threadId, text, run.runId, record))
+      const params = await scope.effect(() => this.runtime.prepare(run.threadId!, text, run.runId, record))
       const execution = params as { model?: string; effort?: string; serviceTier?: string | null; collaborationMode?: { settings?: { model?: string; reasoning_effort?: string } } }
       const model = execution.collaborationMode?.settings?.model ?? execution.model
       if (model) run.model = model
@@ -380,6 +428,10 @@ export class AutomationEngine {
       run.reasoningEffort = execution.collaborationMode?.settings?.reasoning_effort ?? execution.effort ?? null
       if (isCancelledRun(run)) { this.runtime.releaseAccount?.(run.runId); return }
       if (this.stopped) { this.finish(run, 'interrupted', '服务已停止，尚未提交', 'SERVICE_STOPPED'); await this.persist(); return }
+      await scope.settle()
+      scope.assertActive()
+      this.runtime.endPreparation?.(run.runId)
+      this.preparations.delete(run.runId)
       // Write intent before RPC. Any error after this point requires reconciliation, never an automatic replay.
       run.submittedAt = this.now()
       await this.persist()
@@ -387,7 +439,9 @@ export class AutomationEngine {
       run.turnId = result.turnId
       if (isActiveAutomationRun(run)) run.status = 'running'
     } catch (error) {
+      if (this.preparations.get(run.runId)?.terminal) return
       if (isCancelledRun(run)) { this.runtime.releaseAccount?.(run.runId); return }
+      if (run.kind === 'cron' && !run.submittedAt && run.threadId && scope.discardedThreadIds.has(run.threadId)) run.threadId = null
       const info = automationError(error)
       if ((error as { rpcRejected?: boolean })?.rpcRejected) this.finish(run, 'failed', info.error, info.errorCode)
       else if (run.submittedAt) { run.status = 'starting'; run.error = '提交结果待核对'; run.errorCode = 'SUBMISSION_UNKNOWN' }
@@ -513,6 +567,7 @@ export class AutomationEngine {
   }
   dispose(): Promise<void> {
     this.stopped = true; this.ready = false
+    for (const preparation of this.preparations.values()) preparation.scope.cancel(new Error('服务已停止，尚未提交'))
     if (this.timer) clearInterval(this.timer)
     return this.serial(async () => { await Promise.all(this.dispatches.values()); await this.saving; this.listeners.clear(); await this.store.release() })
   }

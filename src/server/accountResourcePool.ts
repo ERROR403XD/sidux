@@ -1,9 +1,12 @@
+import type { AutomationPreparation } from './automationPreparation.js'
+
 /** Bounded lazy resources shared by API and automation account adapters. */
 export class AccountResourcePool<T> extends Map<string, T> {
   private readonly accesses = new Map<string, number>()
   private allocation: Promise<unknown> = Promise.resolve()
-  constructor(private options: { capacity: number; idle: (resource: T, key: string) => boolean | Promise<boolean>; dispose: (resource: T) => void | Promise<void> }) { super() }
-  getOrCreate(key: string, create: () => T, allowEviction = true): Promise<T | null> {
+  constructor(private options: { capacity: number; idle: (resource: T, key: string, preparation?: AutomationPreparation) => boolean | Promise<boolean>; dispose: (resource: T) => void | Promise<void> }) { super() }
+  getOrCreate(key: string, create: () => T, allowEviction = true, preparation?: AutomationPreparation): Promise<T | null> {
+    preparation?.assertActive()
     const cached = this.get(key)
     if (cached) {
       this.accesses.set(key, (this.accesses.get(key) || 0) + 1)
@@ -11,6 +14,7 @@ export class AccountResourcePool<T> extends Map<string, T> {
     }
     // Only allocation is serialized. Work on existing accounts stays independent.
     const next = this.allocation.then(async () => {
+      preparation?.assertActive()
       const existing = this.get(key)
       if (existing) {
         this.accesses.set(key, (this.accesses.get(key) || 0) + 1)
@@ -21,7 +25,11 @@ export class AccountResourcePool<T> extends Map<string, T> {
         let evicted = false
         for (const [candidateKey, candidate] of this) {
           const observed = this.accesses.get(candidateKey)
-          if (!await this.options.idle(candidate, candidateKey)) continue
+          const idle = preparation
+            ? await preparation.read(async () => this.options.idle(candidate, candidateKey, preparation))
+            : await this.options.idle(candidate, candidateKey)
+          if (!idle) continue
+          preparation?.assertActive()
           if (this.accesses.get(candidateKey) !== observed || this.get(candidateKey) !== candidate) continue
           this.delete(candidateKey)
           this.accesses.delete(candidateKey)
@@ -31,12 +39,13 @@ export class AccountResourcePool<T> extends Map<string, T> {
         }
         if (!evicted) return null
       }
+      preparation?.assertActive()
       const resource = create()
       this.set(key, resource)
       this.accesses.set(key, 0)
       return resource
     })
     this.allocation = next.catch(() => undefined)
-    return next
+    return preparation ? preparation.read(() => next) : next
   }
 }
