@@ -9,7 +9,7 @@ describe('slash command input contract', () => {
     expect(findSlashToken(text, text.length)).toBeNull()
   })
   it('detects a token at the cursor without consuming neighboring text', () => {
-    expect(findSlashToken('你好 /plan 后文', 8)).toEqual({ start: 3, end: 8, query: 'plan', text: '/plan' })
+    expect(findSlashToken('/plan 后文', 5)).toEqual({ start: 0, end: 5, query: 'plan', text: '/plan' })
     expect(findSlashToken('/plan', 3, 4)).toBeNull()
     expect(findSlashToken('/plan', 3)?.end).toBe(5)
   })
@@ -39,13 +39,14 @@ describe('slash command input contract', () => {
     picker.update('/plan', 5); expect(picker.selectedIndex.value).toBe(-1)
     picker.keydown(event('ArrowDown')); picker.keydown(event('Enter')); expect(applied).toEqual(['/plan'])
     picker.update('/planmore', 9); expect(picker.visible.value).toBe(false)
-    picker.update('text ', 5); picker.update('text /', 6); expect(picker.visible.value).toBe(true)
-    picker.keydown(event('Escape')); picker.update('text /model', 11); expect(picker.visible.value).toBe(false)
+    picker.update('', 0); picker.update('/', 1); expect(picker.visible.value).toBe(true)
+    picker.keydown(event('Escape')); picker.update('/model', 6); expect(picker.visible.value).toBe(false)
   })
-  it('does not open on paste but allows a new subsequent token', () => {
+  it('does not open on paste or a subsequent token, but allows a fresh draft', () => {
     const picker = useComposerCommandPicker(ref(buildComposerCommands([], [])), () => {})
     picker.update('/plan', 5, 5, true); expect(picker.visible.value).toBe(false)
-    picker.update('/plan ', 6); picker.update('/plan /', 7); expect(picker.visible.value).toBe(true)
+    picker.update('/plan ', 6); picker.update('/plan /', 7); expect(picker.visible.value).toBe(false)
+    picker.update('', 0); picker.update('/', 1); expect(picker.visible.value).toBe(true)
   })
 })
 
@@ -59,12 +60,11 @@ it('searches translated built-in descriptions while preserving external descript
 })
 
 
-it.each(['已有内容', 'hello', '第一行\n第二行', '先讨论，'])('opens slash search after preceding content: %s', prefix => {
+it.each(['已有内容', 'hello', '第一行\n第二行', '先讨论，', ' ', '\n', '/plan '])('keeps slash literal after preceding content: %s', prefix => {
   const picker = useComposerCommandPicker(ref(buildComposerCommands([], [])), () => {})
   picker.update(prefix + '/', prefix.length + 1)
-  expect(picker.visible.value).toBe(true)
+  expect(picker.visible.value).toBe(false)
   picker.update(prefix + '/plan', prefix.length + 5)
-  expect(picker.visible.value).toBe(true)
-  expect(picker.token.value).toEqual({ start: prefix.length, end: prefix.length + 5, query: 'plan', text: '/plan' })
-  expect(picker.results.value.map(row => row.name)).toContain('/plan')
+  expect(picker.visible.value).toBe(false)
+  expect(picker.token.value).toBeNull()
 })
