@@ -44,3 +44,5 @@ Return to the [manual test index](../../tests.md).
 
 - [0.2.16 中文界面英文补全](ui-0216-language-completion.md)
 - [0.2.17 设置与目标](0217-settings-and-goals.md)
+
+| [审核后的通知文案](reviewed-notification-copy.md) |

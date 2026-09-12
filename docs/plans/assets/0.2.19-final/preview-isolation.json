@@ -1,0 +1,47 @@
+{
+  "base": "http://127.0.0.1:35853",
+  "viewport": "1000x700",
+  "cases": [
+    {
+      "name": "baseline",
+      "csp": "",
+      "url": "http://127.0.0.1:35853/codex-local-browse/tmp/codexapp-preview-isolation-put2KZ/preview.html",
+      "preview": {
+        "module": true,
+        "data": true,
+        "management": true
+      },
+      "editSaved": true,
+      "svgManagementReadable": true,
+      "screenshot": "/home/Code/codexapp/output/playwright/0219-preview-isolation-baseline.png"
+    },
+    {
+      "name": "opaque",
+      "csp": "sandbox allow-scripts",
+      "url": "http://127.0.0.1:35853/codex-local-browse/tmp/codexapp-preview-isolation-put2KZ/preview.html",
+      "preview": {
+        "module": false,
+        "data": false,
+        "management": false
+      },
+      "editSaved": false,
+      "svgManagementReadable": false,
+      "screenshot": "/home/Code/codexapp/output/playwright/0219-preview-isolation-opaque.png"
+    },
+    {
+      "name": "same-origin",
+      "csp": "sandbox allow-scripts allow-same-origin",
+      "url": "http://127.0.0.1:35853/codex-local-browse/tmp/codexapp-preview-isolation-put2KZ/preview.html",
+      "preview": {
+        "module": true,
+        "data": true,
+        "management": true
+      },
+      "editSaved": true,
+      "svgManagementReadable": true,
+      "screenshot": "/home/Code/codexapp/output/playwright/0219-preview-isolation-same-origin.png"
+    }
+  ],
+  "managementRequestsReadOnly": true,
+  "passed": true
+}
