@@ -33,3 +33,5 @@ This file is the manual test index. Detailed regression and feature verification
 See [`tests/template.md`](tests/template.md).
 
 - [0.2.17 公开发行回归检查](tests/ui/release-0.2.17.md)
+
+- [0.2.19 调度可靠性与账号出口保护矩阵](tests/automations/stabilization-0.2.19.md)
