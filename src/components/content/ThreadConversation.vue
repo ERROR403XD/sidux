@@ -19,7 +19,7 @@
         >
           {{ isLoadingMore || isLoadingPersistedAbove ? 'Loading…' : 'Load earlier messages' }}
         </button>
-        <DismissibleNotice :message="historyLoadError" class="history-load-error" />
+        <p v-if="historyLoadError" class="history-load-error" role="alert">{{ t(historyLoadError) }}</p>
       </li>
       <template v-for="message in visibleMessages" :key="renderKey(message)">
       <li
@@ -188,7 +188,9 @@
                       </li>
                     </ul>
                     <div v-if="isFileChangeActionable(readStandaloneFileChangeSummary(message))" class="file-change-actions">
-                      <DismissibleNotice :message="fileChangeActionErrorText(readStandaloneFileChangeSummary(message))" class="file-change-action-error" />
+                      <p v-if="fileChangeActionErrorText(readStandaloneFileChangeSummary(message))" class="file-change-action-error">
+                        {{ t(fileChangeActionErrorText(readStandaloneFileChangeSummary(message))) }}
+                      </p>
                       <button
                         type="button"
                         class="file-change-action-button"
@@ -261,7 +263,7 @@
                 </a>
               </div>
 
-              <article v-if="message.text.length > 0 && !(isTurnErrorMessage(message) && dismissedTurnErrors.has(renderKey(message)))" class="message-card" :data-role="message.role">
+              <article v-if="message.text.length > 0" class="message-card" :data-role="message.role">
                 <div v-if="message.isAutomationRun" class="automation-message-label">
                   <span>Sent via automation</span>
                   <code v-if="message.automationDisplayName">{{ message.automationDisplayName }}</code>
@@ -271,7 +273,7 @@
                 <div v-else-if="message.compaction" class="thread-compaction-event" :data-status="message.compaction.status" role="status">
                   <span>{{ t(message.text) }}</span>
                   <small v-if="message.compaction.durationMs != null">{{ (message.compaction.durationMs / 1000).toFixed(1) }} {{ t('秒') }}</small>
-                  <DismissibleNotice :message="message.compaction.error || ''" />
+                  <p v-if="message.compaction.error" role="alert">{{ t(message.compaction.error) }}</p>
                 </div>
                 <details v-else-if="message.isUnhandled" class="model-tool-summary"><summary>{{ message.text }}</summary><p>{{ message.rawPayload }}</p></details>
                 <div v-else-if="message.messageType === 'worked'" class="worked-separator-wrap" aria-live="polite">
@@ -614,8 +616,7 @@
                   :disabled="quotaIgnorePending"
                   @click="toggleQuotaError(message.turnId)"
                 >{{ t(ignoredQuotaTurns.includes(message.turnId) ? '已忽略' : '忽略') }}</button>
-                <DismissibleNotice v-if="isTurnErrorMessage(message)" :message="quotaIgnoreError" />
-                <button v-if="isTurnErrorMessage(message)" type="button" class="dismissible-notice-close turn-error-close" :aria-label="t('关闭提示')" @click="dismissedTurnErrors.add(renderKey(message))">×</button>
+                <span v-if="isTurnErrorMessage(message) && quotaIgnoreError" role="alert">{{ t(quotaIgnoreError) }}</span>
                 <a
                   v-if="isTurnErrorMessage(message)"
                   class="turn-error-feedback"
@@ -690,7 +691,9 @@
                       </li>
                     </ul>
                     <div v-if="isFileChangeActionable(readAnchoredFileChangeSummary(message))" class="file-change-actions">
-                      <DismissibleNotice :message="fileChangeActionErrorText(readAnchoredFileChangeSummary(message))" class="file-change-action-error" />
+                      <p v-if="fileChangeActionErrorText(readAnchoredFileChangeSummary(message))" class="file-change-action-error">
+                        {{ t(fileChangeActionErrorText(readAnchoredFileChangeSummary(message))) }}
+                      </p>
                       <button
                         type="button"
                         class="file-change-action-button"
@@ -766,9 +769,10 @@
               >
                 {{ liveOverlay.reasoningText }}
               </p>
-              <DismissibleNotice :key="`live-error-${activeThreadId}`" :message="liveOverlay.errorText || ''" class="live-overlay-error">
+              <div v-if="liveOverlay.errorText" class="live-overlay-error">
+                <span>{{ t(liveOverlay.errorText) }}</span>
                 <a class="live-overlay-feedback" :href="feedbackMailto" @click="prepareLiveErrorFeedback($event, liveOverlay.errorText)">Send feedback</a>
-              </DismissibleNotice>
+              </div>
             </article>
           </div>
         </div>
@@ -941,7 +945,6 @@
 <script setup lang="ts">
 import { messageRenderKey } from '../../messageIdentity'
 import SubtaskEventCard from './SubtaskEventCard.vue'
-import DismissibleNotice from '../common/DismissibleNotice.vue'
 import { formatLocalDateTime } from '../../dateTime'
 import { isFinalQuotaInterruption } from '../../sidebarThreadFilter'
 import { useIgnoredQuotaErrors } from '../../composables/useIgnoredQuotaErrors'
@@ -1351,8 +1354,6 @@ const emit = defineEmits<{
   implementPlan: [payload: { turnId: string }]
 }>()
 
-const dismissedTurnErrors = ref(new Set<string>())
-watch(() => props.activeThreadId, () => { dismissedTurnErrors.value = new Set() })
 const conversationListRef = ref<HTMLElement | null>(null)
 const bottomAnchorRef = ref<HTMLElement | null>(null)
 const modalImageUrl = ref('')

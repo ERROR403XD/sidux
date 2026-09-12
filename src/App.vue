@@ -579,7 +579,10 @@
 
               <div class="composer-with-queue">
                 <DismissibleNotice :key="composerThreadContextId" :message="commandActionError" class="composer-runtime-error" />
-                <DismissibleNotice :key="`cli-${composerThreadContextId}`" :message="codexCliMissingError" class="composer-runtime-error"><a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, codexCliMissingError)">{{ t('Send feedback') }}</a></DismissibleNotice>
+                <div v-if="codexCliMissingError" class="composer-runtime-error" role="alert">
+                  <span>{{ t(codexCliMissingError) }}</span>
+                  <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, codexCliMissingError)">{{ t('Send feedback') }}</a>
+                </div>
                 <ThreadTerminalPanel
                   v-if="homeTerminalOpen && composerCwd"
                   ref="homeTerminalPanelRef"
@@ -627,7 +630,7 @@
 
               <template v-else>
                 <div class="content-thread">
-                  <DismissibleNotice :key="`goals-${selectedThreadId}`" :message="threadGoalsError" class="thread-goal-read-error"><AppButton @click="refreshThreadGoals">{{ t('重新读取') }}</AppButton></DismissibleNotice>
+                  <p v-if="threadGoalsError" class="thread-goal-read-error" role="alert">{{ t(threadGoalsError) }} <AppButton @click="refreshThreadGoals">{{ t('重新读取') }}</AppButton></p>
                   <p v-if="pendingCompactionRequest" class="thread-compaction-pending" role="status">{{ t('压缩请求等待确认。') }}<AppButton @click="onComposerCommand({ name: 'compact', complete: () => {} })">{{ t('检查压缩') }}</AppButton></p>
                   <ThreadTasksPanel :thread-id="selectedThreadId" :identity="selectedThread?.task || null" @return-task="onReturnTask" @open-task="onOpenRelatedTask" @search-tasks="isTaskSearchOpen = true">
                     <template #tools><ThreadProcessPanel :key="`${selectedThreadId}:${composerCwd}:${directoryAccountRevision}`" :thread-id="selectedThreadId" :cwd="composerCwd" /></template>
@@ -654,7 +657,10 @@
                     {{ t(selectedAuthRecovery.phase === 'started' ? '正在恢复凭据' : '凭据恢复已结束') }}
                     <span v-if="selectedAuthRecovery.message"> · {{ t(selectedAuthRecovery.message) }}</span>
                   </p>
-                  <DismissibleNotice :key="`cli-${composerThreadContextId}`" :message="codexCliMissingError" class="composer-runtime-error"><a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, codexCliMissingError)">{{ t('Send feedback') }}</a></DismissibleNotice>
+                  <div v-if="codexCliMissingError" class="composer-runtime-error" role="alert">
+                    <span>{{ t(codexCliMissingError) }}</span>
+                    <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, codexCliMissingError)">{{ t('Send feedback') }}</a>
+                  </div>
                   <DismissibleNotice :key="`selectedThreadQueueError-${selectedThreadId}`" :message="selectedThreadQueueError" class="composer-runtime-error" />
                   <DismissibleNotice :key="`threadHistoryActionError-${selectedThreadId}`" :message="threadHistoryActionError" class="composer-runtime-error" />
                   <DeliveryOutbox :thread-id="selectedThreadId" :queue="selectedThreadQueuedMessages" @settled="onDeliveryAcknowledged" />

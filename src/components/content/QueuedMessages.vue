@@ -18,7 +18,7 @@
         <div class="queued-row-content">
           <span class="queued-row-text" :title="getMessagePreview(msg)">{{ getMessagePreview(msg) }}</span>
           <span class="queued-row-status">{{ t(msg.delivery ? deliveryStatusLabel(msg.delivery.status) : '等待加载发送状态') }}</span>
-          <DismissibleNotice :message="msg.delivery?.error || ''" class="queued-row-error" />
+          <span v-if="msg.delivery?.error" class="queued-row-error">{{ t(msg.delivery.error) }}</span>
         </div>
         <div v-if="isQuestion(msg)" class="queued-row-actions">
           <AppButton v-if="msg.delivery?.status === 'unknown'" @click="emit('reconcile', msg.id)">{{ t('核对回答') }}</AppButton>
@@ -46,7 +46,6 @@
 </template>
 
 <script setup lang="ts">
-import DismissibleNotice from '../common/DismissibleNotice.vue'
 import { t } from '../../composables/useUiLanguage'
 
 import { ref, watch } from 'vue'

@@ -1,6 +1,6 @@
 <template>
   <div v-if="message && !dismissed" class="dismissible-notice" role="alert">
-    <span class="dismissible-notice-content">{{ t(message) }}<slot /></span>
+    <span>{{ t(message) }}</span>
     <button type="button" class="dismissible-notice-close" :aria-label="t('关闭提示')" @click="dismissed = true">×</button>
   </div>
 </template>
