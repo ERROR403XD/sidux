@@ -144,7 +144,7 @@ async function main() {
     }
     await fs.rm(root, { recursive: true, force: true })
     await fs.mkdir('output/0219-final', { recursive: true })
-    await fs.writeFile('output/0219-final/project-http.json', JSON.stringify(report, null, 2))
+    await fs.writeFile(process.env.UI_REPORT_PATH || 'output/0219-final/project-http.json', JSON.stringify(report, null, 2))
   }
   console.log(JSON.stringify(report, null, 2))
 }

@@ -11,7 +11,7 @@ const docker = (...args) => execFileSync('docker', args, { encoding: 'utf8', std
 async function main() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codexapp-package-matrix-'))
   const containers = []
-  const report = { image: 'codexapp-final-test:0.2.19', native: '0.153.4', cases: [], actualCloudSuccessTested: false }
+  const report = { image: process.env.CODEXAPP_TEST_IMAGE || 'codexapp-final-test:0.2.19', native: '0.153.4', cases: [], actualCloudSuccessTested: false }
   let browser
   try {
     for (const [index, name] of ['noauth', 'malformed', 'invalid'].entries()) {
@@ -66,7 +66,7 @@ async function main() {
         for (const dark of [false, true]) {
           await page.evaluate(value => document.documentElement.classList.toggle('dark', value), dark)
           await delay(2300)
-          const screenshot = path.resolve(`output/playwright/0219-packaged-invalid-auth-${dark ? 'dark' : 'light'}.png`)
+          const screenshot = path.resolve(`output/playwright/0219-${process.env.UI_LABEL ? process.env.UI_LABEL + '-' : ''}packaged-invalid-auth-${dark ? 'dark' : 'light'}.png`)
           await page.screenshot({ path: screenshot })
           row.screenshots.push(screenshot)
         }
@@ -83,7 +83,7 @@ async function main() {
     for (const container of containers.reverse()) docker('rm', '-f', container)
     await fs.rm(root, { recursive: true, force: true })
     report.temporaryResourcesRemoved = true
-    await fs.writeFile('output/0219-final/packaged-provider-matrix.json', JSON.stringify(report, null, 2))
+    await fs.writeFile(process.env.UI_REPORT_PATH || 'output/0219-final/packaged-provider-matrix.json', JSON.stringify(report, null, 2))
   }
 }
 main().catch(error => { console.error(error.message); process.exitCode = 1 })
