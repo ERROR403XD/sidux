@@ -1,0 +1,91 @@
+{
+  "files": 1146,
+  "findings": [],
+  "passed": true,
+  "patterns": [
+    "private environment",
+    "private key",
+    "token-like literal",
+    "old developer thread"
+  ],
+  "reviewedDefaults": [
+    {
+      "file": "scripts/codexapp-release-switch.sh",
+      "kind": "private environment",
+      "line": 9,
+      "disposition": "Generic documented deployment path; no identity or credential content"
+    },
+    {
+      "file": "scripts/codexapp-release-switch.sh",
+      "kind": "private environment",
+      "line": 10,
+      "disposition": "Generic documented deployment path; no identity or credential content"
+    },
+    {
+      "file": "scripts/codexapp-release-switch.sh",
+      "kind": "private environment",
+      "line": 14,
+      "disposition": "Generic documented deployment path; no identity or credential content"
+    },
+    {
+      "file": "tests/accounts-feedback-observability/multi-account-isolated-login-and-transactional-switching.md",
+      "kind": "private environment",
+      "line": 11,
+      "disposition": "Generic documented deployment path; no identity or credential content"
+    },
+    {
+      "file": "tests/accounts-feedback-observability/multi-account-isolated-login-and-transactional-switching.md",
+      "kind": "private environment",
+      "line": 65,
+      "disposition": "Generic documented deployment path; no identity or credential content"
+    },
+    {
+      "file": "tests/accounts-feedback-observability/multi-account-isolated-login-and-transactional-switching.md",
+      "kind": "private environment",
+      "line": 65,
+      "disposition": "Generic documented deployment path; no identity or credential content"
+    },
+    {
+      "file": "tests/auth-docker-runtime/codexapp-two-phase-release-switch.md",
+      "kind": "private environment",
+      "line": 9,
+      "disposition": "Generic documented deployment path; no identity or credential content"
+    },
+    {
+      "file": "tests/auth-docker-runtime/codexapp-two-phase-release-switch.md",
+      "kind": "private environment",
+      "line": 28,
+      "disposition": "Generic documented deployment path; no identity or credential content"
+    },
+    {
+      "file": "tests/auth-docker-runtime/codexapp-two-phase-release-switch.md",
+      "kind": "private environment",
+      "line": 29,
+      "disposition": "Generic documented deployment path; no identity or credential content"
+    },
+    {
+      "file": "tests/auth-docker-runtime/codexapp-two-phase-release-switch.md",
+      "kind": "private environment",
+      "line": 49,
+      "disposition": "Generic documented deployment path; no identity or credential content"
+    },
+    {
+      "file": "tests/auth-docker-runtime/codexapp-two-phase-release-switch.md",
+      "kind": "private environment",
+      "line": 51,
+      "disposition": "Generic documented deployment path; no identity or credential content"
+    },
+    {
+      "file": "tests/auth-docker-runtime/codexapp-two-phase-release-switch.md",
+      "kind": "private environment",
+      "line": 67,
+      "disposition": "Generic documented deployment path; no identity or credential content"
+    },
+    {
+      "file": "tests/auth-docker-runtime/codexapp-two-phase-release-switch.md",
+      "kind": "private environment",
+      "line": 71,
+      "disposition": "Generic documented deployment path; no identity or credential content"
+    }
+  ]
+}

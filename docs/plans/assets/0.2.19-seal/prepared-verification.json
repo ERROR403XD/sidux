@@ -1,0 +1,32 @@
+{
+  "release": "/home/docker/codexapp-releases/codexapp-0.2.19-d20d9fe539a3-20260913-105947",
+  "previous": "/home/docker/codexapp-releases/codexapp-0.2.18-6ad0e99242c8-20260912-221253",
+  "base": "http://127.0.0.1:59015",
+  "node": "v24.19.0",
+  "matchingArtifacts": 27,
+  "cjsAndPty": "PREPARED_PTY_OK",
+  "lockReplay": {
+    "dependencyPackages": 78,
+    "lockUnchanged": true,
+    "installedVersionsMatch": true,
+    "pty": "PREPARED_PTY_OK"
+  },
+  "tarballSha256": "01893f892715d26a971a5d8c62ba0e136d31e9cdc41513d36d15e6a74d82cedc",
+  "lockSha256": "8e6560139ec4babe3e19fdd974452eeb4be4ade6b45a9b6dbaa7e0ccede1b43a",
+  "cache": {
+    "oldAsset": "/assets/index-BJh_-b6v.js",
+    "newAsset": "/assets/index-Dn9z0JGF.js",
+    "entryNoStore": true,
+    "noEtag": true,
+    "oldAsset404": true,
+    "version": "0.2.19"
+  },
+  "apiWithoutKey": 401,
+  "activation": {
+    "ready": true,
+    "draining": false,
+    "activeCount": 0
+  },
+  "passed": true,
+  "temporaryResourcesRemoved": true
+}

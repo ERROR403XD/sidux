@@ -1,0 +1,8 @@
+{
+  "differentFiles": [
+    "src/App.vue",
+    "src/composables/useUiLanguage.test.ts"
+  ],
+  "reason": "Public directory examples use /workspace/project1 and /workspace/project2; corresponding translation test updated",
+  "coreRuntimeIdentical": true
+}
