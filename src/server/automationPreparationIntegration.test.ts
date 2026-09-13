@@ -40,6 +40,9 @@ async function fixture() {
     app.stopTaskRouting()
     app.dispose()
     await Promise.all([app, ...workers].map(worker => (worker as any).closingSession))
+    // Child exit does not settle metadata writes already queued in this process.
+    // Finish those writes before deleting the isolated account directory.
+    await (coordinator.store as unknown as { mutationChain: Promise<unknown> }).mutationChain
     vi.restoreAllMocks()
     vi.unstubAllEnvs()
     await rm(home, { recursive: true, force: true })
