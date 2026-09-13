@@ -40,8 +40,8 @@ async function main() {
     assert.equal(response.status, 200, JSON.stringify(payload))
     return payload.data ?? payload
   }
-  async function run(id, projectName, requestId) {
-    const queued = await request('/codex-api/project-automation/run', { automationId: id, projectName, requestId })
+  async function run(id, projectName, requestId, retryOf) {
+    const queued = await request('/codex-api/project-automation/run', { automationId: id, projectName, requestId, retryOf })
     for (let attempt = 0; attempt < 100; attempt++) {
       const rows = await request('/codex-api/automation-runs?' + new URLSearchParams({ automationId: id }))
       const row = rows.find(run => run.runId === queued.run.runId)
@@ -90,6 +90,46 @@ async function main() {
     report.definitionAndAccountUnchanged = true
     report.originalIdentityReused = true
     report.resultUngrouped = true
+
+    const retry = await run(automation.id, project.path, 'retry-after-removal', after.runId)
+    assert.equal(retry.status, 'completed')
+    assert.equal(retry.trigger, 'retry')
+    assert.equal(retry.retryOf, after.runId)
+    assert.equal(retry.attempt, after.attempt + 1)
+    assert.notEqual(retry.runId, after.runId)
+    assert.equal((await run(automation.id, project.path, 'retry-after-removal', after.runId)).runId, retry.runId)
+    report.explicitRetryPreservesIdentity = true
+
+    assert.ok(typeof before.executionAccountStorageId === 'string' && before.executionAccountStorageId)
+    const scheduledDefinition = {
+      id: automation.id, projectName: project.path, name: marker, prompt: 'isolated fixture', model: 'fixture',
+      rrule: 'FREQ=MINUTELY;INTERVAL=1', accountStorageId: before.executionAccountStorageId,
+    }
+    await request('/codex-api/project-automation', { ...scheduledDefinition, status: 'ACTIVE' }, 'PUT')
+    let scheduled
+    // Exercise the real timer and resolver, without manipulating scheduler state
+    // or the wall clock. Only this disposable fixture can create new runs.
+    for (let attempt = 0; attempt < 80; attempt++) {
+      const rows = await request('/codex-api/automation-runs?' + new URLSearchParams({ automationId: automation.id }))
+      scheduled = rows.find(row => row.trigger === 'schedule' && ['completed', 'failed', 'cancelled', 'interrupted'].includes(row.status))
+      if (scheduled) break
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+    assert.ok(scheduled, 'natural minute trigger must complete within 80 seconds')
+    assert.equal(scheduled.status, 'completed')
+    assert.equal(scheduled.executionAccountStorageId, before.executionAccountStorageId)
+    const scheduledOutput = JSON.parse(await fs.readFile(path.join(home, `fixture-thread-${scheduled.threadId}.json`), 'utf8'))
+    assert.equal(scheduledOutput.turns.length, 1)
+    await request('/codex-api/project-automation', { ...scheduledDefinition, status: 'PAUSED' }, 'PUT')
+    const paused = (await request('/codex-api/project-automations'))[project.path].find(row => row.id === automation.id)
+    assert.equal(paused.status, 'PAUSED')
+    assert.equal(paused.nextRunAtMs, null)
+    assert.equal(paused.accountStorageId, before.executionAccountStorageId)
+    assert.equal(await fs.readFile(path.join(home, 'auth.json'), 'utf8'), authBefore)
+    const finalMemberships = JSON.parse(await fs.readFile(path.join(home, 'codexapp-projects.json'), 'utf8'))
+    assert.ok(!finalMemberships.projects.some(item => item.id === project.path || item.cwds.includes(scheduledOutput.cwd)))
+    report.naturalScheduleAfterRemoval = { status: scheduled.status, trigger: scheduled.trigger, fixedAccountPreserved: true, singleTurn: true }
+    report.pauseAndReenablePreserved = true
     report.passed = true
   } finally {
     child.kill('SIGTERM')
