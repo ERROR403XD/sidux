@@ -118,11 +118,12 @@ export class AutomationEngine {
   }
   private async persistNow() {
     const pruned = new Set(pruneAutomationRuns(this.state.runs, this.now()).map(run => run.runId))
-    const hot = this.state.runs.filter(run => pruned.has(run.runId) || this.preparations.has(run.runId))
-    const retained = new Set(hot.map(run => run.runId))
+    const archived = new Set(this.state.runs.filter(run => !pruned.has(run.runId) && !this.preparations.has(run.runId)))
     await this.store.assertOwnership()
-    await this.history.archive(this.state.runs.filter(run => !retained.has(run.runId)))
-    this.state.runs = hot
+    await this.history.archive([...archived])
+    // Dispatch saves and the control queue can overlap at these awaits. Remove
+    // only the records just archived; a captured hot list would erase new runs.
+    this.state.runs = this.state.runs.filter(run => !archived.has(run))
     await this.store.write(this.state)
     for (const listener of this.listeners) listener()
   }
