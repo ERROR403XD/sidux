@@ -21,3 +21,13 @@
 验证：`pnpm exec vitest run src/server/webUiBrandingStore.test.ts` 已覆盖实际 HTTP manifest；静态 JSON 同步检查。新增字段不增加脚本、定时器、请求或跨窗口消息。清理：关闭自己建立的测试窗口。
 
 规范依据：[Chrome Launch Handler](https://developer.chrome.com/docs/web-platform/launch-handler/)。
+
+## Firefox Android PWA 识别
+
+前置：使用有效 HTTPS 地址，在 Firefox for Android 中打开 CodexApp 与 Trollhorn；先移除两者已有的首页图标，避免沿用旧快捷方式。
+
+操作：分别打开浏览器菜单，观察 CodexApp 与 Trollhorn 的安装项；选择“添加应用到主屏幕/Install”并完成安装。
+
+预期：CodexApp 与 Trollhorn 都显示应用安装项，而不是只能添加网页快捷方式；从首页图标启动时进入独立的应用窗口，并显示 manifest 中的应用名称和图标。若 Firefox 版本或 Android 启动器不支持独立应用窗口，应记录版本与实际行为，不把普通快捷方式当作通过。
+
+清理：删除本次添加的首页应用图标；重新打开页面确认普通浏览器访问不受影响。
