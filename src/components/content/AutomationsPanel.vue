@@ -79,7 +79,7 @@
           <div class="automation-detail-title-wrap">
             <h2 :title="selectedRow.automation.name">{{ selectedRow.automation.name }}</h2>
           </div>
-          <AppButton variant="danger" :disabled="isMutating || isLoading" @click="removeAutomation(selectedRow)">
+          <AppButton variant="danger" :disabled="isMutating || isLoading" @click="pendingRemoval = selectedRow">
             {{ t('Remove') }}
           </AppButton>
           <button class="automation-detail-edit" type="button" :disabled="isMutating || isLoading" @click="emitEditAutomation(selectedRow)">
@@ -113,6 +113,13 @@
         <AutomationRunHistory :key="selectedRow.rowKey" :automation="selectedRow.automation" :target="selectedRow.targetTitle" />
       </aside>
     </div>
+    <AppDialog :open="Boolean(pendingRemoval)" :title="t('移除自动化任务？')" size="compact" :busy="isMutating" @close="pendingRemoval = null">
+      <p>{{ t('确认移除“{name}”？', { name: pendingRemoval?.automation.name || '' }) }}</p>
+      <template #footer>
+        <AppButton data-autofocus :disabled="isMutating" @click="pendingRemoval = null">{{ t('Cancel') }}</AppButton>
+        <AppButton variant="danger" :disabled="isMutating || isLoading" @click="confirmRemoveAutomation">{{ t('Remove') }}</AppButton>
+      </template>
+    </AppDialog>
   </div>
 </template>
 
@@ -122,6 +129,7 @@ import { notifyOperation } from '../../composables/useOperationToast'
 import { readDailyTimesRule } from '../../automationDailyTimes'
 import { formatLocalDateTime } from '../../dateTime'
 import AppButton from '../common/AppButton.vue'
+import AppDialog from '../common/AppDialog.vue'
 import AppSwitch from '../common/AppSwitch.vue'
 import AutomationRunHistory from './AutomationRunHistory.vue'
 import { getAutomationRuntime, type AutomationRuntimeStatus } from '../../api/automationGateway'
@@ -169,6 +177,7 @@ const projectAutomations = ref<Record<string, UiThreadAutomation[]>>({})
 const runtime = ref<AutomationRuntimeStatus | null>(null)
 const isLoading = ref(false)
 const isMutating = ref(false)
+const pendingRemoval = ref<AutomationRow | null>(null)
 const loadError = ref('')
 const selectedAutomationId = ref(props.selectedAutomationId ?? '')
 const selectedRowKey = ref('')
@@ -313,19 +322,21 @@ async function loadAutomations(): Promise<void> {
   }
 }
 
-async function mutateAutomation(action: () => Promise<unknown>): Promise<void> {
-  if (isMutating.value || isLoading.value) return
+async function mutateAutomation(action: () => Promise<unknown>, successMessage: string): Promise<boolean> {
+  if (isMutating.value || isLoading.value) return false
   isMutating.value = true
   loadError.value = ''
   try {
     await action()
-    notifyOperation('自动化已更新', 'success')
+    notifyOperation(successMessage, 'success')
     await loadAutomations()
     if (!loadError.value) {
       emit('automations-updated', { thread: threadAutomations.value, project: projectAutomations.value })
     }
+    return true
   } catch (error) {
     notifyOperation(error instanceof Error ? error.message : 'Failed to save automation')
+    return false
   } finally {
     isMutating.value = false
   }
@@ -348,13 +359,16 @@ async function setAutomationEnabled(row: AutomationRow, enabled: boolean): Promi
   }
   await mutateAutomation(() => row.scope === 'project'
     ? upsertProjectAutomation({ ...input, projectName: row.targetTitle })
-    : upsertThreadAutomation({ ...input, threadId: row.targetTitle }))
+    : upsertThreadAutomation({ ...input, threadId: row.targetTitle }), enabled ? '自动化任务已启用' : '自动化任务已暂停')
 }
 
-async function removeAutomation(row: AutomationRow): Promise<void> {
-  await mutateAutomation(() => row.scope === 'project'
+async function confirmRemoveAutomation(): Promise<void> {
+  const row = pendingRemoval.value
+  if (!row) return
+  const removed = await mutateAutomation(() => row.scope === 'project'
     ? deleteProjectAutomation(row.targetTitle, row.automation.id)
-    : deleteThreadAutomation(row.targetTitle, row.automation.id))
+    : deleteThreadAutomation(row.targetTitle, row.automation.id), '自动化任务已移除')
+  if (removed) pendingRemoval.value = null
 }
 
 function statusLabel(status: UiThreadAutomationStatus): string {

@@ -96,7 +96,7 @@ async function select(storageId: string): Promise<void> {
     const previousId = state.value.activeId
     state.value = await customConnectionRequest<CustomConnectionSnapshot>('/select', { storageId })
     emit('changed', previousId !== state.value.activeId)
-    notifyOperation('账号已切换', 'success')
+    notifyOperation('连接已切换', 'success')
   })
 }
 async function remove(): Promise<void> {

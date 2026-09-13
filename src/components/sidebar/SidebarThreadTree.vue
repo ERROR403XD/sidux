@@ -873,7 +873,7 @@
               class="rename-thread-button rename-thread-button-danger" variant="danger"
               type="button"
               :disabled="isSavingAutomation || isRunningAutomation"
-              @click="onDeleteAutomationFromDialog"
+              @click="requestDeleteAutomationFromDialog"
             >
               {{ t('Remove') }}
             </AppButton>
@@ -886,6 +886,22 @@
           </div>
       </template>
     </AppDialog>
+    <AppDialog :open="Boolean(projectRemoval)" :title="t('移除项目及自动化任务？')" size="compact" @close="projectRemoval = ''">
+      <p>{{ t('移除“{name}”及其自动化任务？', { name: getProjectDisplayName(projectRemoval) }) }}</p>
+      <template #footer>
+        <AppButton data-autofocus @click="projectRemoval = ''">{{ t('Cancel') }}</AppButton>
+        <AppButton variant="danger" @click="confirmRemoveProjectAndAutomations">{{ t('Remove') }}</AppButton>
+      </template>
+    </AppDialog>
+
+    <AppDialog :open="Boolean(automationRemoval)" :title="t('移除自动化任务？')" size="compact" :busy="isSavingAutomation" @close="automationRemoval = null">
+      <p>{{ t('确认移除“{name}”？', { name: automationRemoval?.name || '' }) }}</p>
+      <template #footer>
+        <AppButton data-autofocus :disabled="isSavingAutomation" @click="automationRemoval = null">{{ t('Cancel') }}</AppButton>
+        <AppButton variant="danger" :disabled="isSavingAutomation || isRunningAutomation" @click="onDeleteAutomationFromDialog">{{ t('Remove') }}</AppButton>
+      </template>
+    </AppDialog>
+
     <AppDialog :open="Boolean(projectMoveThread)" :title="t('移动到项目')" size="compact" @close="projectMoveThread = null">
       <AppSelect v-model="projectMoveTarget" :options="projectMoveOptions" :enable-search="true" :search-placeholder="t('Search projects')" />
       <template #footer>
@@ -1095,7 +1111,9 @@ const deleteThreadDialogThreadId = ref('')
 const deleteThreadTitle = ref('')
 const automationByThreadId = ref<Record<string, UiThreadAutomation[]>>({})
 const automationByProjectName = ref<Record<string, UiThreadAutomation[]>>({})
+const projectRemoval = ref('')
 const automationDialogVisible = ref(false)
+const automationRemoval = ref<{ scope: 'thread' | 'project'; threadId: string; projectName: string; automationId: string; name: string } | null>(null)
 const automationDialogScope = ref<'thread' | 'project'>('thread')
 const automationDialogThreadId = ref('')
 const automationDialogProjectName = ref('')
@@ -2110,6 +2128,7 @@ function selectAutomationForEditing(automationId: string): void {
 
 function closeAutomationDialog(): void {
   if (isSavingAutomation.value || isRunningAutomation.value) return
+  automationRemoval.value = null
   automationDialogVisible.value = false
   automationDialogScope.value = 'thread'
   automationDialogThreadId.value = ''
@@ -2222,7 +2241,7 @@ async function submitAutomationDialog(): Promise<void> {
       ? await upsertProjectAutomation({ ...input, projectName })
       : await upsertThreadAutomation({ ...input, threadId })
     if (automationDialogScope.value === 'project') {
-      await reloadProjectAutomations()
+      automationByProjectName.value = updateAutomationForProject(automationByProjectName.value, projectName, saved)
     } else {
       automationByThreadId.value = updateAutomationForThread(automationByThreadId.value, threadId, saved)
     }
@@ -2236,20 +2255,34 @@ async function submitAutomationDialog(): Promise<void> {
   }
 }
 
+function requestDeleteAutomationFromDialog(): void {
+  if (isSavingAutomation.value || isRunningAutomation.value || !automationDialogAutomationId.value) return
+  automationRemoval.value = {
+    scope: automationDialogScope.value,
+    threadId: automationDialogThreadId.value,
+    projectName: automationDialogProjectName.value,
+    automationId: automationDialogAutomationId.value,
+    name: automationDialogAutomations.value.find(row => row.id === automationDialogAutomationId.value)?.name || automationDraft.value.name,
+  }
+}
+
 async function onDeleteAutomationFromDialog(): Promise<void> {
-  const threadId = automationDialogThreadId.value
-  const projectName = automationDialogProjectName.value
-  const automationId = automationDialogAutomationId.value
+  const target = automationRemoval.value
+  if (!target || isSavingAutomation.value || isRunningAutomation.value) return
+  const { threadId, projectName, automationId } = target
   if (!automationId) return
-  if (automationDialogScope.value === 'thread' && !threadId) return
-  if (automationDialogScope.value === 'project' && !projectName) return
+  if (target.scope === 'thread' && !threadId) return
+  if (target.scope === 'project' && !projectName) return
   isSavingAutomation.value = true
   automationDialogError.value = ''
 
   try {
-    if (automationDialogScope.value === 'project') {
+    if (target.scope === 'project') {
       await deleteProjectAutomation(projectName, automationId)
-      await reloadProjectAutomations()
+      automationByProjectName.value = {
+        ...automationByProjectName.value,
+        [projectName]: (automationByProjectName.value[projectName] ?? []).filter(row => row.id !== automationId),
+      }
     } else {
       await deleteThreadAutomation(threadId, automationId)
       automationByThreadId.value = removeAutomationForThread(automationByThreadId.value, threadId, automationId)
@@ -2257,7 +2290,7 @@ async function onDeleteAutomationFromDialog(): Promise<void> {
     emit('automations-changed')
     isSavingAutomation.value = false
     closeAutomationDialog()
-    notifyOperation('自动化已移除', 'success')
+    notifyOperation('自动化任务已移除', 'success')
   } catch (error) {
     notifyOperation(error instanceof Error ? error.message : 'Failed to remove automation')
     isSavingAutomation.value = false
@@ -2424,6 +2457,22 @@ function onCreateProjectWorktree(projectName: string): void {
 
 
 function onRemoveProject(projectName: string): void {
+  if (!isVirtualProjectId(projectName) && projectHasAutomation(projectName)) {
+    projectRemoval.value = projectName
+    closeProjectMenu()
+    return
+  }
+  removeProjectAndAutomations(projectName)
+}
+
+function confirmRemoveProjectAndAutomations(): void {
+  const projectName = projectRemoval.value
+  if (!projectName) return
+  projectRemoval.value = ''
+  removeProjectAndAutomations(projectName)
+}
+
+function removeProjectAndAutomations(projectName: string): void {
   const projectCwd = getProjectAutomationKey(projectName)
   emit('remove-project', projectName)
   // Removing an organization only ungroups conversations. Its task definition
@@ -2433,7 +2482,14 @@ function onRemoveProject(projectName: string): void {
     const previousAutomationByProjectName = automationByProjectName.value
     automationByProjectName.value = omitAutomationProject(automationByProjectName.value, projectCwd)
     void deleteProjectAutomation(projectCwd)
-      .then(reloadProjectAutomations)
+      .then(async () => {
+        notifyOperation('自动化任务已移除', 'success')
+        try {
+          await reloadProjectAutomations()
+        } catch {
+          projectAutomationActionError.value = '自动化任务已移除，但列表刷新失败。'
+        }
+      })
       .catch(async (error) => {
         automationByProjectName.value = previousAutomationByProjectName
         const message = error instanceof Error ? error.message : 'Failed to delete project automation'

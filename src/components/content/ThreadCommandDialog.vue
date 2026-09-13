@@ -19,7 +19,7 @@
         <div class="thread-command-actions">
           <AppButton type="button" :disabled="working || loading || !supported || goalConflict || !!settingsProblem || !objective.trim()" @click="saveGoal">{{ t(goal ? '保存目标' : '保存并开始') }}</AppButton>
           <AppButton v-if="goal" type="button" :disabled="working || loading || !supported || (goal.status !== 'active' && (!!goalResumeProblem(goal) || !!settingsProblem || goalConflict || goalFormDirty))" @click="changeGoalStatus(goal.status === 'active' ? 'paused' : 'active')">{{ t(goal.status === 'active' ? '暂停目标' : '继续目标') }}</AppButton>
-          <AppButton v-if="goal" type="button" :disabled="working || loading || !supported || goalConflict" @click="clearGoal">{{ t('清除目标') }}</AppButton>
+          <AppButton v-if="goal" type="button" :disabled="working || loading || !supported || goalConflict" @click="requestClearGoal">{{ t('清除目标') }}</AppButton>
         </div>
         <p v-if="goal && goal.status !== 'active' && goalFormDirty" class="thread-command-hint">{{ t('请先保存目标或预算的修改。') }}</p>
         <p v-if="goal && goal.status !== 'active' && goalResumeProblem(goal) && goal.status !== 'budgetLimited'" class="thread-command-hint">{{ t(goalResumeProblem(goal)) }}</p>
@@ -45,6 +45,13 @@
         <AppButton type="button" :disabled="working || loading || !!unavailable || !supported || compactWaiting || (request.name === 'rename' && !value.trim())" @click="execute">{{ t(request.name === 'compact' && compactionRequest?.status === 'unknown' ? '再次压缩' : actionLabel) }}</AppButton>
       </template>
     </div>
+  </AppDialog>
+  <AppDialog :open="Boolean(goalToClear)" :title="t('清除目标？')" size="compact" :busy="working" @close="goalToClear = null">
+    <p>{{ goalToClear?.objective }}</p>
+    <template #footer>
+      <AppButton data-autofocus :disabled="working" @click="goalToClear = null">{{ t('Cancel') }}</AppButton>
+      <AppButton variant="danger" :disabled="working || loading || !supported" @click="clearGoal">{{ t('清除目标') }}</AppButton>
+    </template>
   </AppDialog>
 </template>
 <script setup lang="ts">
@@ -73,6 +80,7 @@ const emit = defineEmits<{ close: []; 'goal-change': [goal: ThreadGoal | null, t
 const descriptor = computed(() => APP_COMMANDS.find(command => command.id === props.request.name))
 const title = computed(() => ({ goal: '持续目标', help: '命令帮助', status: '会话状态' }[props.request.name as 'goal' | 'help' | 'status'] ?? descriptor.value?.description ?? '会话操作'))
 const value = ref(props.threadName), objective = ref(''), budget = ref(''), goal = ref<ThreadGoal | null>(null)
+const goalToClear = ref<Pick<ThreadGoal, 'objective' | 'tokenBudget'> | null>(null)
 const working = ref(false), loading = ref(false), supported = ref(true), error = ref(''), feedback = ref('')
 let disposed = false, consumed = false, threadId = props.threadId, unsubscribe: (() => void) | undefined
 let pendingGoalNotification: ThreadGoal | null | undefined
@@ -164,10 +172,20 @@ async function changeGoalStatus(status: 'active' | 'paused') {
     consume()
   })
 }
+function requestClearGoal(): void {
+  if (working.value || loading.value || !supported.value || goalConflict.value || !goal.value) return
+  goalToClear.value = { objective: goal.value.objective, tokenBudget: goal.value.tokenBudget }
+}
 async function clearGoal() {
+  const confirmed = goalToClear.value
+  if (!confirmed || !supported.value) return
   await action(async () => {
     await checkCurrentGoal()
+    if (goal.value?.objective !== confirmed.objective || goal.value?.tokenBudget !== confirmed.tokenBudget) {
+      throw new Error('目标已在其他位置修改，请重新读取。')
+    }
     await clearThreadGoal(threadId)
+    goalToClear.value = null
     fillGoalForm(null)
     consume()
     notifyOperation('目标已清除', 'success')
