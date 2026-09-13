@@ -979,6 +979,42 @@ describe('provider model selection', () => {
     expect(state.selectedModelId.value).toBe('big-pickle')
   })
 
+  it.each(['accepted', 'failed'] as const)('groups a new organization conversation before the %s send settles', async (result) => {
+    installTestWindow()
+    const projectId = 'virtual:11111111-1111-4111-8111-111111111111'
+    const cwd = '/tmp/Documents/Codex/2026-09-13/new-conversation'
+    gatewayMocks.getThreadGroupsPage.mockResolvedValue({ groups: [], nextCursor: null })
+    gatewayMocks.getWorkspaceRootsState.mockResolvedValue({ order: [], active: [], labels: {}, projectOrder: [projectId], virtualProjects: [{ id: projectId, label: 'Organization', cwds: [] }] })
+    gatewayMocks.getAvailableCollaborationModes.mockResolvedValue([{ value: 'default', label: 'Default' }])
+    gatewayMocks.getSkillsList.mockResolvedValue([])
+    gatewayMocks.getAccountRateLimits.mockResolvedValue(null)
+    gatewayMocks.getCurrentModelConfig.mockResolvedValue({ model: 'gpt-5.5', providerId: '', reasoningEffort: 'medium', speedMode: '' })
+    gatewayMocks.getAvailableModelIds.mockResolvedValue(['gpt-5.5'])
+    gatewayMocks.startThread.mockResolvedValue({ threadId: 'organization-new', model: 'gpt-5.5', modelProvider: 'openai' })
+    let accept!: (turn: string) => void
+    let reject!: (error: Error) => void
+    gatewayMocks.startThreadTurn.mockImplementation(() => new Promise<string>((resolve, fail) => { accept = resolve; reject = fail }))
+    const state = useDesktopState()
+    await state.refreshAll({ includeSelectedThreadMessages: false, awaitAncillaryRefreshes: true })
+    const sending = state.sendMessageToNewThread('hi', cwd, [], [], [], projectId)
+    const settled = sending.then(value => ({ value }), error => ({ error }))
+    await vi.waitFor(() => expect(gatewayMocks.startThreadTurn).toHaveBeenCalledTimes(1))
+    const rows = () => state.projectGroups.value.flatMap(group => group.threads.filter(row => row.id === 'organization-new').map(row => ({ group: group.projectName, project: row.projectName, cwd: row.cwd })))
+    try {
+      expect(rows()).toEqual([{ group: projectId, project: projectId, cwd }])
+      expect(state.selectedThread.value?.projectName).toBe(projectId)
+      expect(gatewayMocks.startThread).toHaveBeenCalledWith(cwd, 'gpt-5.5')
+      expect(JSON.stringify(gatewayMocks.startThreadTurn.mock.calls)).not.toContain(projectId)
+    } finally {
+      if (result === 'accepted') accept('turn-organization')
+      else reject(new Error('send failed'))
+      await settled
+    }
+    expect(rows()).toEqual([{ group: projectId, project: projectId, cwd }])
+    expect(gatewayMocks.startThread).toHaveBeenCalledTimes(1)
+    expect(gatewayMocks.startThreadTurn).toHaveBeenCalledTimes(1)
+  })
+
   it('captures the active provider when creating a new thread', async () => {
     installTestWindow()
     gatewayMocks.getThreadGroupsPage.mockResolvedValue({ groups: [], nextCursor: null })

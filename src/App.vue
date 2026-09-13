@@ -5100,6 +5100,7 @@ async function submitFirstMessageForNewThread(
   try {
     worktreeInitStatus.value = { phase: 'idle', title: '', message: '' }
     let targetCwd = newThreadCwd.value
+    let confirmedProjectId = ''
     if (newThreadRuntime.value === 'worktree') {
       worktreeInitStatus.value = {
         phase: 'running',
@@ -5122,10 +5123,13 @@ async function submitFirstMessageForNewThread(
     } else if (!targetCwd.trim() || isVirtualProjectId(targetCwd)) {
       const projectId = isVirtualProjectId(targetCwd) ? targetCwd : undefined
       const directory = await createProjectlessThreadDirectory(text, projectId)
-      if (projectId) invalidateWorkspaceRootsStateCache()
+      if (projectId) {
+        confirmedProjectId = projectId
+        invalidateWorkspaceRootsStateCache()
+      }
       targetCwd = directory.cwd
     }
-    const threadId = await sendMessageToNewThread(text, targetCwd, imageUrls, skills, fileAttachments)
+    const threadId = await sendMessageToNewThread(text, targetCwd, imageUrls, skills, fileAttachments, confirmedProjectId)
     if (!threadId) return false
     await router.replace({ name: 'thread', params: { threadId } })
     scheduleMobileConversationJumpToLatest()

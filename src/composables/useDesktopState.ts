@@ -2221,12 +2221,15 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
 
   const pendingListedThreadIds = new Set<string>()
 
-  function insertOptimisticThread(threadId: string, cwd: string, firstMessageText: string): void {
+  function insertOptimisticThread(threadId: string, cwd: string, firstMessageText: string, confirmedProjectId = ''): void {
     pendingListedThreadIds.add(threadId)
     if (pendingListedThreadIds.size > 256) pendingListedThreadIds.delete(pendingListedThreadIds.values().next().value!)
     const nowIso = new Date().toISOString()
     const normalizedCwd = normalizePathForUi(cwd)
-    const projectName = toProjectName(normalizedCwd)
+    // This association was confirmed by directory creation; it is display-only.
+    const projectName = isVirtualProjectId(confirmedProjectId) && isProjectlessChatPath(normalizedCwd)
+      ? confirmedProjectId
+      : toProjectName(normalizedCwd)
     const nextThread: UiThread = {
       id: threadId,
       title: toOptimisticThreadTitle(firstMessageText),
@@ -5040,6 +5043,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
     imageUrls: string[] = [],
     skills: Array<{ name: string; path: string }> = [],
     fileAttachments: FileAttachment[] = [],
+    confirmedProjectId = '',
   ): Promise<string> {
     if (isUpdatingSpeedMode.value) return ''
 
@@ -5081,7 +5085,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
       }
       if (!threadId) return ''
 
-      insertOptimisticThread(threadId, targetCwd, nextText || '[Image]')
+      insertOptimisticThread(threadId, targetCwd, nextText || '[Image]', confirmedProjectId)
       appendOptimisticUserMessage(threadId, nextText, imageUrls, skills, fileAttachments)
       blockInterruptUntilThreadIsPersisted(threadId)
       resumedThreadById.value = {
