@@ -1,0 +1,502 @@
+{
+  "base": "http://127.0.0.1:59001",
+  "cases": [
+    "manual run in project/thread task details: one original request with ID/target/kind preserved; details remain quiet; editor existing queued notice is info"
+  ],
+  "screenshots": [],
+  "errors": [],
+  "requests": [
+    {
+      "name": "thread-pins",
+      "method": "GET"
+    },
+    {
+      "name": "prompts",
+      "method": "GET"
+    },
+    {
+      "name": "accounts/login/status",
+      "method": "GET"
+    },
+    {
+      "name": "home-directory",
+      "method": "GET"
+    },
+    {
+      "name": "workspace-roots-state",
+      "method": "GET"
+    },
+    {
+      "name": "telegram/config",
+      "method": "GET"
+    },
+    {
+      "name": "telegram/status",
+      "method": "GET"
+    },
+    {
+      "name": "custom-connections",
+      "method": "GET"
+    },
+    {
+      "name": "free-mode/status",
+      "method": "GET"
+    },
+    {
+      "name": "thread-terminal/status",
+      "method": "GET"
+    },
+    {
+      "name": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "name": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "name": "thread-interruptions",
+      "method": "GET"
+    },
+    {
+      "name": "thread-automations",
+      "method": "GET"
+    },
+    {
+      "name": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "name": "project-automations",
+      "method": "GET"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "thread/list"
+    },
+    {
+      "name": "thread-titles",
+      "method": "GET"
+    },
+    {
+      "name": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "name": "accounts",
+      "method": "GET"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "account/rateLimits/read"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "collaborationMode/list"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "skills/list"
+    },
+    {
+      "name": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "name": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "name": "accounts/models",
+      "method": "GET"
+    },
+    {
+      "name": "thread-completions",
+      "method": "GET"
+    },
+    {
+      "name": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "name": "thread-goals",
+      "method": "POST"
+    },
+    {
+      "name": "thread-pins",
+      "method": "GET"
+    },
+    {
+      "name": "prompts",
+      "method": "GET"
+    },
+    {
+      "name": "accounts/login/status",
+      "method": "GET"
+    },
+    {
+      "name": "home-directory",
+      "method": "GET"
+    },
+    {
+      "name": "workspace-roots-state",
+      "method": "GET"
+    },
+    {
+      "name": "telegram/config",
+      "method": "GET"
+    },
+    {
+      "name": "telegram/status",
+      "method": "GET"
+    },
+    {
+      "name": "custom-connections",
+      "method": "GET"
+    },
+    {
+      "name": "free-mode/status",
+      "method": "GET"
+    },
+    {
+      "name": "thread-terminal/status",
+      "method": "GET"
+    },
+    {
+      "name": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "name": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "name": "thread-interruptions",
+      "method": "GET"
+    },
+    {
+      "name": "thread-automations",
+      "method": "GET"
+    },
+    {
+      "name": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "name": "thread-automations",
+      "method": "GET"
+    },
+    {
+      "name": "project-automations",
+      "method": "GET"
+    },
+    {
+      "name": "automation-runtime",
+      "method": "GET"
+    },
+    {
+      "name": "project-automations",
+      "method": "GET"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "thread/list"
+    },
+    {
+      "name": "thread-titles",
+      "method": "GET"
+    },
+    {
+      "name": "automation-runs",
+      "method": "GET"
+    },
+    {
+      "name": "automation-runtime",
+      "method": "GET"
+    },
+    {
+      "name": "thread-terminal/quick-commands",
+      "method": "GET"
+    },
+    {
+      "name": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "name": "accounts",
+      "method": "GET"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "account/rateLimits/read"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "collaborationMode/list"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "skills/list"
+    },
+    {
+      "name": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "name": "accounts/models",
+      "method": "GET"
+    },
+    {
+      "name": "thread-completions",
+      "method": "GET"
+    },
+    {
+      "name": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "name": "automation-runs",
+      "method": "GET"
+    },
+    {
+      "name": "automation-runtime",
+      "method": "GET"
+    },
+    {
+      "name": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "name": "thread-goals",
+      "method": "POST"
+    },
+    {
+      "name": "thread-pins",
+      "method": "GET"
+    },
+    {
+      "name": "prompts",
+      "method": "GET"
+    },
+    {
+      "name": "accounts/login/status",
+      "method": "GET"
+    },
+    {
+      "name": "home-directory",
+      "method": "GET"
+    },
+    {
+      "name": "workspace-roots-state",
+      "method": "GET"
+    },
+    {
+      "name": "telegram/config",
+      "method": "GET"
+    },
+    {
+      "name": "telegram/status",
+      "method": "GET"
+    },
+    {
+      "name": "custom-connections",
+      "method": "GET"
+    },
+    {
+      "name": "free-mode/status",
+      "method": "GET"
+    },
+    {
+      "name": "thread-terminal/status",
+      "method": "GET"
+    },
+    {
+      "name": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "name": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "name": "thread-interruptions",
+      "method": "GET"
+    },
+    {
+      "name": "thread-automations",
+      "method": "GET"
+    },
+    {
+      "name": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "name": "thread-automations",
+      "method": "GET"
+    },
+    {
+      "name": "project-automations",
+      "method": "GET"
+    },
+    {
+      "name": "automation-runtime",
+      "method": "GET"
+    },
+    {
+      "name": "project-automations",
+      "method": "GET"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "thread/list"
+    },
+    {
+      "name": "thread-titles",
+      "method": "GET"
+    },
+    {
+      "name": "automation-runs",
+      "method": "GET"
+    },
+    {
+      "name": "automation-runtime",
+      "method": "GET"
+    },
+    {
+      "name": "thread-terminal/quick-commands",
+      "method": "GET"
+    },
+    {
+      "name": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "name": "accounts",
+      "method": "GET"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "account/rateLimits/read"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "collaborationMode/list"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "skills/list"
+    },
+    {
+      "name": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "name": "accounts/models",
+      "method": "GET"
+    },
+    {
+      "name": "thread-completions",
+      "method": "GET"
+    },
+    {
+      "name": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "name": "automation-runs",
+      "method": "GET"
+    },
+    {
+      "name": "automation-runtime",
+      "method": "GET"
+    },
+    {
+      "name": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "name": "thread-goals",
+      "method": "POST"
+    }
+  ],
+  "boundaries": [
+    {
+      "scope": "project",
+      "requests": [
+        {
+          "automationId": "confirmation-project",
+          "target": "/tmp/project-ui/real",
+          "kind": "cron",
+          "requestId": "56fa7338-648a-4610-92c8-e340b7f0b92b"
+        },
+        {
+          "automationId": "confirmation-project",
+          "target": "/tmp/project-ui/real",
+          "kind": "cron",
+          "requestId": "33aa5987-8351-4931-ab4f-f708b6d53887"
+        }
+      ]
+    },
+    {
+      "scope": "thread",
+      "requests": [
+        {
+          "automationId": "confirmation-thread",
+          "target": "11111111-1111-4111-8111-111111111111",
+          "kind": "heartbeat",
+          "requestId": "88d477d4-1d2c-407f-84f5-5018abfa92dd"
+        },
+        {
+          "automationId": "confirmation-thread",
+          "target": "11111111-1111-4111-8111-111111111111",
+          "kind": "heartbeat",
+          "requestId": "79eddc58-de62-4b1e-b317-356d4bf2e526"
+        }
+      ]
+    }
+  ],
+  "passed": true,
+  "lastUrl": "http://127.0.0.1:59001/#/automations?automationId=confirmation-thread"
+}

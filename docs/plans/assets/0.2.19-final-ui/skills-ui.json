@@ -1,0 +1,11 @@
+{
+  "base": "http://127.0.0.1:4173",
+  "cases": [
+    "successful skill search with no matches uses info, one query, no install/uninstall"
+  ],
+  "screenshots": [],
+  "styles": [],
+  "requests": [],
+  "errors": [],
+  "passed": true
+}

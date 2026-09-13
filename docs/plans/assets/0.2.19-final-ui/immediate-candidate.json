@@ -1,0 +1,323 @@
+{
+  "base": "http://127.0.0.1:59001",
+  "cases": [
+    "directory ACK -> first visible row under intended organization while delivery is pending; no projectless flash",
+    "ordinary cwd and native send payload unchanged; one create and one send",
+    "group retained after acceptance and refresh"
+  ],
+  "screenshots": [
+    "output/playwright/0219-immediate-notice-candidate-light.png"
+  ],
+  "errors": [],
+  "requests": [
+    {
+      "name": "thread-pins",
+      "method": "GET"
+    },
+    {
+      "name": "prompts",
+      "method": "GET"
+    },
+    {
+      "name": "accounts/login/status",
+      "method": "GET"
+    },
+    {
+      "name": "home-directory",
+      "method": "GET"
+    },
+    {
+      "name": "workspace-roots-state",
+      "method": "GET"
+    },
+    {
+      "name": "telegram/config",
+      "method": "GET"
+    },
+    {
+      "name": "telegram/status",
+      "method": "GET"
+    },
+    {
+      "name": "custom-connections",
+      "method": "GET"
+    },
+    {
+      "name": "free-mode/status",
+      "method": "GET"
+    },
+    {
+      "name": "thread-terminal/status",
+      "method": "GET"
+    },
+    {
+      "name": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "name": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "name": "thread-interruptions",
+      "method": "GET"
+    },
+    {
+      "name": "thread-automations",
+      "method": "GET"
+    },
+    {
+      "name": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "name": "project-automations",
+      "method": "GET"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "thread/list"
+    },
+    {
+      "name": "thread-titles",
+      "method": "GET"
+    },
+    {
+      "name": "thread-pins",
+      "method": "PUT"
+    },
+    {
+      "name": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "name": "accounts",
+      "method": "GET"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "account/rateLimits/read"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "collaborationMode/list"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "skills/list"
+    },
+    {
+      "name": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "name": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "name": "accounts/models",
+      "method": "GET"
+    },
+    {
+      "name": "thread-completions",
+      "method": "GET"
+    },
+    {
+      "name": "server-requests/pending",
+      "method": "GET"
+    },
+    {
+      "name": "thread-goals",
+      "method": "POST"
+    },
+    {
+      "name": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "name": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "name": "projectless-thread-cwd",
+      "method": "POST"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "thread/start"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "name": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "name": "delivery-context",
+      "method": "GET"
+    },
+    {
+      "name": "delivery",
+      "method": "POST"
+    },
+    {
+      "name": "thread-goals",
+      "method": "POST"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "skills/list"
+    },
+    {
+      "name": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "thread/read"
+    },
+    {
+      "name": "git/repository-status",
+      "method": "GET"
+    },
+    {
+      "name": "git/branches",
+      "method": "GET"
+    },
+    {
+      "name": "thread-terminal/quick-commands",
+      "method": "GET"
+    },
+    {
+      "name": "prompts",
+      "method": "GET"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "config/read"
+    },
+    {
+      "name": "thread-pins",
+      "method": "GET"
+    },
+    {
+      "name": "prompts",
+      "method": "GET"
+    },
+    {
+      "name": "accounts/login/status",
+      "method": "GET"
+    },
+    {
+      "name": "home-directory",
+      "method": "GET"
+    },
+    {
+      "name": "workspace-roots-state",
+      "method": "GET"
+    },
+    {
+      "name": "telegram/config",
+      "method": "GET"
+    },
+    {
+      "name": "telegram/status",
+      "method": "GET"
+    },
+    {
+      "name": "custom-connections",
+      "method": "GET"
+    },
+    {
+      "name": "free-mode/status",
+      "method": "GET"
+    },
+    {
+      "name": "thread-terminal/status",
+      "method": "GET"
+    },
+    {
+      "name": "thread-quota-resume",
+      "method": "GET"
+    },
+    {
+      "name": "thread-queue-state",
+      "method": "GET"
+    },
+    {
+      "name": "thread-interruptions",
+      "method": "GET"
+    },
+    {
+      "name": "thread-automations",
+      "method": "GET"
+    },
+    {
+      "name": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "thread/list"
+    },
+    {
+      "name": "thread-titles",
+      "method": "GET"
+    },
+    {
+      "name": "project-automations",
+      "method": "GET"
+    },
+    {
+      "name": "thread-terminal/quick-commands",
+      "method": "GET"
+    },
+    {
+      "name": "git/repository-status",
+      "method": "GET"
+    },
+    {
+      "name": "git/branches",
+      "method": "GET"
+    },
+    {
+      "name": "project-root-suggestion",
+      "method": "GET"
+    },
+    {
+      "name": "rpc",
+      "method": "POST",
+      "rpc": "thread/resume"
+    }
+  ],
+  "boundaries": [],
+  "deliveryBodyHasProjectId": false,
+  "passed": true
+}

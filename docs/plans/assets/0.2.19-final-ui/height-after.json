@@ -1,0 +1,115 @@
+{
+  "base": "http://127.0.0.1:4173",
+  "geometry": {
+    ".projects-section > .thread-tree-header-row": {
+      "x": 8,
+      "y": 319,
+      "width": 244,
+      "height": 32,
+      "lineHeight": "24px",
+      "fontSize": "16px",
+      "display": "flex"
+    },
+    ".thread-tree-header": {
+      "x": 44,
+      "y": 326,
+      "width": 52.4375,
+      "height": 19,
+      "lineHeight": "20px",
+      "fontSize": "14px",
+      "display": "inline"
+    },
+    ".organize-menu-trigger": {
+      "x": 200,
+      "y": 325,
+      "width": 16,
+      "height": 20,
+      "lineHeight": "24px",
+      "fontSize": "16px",
+      "display": "flex"
+    },
+    ".project-tree-toggle": {
+      "x": 220,
+      "y": 325,
+      "width": 20,
+      "height": 20,
+      "lineHeight": "24px",
+      "fontSize": "16px",
+      "display": "flex"
+    },
+    ".project-tree-toggle svg": {
+      "x": 222,
+      "y": 327,
+      "width": 16,
+      "height": 16,
+      "lineHeight": "24px",
+      "fontSize": "16px",
+      "display": "block"
+    },
+    ".project-header-row": {
+      "x": 8,
+      "y": 351,
+      "width": 244,
+      "height": 28,
+      "lineHeight": "24px",
+      "fontSize": "16px",
+      "display": "flex"
+    }
+  },
+  "withoutNewButton": {
+    ".projects-section > .thread-tree-header-row": {
+      "x": 8,
+      "y": 319,
+      "width": 244,
+      "height": 32,
+      "lineHeight": "24px",
+      "fontSize": "16px",
+      "display": "flex"
+    },
+    ".thread-tree-header": {
+      "x": 44,
+      "y": 326,
+      "width": 52.4375,
+      "height": 19,
+      "lineHeight": "20px",
+      "fontSize": "14px",
+      "display": "inline"
+    },
+    ".organize-menu-trigger": {
+      "x": 224,
+      "y": 325,
+      "width": 16,
+      "height": 20,
+      "lineHeight": "24px",
+      "fontSize": "16px",
+      "display": "flex"
+    },
+    ".project-tree-toggle": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "lineHeight": "24px",
+      "fontSize": "16px",
+      "display": "none"
+    },
+    ".project-tree-toggle svg": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "lineHeight": "24px",
+      "fontSize": "16px",
+      "display": "block"
+    },
+    ".project-header-row": {
+      "x": 8,
+      "y": 351,
+      "width": 244,
+      "height": 28,
+      "lineHeight": "24px",
+      "fontSize": "16px",
+      "display": "flex"
+    }
+  }
+}

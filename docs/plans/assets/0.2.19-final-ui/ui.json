@@ -1,0 +1,298 @@
+{
+  "base": "http://127.0.0.1:4173",
+  "cases": [
+    "four types: distinct icon/accent, shared surface, accessible labels; six viewport/theme combinations",
+    "credit outcomes change notification only: five confirmed requests, original IDs/confirmation/idempotency keys unchanged; unknown preserves dialog",
+    "info hover/focus pause and keyboard dismissal; unit tests cover 3s/6s expiry and scoped dedupe"
+  ],
+  "screenshots": [
+    "output/playwright/0219-notice-types-1440-light-success.png",
+    "output/playwright/0219-notice-types-1440-light-info.png",
+    "output/playwright/0219-notice-types-1440-dark-success.png",
+    "output/playwright/0219-notice-types-1440-dark-info.png",
+    "output/playwright/0219-notice-types-768-light-success.png",
+    "output/playwright/0219-notice-types-768-light-info.png",
+    "output/playwright/0219-notice-types-768-dark-success.png",
+    "output/playwright/0219-notice-types-768-dark-info.png",
+    "output/playwright/0219-notice-types-375-light-success.png",
+    "output/playwright/0219-notice-types-375-light-info.png",
+    "output/playwright/0219-notice-types-375-dark-success.png",
+    "output/playwright/0219-notice-types-375-dark-info.png"
+  ],
+  "styles": [
+    {
+      "width": 1440,
+      "dark": false,
+      "kind": "success",
+      "border": "rgb(21, 128, 61)",
+      "icon": "rgb(21, 128, 61)",
+      "progress": "rgb(21, 128, 61)",
+      "surface": "rgb(255, 255, 255)",
+      "text": "rgb(39, 39, 42)"
+    },
+    {
+      "width": 1440,
+      "dark": false,
+      "kind": "error",
+      "border": "rgb(190, 18, 60)",
+      "icon": "rgb(190, 18, 60)",
+      "progress": "rgb(190, 18, 60)",
+      "surface": "rgb(255, 255, 255)",
+      "text": "rgb(39, 39, 42)"
+    },
+    {
+      "width": 1440,
+      "dark": false,
+      "kind": "warning",
+      "border": "rgb(161, 98, 7)",
+      "icon": "rgb(161, 98, 7)",
+      "progress": "rgb(161, 98, 7)",
+      "surface": "rgb(255, 255, 255)",
+      "text": "rgb(39, 39, 42)"
+    },
+    {
+      "width": 1440,
+      "dark": false,
+      "kind": "info",
+      "border": "rgb(113, 113, 122)",
+      "icon": "rgb(113, 113, 122)",
+      "progress": "rgb(113, 113, 122)",
+      "surface": "rgb(255, 255, 255)",
+      "text": "rgb(39, 39, 42)"
+    },
+    {
+      "width": 1440,
+      "dark": true,
+      "kind": "success",
+      "border": "rgb(74, 222, 128)",
+      "icon": "rgb(74, 222, 128)",
+      "progress": "rgb(74, 222, 128)",
+      "surface": "rgb(24, 24, 27)",
+      "text": "rgb(228, 228, 231)"
+    },
+    {
+      "width": 1440,
+      "dark": true,
+      "kind": "error",
+      "border": "rgb(253, 164, 175)",
+      "icon": "rgb(253, 164, 175)",
+      "progress": "rgb(253, 164, 175)",
+      "surface": "rgb(24, 24, 27)",
+      "text": "rgb(228, 228, 231)"
+    },
+    {
+      "width": 1440,
+      "dark": true,
+      "kind": "warning",
+      "border": "rgb(250, 204, 21)",
+      "icon": "rgb(250, 204, 21)",
+      "progress": "rgb(250, 204, 21)",
+      "surface": "rgb(24, 24, 27)",
+      "text": "rgb(228, 228, 231)"
+    },
+    {
+      "width": 1440,
+      "dark": true,
+      "kind": "info",
+      "border": "rgb(161, 161, 170)",
+      "icon": "rgb(161, 161, 170)",
+      "progress": "rgb(161, 161, 170)",
+      "surface": "rgb(24, 24, 27)",
+      "text": "rgb(228, 228, 231)"
+    },
+    {
+      "width": 768,
+      "dark": false,
+      "kind": "success",
+      "border": "rgb(21, 128, 61)",
+      "icon": "rgb(21, 128, 61)",
+      "progress": "rgb(21, 128, 61)",
+      "surface": "rgb(255, 255, 255)",
+      "text": "rgb(39, 39, 42)"
+    },
+    {
+      "width": 768,
+      "dark": false,
+      "kind": "error",
+      "border": "rgb(190, 18, 60)",
+      "icon": "rgb(190, 18, 60)",
+      "progress": "rgb(190, 18, 60)",
+      "surface": "rgb(255, 255, 255)",
+      "text": "rgb(39, 39, 42)"
+    },
+    {
+      "width": 768,
+      "dark": false,
+      "kind": "warning",
+      "border": "rgb(161, 98, 7)",
+      "icon": "rgb(161, 98, 7)",
+      "progress": "rgb(161, 98, 7)",
+      "surface": "rgb(255, 255, 255)",
+      "text": "rgb(39, 39, 42)"
+    },
+    {
+      "width": 768,
+      "dark": false,
+      "kind": "info",
+      "border": "rgb(113, 113, 122)",
+      "icon": "rgb(113, 113, 122)",
+      "progress": "rgb(113, 113, 122)",
+      "surface": "rgb(255, 255, 255)",
+      "text": "rgb(39, 39, 42)"
+    },
+    {
+      "width": 768,
+      "dark": true,
+      "kind": "success",
+      "border": "rgb(74, 222, 128)",
+      "icon": "rgb(74, 222, 128)",
+      "progress": "rgb(74, 222, 128)",
+      "surface": "rgb(24, 24, 27)",
+      "text": "rgb(228, 228, 231)"
+    },
+    {
+      "width": 768,
+      "dark": true,
+      "kind": "error",
+      "border": "rgb(253, 164, 175)",
+      "icon": "rgb(253, 164, 175)",
+      "progress": "rgb(253, 164, 175)",
+      "surface": "rgb(24, 24, 27)",
+      "text": "rgb(228, 228, 231)"
+    },
+    {
+      "width": 768,
+      "dark": true,
+      "kind": "warning",
+      "border": "rgb(250, 204, 21)",
+      "icon": "rgb(250, 204, 21)",
+      "progress": "rgb(250, 204, 21)",
+      "surface": "rgb(24, 24, 27)",
+      "text": "rgb(228, 228, 231)"
+    },
+    {
+      "width": 768,
+      "dark": true,
+      "kind": "info",
+      "border": "rgb(161, 161, 170)",
+      "icon": "rgb(161, 161, 170)",
+      "progress": "rgb(161, 161, 170)",
+      "surface": "rgb(24, 24, 27)",
+      "text": "rgb(228, 228, 231)"
+    },
+    {
+      "width": 375,
+      "dark": false,
+      "kind": "success",
+      "border": "rgb(21, 128, 61)",
+      "icon": "rgb(21, 128, 61)",
+      "progress": "rgb(21, 128, 61)",
+      "surface": "rgb(255, 255, 255)",
+      "text": "rgb(39, 39, 42)"
+    },
+    {
+      "width": 375,
+      "dark": false,
+      "kind": "error",
+      "border": "rgb(190, 18, 60)",
+      "icon": "rgb(190, 18, 60)",
+      "progress": "rgb(190, 18, 60)",
+      "surface": "rgb(255, 255, 255)",
+      "text": "rgb(39, 39, 42)"
+    },
+    {
+      "width": 375,
+      "dark": false,
+      "kind": "warning",
+      "border": "rgb(161, 98, 7)",
+      "icon": "rgb(161, 98, 7)",
+      "progress": "rgb(161, 98, 7)",
+      "surface": "rgb(255, 255, 255)",
+      "text": "rgb(39, 39, 42)"
+    },
+    {
+      "width": 375,
+      "dark": false,
+      "kind": "info",
+      "border": "rgb(113, 113, 122)",
+      "icon": "rgb(113, 113, 122)",
+      "progress": "rgb(113, 113, 122)",
+      "surface": "rgb(255, 255, 255)",
+      "text": "rgb(39, 39, 42)"
+    },
+    {
+      "width": 375,
+      "dark": true,
+      "kind": "success",
+      "border": "rgb(74, 222, 128)",
+      "icon": "rgb(74, 222, 128)",
+      "progress": "rgb(74, 222, 128)",
+      "surface": "rgb(24, 24, 27)",
+      "text": "rgb(228, 228, 231)"
+    },
+    {
+      "width": 375,
+      "dark": true,
+      "kind": "error",
+      "border": "rgb(253, 164, 175)",
+      "icon": "rgb(253, 164, 175)",
+      "progress": "rgb(253, 164, 175)",
+      "surface": "rgb(24, 24, 27)",
+      "text": "rgb(228, 228, 231)"
+    },
+    {
+      "width": 375,
+      "dark": true,
+      "kind": "warning",
+      "border": "rgb(250, 204, 21)",
+      "icon": "rgb(250, 204, 21)",
+      "progress": "rgb(250, 204, 21)",
+      "surface": "rgb(24, 24, 27)",
+      "text": "rgb(228, 228, 231)"
+    },
+    {
+      "width": 375,
+      "dark": true,
+      "kind": "info",
+      "border": "rgb(161, 161, 170)",
+      "icon": "rgb(161, 161, 170)",
+      "progress": "rgb(161, 161, 170)",
+      "surface": "rgb(24, 24, 27)",
+      "text": "rgb(228, 228, 231)"
+    }
+  ],
+  "requests": [
+    {
+      "storageId": "notice-fixture",
+      "creditId": "fixture-credit",
+      "idempotencyKey": "748edaae-8a37-4a7a-a601-8d9e81b6bbce",
+      "confirmed": true
+    },
+    {
+      "storageId": "notice-fixture",
+      "creditId": "fixture-credit",
+      "idempotencyKey": "04f89841-443e-4130-8886-fff1adea7364",
+      "confirmed": true
+    },
+    {
+      "storageId": "notice-fixture",
+      "creditId": "fixture-credit",
+      "idempotencyKey": "7f037ef1-cb1f-4fde-9102-b00ad77b0d4a",
+      "confirmed": true
+    },
+    {
+      "storageId": "notice-fixture",
+      "creditId": "fixture-credit",
+      "idempotencyKey": "fe520937-e8f6-4310-b365-916462d646f0",
+      "confirmed": true
+    },
+    {
+      "storageId": "notice-fixture",
+      "creditId": "fixture-credit",
+      "idempotencyKey": "ca5b8c39-1dec-4ab7-a085-0e9cfef724dc",
+      "confirmed": true
+    }
+  ],
+  "errors": [],
+  "passed": true
+}

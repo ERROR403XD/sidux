@@ -1,0 +1,43 @@
+{
+  "base": "http://127.0.0.1:59001",
+  "geometry": {
+    ".projects-section > .thread-tree-header-row": {
+      "x": 8,
+      "y": 319,
+      "width": 244,
+      "height": 32,
+      "lineHeight": "24px",
+      "fontSize": "16px",
+      "display": "flex"
+    },
+    ".thread-tree-header": {
+      "x": 44,
+      "y": 326,
+      "width": 52.4375,
+      "height": 19,
+      "lineHeight": "20px",
+      "fontSize": "14px",
+      "display": "inline"
+    },
+    ".organize-menu-trigger": {
+      "x": 220,
+      "y": 325,
+      "width": 20,
+      "height": 20,
+      "lineHeight": "24px",
+      "fontSize": "16px",
+      "display": "flex"
+    },
+    ".project-tree-toggle": null,
+    ".project-tree-toggle svg": null,
+    ".project-header-row": {
+      "x": 8,
+      "y": 351,
+      "width": 244,
+      "height": 28,
+      "lineHeight": "24px",
+      "fontSize": "16px",
+      "display": "flex"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "changed": [
+    "src/components/accounts/AccountResetCredits.vue",
+    "src/components/common/OperationToastHost.vue",
+    "src/components/content/AutomationsPanel.vue",
+    "src/components/content/DirectoryHub.vue",
+    "src/components/content/SkillsHub.vue",
+    "src/components/settings/NotificationSettings.vue",
+    "src/components/sidebar/SidebarThreadTree.vue",
+    "src/composables/useOperationToast.test.ts",
+    "src/composables/useOperationToast.ts",
+    "src/i18n/zhSourceEnglish.ts",
+    "src/style.css",
+    "tests/theme-layout-terminal/reviewed-notification-copy.md"
+  ],
+  "publicSourceMatches": true,
+  "cliByteIdenticalToProduction": true,
+  "cliSha256": "13a3d39d3fae93a94ebf079948a6ea3fd31066ddee96a016022835fc08063e05",
+  "businessApiChanges": false,
+  "newRunHistoryNotices": false,
+  "performance": {
+    "maxToasts": 3,
+    "maxToastTimers": 3,
+    "newPolling": false,
+    "additionalBusinessRequests": 0,
+    "bundleKB": 856.6,
+    "gzipKB": 271.8,
+    "largeHistoryOrSchedulerLatencyMeasured": false
+  },
+  "newReminderPolicy": "classify existing messages only; originally quiet actions stay quiet"
+}

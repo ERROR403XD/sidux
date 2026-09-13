@@ -1,0 +1,23 @@
+{
+  "temporaryPorts": {
+    "4173": "no listener",
+    "59015": "no listener",
+    "4195": "no listener",
+    "4196": "no listener",
+    "4197": "no listener"
+  },
+  "temporaryService": "codexapp-tree-4173.service",
+  "temporaryServiceState": "inactive",
+  "launchOwnership": "task-owned transient systemd unit; no native Codex background terminal launcher",
+  "productionPid": 2623228,
+  "productionUnchanged": true,
+  "candidatePid": 2972162,
+  "candidateRelease": "/home/docker/codexapp-releases/codexapp-0.2.19-b1d26454703c-20260913-123958",
+  "idleGate": {
+    "exitCode": 3,
+    "activeTurns": 1,
+    "liveExecutions": 1,
+    "backgroundThreads": "skipped-busy",
+    "backgroundEnumerationNotVerified": true
+  }
+}
