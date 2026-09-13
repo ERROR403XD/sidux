@@ -67,7 +67,7 @@ async function test(): Promise<void> {
   try {
     const result = await apiProxyRequest<{ lastResult: string }>('/notifications/test', {})
     if (result.lastResult === '测试通知已发送') notifyOperation('通知已发送', 'success')
-    else notifyOperation(result.lastResult || '测试发送结果未确认')
+    else notifyOperation(result.lastResult || '测试发送结果未确认', result.lastResult ? 'error' : 'warning')
   } catch {
     notifyOperation('测试通知发送失败。')
   } finally {

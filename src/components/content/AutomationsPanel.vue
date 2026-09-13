@@ -328,9 +328,11 @@ async function mutateAutomation(action: () => Promise<unknown>, successMessage: 
   loadError.value = ''
   try {
     await action()
-    notifyOperation(successMessage, 'success')
     await loadAutomations()
-    if (!loadError.value) {
+    if (loadError.value) {
+      notifyOperation(`${successMessage}，但列表刷新失败。`, 'warning')
+    } else {
+      notifyOperation(successMessage, 'success')
       emit('automations-updated', { thread: threadAutomations.value, project: projectAutomations.value })
     }
     return true

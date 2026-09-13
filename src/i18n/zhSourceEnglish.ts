@@ -1,9 +1,14 @@
 // English translations for application UI messages originally authored in Chinese.
 // User content, saved prompts, and outbound notification templates are intentionally excluded.
 export const zhSourceEnglish: Record<string, string> = {
+  '操作成功': 'Success',
+  '请注意': 'Attention',
+  '信息': 'Information',
   '移除项目及自动化任务？': 'Remove project and automations?',
   '移除“{name}”及其自动化任务？': 'Remove "{name}" and its automations?',
-  '自动化任务已移除，但列表刷新失败。': 'Automations removed, but the list could not be refreshed.',
+  '自动化任务已移除，但列表刷新失败。': 'Automation removed, but the list could not be refreshed.',
+  '自动化任务已启用，但列表刷新失败。': 'Automation enabled, but the list could not be refreshed.',
+  '自动化任务已暂停，但列表刷新失败。': 'Automation paused, but the list could not be refreshed.',
   '移除自动化任务？': 'Remove automation?',
   '确认移除“{name}”？': 'Remove "{name}"?',
   '自动化任务已移除': 'Automation removed',

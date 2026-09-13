@@ -1,6 +1,7 @@
 import { readonly, ref } from 'vue'
 
-export type OperationToast = { id: number; message: string; kind: 'success' | 'error'; scope?: string; remaining: number; started: number; duration: number; paused: boolean }
+export type OperationToastKind = 'success' | 'error' | 'warning' | 'info'
+export type OperationToast = { id: number; message: string; kind: OperationToastKind; scope?: string; remaining: number; started: number; duration: number; paused: boolean }
 const items = ref<OperationToast[]>([])
 const timers = new Map<number, ReturnType<typeof setTimeout>>()
 let nextId = 0
@@ -34,7 +35,7 @@ export function notifyOperation(message: string, kind: OperationToast['kind'] = 
   if (duplicate) dismissOperationToast(duplicate.id)
   while (items.value.length >= 3) dismissOperationToast(items.value[0]!.id)
   const id = ++nextId
-  const duration = kind === 'success' ? 3000 : 6000
+  const duration = kind === 'success' || kind === 'info' ? 3000 : 6000
   items.value.push({ id, message, kind, scope, remaining: duration, duration, paused: false, started: Date.now() })
   resumeOperationToast(id)
 }

@@ -2307,7 +2307,7 @@ async function onRunAutomationFromDialog(): Promise<void> {
 
   try {
     await runAutomationNow({ automationId, target, kind: automationDialogScope.value === 'project' ? 'cron' : 'heartbeat', requestId: createAutomationRequestId() })
-    notifyOperation('自动化已加入队列', 'success')
+    notifyOperation('自动化已加入队列', 'info')
   } catch (error) {
     notifyOperation(error instanceof Error ? error.message : 'Failed to run automation')
   } finally {
@@ -2483,11 +2483,12 @@ function removeProjectAndAutomations(projectName: string): void {
     automationByProjectName.value = omitAutomationProject(automationByProjectName.value, projectCwd)
     void deleteProjectAutomation(projectCwd)
       .then(async () => {
-        notifyOperation('自动化任务已移除', 'success')
         try {
           await reloadProjectAutomations()
+          notifyOperation('自动化任务已移除', 'success')
         } catch {
           projectAutomationActionError.value = '自动化任务已移除，但列表刷新失败。'
+          notifyOperation(projectAutomationActionError.value, 'warning')
         }
       })
       .catch(async (error) => {

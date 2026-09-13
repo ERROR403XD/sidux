@@ -98,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { notifyOperation } from '../../composables/useOperationToast'
+import { notifyOperation, type OperationToastKind } from '../../composables/useOperationToast'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import DirectorySectionToggle from './DirectorySectionToggle.vue'
 import SkillCard from './SkillCard.vue'
@@ -157,7 +157,7 @@ const filteredInstalled = computed(() => {
   return query ? installedSkills.value.filter(skill => [skill.name, skill.description, skill.owner, skill.path].some(value => value?.toLocaleLowerCase().includes(query))) : installedSkills.value
 })
 
-function showToast(text: string, type: 'success' | 'error' = 'success'): void {
+function showToast(text: string, type: OperationToastKind = 'success'): void {
   notifyOperation(text, type)
 }
 
@@ -248,7 +248,7 @@ async function searchSkills(): Promise<void> {
     })
     isSearchResultsOpen.value = true
     if (skillSearchResults.value.length === 0) {
-      showToast(t('No matching skills found.'), 'error')
+      showToast(t('No matching skills found.'), 'info')
     }
   } catch (e) {
     skillSearchError.value = e instanceof Error ? e.message : 'Failed to search skills'

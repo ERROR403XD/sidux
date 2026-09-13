@@ -57,10 +57,11 @@ async function consume(): Promise<void> {
     if (!response.ok) throw new Error(payload.message || '重置结果未确认，请核对额度后重试。')
     const outcome = ({ reset: '额度已重置', alreadyRedeemed: '该次重置已完成', nothingToReset: '当前没有可重置的额度窗口', noCredit: '此重置机会已不可用' } as Record<string, string>)[payload.data?.outcome]
     if (!outcome) {
-      notifyOperation('结果未确认，请刷新账号核对。')
+      notifyOperation('结果未确认，请刷新账号核对。', 'warning')
       return
     }
-    notifyOperation(outcome, ['reset', 'alreadyRedeemed'].includes(payload.data?.outcome) ? 'success' : 'error')
+    const kind = payload.data?.outcome === 'reset' ? 'success' : payload.data?.outcome === 'noCredit' ? 'warning' : 'info'
+    notifyOperation(outcome, kind)
     target.value = null
   } catch (cause) { notifyOperation(cause instanceof Error ? cause.message : '重置结果未确认。') }
   finally {

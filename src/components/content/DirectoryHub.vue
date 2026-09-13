@@ -285,7 +285,7 @@ async function loginMcpServer(name: string): Promise<void> {
     const result = await startDirectoryMcpLogin(name)
     if (!result.authorizationUrl) throw new Error('未返回授权地址')
     window.open(result.authorizationUrl, '_blank', 'noopener,noreferrer')
-    notifyOperation('已打开授权页面', 'success')
+    notifyOperation('已打开授权页面', 'info')
   } catch (failure) { notifyOperation(formatDirectoryError(failure, '连接失败')) }
   finally { mcpLoginServerName.value = '' }
 }
