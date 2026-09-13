@@ -84,6 +84,7 @@ async function main() {
     assert.equal(await group.locator('.project-title').getAttribute('title'), 'UI Organization')
     await group.locator('.project-header-row').click()
     await group.locator('[data-organization-state="collapsed"]').waitFor()
+    assert.equal(await group.locator('.project-empty-row:visible').count(), 0, 'collapsed empty organization must hide the empty row')
     await group.locator('.project-header-row').click()
     await group.locator('[data-organization-state="expanded"]').waitFor()
     await group.locator('.project-menu-trigger').click()
@@ -98,6 +99,35 @@ async function main() {
     assert.deepEqual(state.order, ['/tmp/project-ui/real'])
     report.cases.push('name-only create, keyboard submit, abstract closed/open icons, rename and post-refresh persistence')
 
+    const realGroup = page.locator('.project-group[data-project-name="real"]')
+    async function checkCollapsed(project, empty) {
+      if ((await project.getAttribute('data-expanded')) !== 'false') await project.locator('.project-header-row').click()
+      assert.equal(await project.locator('.project-empty-row:visible, .thread-row:visible, .thread-show-more-row:visible').count(), 0)
+      const header = await project.locator('.project-header-row').boundingBox()
+      const bounds = await project.boundingBox()
+      assert.ok(bounds.height <= header.height + 2, 'collapsed project must occupy only its header')
+      await page.reload()
+      await project.waitFor()
+      assert.equal(await project.getAttribute('data-expanded'), 'false')
+      assert.equal(await project.locator('.project-empty-row:visible, .thread-row:visible').count(), 0)
+      await project.locator('.project-header-row').press('Enter')
+      await project.locator(empty ? '.project-empty-row' : '.thread-row').waitFor()
+      await project.locator('.project-header-row').press('Space')
+      assert.equal(await project.locator('.project-empty-row:visible, .thread-row:visible').count(), 0)
+    }
+    for (const dark of [false, true]) {
+      await checkCollapsed(group, true)
+      await checkCollapsed(realGroup, true)
+      await page.evaluate(value => document.documentElement.classList.toggle('dark', value), dark)
+      await page.mouse.move(1000, 100)
+      await page.waitForTimeout(2300)
+      const filename = `output/playwright/0219-${label}empty-project-collapse-${dark ? 'dark' : 'light'}.png`
+      await page.screenshot({ path: filename })
+      report.screenshots.push(filename)
+    }
+    await group.locator('.project-header-row').click()
+    report.cases.push('empty organization and directory project collapse to header only; mouse/Enter/Space and post-refresh state in both themes')
+
     // Move an existing native projectless conversation through the real menu/dialog.
     await page.locator('.thread-row-title:visible').filter({ hasText: 'Project UI conversation' }).first().hover()
     await page.locator('.thread-menu-trigger:visible').first().click()
@@ -111,6 +141,8 @@ async function main() {
     assert.equal(nativeThread.cwd, projectCwd)
     await page.reload()
     await group.locator('.thread-row-title').waitFor()
+    await checkCollapsed(group, false)
+    await group.locator('.project-header-row').click()
     await group.locator('.thread-start-button').click()
     assert.ok((await page.locator('.new-thread-folder-dropdown').innerText()).includes('UI Renamed'))
     assert.equal(await page.locator('.content-header-terminal-command').count(), 0)

@@ -461,7 +461,7 @@
             </li>
           </ul>
 
-          <SidebarMenuRow v-else as="p" class="project-empty-row">
+          <SidebarMenuRow v-else-if="!isCollapsed(group.projectName)" as="p" class="project-empty-row">
             <template #left>
               <span class="project-empty-spacer" />
             </template>
