@@ -1,0 +1,681 @@
+{
+  "totalRows": 1044,
+  "explicitEdits": 60,
+  "exactTextMatches": 56,
+  "verifiedTemplateRows": 4,
+  "rows": [
+    {
+      "id": "NT0063",
+      "requested": "提交待确认，请点击“核对提交”",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/api/deliveryOutbox.ts"
+      ],
+      "oldSourcePaths": [
+        "src/api/deliveryOutbox.ts",
+        "src/api/deliveryOutbox.ts"
+      ]
+    },
+    {
+      "id": "NT0067",
+      "requested": "回答尚未确认送达，请稍后核对",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/api/codexGateway.ts"
+      ],
+      "oldSourcePaths": [
+        "src/api/codexGateway.ts"
+      ]
+    },
+    {
+      "id": "NT0071",
+      "requested": "模型目录暂时不可用",
+      "matches": [
+        "src/composables/useDesktopState.ts",
+        "src/i18n/zhSourceEnglish.ts"
+      ],
+      "oldSourcePaths": [
+        "src/composables/useDesktopState.ts"
+      ]
+    },
+    {
+      "id": "NT0079",
+      "requested": "输入 / 后继续搜索；↑↓ 选择，Enter 确认，Esc 收起。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/components/content/ThreadCommandDialog.vue"
+      ],
+      "oldSourcePaths": [
+        "src/components/content/ThreadCommandDialog.vue"
+      ]
+    },
+    {
+      "id": "NT0088",
+      "requested": "已收到停止确认。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/components/content/ThreadProcessPanel.vue"
+      ],
+      "oldSourcePaths": [
+        "src/components/content/ThreadProcessPanel.vue"
+      ]
+    },
+    {
+      "id": "NT0102",
+      "requested": "目标已阻塞，请查看最后回复。",
+      "matches": [
+        "src/threadGoal.ts",
+        "src/i18n/zhSourceEnglish.ts"
+      ],
+      "oldSourcePaths": [
+        "src/threadGoal.ts"
+      ]
+    },
+    {
+      "id": "NT0105",
+      "requested": "预算已用尽",
+      "matches": [
+        "src/threadGoal.test.ts",
+        "src/threadGoal.ts",
+        "src/i18n/translateSource.test.ts",
+        "src/i18n/zhSourceEnglish.ts"
+      ],
+      "oldSourcePaths": [
+        "src/threadGoal.ts"
+      ]
+    },
+    {
+      "id": "NT0106",
+      "requested": "预算已调整",
+      "matches": [
+        "src/threadGoal.ts",
+        "src/i18n/zhSourceEnglish.ts"
+      ],
+      "oldSourcePaths": [
+        "src/threadGoal.ts"
+      ]
+    },
+    {
+      "id": "NT0107",
+      "requested": "预算已用尽",
+      "matches": [
+        "src/threadGoal.test.ts",
+        "src/threadGoal.ts",
+        "src/i18n/translateSource.test.ts",
+        "src/i18n/zhSourceEnglish.ts"
+      ],
+      "oldSourcePaths": [
+        "src/threadGoal.ts"
+      ]
+    },
+    {
+      "id": "NT0108",
+      "requested": "用量受限",
+      "matches": [
+        "src/threadGoal.ts",
+        "src/i18n/zhSourceEnglish.ts",
+        "src/i18n/zhSourceChinese.ts"
+      ],
+      "oldSourcePaths": [
+        "src/threadGoal.ts"
+      ]
+    },
+    {
+      "id": "NT0280",
+      "requested": "Codex 返回用量为 0，暂不显示剩余预算。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/components/content/ThreadGoalCard.vue"
+      ],
+      "oldSourcePaths": [
+        "src/components/content/ThreadGoalCard.vue"
+      ]
+    },
+    {
+      "id": "NT0297",
+      "requested": "当前 CLI 不支持查询 MCP 状态，请更新 CLI。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/components/content/DirectoryHub.vue"
+      ],
+      "oldSourcePaths": [
+        "src/components/content/DirectoryHub.vue"
+      ]
+    },
+    {
+      "id": "NT0298",
+      "requested": "无法自动复制，请选中 key 手动复制。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/components/api-proxy/ApiProxyPanel.vue"
+      ],
+      "oldSourcePaths": [
+        "src/components/api-proxy/ApiProxyPanel.vue"
+      ]
+    },
+    {
+      "id": "NT0300",
+      "requested": "当前模型不支持图片。",
+      "matches": [
+        "src/modelCapabilities.ts",
+        "src/i18n/zhSourceEnglish.ts"
+      ],
+      "oldSourcePaths": [
+        "src/modelCapabilities.ts"
+      ]
+    },
+    {
+      "id": "NT0301",
+      "requested": "当前任务运行中。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/components/content/ThreadCommandDialog.vue"
+      ],
+      "oldSourcePaths": [
+        "src/components/content/ThreadCommandDialog.vue"
+      ]
+    },
+    {
+      "id": "NT0302",
+      "requested": "任务运行中，暂不能压缩。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/api/threadCompaction.ts",
+        "src/api/threadCompaction.test.ts"
+      ],
+      "oldSourcePaths": [
+        "src/api/threadCompaction.ts"
+      ]
+    },
+    {
+      "id": "NT0304",
+      "requested": "当前账号使用：{变量1} · {变量2}",
+      "matches": [],
+      "oldSourcePaths": [
+        "src/components/settings/ConversationDefaults.vue"
+      ],
+      "templateManuallyVerified": true,
+      "templateNote": "CSV variable placeholders correspond to source template expressions; wording retained"
+    },
+    {
+      "id": "NT0308",
+      "requested": "等待会话用量更新。",
+      "matches": [
+        "src/App.vue",
+        "src/i18n/zhSourceEnglish.ts"
+      ],
+      "oldSourcePaths": [
+        "src/App.vue"
+      ]
+    },
+    {
+      "id": "NT0342",
+      "requested": "仅含版本、界面信息和错误类别，可补充复现步骤。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/components/content/FeedbackReportDialog.vue"
+      ],
+      "oldSourcePaths": [
+        "src/components/content/FeedbackReportDialog.vue"
+      ]
+    },
+    {
+      "id": "NT0360",
+      "requested": "目标已在其他位置修改，请重新读取。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/components/content/ThreadCommandDialog.vue"
+      ],
+      "oldSourcePaths": [
+        "src/components/content/ThreadCommandDialog.vue"
+      ]
+    },
+    {
+      "id": "NT0361",
+      "requested": "目标已在其他位置修改，请重新读取。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/components/content/ThreadCommandDialog.vue"
+      ],
+      "oldSourcePaths": [
+        "src/components/content/ThreadCommandDialog.vue"
+      ]
+    },
+    {
+      "id": "NT0366",
+      "requested": "切换分支或重置前，请先提交、Stash 或丢弃已跟踪的改动；未跟踪文件仅在会被覆盖时需处理。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/codexAppServerBridge.ts",
+        "src/components/content/HeaderGitBranchDropdown.vue"
+      ],
+      "oldSourcePaths": [
+        "src/components/content/HeaderGitBranchDropdown.vue"
+      ]
+    },
+    {
+      "id": "NT0376",
+      "requested": "请先保存目标或预算的修改。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/components/content/ThreadCommandDialog.vue"
+      ],
+      "oldSourcePaths": [
+        "src/components/content/ThreadCommandDialog.vue",
+        "src/components/content/ThreadCommandDialog.vue"
+      ]
+    },
+    {
+      "id": "NT0402",
+      "requested": "事件类型：{变量1}\n{变量2}完整内容请查看 CLI 会话。",
+      "matches": [],
+      "oldSourcePaths": [
+        "src/api/normalizers/toolSummary.ts"
+      ],
+      "templateManuallyVerified": true,
+      "templateNote": "CSV variable placeholders correspond to source template expressions; wording retained"
+    },
+    {
+      "id": "NT0411",
+      "requested": "编辑关联保存失败，可点击“继续编辑”恢复队列中的原消息",
+      "matches": [
+        "src/App.vue",
+        "src/i18n/zhSourceEnglish.ts"
+      ],
+      "oldSourcePaths": [
+        "src/App.vue"
+      ]
+    },
+    {
+      "id": "NT0435",
+      "requested": "消息可能已送达，停止跟踪不会中止任务。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/components/content/QueuedMessages.vue"
+      ],
+      "oldSourcePaths": [
+        "src/components/content/QueuedMessages.vue"
+      ]
+    },
+    {
+      "id": "NT0478",
+      "requested": "未能停止进程，请检查当前状态。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/components/content/ThreadProcessPanel.vue"
+      ],
+      "oldSourcePaths": [
+        "src/components/content/ThreadProcessPanel.vue"
+      ]
+    },
+    {
+      "id": "NT0487",
+      "requested": "摘录包含最近 10 回合的用户与最终回复，最多 6,000 字符。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/components/content/TaskSearchDialog.vue"
+      ],
+      "oldSourcePaths": [
+        "src/components/content/TaskSearchDialog.vue"
+      ]
+    },
+    {
+      "id": "NT0490",
+      "requested": "提交可能已送达，停止跟踪不会取消队列消息或中止任务。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/components/content/DeliveryOutbox.vue"
+      ],
+      "oldSourcePaths": [
+        "src/components/content/DeliveryOutbox.vue"
+      ]
+    },
+    {
+      "id": "NT0515",
+      "requested": "暂无模型上下文窗口信息。",
+      "matches": [
+        "src/App.vue",
+        "src/i18n/zhSourceEnglish.ts"
+      ],
+      "oldSourcePaths": [
+        "src/App.vue"
+      ]
+    },
+    {
+      "id": "NT0519",
+      "requested": "Codex 正在等待回应。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/components/content/ThreadPendingRequestPanel.vue"
+      ],
+      "oldSourcePaths": [
+        "src/components/content/ThreadPendingRequestPanel.vue"
+      ]
+    },
+    {
+      "id": "NT0534",
+      "requested": "额度或速率受限",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/automationEngine.ts",
+        "src/server/automationError.test.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/automationEngine.ts"
+      ]
+    },
+    {
+      "id": "NT0560",
+      "requested": "会话运行中，暂不能更换账号。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/codexAppServerBridge.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/codexAppServerBridge.ts"
+      ]
+    },
+    {
+      "id": "NT0568",
+      "requested": "切换分支或重置前，请先提交、Stash 或丢弃已跟踪的改动；未跟踪文件仅在会被覆盖时需处理。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/codexAppServerBridge.ts",
+        "src/components/content/HeaderGitBranchDropdown.vue"
+      ],
+      "oldSourcePaths": [
+        "src/server/codexAppServerBridge.ts"
+      ]
+    },
+    {
+      "id": "NT0595",
+      "requested": "队列接口已更新，请刷新页面后重试",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/codexAppServerBridge.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/codexAppServerBridge.ts"
+      ]
+    },
+    {
+      "id": "NT0596",
+      "requested": "队列接口已更新，请刷新页面后重试",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/codexAppServerBridge.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/codexAppServerBridge.ts"
+      ]
+    },
+    {
+      "id": "NT0597",
+      "requested": "仅考虑最近一个漏跑时点",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/automationEngine.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/automationEngine.ts"
+      ]
+    },
+    {
+      "id": "NT0600",
+      "requested": "额度读取需等待 {变量1} 秒",
+      "matches": [],
+      "oldSourcePaths": [
+        "src/server/accountAuthCoordinator.ts"
+      ],
+      "templateManuallyVerified": true,
+      "templateNote": "CSV variable placeholders correspond to source template expressions; wording retained"
+    },
+    {
+      "id": "NT0618",
+      "requested": "反代组件连接失败。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/apiProxy/gateway.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/apiProxy/gateway.ts"
+      ]
+    },
+    {
+      "id": "NT0640",
+      "requested": "观察记录保存失败，重启后可能丢失。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/processActivityStore.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/processActivityStore.ts"
+      ]
+    },
+    {
+      "id": "NT0674",
+      "requested": "激活结果未确认，不自动重发",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/accountActivationRuntime.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/accountActivationRuntime.ts"
+      ]
+    },
+    {
+      "id": "NT0684",
+      "requested": "技能已安装，但在本地找不到 {变量1}。",
+      "matches": [],
+      "oldSourcePaths": [
+        "src/server/skillsRoutes.ts"
+      ],
+      "templateManuallyVerified": true,
+      "templateNote": "CSV variable placeholders correspond to source template expressions; wording retained"
+    },
+    {
+      "id": "NT0715",
+      "requested": "自动化等待其他实例释放调度锁",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/automationEngine.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/automationEngine.ts"
+      ]
+    },
+    {
+      "id": "NT0753",
+      "requested": "请求已完成；额度同步失败",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/accountActivationScheduler.ts",
+        "src/server/accountActivationRuntime.test.ts",
+        "src/server/accountActivationRuntime.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/accountActivationRuntime.ts",
+        "src/server/accountActivationScheduler.ts"
+      ]
+    },
+    {
+      "id": "NT0819",
+      "requested": "认证失败，请检查当前账号后重试",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/automationEngine.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/automationEngine.ts"
+      ]
+    },
+    {
+      "id": "NT0830",
+      "requested": "待处理发送记录超过 500 条上限",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/deliveryStore.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/deliveryStore.ts"
+      ]
+    },
+    {
+      "id": "NT0831",
+      "requested": "待处理发送内容超过 32 MB 上限",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/deliveryStore.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/deliveryStore.ts"
+      ]
+    },
+    {
+      "id": "NT0856",
+      "requested": "提交结果待核对",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/automationEngine.ts",
+        "src/components/sidebar/SidebarThreadTree.vue"
+      ],
+      "oldSourcePaths": [
+        "src/server/automationEngine.ts"
+      ]
+    },
+    {
+      "id": "NT0866",
+      "requested": "统计读取失败，原文件已保留；本次统计暂存于内存。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/apiProxy/usage.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/apiProxy/usage.ts"
+      ]
+    },
+    {
+      "id": "NT0867",
+      "requested": "统计写入失败，本次数据暂存于内存。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/apiProxy/usage.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/apiProxy/usage.ts"
+      ]
+    },
+    {
+      "id": "NT0890",
+      "requested": "提交结果未确认，请先核对会话",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/automationEngine.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/automationEngine.ts"
+      ]
+    },
+    {
+      "id": "NT0918",
+      "requested": "需要有效的 requestId",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/automationEngine.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/automationEngine.ts"
+      ]
+    },
+    {
+      "id": "NT0940",
+      "requested": "运行超时，已请求中止，等待上游确认",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/automationEngine.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/automationEngine.ts"
+      ]
+    },
+    {
+      "id": "NT0968",
+      "requested": "账号已移除，请核对会话历史",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/codexAppServerBridge.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/codexAppServerBridge.ts"
+      ]
+    },
+    {
+      "id": "NT0969",
+      "requested": "账号已移除，请登录后重新发送",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/codexAppServerBridge.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/codexAppServerBridge.ts"
+      ]
+    },
+    {
+      "id": "NT0987",
+      "requested": "正在发送",
+      "matches": [
+        "src/delivery.ts",
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/deliveryStore.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/deliveryStore.ts"
+      ]
+    },
+    {
+      "id": "NT0988",
+      "requested": "正在验证账号。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/accountAuthCoordinator.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/accountAuthCoordinator.ts",
+        "src/server/accountAuthCoordinator.ts"
+      ]
+    },
+    {
+      "id": "NT0992",
+      "requested": "执行未完成，请打开会话查看错误",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/automationEngine.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/automationEngine.ts"
+      ]
+    },
+    {
+      "id": "NT0996",
+      "requested": "重置结果未确认，请刷新额度后核对。",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/accountRoutes.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/accountRoutes.ts"
+      ]
+    },
+    {
+      "id": "NT1004",
+      "requested": "自动化状态文件损坏，调度已停止，请检查 state.json",
+      "matches": [
+        "src/i18n/zhSourceEnglish.ts",
+        "src/server/automationStore.ts"
+      ],
+      "oldSourcePaths": [
+        "src/server/automationStore.ts"
+      ]
+    }
+  ]
+}

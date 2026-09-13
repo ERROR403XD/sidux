@@ -1,0 +1,12 @@
+{
+  "reviewHead": "739f34b61ecca43625e6011b29581cd6a72719e8",
+  "candidateSource": "df6a5cb97c32",
+  "productionBaseline": "6ad0e99242c8",
+  "nonTestTsVueFiles": 248,
+  "codeLines": 70996,
+  "changedPaths": 118,
+  "addedLines": 4828,
+  "removedLines": 754,
+  "typecheckPassed": true,
+  "priorEvidenceFilesVerified": 85
+}
