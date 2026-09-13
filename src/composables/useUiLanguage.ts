@@ -482,6 +482,8 @@ const zhCN: Record<string, string> = {
   'pin': '固定',
   'Worktree thread': "工作树会话",
   'Threads': "会话",
+  'Collapse all projects': '折叠全部项目',
+  'Expand all projects': '展开全部项目',
   'Organize threads': "整理会话",
   'Organize': '整理',
   'By project': '按项目',

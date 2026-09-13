@@ -97,11 +97,14 @@
 
     <section class="projects-section">
       <SidebarMenuRow
-        as="button"
+        as="div"
         class="thread-tree-header-row section-toggle-row"
-        type="button"
+        role="button"
+        tabindex="0"
         :aria-expanded="isProjectsSectionExpanded"
         @click="toggleProjectsSection"
+        @keydown.enter.self.prevent="toggleProjectsSection"
+        @keydown.space.self.prevent="toggleProjectsSection"
       >
         <template #left>
           <IconTablerChevronRight v-if="!isProjectsSectionExpanded" class="thread-icon" />
@@ -109,68 +112,83 @@
         </template>
         <span class="thread-tree-header">{{ t('Projects') }}</span>
         <template #right>
-          <div ref="organizeMenuWrapRef" class="organize-menu-wrap">
-            <button
-              class="organize-menu-trigger"
-              type="button"
-              :aria-expanded="isOrganizeMenuOpen"
-              :aria-label="t('Organize threads')"
-              :title="t('Organize threads')"
-              @click.stop="toggleOrganizeMenu"
-            >
-              <IconTablerDots class="thread-icon" />
-            </button>
+          <div class="projects-header-actions">
+            <div ref="organizeMenuWrapRef" class="organize-menu-wrap">
+              <button
+                class="organize-menu-trigger"
+                type="button"
+                :aria-expanded="isOrganizeMenuOpen"
+                :aria-label="t('Organize threads')"
+                :title="t('Organize threads')"
+                @click.stop="toggleOrganizeMenu"
+              >
+                <IconTablerDots class="thread-icon" />
+              </button>
 
-            <div v-if="isOrganizeMenuOpen" class="organize-menu-panel" @click.stop>
-              <p class="organize-menu-title">{{ t('Organize') }}</p>
-              <button
-                class="organize-menu-item"
-                :data-active="threadViewMode === 'project'"
-                type="button"
-                @click="setThreadViewMode('project')"
-              >
-                <span>{{ t('By project') }}</span>
-                <span v-if="threadViewMode === 'project'">✓</span>
-              </button>
-              <button
-                class="organize-menu-item"
-                :data-active="threadViewMode === 'chronological'"
-                type="button"
-                @click="setThreadViewMode('chronological')"
-              >
-                <span>{{ t('Chronological list') }}</span>
-                <span v-if="threadViewMode === 'chronological'">✓</span>
-              </button>
-              <button
-                class="organize-menu-item"
-                :data-active="showChatsFirst"
-                type="button"
-                @click="toggleShowChatsFirst"
-              >
-                <span>{{ t('Chats first') }}</span>
-                <span v-if="showChatsFirst">✓</span>
-              </button>
-              <div class="organize-menu-separator" />
-              <p class="organize-menu-title">{{ t('Sort by') }}</p>
-              <button
-                class="organize-menu-item"
-                :data-active="chatSortMode === 'created'"
-                type="button"
-                @click="setChatSortMode('created')"
-              >
-                <span>{{ t('Created') }}</span>
-                <span v-if="chatSortMode === 'created'">✓</span>
-              </button>
-              <button
-                class="organize-menu-item"
-                :data-active="chatSortMode === 'updated'"
-                type="button"
-                @click="setChatSortMode('updated')"
-              >
-                <span>{{ t('Updated') }}</span>
-                <span v-if="chatSortMode === 'updated'">✓</span>
-              </button>
+              <div v-if="isOrganizeMenuOpen" class="organize-menu-panel" @click.stop>
+                <p class="organize-menu-title">{{ t('Organize') }}</p>
+                <button
+                  class="organize-menu-item"
+                  :data-active="threadViewMode === 'project'"
+                  type="button"
+                  @click="setThreadViewMode('project')"
+                >
+                  <span>{{ t('By project') }}</span>
+                  <span v-if="threadViewMode === 'project'">✓</span>
+                </button>
+                <button
+                  class="organize-menu-item"
+                  :data-active="threadViewMode === 'chronological'"
+                  type="button"
+                  @click="setThreadViewMode('chronological')"
+                >
+                  <span>{{ t('Chronological list') }}</span>
+                  <span v-if="threadViewMode === 'chronological'">✓</span>
+                </button>
+                <button
+                  class="organize-menu-item"
+                  :data-active="showChatsFirst"
+                  type="button"
+                  @click="toggleShowChatsFirst"
+                >
+                  <span>{{ t('Chats first') }}</span>
+                  <span v-if="showChatsFirst">✓</span>
+                </button>
+                <div class="organize-menu-separator" />
+                <p class="organize-menu-title">{{ t('Sort by') }}</p>
+                <button
+                  class="organize-menu-item"
+                  :data-active="chatSortMode === 'created'"
+                  type="button"
+                  @click="setChatSortMode('created')"
+                >
+                  <span>{{ t('Created') }}</span>
+                  <span v-if="chatSortMode === 'created'">✓</span>
+                </button>
+                <button
+                  class="organize-menu-item"
+                  :data-active="chatSortMode === 'updated'"
+                  type="button"
+                  @click="setChatSortMode('updated')"
+                >
+                  <span>{{ t('Updated') }}</span>
+                  <span v-if="chatSortMode === 'updated'">✓</span>
+                </button>
+              </div>
             </div>
+            <button
+              v-if="!isChronologicalView"
+              class="project-tree-toggle"
+              type="button"
+              :disabled="groups.length === 0 || isSearchActive"
+              :aria-label="canCollapseProjectTree ? t('Collapse all projects') : t('Expand all projects')"
+              :title="canCollapseProjectTree ? t('Collapse all projects') : t('Expand all projects')"
+              @click.stop="toggleAllProjectLevels"
+            >
+              <svg class="thread-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path :d="canCollapseProjectTree ? 'm7 4 5 5 5-5M7 20l5-5 5 5' : 'm7 9 5-5 5 5M7 15l5 5 5-5'" />
+              </svg>
+            </button>
           </div>
         </template>
       </SidebarMenuRow>
@@ -2466,6 +2484,25 @@ function isCollapsed(projectName: string): boolean {
   return collapsedProjects.value[projectName] === true
 }
 
+const canCollapseProjectTree = computed(() => (
+  isProjectsSectionExpanded.value && props.groups.some(group => !isCollapsed(group.projectName))
+))
+
+function toggleAllProjectLevels(): void {
+  if (isSearchActive.value || isChronologicalView.value || props.groups.length === 0) return
+
+  const collapse = canCollapseProjectTree.value
+  const collapsed = { ...collapsedProjects.value }
+  const expanded = { ...expandedProjects.value }
+  for (const group of props.groups) {
+    collapsed[group.projectName] = collapse
+    expanded[group.projectName] = !collapse
+  }
+  collapsedProjects.value = collapsed
+  expandedProjects.value = expanded
+  isProjectsSectionExpanded.value = true
+}
+
 function toggleProjectExpansion(projectName: string): void {
   expandedProjects.value = {
     ...expandedProjects.value,
@@ -3163,6 +3200,33 @@ onBeforeUnmount(() => {
 
 .chats-section-action[aria-pressed='true'] {
   @apply bg-zinc-200 text-zinc-800;
+}
+
+.projects-header-actions {
+  @apply flex items-center gap-1;
+}
+
+.projects-header-actions .organize-menu-trigger {
+  @apply w-4;
+}
+
+.project-tree-toggle {
+  @apply h-5 w-5 rounded flex items-center justify-center;
+  color: var(--ui-muted);
+}
+
+.project-tree-toggle:hover:not(:disabled) {
+  background: var(--ui-hover);
+  color: var(--ui-text);
+}
+
+.project-tree-toggle:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+.project-tree-toggle:disabled {
+  opacity: 0.4;
 }
 
 .organize-menu-wrap {

@@ -2955,3 +2955,17 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 /* Terminal dots share the unread-dot geometry in both themes. */
 :root .thread-status-indicator[data-state="error"] { background-color: var(--ui-status-error-dot); }
 :root .thread-status-indicator[data-state="quota"] { background-color: var(--ui-status-quota-dot); }
+
+/* Sidebar project actions stay visible against the hovered row in both themes. */
+:root .project-menu-trigger:is(:hover, :focus-visible),
+:root .thread-delete-button:not([data-confirming='true']):is(:hover, :focus-visible),
+:root .project-header-row .thread-start-button:is(:hover, :focus-visible) {
+  background: var(--ui-border);
+  color: var(--ui-text);
+}
+
+:root .project-menu-trigger:focus-visible,
+:root .thread-delete-button:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
