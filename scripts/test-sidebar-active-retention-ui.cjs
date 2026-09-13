@@ -5,6 +5,7 @@ const fs = require('node:fs/promises')
 async function main() {
   const base = process.env.UI_BASE_URL || 'http://127.0.0.1:4173'
   const browser = await chromium.launch({ executablePath: '/snap/bin/chromium', headless: true, args: ['--no-sandbox'] })
+  const label = process.env.UI_LABEL ? process.env.UI_LABEL + '-' : ''
   const report = { base, cases: [], requests: [], errors: [], screenshots: [] }
   const ids = Object.fromEntries(['anchor', 'blue', 'network', 'quota', 'manual', 'old'].map((name, i) => [name, `${i + 1}1111111-1111-4111-8111-111111111111`]))
   const turns = Object.fromEntries(Object.keys(ids).map(name => [name, { id: `turn-${name}`, status: name === 'old' ? 'completed' : 'inProgress', items: [{ id: `user-${name}`, type: 'userMessage', content: [{ type: 'text', text: `Local ${name} fixture` }] }] }]))
@@ -19,6 +20,8 @@ async function main() {
   let page
   let notify = async () => {}
   let failIgnore = false
+  let holdReads = false
+  const heldReads = []
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
     await context.addInitScript(() => {
@@ -52,7 +55,10 @@ async function main() {
         if (req.method() === 'POST' && completions[body.threadId] === body.token) delete completions[body.threadId]
         return json({ data: completions })
       }
-      if (path === 'thread-interruptions') return json({ data: visibleIssues() })
+      if (path === 'thread-interruptions') {
+        if (holdReads) { heldReads.push(route); return }
+        return json({ data: visibleIssues() })
+      }
       if (path === 'ignored-quota-errors') {
         const id = body.threadId || new URL(req.url()).searchParams.get('threadId')
         if (req.method() === 'POST') {
@@ -117,7 +123,7 @@ async function main() {
       await page.evaluate(value => document.documentElement.classList.toggle('dark', value), dark)
       await page.mouse.move(1400, 900)
       await page.waitForTimeout(2200)
-      const path = `output/playwright/0219-sidebar-active-${dark ? 'dark' : 'light'}.png`
+      const path = `output/playwright/0219-${label}sidebar-active-${dark ? 'dark' : 'light'}.png`
       await page.screenshot({ path })
       report.screenshots.push({ path, viewport: { width: 1440, height: 1000 }, dark })
     }
@@ -136,7 +142,7 @@ async function main() {
         await page.evaluate(value => document.documentElement.classList.toggle('dark', value), dark)
         await page.mouse.move(viewport.width - 5, viewport.height - 5)
         await page.waitForTimeout(2200)
-        const path = `output/playwright/0219-sidebar-active-${viewport.width}-${dark ? 'dark' : 'light'}.png`
+        const path = `output/playwright/0219-${label}sidebar-active-${viewport.width}-${dark ? 'dark' : 'light'}.png`
         await page.screenshot({ path })
         report.screenshots.push({ path, viewport, dark })
       }
@@ -198,6 +204,33 @@ async function main() {
     assert.equal(await row('network').locator('[data-state="error"]').count(), 0)
     await dot('quota', 'quota')
     report.cases.push('both errors survive reload and match Interrupted; per-turn ignore/undo and thread menu ignore survive reload; failed save preserves red dot')
+    holdReads = true
+    await notify({ method: 'ready', params: {} })
+    await page.waitForTimeout(150)
+    assert.ok(heldReads.length >= 1)
+    await row('quota').dispatchEvent('contextmenu', { button: 2, clientX: 200, clientY: 350 })
+    await page.getByRole('button', { name: 'Ignore all problems', exact: true }).click()
+    await row('quota').locator('[data-state="quota"]').waitFor({ state: 'hidden' })
+    await page.mouse.click(1300, 900)
+    issues[ids.network] = [{ turnId: 'turn-network-new', kind: 'error' }]
+    await notify({ method: 'codexapp/interruptions/changed', params: { threadId: ids.network, issues: issues[ids.network] } })
+    await dot('network', 'error')
+    await row('network').dispatchEvent('contextmenu', { button: 2, clientX: 200, clientY: 400 })
+    assert.equal(await page.getByRole('button', { name: 'Ignore all problems', exact: true }).isEnabled(), true)
+    await page.getByRole('button', { name: 'Ignore all problems', exact: true }).click()
+    await row('network').locator('[data-state="error"]').waitFor({ state: 'hidden' })
+    for (const dark of [false, true]) {
+      await page.evaluate(value => document.documentElement.classList.toggle('dark', value), dark)
+      await page.waitForTimeout(2200)
+      const path = `output/playwright/0219-${label}ignore-stalled-snapshot-${dark ? 'dark' : 'light'}.png`
+      await page.screenshot({ path })
+      report.screenshots.push({ path, viewport: { width: 1440, height: 1000 }, dark })
+    }
+    holdReads = false
+    for (const route of heldReads) {
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: visibleIssues() }) }).catch(() => {})
+    }
+    report.cases.push('stalled snapshots do not block two consecutive problem ignores; acknowledged dots clear while reads wait')
     report.performance = await page.evaluate(async () => {
       const { ActiveSidebarSession } = await import('/src/activeSidebarSession.ts')
       const rows = Array.from({ length: 5000 }, (_, i) => ({ id: String(i), inProgress: i % 10 === 0, unread: false }))
@@ -210,7 +243,7 @@ async function main() {
     })
     assert.equal(report.requests.filter(row => ['turn/start', 'turn/interrupt', 'account/login/start'].includes(row.rpc)).length, 0)
     assert.deepEqual(report.errors, [])
-    await fs.writeFile('output/0219-final/sidebar-ui.json', JSON.stringify(report, null, 2))
+    await fs.writeFile(process.env.UI_REPORT_PATH || 'output/0219-final/sidebar-ui.json', JSON.stringify(report, null, 2))
     console.log('SIDEBAR_ACTIVE_UI_PASS', JSON.stringify({ cases: report.cases, screenshots: report.screenshots, performance: report.performance }))
   } catch (error) {
     if (page) await page.screenshot({ path: 'output/playwright/0219-sidebar-active-failure.png' }).catch(() => {})
