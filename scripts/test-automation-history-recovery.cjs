@@ -36,7 +36,9 @@ async function main() {
       assert.equal(await fs.readFile(path.join(home, 'auth.json'), 'utf8'), 'fixture-auth-sentinel')
       report.checkpoints.push({ checkpoint, killedOwnChild: true, lockRecovered: true, singleOriginalRun: true, legacyReaderCompatible: true, authUnchanged: true })
     }
-    await fs.writeFile('output/0219-final/history-process.json', JSON.stringify(report, null, 2))
+    const reportPath = process.env.UI_REPORT_PATH || 'output/0219-final/history-process.json'
+    await fs.mkdir(path.dirname(reportPath), { recursive: true })
+    await fs.writeFile(reportPath, JSON.stringify(report, null, 2))
     console.log('HISTORY_PROCESS_RECOVERY_PASS', JSON.stringify(report))
   } finally { await fs.rm(root, { recursive: true, force: true }) }
 }

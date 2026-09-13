@@ -8,6 +8,8 @@ const { randomUUID, createHash } = require('node:crypto')
 const net = require('node:net')
 
 async function main() {
+  const reportPath = process.env.UI_REPORT_PATH || 'output/0219-revision/virtual-automation.json'
+  await fs.mkdir(path.dirname(reportPath), { recursive: true })
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codexapp-review-virtual-'))
   const home = path.join(root, 'home')
   await fs.mkdir(home)
@@ -161,7 +163,7 @@ async function main() {
     }
     await fs.rm(root, { recursive: true, force: true })
     report.cleanupComplete = true
-    await fs.writeFile('output/0219-revision/virtual-automation.json', JSON.stringify(report, null, 2) + '\n')
+    await fs.writeFile(reportPath, JSON.stringify(report, null, 2) + '\n')
   }
 }
 main().catch(error => { console.error(error.message); process.exitCode = 1 })
