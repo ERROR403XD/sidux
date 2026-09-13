@@ -78,10 +78,23 @@ export class VirtualProjectStore {
   }
 
   assign(cwd: string, id: string | null): Promise<void> {
+    return this.assignMembership(cwd, id, false)
+  }
+
+  // An automation's organization is presentation only. Removal may race with
+  // directory creation; decide membership inside the same mutation queue.
+  assignIfPresent(cwd: string, id: string): Promise<void> {
+    return this.assignMembership(cwd, id, true)
+  }
+
+  private assignMembership(cwd: string, id: string | null, optional: boolean): Promise<void> {
     return this.update(projects => {
       if (!isAbsolute(cwd) || !isProjectlessChatPath(cwd) || /[\r\n\0]/u.test(cwd)) throw new Error('Invalid conversation directory')
       const target = id ? projects.find(project => project.id === id) : undefined
-      if (id && !target) throw new Error('Project not found')
+      if (id && !target) {
+        if (optional) return
+        throw new Error('Project not found')
+      }
       const key = normalizePathForComparison(cwd)
       for (const project of projects) project.cwds = project.cwds.filter(path => normalizePathForComparison(path) !== key)
       if (target) target.cwds.push(cwd)

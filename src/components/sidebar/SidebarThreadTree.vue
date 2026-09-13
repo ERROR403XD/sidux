@@ -2408,7 +2408,9 @@ function onCreateProjectWorktree(projectName: string): void {
 function onRemoveProject(projectName: string): void {
   const projectCwd = getProjectAutomationKey(projectName)
   emit('remove-project', projectName)
-  if (projectCwd && projectHasAutomation(projectName)) {
+  // Removing an organization only ungroups conversations. Its task definition
+  // and execution identity must survive just like the underlying working data.
+  if (!isVirtualProjectId(projectName) && projectCwd && projectHasAutomation(projectName)) {
     projectAutomationActionError.value = ''
     const previousAutomationByProjectName = automationByProjectName.value
     automationByProjectName.value = omitAutomationProject(automationByProjectName.value, projectCwd)

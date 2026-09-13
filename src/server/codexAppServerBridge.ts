@@ -4345,6 +4345,12 @@ async function createProjectConversationDirectory(prompt: string | null, project
   return directory
 }
 
+async function createAutomationProjectConversationDirectory(prompt: string, projectId: string) {
+  const directory = await createProjectlessThreadDirectory(prompt)
+  await getVirtualProjectStore().assignIfPresent(directory.cwd, projectId)
+  return directory
+}
+
 function getCodexGlobalStatePath(): string {
   return join(getCodexHomeDir(), '.codex-global-state.json')
 }
@@ -7375,7 +7381,7 @@ function getSharedBridgeState(): SharedBridgeState {
   const threadCompactionGate = new ThreadCompactionGate((method, params) => appServer.rpc(method, params),
     async threadId => backendQueueProcessor.isIdentityChanging() || Boolean((await backendQueueProcessor.readState())[threadId]?.length))
   const automationEngine = new AutomationEngine(getCodexHomeDir(), createAutomationRuntime({
-    resolveCwd: async (cwd, name) => isVirtualProjectId(cwd) ? (await createProjectConversationDirectory(name, cwd)).cwd : cwd,
+    resolveCwd: async (cwd, name) => isVirtualProjectId(cwd) ? (await createAutomationProjectConversationDirectory(name, cwd)).cwd : cwd,
     rpc: (method, params, runId, scope) => appServer.automationRpc(method, params, runId, scope),
     beginPreparation: (runId, scope) => appServer.beginTaskPreparation(runId, scope),
     endPreparation: runId => appServer.endTaskPreparation(runId),

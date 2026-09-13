@@ -22,3 +22,15 @@
 自动化证据入口：`scripts/test-project-organization.cjs`（先构建）、`scripts/test-project-root-api.cjs`、`scripts/test-project-organization-ui.cjs`；Vitest 中的 `virtualProjects`、`projectOrganization`、`projectState`、`projectSetup`、`useDesktopState`、`projectDirectories`、`automationDispatchIntegration` 等。浏览器脚本使用受控 API 状态；真实文件和 IPC 行为由独立脚本/测试证明。
 
 清理：移除明确由本测试建立的项目元数据及 fixture 目录，确认监听进程退出；不得删除用户工作目录或生产状态。回退代码保留 `codexapp-projects.json`；旧版本仍可按真实 cwd 读取原会话，但不显示新组织关系。
+
+## REV-02：组织移除与自动化执行组合
+
+前提：先构建当前版本；执行 `node scripts/test-removed-project-automation.cjs`，使用独立 CODEX_HOME、合成账号和原生 IPC fixture。
+
+操作：仅填名称创建项目，创建任务并手动运行成功；记录定义和认证文件后移除项目，再手动运行、重复同一请求。检查会话真实 cwd、组织成员、执行账号及原任务定义。同时运行 virtualProjects 的并发移除/归组测试、automationDispatchIntegration 的默认/固定账号和定时触发矩阵。
+
+预期：移除只取消表现归属，任务继续使用普通无项目的独立 cwd；不复活项目、不改定义/账号/出口、不重复执行。移除恰好发生在创建目录与归组之间也不使任务失败。普通用户编辑不存在项目仍报错；损坏元数据不能被当成项目已移除而吞掉。自动化页面的失效组织 ID 不作为标签展示。
+
+性能：新增目录复用原分配方式，组织归组在既有 mutation 队列内判断存在性；不添加 RPC、账号检查、全量会话扫描或永久删除记录。
+
+清理/回退：脚本确认自有进程退出，按临时 home 和唯一标记清理生成目录。回退代码不迁移定义、认证或历史；仍使用原 requestId 防止手动重放。

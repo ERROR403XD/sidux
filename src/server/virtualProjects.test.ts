@@ -63,3 +63,20 @@ it('keeps legacy directory ZIPs compatible and validates organized project archi
     expect(() => readProjectArchiveMembers({ version: 1, members })).toThrow('archive')
   }
 })
+
+it('keeps automation membership optional across removal without weakening ordinary edits or masking corrupt state', async () => {
+  const { store } = await fixture()
+  const project = await store.save(undefined, 'Existing')
+  const other = await store.save(undefined, 'Other')
+  const cwd = '/fixture/Documents/Codex/2026-09-13/automation'
+  await store.assignIfPresent(cwd, project.id)
+  expect((await store.get(project.id)).cwds).toEqual([cwd])
+  await store.assign(cwd, other.id)
+  await Promise.all([store.remove(project.id), store.assignIfPresent(cwd, project.id)])
+  expect(await store.list()).toEqual([{ ...other, cwds: [cwd] }])
+  await expect(store.assign(cwd, project.id)).rejects.toThrow('not found')
+  await expect(store.assignIfPresent('/real/project', project.id)).rejects.toThrow('directory')
+  await writeFile(store.path, '{broken')
+  await expect(store.assignIfPresent(cwd, project.id)).rejects.toThrow()
+  expect(await readFile(store.path, 'utf8')).toBe('{broken')
+})

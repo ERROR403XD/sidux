@@ -211,7 +211,7 @@ const automationRows = computed<AutomationRow[]>(() => {
     }
   }
   for (const [cwd, automations] of Object.entries(projectAutomations.value)) {
-    const projectLabel = projectLabelByCwd.value.get(cwd) ?? getPathLeaf(cwd)
+    const projectLabel = projectLabelByCwd.value.get(cwd) ?? (isVirtualProjectId(cwd) ? '—' : getPathLeaf(cwd))
     for (const automation of automations) {
       rows.push({
         rowKey: getAutomationRowKey('project', cwd, automation.id),

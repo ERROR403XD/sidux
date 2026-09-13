@@ -6,6 +6,7 @@ const { randomUUID } = require('node:crypto')
 async function main() {
   const base = process.env.UI_BASE_URL || 'http://127.0.0.1:4173'
   const browser = await chromium.launch({ executablePath: '/snap/bin/chromium', headless: true, args: ['--no-sandbox'] })
+  const label = process.env.UI_LABEL ? process.env.UI_LABEL + '-' : ''
   const report = { base, cases: [], screenshots: [], errors: [], requests: [], boundaries: [] }
   const projectCwd = '/tmp/project-ui/Documents/Codex/2026-09-13/conversation'
   const nativeThread = { id: '11111111-1111-4111-8111-111111111111', name: 'Project UI conversation', preview: 'Project UI conversation', cwd: projectCwd, createdAt: 1789220000, updatedAt: 1789220000, status: { type: 'idle' }, source: 'cli', modelProvider: 'openai', turns: [] }
@@ -134,7 +135,7 @@ async function main() {
         assert.ok(bounds.scrollWidth <= bounds.clientWidth + 1, JSON.stringify({ width, bounds }))
         report.boundaries.push({ width, height, dark, ...bounds })
         if ([1440, 768, 375].includes(width)) {
-          const filename = `output/playwright/0219-automations-margin-${width}-${dark ? 'dark' : 'light'}.png`
+          const filename = `output/playwright/0219-${label}automations-margin-${width}-${dark ? 'dark' : 'light'}.png`
           await page.screenshot({ path: filename })
           report.screenshots.push(filename)
         }
@@ -147,7 +148,7 @@ async function main() {
     for (const dark of [false, true]) {
       await page.evaluate(value => document.documentElement.classList.toggle('dark', value), dark)
       await page.waitForTimeout(2300)
-      const filename = `output/playwright/0219-project-organization-${dark ? 'dark' : 'light'}.png`
+      const filename = `output/playwright/0219-${label}project-organization-${dark ? 'dark' : 'light'}.png`
       await page.screenshot({ path: filename })
       report.screenshots.push(filename)
     }
@@ -168,7 +169,7 @@ async function main() {
         assert.ok(rect && rect.x >= 0 && rect.x + rect.width <= width + 1 && rect.y >= 0 && rect.y + rect.height <= height + 1)
         assert.equal(await editor.locator('.new-thread-open-folder-path').inputValue(), '')
         assert.equal(await editor.locator('.project-directories-input').count(), 0)
-        const filename = `output/playwright/0219-project-editor-${language}-${width}-${dark ? 'dark' : 'light'}.png`
+        const filename = `output/playwright/0219-${label}project-editor-${language}-${width}-${dark ? 'dark' : 'light'}.png`
         await page.screenshot({ path: filename })
         report.screenshots.push(filename)
       }
@@ -182,7 +183,7 @@ async function main() {
       if ((await group.getAttribute('data-expanded')) !== String(expanded)) await group.locator('.project-header-row').click()
       await page.mouse.move(1000, 100)
       await page.waitForTimeout(2300)
-      const filename = `output/playwright/0219-project-icon-${expanded ? 'open' : 'closed'}.png`
+      const filename = `output/playwright/0219-${label}project-icon-${expanded ? 'open' : 'closed'}.png`
       await group.screenshot({ path: filename })
       report.screenshots.push(filename)
     }
@@ -191,10 +192,24 @@ async function main() {
     await group.getByRole('button', { name: 'Remove', exact: true }).click()
     await group.waitFor({ state: 'hidden' })
     assert.equal(state.virtualProjects.length, 0)
+    assert.ok(projectMap[id]?.some(row => row.id === auto.id))
+    assert.ok(!report.requests.some(request => request.name === 'project-automation' && request.method === 'DELETE'))
     assert.equal(nativeThread.cwd, projectCwd)
     await page.reload()
     await page.getByText('Project UI conversation', { exact: true }).first().waitFor()
     assert.equal(await page.locator('.project-group[data-project-name^="virtual:"]').count(), 0)
+    await page.goto(base + '/#/automations')
+    await page.locator('.automation-row').waitFor()
+    assert.equal(await page.locator('.automation-row-meta').innerText(), '—')
+    for (const dark of [false, true]) {
+      await page.evaluate(value => document.documentElement.classList.toggle('dark', value), dark)
+      await page.waitForTimeout(2200)
+      const filename = `output/playwright/0219-${label}removed-project-automation-${dark ? 'dark' : 'light'}.png`
+      await page.screenshot({ path: filename })
+      report.screenshots.push(filename)
+    }
+    assert.ok(!await page.locator('.automations-panel').innerText().then(text => text.includes('virtual:')))
+    report.cases.push('removed organization retains automation with no internal ID in its label')
     report.cases.push('remove returns conversation to ungrouped list without deleting it')
     assert.ok(!report.requests.some(request => request.rpc === 'turn/start' || ['delivery', 'accounts/switch'].includes(request.name)))
     assert.deepEqual(report.errors, [])
@@ -206,7 +221,7 @@ async function main() {
     }
     await browser.close()
     await fs.mkdir('output/0219-final', { recursive: true })
-    await fs.writeFile('output/0219-final/project-ui.json', JSON.stringify(report, null, 2))
+    await fs.writeFile(process.env.UI_REPORT_PATH || 'output/0219-final/project-ui.json', JSON.stringify(report, null, 2))
   }
   console.log('PROJECT_ORGANIZATION_UI_PASS')
 }
