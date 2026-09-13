@@ -6,12 +6,14 @@ import type { StoredQueuedMessage } from '../threadQueue'
 
 const message = (id = 'd-1'): StoredQueuedMessage => ({ id, text: 'keep going', imageUrls: ['image'], skills: [{ name: 'skill', path: '/skill' }], fileAttachments: [{ label: 'file', path: '/file', fsPath: '/file' }], collaborationMode: 'default' })
 beforeEach(() => {
-  const values = new Map<string, string>()
-  vi.stubGlobal('localStorage', {
-    get length() { return values.size }, key: (i: number) => [...values.keys()][i],
-    getItem: (key: string) => values.get(key) ?? null,
-    setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key),
-  })
+  for (const name of ['localStorage', 'sessionStorage']) {
+    const values = new Map<string, string>()
+    vi.stubGlobal(name, {
+      get length() { return values.size }, key: (i: number) => [...values.keys()][i],
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key),
+    })
+  }
 })
 afterEach(() => vi.unstubAllGlobals())
 
@@ -77,11 +79,18 @@ describe('conversation delivery presentation', () => {
     expect(restored.rows.value).toEqual([])
   })
 
-  it('does not let display-cache storage failure reject an acknowledged submission', async () => {
+  it('restores acknowledged content from tab storage when persistent storage is full without resending', async () => {
     const pending = rememberWebDelivery('delivery', { protocol: 2, threadId: 'a', mode: 'steer', message: message() })
     vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('storage full') })
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: { id: pending.id, status: 'accepted', turnId: 't' } }))))
     expect((await submitRememberedDelivery(pending)).data.status).toBe('accepted')
+    expect(fetch).toHaveBeenCalledTimes(1)
+    const reloaded = useConversationDeliveries()
+    expect(reloaded.project('a', [])[0]).toMatchObject({ text: 'keep going', deliveryState: { status: 'accepted' } })
+    expect(sessionStorage.length).toBe(1)
+    const native = { id: 'native', role: 'user' as const, text: 'keep going', turnId: 't', clientUserMessageId: pending.id }
+    reloaded.observe('a', [native])
+    expect(readConversationDeliveryCache()).toEqual([])
     expect(fetch).toHaveBeenCalledTimes(1)
   })
 
@@ -106,4 +115,27 @@ describe('conversation delivery presentation', () => {
     tracker.patch('d-1', { status: 'cancelled' })
     expect(useConversationDeliveries().project('a', [])[0].deliveryState?.status).toBe('cancelled')
   })
+
+  it('promotes a fallback receipt when storage recovers and never downgrades it with stale data', () => {
+    localStorage.setItem('preference-fixture', 'unchanged')
+    const blocked = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('full') })
+    const accepted = { id: 'd-1', threadId: 'a', message: message(), createdAt: 1, status: 'accepted' as const, turnId: 't', revision: 4 }
+    saveConversationDelivery(accepted)
+    expect(sessionStorage.length).toBe(1)
+    blocked.mockRestore()
+    saveConversationDelivery({ ...accepted, status: 'sending', revision: 2 })
+    expect(sessionStorage.length).toBe(0)
+    expect(localStorage.getItem('preference-fixture')).toBe('unchanged')
+    expect(readConversationDeliveryCache()[0]).toMatchObject({ status: 'accepted', revision: 4 })
+  })
+
+  it('keeps a valid acknowledgement successful if the browser denies both display stores', async () => {
+    const pending = rememberWebDelivery('delivery', { protocol: 2, threadId: 'a', mode: 'steer', message: message() })
+    vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('blocked') })
+    vi.spyOn(sessionStorage, 'setItem').mockImplementation(() => { throw new Error('blocked') })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: { id: pending.id, status: 'accepted', turnId: 't' } }))))
+    expect((await submitRememberedDelivery(pending)).data.status).toBe('accepted')
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
 })

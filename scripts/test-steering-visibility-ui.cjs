@@ -24,8 +24,15 @@ async function main() {
   let page
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
-    await context.addInitScript(() => {
+    await context.addInitScript(({ failDisplayStorage }) => {
       localStorage.setItem('codex-web-local.ui-language.v1', 'en')
+      if (failDisplayStorage) {
+        const original = Storage.prototype.setItem
+        Storage.prototype.setItem = function (key, value) {
+          if (this === localStorage && key.startsWith('codexapp.delivery-view.v1.')) throw new DOMException('Fixture display storage full', 'QuotaExceededError')
+          return original.call(this, key, value)
+        }
+      }
       window.WebSocket = undefined
       window.__streams = []
       window.EventSource = class extends EventTarget {
@@ -35,7 +42,7 @@ async function main() {
         close() { this.readyState = 2 }
       }
       window.__notify = payload => window.__streams.forEach(stream => stream.onmessage?.({ data: JSON.stringify(payload) }))
-    })
+    }, { failDisplayStorage: process.env.UI_FAIL_DISPLAY_STORAGE === '1' })
     await context.route('**/codex-api/**', async route => {
       const req = route.request()
       const url = new URL(req.url())
@@ -156,6 +163,16 @@ async function main() {
     await row().locator('[data-status="accepted"]').waitFor()
     await page.reload()
     await row().locator('[data-status="accepted"]').waitFor()
+    if (process.env.UI_FAIL_DISPLAY_STORAGE === '1') {
+      const storageEvidence = await page.evaluate(() => ({
+        persistent: Object.keys(localStorage).filter(key => key.startsWith('codexapp.delivery-view.v1.')).length,
+        tab: Object.keys(sessionStorage).filter(key => key.startsWith('codexapp.delivery-view.v1.')).length,
+      }))
+      assert.equal(storageEvidence.persistent, 0)
+      assert.equal(storageEvidence.tab, 1)
+      report.storageFallback = storageEvidence
+      report.cases.push('full persistent display storage uses tab storage; accepted content remains visible after refresh')
+    }
     const item = { id: 'native-steer', type: 'userMessage', clientUserMessageId: id, content: [{ type: 'text', text: marker }] }
     items.push(item)
     await notify({ method: 'item/completed', params: { threadId: liveId, turnId: 'turn-1', item } })
@@ -165,6 +182,9 @@ async function main() {
     await page.reload()
     await row().waitFor()
     assert.equal(await row().count(), 1)
+    if (process.env.UI_FAIL_DISPLAY_STORAGE === '1') {
+      assert.equal(await page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith('codexapp.delivery-view.v1.')).length), 0)
+    }
     report.cases.push('accepted receipt survives missing history, then one native echo replaces presentation through refresh')
     assert.equal(report.requests.filter(request => request.path === 'thread-queue-state' && request.operation === 'steer').length, 1)
     assert.ok(!report.requests.some(request => ['delivery', 'accounts/switch'].includes(request.path) || ['turn/start', 'turn/interrupt'].includes(request.rpc)))
