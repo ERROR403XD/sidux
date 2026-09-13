@@ -1,0 +1,27 @@
+[WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.onlyBuiltDependencies". See https://pnpm.io/settings for the new home of each setting.
+
+ RUN  v4.1.11 /home/Code/codexapp
+
+ ❯ src/composables/useThreadInterruptions.test.ts (5 tests | 1 failed) 22ms
+   × expires a stalled read and recovers after ready without duplicating healthy snapshots 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/composables/useThreadInterruptions.test.ts > expires a stalled read and recovers after ready without duplicating healthy snapshots
+AssertionError: expected "vi.fn()" to be called 2 times, but got 3 times
+ ❯ src/composables/useThreadInterruptions.test.ts:112:19
+    110|   await state.refresh()
+    111|   expect(firstSignal?.aborted).toBe(true)
+    112|   expect(fetcher).toHaveBeenCalledTimes(2)
+       |                   ^
+    113|   expect(state.issues.value.a).toHaveLength(1)
+    114|   expect(state.error.value).toBe('')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  1 failed | 11 passed (12)
+   Start at  10:01:53
+   Duration  193ms (transform 142ms, setup 0ms, import 257ms, tests 49ms, environment 0ms)
+

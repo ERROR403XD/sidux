@@ -1,0 +1,23 @@
+{
+  "base": "http://127.0.0.1:59001",
+  "service": "codexapp-dev-59001.service",
+  "release": "/home/docker/codexapp-releases/codexapp-0.2.19-0612357254c4-20260913-101637",
+  "oldRelease": "/home/docker/codexapp-releases/codexapp-0.2.19-df6a5cb97c32-20260913-025347",
+  "oldPid": 1005220,
+  "productionPidBefore": 4010970,
+  "before": {
+    "activationCount": 0,
+    "liveActivityCount": 0,
+    "activeTurns": 0,
+    "queuedCount": 0,
+    "pendingCount": 0,
+    "pages": 1,
+    "apiConnections": 0,
+    "apiActiveRequests": 0,
+    "backgroundCheck": "supported",
+    "backgroundThreads": 0,
+    "loadedThreads": 0,
+    "idle": true
+  },
+  "error": "/codex-api/api-proxy/drain: 409"
+}
