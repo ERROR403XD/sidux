@@ -13,6 +13,10 @@
       "sha256": "a7d03d2516eb347cdd1a2ec09cc0888cac3706118efe756c22e74326023c023c"
     },
     {
+      "name": "background-terminal-followup.json",
+      "sha256": "a922d4169ceba0791f86a6b13343388e03147d50092fd6028e382d775e5e6aa1"
+    },
+    {
       "name": "candidate-collapse.json",
       "sha256": "a7ba616a37507a81d7b750c95da67c4def85d3832f2bd433356cee6b2294a8b6"
     },
