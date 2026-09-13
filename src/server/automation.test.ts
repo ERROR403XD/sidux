@@ -66,6 +66,59 @@ async function fixture(options: { rule?: string; heartbeat?: boolean; preparatio
 }
 
 describe('durable automation execution', () => {
+  it('stops dispatch when a queued run cannot be saved and resumes that durable run once after restart', async () => {
+    const f = await fixture()
+    const admitted = await f.engine.manual('test', f.home, 'disk-full-queued')
+    const write = vi.spyOn(AutomationStore.prototype, 'write').mockRejectedValue(Object.assign(new Error('fixture disk full'), { code: 'ENOSPC' }))
+    try {
+      await f.engine.tick()
+      expect(f.engine.snapshot().ready).toBe(false)
+      expect(f.runtime.prepare).not.toHaveBeenCalled()
+      expect(f.runtime.start).not.toHaveBeenCalled()
+      await expect(f.engine.manual('test', f.home, 'another-request')).rejects.toThrow('fixture disk full')
+      const saved = JSON.parse(await readFile(join(f.home, 'codexapp-automations', 'state.json'), 'utf8'))
+      expect(saved.runs).toMatchObject([{ runId: admitted.runId, status: 'queued' }])
+    } finally {
+      write.mockRestore()
+    }
+    await f.engine.dispose()
+    const recovered = await f.make()
+    expect((await recovered.manual('test', f.home, 'disk-full-queued')).runId).toBe(admitted.runId)
+    await recovered.tick()
+    await recovered.tick()
+    expect(f.runtime.start).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(['before-submit', 'after-submit'] as const)('never replays after a %s disk failure, including after restart', async checkpoint => {
+    const f = await fixture()
+    const admitted = await f.engine.manual('test', f.home, `disk-full-${checkpoint}`)
+    const originalWrite = AutomationStore.prototype.write
+    const write = vi.spyOn(AutomationStore.prototype, 'write').mockImplementation(async function (this: AutomationStore, state) {
+      const run = state.runs.find(row => row.runId === admitted.runId)
+      if (checkpoint === 'before-submit' ? Boolean(run?.submittedAt) : run?.status === 'running') {
+        throw Object.assign(new Error('fixture disk full'), { code: 'ENOSPC' })
+      }
+      return originalWrite.call(this, state)
+    })
+    const sent = checkpoint === 'after-submit' ? 1 : 0
+    try {
+      await f.engine.tick()
+      expect(f.engine.snapshot().ready).toBe(false)
+      expect(f.runtime.start).toHaveBeenCalledTimes(sent)
+      await f.engine.tick()
+      expect(f.runtime.start).toHaveBeenCalledTimes(sent)
+    } finally {
+      write.mockRestore()
+    }
+    await f.engine.dispose()
+    f.inspect({ status: 'unknown' })
+    const recovered = await f.make()
+    expect((await recovered.manual('test', f.home, `disk-full-${checkpoint}`)).runId).toBe(admitted.runId)
+    expect(recovered.runs('test').data[0]?.status).toBe('interrupted')
+    await recovered.tick()
+    expect(f.runtime.start).toHaveBeenCalledTimes(sent)
+  })
+
   it('archives records beyond the scheduling window without losing manual idempotency or retry links', async () => {
     const f = await fixture()
     const original = await f.engine.manual('test', f.home, 'archive-idempotency')
