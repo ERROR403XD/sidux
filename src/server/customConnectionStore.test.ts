@@ -54,6 +54,24 @@ describe('custom connection credential boundaries', () => {
     expect(store.get(card.storageId)?.apiKey).toBe('fixture-key')
     expect(store.snapshot().connections[0]).toMatchObject({ alias: 'Renamed', revision: 2 })
   })
+  it('keeps an edited connection in its list position instead of appending it', async () => {
+    const { store, draft } = await fixture()
+    const input = (alias: string, baseUrl = draft.baseUrl) => ({ ...draft, alias, baseUrl })
+    for (const [alias, baseUrl] of [['First', draft.baseUrl], ['Second', 'https://second.test/v1'], ['Third', 'https://third.test/v1']] as const) {
+      const tested = await store.test(input(alias, baseUrl))
+      await store.save({ ...input(alias, baseUrl), model: tested.model }, tested.token)
+    }
+    expect(store.snapshot().connections.map(row => row.alias)).toEqual(['First', 'Second', 'Third'])
+    const firstId = store.snapshot().connections[0]!.storageId
+    const edit = { ...input('First renamed'), storageId: firstId, apiKey: '' }
+    const retest = await store.test(edit)
+    await store.save({ ...edit, model: retest.model }, retest.token)
+    expect(store.snapshot().connections.map(row => row.alias)).toEqual(['First renamed', 'Second', 'Third'])
+    const added = await store.test(input('Fourth', 'https://fourth.test/v1'))
+    await store.save({ ...input('Fourth', 'https://fourth.test/v1'), model: added.model }, added.token)
+    expect(store.snapshot().connections.map(row => row.alias)).toEqual(['First renamed', 'Second', 'Third', 'Fourth'])
+  })
+
   it('keeps chat-only connections available for API keys but rejects Codex selection and runtime', async () => {
     const { store, draft, fetcher } = await fixture()
     fetcher.mockImplementation(async url => new Response(JSON.stringify(String(url).endsWith('/models') ? { data: [{ id: 'sample' }] } : { choices: [{ message: { content: 'hi' } }] })))

@@ -1001,7 +1001,13 @@ const executionAccounts = computed(() => [...accounts.value, ...customConnection
 async function onCustomConnectionsChanged(changed = false): Promise<void> {
   invalidateModelCatalog()
   await loadCustomConnections()
-  await refreshAll({ accountChanged: changed, includeSelectedThreadMessages: changed, awaitAncillaryRefreshes: changed })
+  if (!changed) {
+    // Editing or adding a connection does not change threads or the selected conversation.
+    // Refresh provider/model state silently so the settings page keeps its scroll and layout.
+    await refreshAll({ includeSelectedThreadMessages: false, includeThreads: false, providerChanged: true })
+    return
+  }
+  await refreshAll({ accountChanged: true, includeSelectedThreadMessages: true, awaitAncillaryRefreshes: true })
 }
 const displayTimeZoneError = ref('')
 const isSavingDisplayTimeZone = ref(false)

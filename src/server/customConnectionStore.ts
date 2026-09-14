@@ -123,7 +123,11 @@ export class CustomConnectionStore {
       const previous = this.get(draft.storageId)
       if (!previous && this.state.connections.length >= 32) throw new Error('自定义连接数量已达上限')
       const row: StoredConnection = { ...draft, wireApi: proof.wireApi, supportedEndpoints: proof.supportedEndpoints, testedAt: proof.testedAt, storageId: previous?.storageId || randomBytes(32).toString('hex'), revision: (previous?.revision || 0) + 1, models: proof.models, runtimeToken: randomBytes(24).toString('hex') }
-      return { ...this.state, ...(this.state.activeId === row.storageId && row.wireApi !== 'responses' ? { activeId: null, explicitSelection: true } : {}), connections: [...this.state.connections.filter(item => item.storageId !== row.storageId), row] }
+      // Editing an existing connection keeps its position so the settings list does not reorder under the pointer.
+      const connections = previous
+        ? this.state.connections.map(item => (item.storageId === row.storageId ? row : item))
+        : [...this.state.connections, row]
+      return { ...this.state, ...(this.state.activeId === row.storageId && row.wireApi !== 'responses' ? { activeId: null, explicitSelection: true } : {}), connections }
     })
     this.proofs.delete(token)
   }
