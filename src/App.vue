@@ -4802,6 +4802,13 @@ function normalizeToWhisperLanguage(raw: string): string {
   return ''
 }
 
+function syncThemeColorMeta(): void {
+  const meta = document.getElementById('app-theme-color')
+  if (!meta) return
+  const isDark = document.documentElement.classList.contains('dark')
+  meta.setAttribute('content', isDark ? '#09090b' : '#ffffff')
+}
+
 function applyDarkMode(): void {
   const root = document.documentElement
   if (darkMode.value === 'dark') {
@@ -4812,6 +4819,7 @@ function applyDarkMode(): void {
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
     root.classList.toggle('dark', prefersDark)
   }
+  syncThemeColorMeta()
 }
 
 function loadSidebarCollapsed(): boolean {

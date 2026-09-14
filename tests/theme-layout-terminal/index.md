@@ -30,6 +30,7 @@ Return to the [manual test index](../../tests.md).
 | [PWA 首页缓存故障恢复](pwa-shell-network-recovery.md) |
 | [跨版本 HTTP 缓存与白屏恢复](release-cache-refresh.md) |
 | [设置保存静默刷新且页面不位移](settings-save-silent-refresh.md) |
+| [后台返回白屏与冷启动首屏外壳](background-resume-white-screen-and-boot-shell.md) |
 
 - [Hooks 观察与 Codex 后台终端](hooks-and-background-processes.md)：只读 Hooks、观察恢复、单项停止与输出。
 

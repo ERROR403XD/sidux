@@ -3,7 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#020617" />
+    <meta id="app-theme-color" name="theme-color" content="#020617" />
+    <script id="app-theme-bootstrap">
+      (() => {
+        const root = document.documentElement
+        let mode = 'system'
+        try { mode = localStorage.getItem('codex-web-local.dark-mode.v1') || 'system' } catch {}
+        let dark = mode === 'dark'
+        if (mode !== 'dark' && mode !== 'light') {
+          try { dark = window.matchMedia('(prefers-color-scheme: dark)').matches } catch { dark = false }
+        }
+        root.classList.toggle('dark', dark)
+        const meta = document.getElementById('app-theme-color')
+        if (meta) meta.setAttribute('content', dark ? '#09090b' : '#ffffff')
+      })()
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Codex Web" />
@@ -28,6 +42,18 @@
       #app-load-recovery[data-theme="dark"] { --recovery-surface: #18181b; --recovery-text: #e4e4e7; --recovery-border: #52525b; }
       body.app-load-pending:has(#app-load-recovery[data-theme="light"]) { background: #fafafa; }
       body.app-load-pending:has(#app-load-recovery[data-theme="dark"]) { background: #09090b; }
+      #app-boot { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: #ffffff; }
+      html.dark #app-boot { background: #09090b; }
+      #app-boot-inner { display: flex; align-items: center; gap: 10px; color: #71717a; font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; opacity: 0; animation: app-boot-reveal 180ms ease-out 300ms forwards; }
+      html.dark #app-boot-inner { color: #a1a1aa; }
+      #app-boot-spinner { width: 16px; height: 16px; box-sizing: border-box; border: 2px solid #d4d4d8; border-top-color: #6366f1; border-radius: 50%; animation: app-boot-spin 720ms linear infinite; }
+      html.dark #app-boot-spinner { border-color: #3f3f46; border-top-color: #818cf8; }
+      @keyframes app-boot-reveal { to { opacity: 1; } }
+      @keyframes app-boot-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) {
+        #app-boot-inner { opacity: 1; animation: none; }
+        #app-boot-spinner { display: none; }
+      }
     </style>
     <script id="app-load-guard">
       (() => {
@@ -41,6 +67,7 @@
             'app-load-description': ['Check your connection and reload. Copy any unsent text before reloading.', '请检查网络后重新加载。重新加载前，请先复制尚未发送的文字。'],
             'app-load-reload': ['Reload', '重新加载'],
             'app-load-dismiss': ['Later', '稍后'],
+            'app-boot-label': ['Loading interface…', '正在加载界面…'],
           }
           for (const [id, values] of Object.entries(messages)) {
             const element = document.getElementById(id)
@@ -48,10 +75,15 @@
           }
         }
         document.addEventListener('codexapp:language-change', translateRecovery)
+        const hideBootOverlay = () => {
+          const overlay = document.getElementById('app-boot')
+          if (overlay) overlay.remove()
+        }
         const show = () => {
           failed = true
           const panel = document.getElementById('app-load-recovery')
           if (!panel) return
+          if (!mounted) hideBootOverlay()
           try {
             const theme = localStorage.getItem('codex-web-local.dark-mode.v1')
             if (theme === 'light' || theme === 'dark') panel.dataset.theme = theme
@@ -87,6 +119,7 @@
         document.addEventListener('codexapp:mounted', () => {
           mounted = true
           clearTimeout(timer)
+          hideBootOverlay()
           if (failed) show()
           const url = new URL(location.href)
           if (url.searchParams.has('_ui_reload')) {
@@ -98,7 +131,14 @@
     </script>
   </head>
   <body class="bg-slate-950">
-    <div id="app"></div>
+    <div id="app">
+      <div id="app-boot" role="status" aria-live="polite">
+        <div id="app-boot-inner">
+          <span id="app-boot-spinner" aria-hidden="true"></span>
+          <span id="app-boot-label">正在加载界面…</span>
+        </div>
+      </div>
+    </div>
     <section id="app-load-recovery" hidden data-startup="true" role="alert" aria-labelledby="app-load-title">
       <strong id="app-load-title">界面未能加载</strong>
       <p id="app-load-description">请检查网络后重新加载。重新加载前，请先复制尚未发送的内容。</p>
