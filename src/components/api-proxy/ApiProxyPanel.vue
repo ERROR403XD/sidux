@@ -36,7 +36,7 @@
         <p v-if="!status.keys.length">{{ t('尚未创建 API key。') }}</p>
         <p v-if="status.usage?.error" role="alert" class="api-proxy-error">{{ t(status.usage.error) }}</p>
         <div v-for="key in visibleKeys" :key="key.id" class="api-proxy-key-row">
-          <div class="api-proxy-key-copy"><div class="api-proxy-key-title"><strong>{{ key.name }}</strong><span>••••{{ key.suffix }}</span><small>{{ t('到期：') }}{{ t(key.expiresAt ? date(key.expiresAt) : '无限') }}</small><span v-if="showInvalid">{{ t(keyLabel(key)) }}</span></div>
+          <div class="api-proxy-key-copy"><div class="api-proxy-key-title"><strong>{{ key.name }}</strong><span>••••{{ key.suffix }}</span><small>{{ t('到期：') }}{{ t(key.expiresAt ? date(key.expiresAt) : '无限') }}</small><span v-if="showInvalid || !key.enabled">{{ t(keyLabel(key)) }}</span></div>
             <small>{{ t('最近使用：') }}{{ date(key.lastUsedAt) }}</small>
             <div v-if="policyDrafts[key.id]" class="api-proxy-inline-policy">
               <AppSelect v-model="policyDrafts[key.id]!.account" :options="keyAccountOptions" enable-search :search-placeholder="t('搜索账号')" :disabled="busy || !!key.revokedAt" />
@@ -131,7 +131,7 @@ import AppSelect from '../common/AppSelect.vue'
 import { formatLocalDateTime, displayTimeZone } from '../../dateTime'
 import { emptyUsage } from '../../api/proxyUsageTypes'
 import { copyTextToClipboard } from '../../utils/clipboard'
-import { apiProxyRequest, type ApiProxyKey, type ApiProxySettings, type ApiProxyStatus } from '../../api/apiProxy'
+import { apiProxyRequest, visibleApiProxyKeys, type ApiProxyKey, type ApiProxySettings, type ApiProxyStatus } from '../../api/apiProxy'
 
 const showInvalid = ref(false)
 const usageDialog = ref(false)
@@ -147,10 +147,7 @@ const selectedUsage = computed(() => {
   return total
 })
 const policyDrafts = ref<Record<string, { account: string; protected: boolean }>>({})
-const visibleKeys = computed(() => (status.value?.keys || []).filter(key => {
-  const invalid = !!key.revokedAt || !key.enabled || !!key.expiresAt && Date.parse(key.expiresAt) <= Date.now()
-  return showInvalid.value ? invalid : !invalid
-}))
+const visibleKeys = computed(() => visibleApiProxyKeys(status.value?.keys || [], showInvalid.value))
 async function savePolicies(): Promise<void> {
   await run(async () => {
     for (const key of status.value?.keys || []) {

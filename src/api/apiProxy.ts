@@ -2,6 +2,14 @@ export type ApiProxyKey = {
   accountStorageId?: string | null; protected?: boolean
   id: string; name: string; suffix: string; enabled: boolean; expiresAt: string | null; revokedAt: string | null; lastUsedAt: string | null
 }
+export function isApiProxyKeyInvalid(key: Pick<ApiProxyKey, 'revokedAt' | 'expiresAt'>, now = Date.now()): boolean {
+  if (key.revokedAt) return true
+  const expiresAt = key.expiresAt ? Date.parse(key.expiresAt) : NaN
+  return Number.isFinite(expiresAt) && expiresAt <= now
+}
+export function visibleApiProxyKeys<T extends Pick<ApiProxyKey, 'revokedAt' | 'expiresAt'>>(keys: T[], showInvalid: boolean, now = Date.now()): T[] {
+  return keys.filter(key => isApiProxyKeyInvalid(key, now) === showInvalid)
+}
 export type ApiProxySettings = {
   enabled: boolean; accountStorageId: string | null; globalConcurrency: number; keyConcurrency: number; drainTimeoutSeconds: number
 }
