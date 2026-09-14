@@ -1040,6 +1040,115 @@ describe('provider model selection', () => {
     state.stopPolling()
   })
 
+  it('adopts the live connection for a conversation whose saved source is no longer running', async () => {
+    installTestWindow({
+      'codexapp.web-conversation-preferences.v1': JSON.stringify({
+        defaults: null,
+        remember: true,
+        threads: {
+          'openai-thread': {
+            source: 'web',
+            saved: { model: 'gpt-5.6-sol', provider: 'codex', effort: 'high', tier: '' },
+          },
+        },
+      }),
+    })
+    gatewayMocks.getThreadGroupsPage.mockResolvedValue({ groups: [], nextCursor: null })
+    gatewayMocks.getAvailableCollaborationModes.mockResolvedValue([{ value: 'default', label: 'Default' }])
+    gatewayMocks.getSkillsList.mockResolvedValue([])
+    gatewayMocks.getAccountRateLimits.mockResolvedValue(null)
+    // Another browser moved the active connection, which the single running app-server binds a
+    // resumed conversation to. The saved source can no longer serve the conversation.
+    gatewayMocks.getCurrentModelConfig.mockResolvedValue({
+      model: 'custom-alpha',
+      providerId: 'custom',
+      reasoningEffort: 'medium',
+      speedMode: '',
+    })
+    gatewayMocks.getAvailableModelIds.mockImplementation(async (options?: { providerId?: string }) => (
+      options?.providerId === 'custom' ? ['custom-alpha', 'custom-beta'] : ['gpt-5.6-sol']
+    ))
+    gatewayMocks.resumeThread.mockResolvedValue({
+      model: 'custom-alpha',
+      modelProvider: 'custom',
+      messages: [],
+      inProgress: false,
+      activeTurnId: '',
+      hasMoreOlder: false,
+      turnIndexByTurnId: {},
+    })
+    gatewayMocks.startThreadTurn.mockResolvedValue('turn-1')
+
+    const state = useDesktopState()
+    state.primeSelectedThread('openai-thread')
+    await state.loadMessages('openai-thread')
+    await state.refreshAll({ includeSelectedThreadMessages: false, providerChanged: true, awaitAncillaryRefreshes: true })
+    expect(state.webDefaultsProvider.value).toBe('custom')
+
+    await expect(state.sendMessageToSelectedThread('继续用新连接')).resolves.toBeUndefined()
+    expect(gatewayMocks.startThreadTurn).toHaveBeenCalledTimes(1)
+    expect(gatewayMocks.startThreadTurn.mock.calls[0]![3]).toBe('custom-alpha')
+    // The saved choice stays as this conversation's own intent instead of being overwritten.
+    expect(state.webPreferenceState.value.threads['openai-thread'].saved.provider).toBe('codex')
+    state.stopPolling()
+  })
+
+  it('keeps the live conversation source when a later read reports the source stored in the rollout', async () => {
+    installTestWindow()
+    gatewayMocks.getThreadGroupsPage.mockResolvedValueOnce({
+      groups: [{ projectName: 'Project', threads: [thread('thread-1', '/tmp/project')] }],
+      nextCursor: null,
+    })
+    gatewayMocks.getAvailableCollaborationModes.mockResolvedValue([{ value: 'default', label: 'Default' }])
+    gatewayMocks.getSkillsList.mockResolvedValue([])
+    gatewayMocks.getAccountRateLimits.mockResolvedValue(null)
+    gatewayMocks.getCurrentModelConfig.mockResolvedValue({
+      model: 'custom-alpha',
+      providerId: 'custom',
+      reasoningEffort: 'medium',
+      speedMode: '',
+    })
+    gatewayMocks.getAvailableModelIds.mockResolvedValue(['custom-alpha'])
+    gatewayMocks.resumeThread.mockResolvedValue({
+      model: 'custom-alpha',
+      modelProvider: 'custom',
+      messages: [],
+      inProgress: false,
+      activeTurnId: '',
+      hasMoreOlder: false,
+      turnIndexByTurnId: {},
+    })
+    // thread/read reports the source written into the rollout, not the live binding.
+    gatewayMocks.getThreadDetail.mockResolvedValue({
+      model: 'gpt-5.6-sol',
+      modelProvider: 'codex',
+      messages: [],
+      inProgress: false,
+      activeTurnId: '',
+      hasMoreOlder: false,
+      turnIndexByTurnId: {},
+    })
+
+    const state = useDesktopState()
+    state.primeSelectedThread('thread-1')
+    await state.loadMessages('thread-1')
+    expect(state.webDefaultsProvider.value).toBe('custom')
+
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 10_000)
+    try {
+      gatewayMocks.getThreadGroupsPage.mockResolvedValue({
+        groups: [{ projectName: 'Project', threads: [{ ...thread('thread-1', '/tmp/project'), updatedAtIso: '2026-04-29T00:00:00.000Z' }] }],
+        nextCursor: null,
+      })
+      await state.refreshAll({ includeSelectedThreadMessages: true, forceThreadRefresh: true })
+    } finally {
+      clock.mockRestore()
+    }
+    expect(gatewayMocks.getThreadDetail).toHaveBeenCalledTimes(1)
+    expect(state.webDefaultsProvider.value).toBe('custom')
+    state.stopPolling()
+  })
+
   it('loads provider models for a selected provider-backed thread during scheduled refreshes', async () => {
     installTestWindow()
     vi.mocked(window.setTimeout).mockImplementation(((callback: TimerHandler) => {

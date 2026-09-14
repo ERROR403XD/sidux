@@ -49,7 +49,15 @@ export function useWebConversationPreferences(storage?: Pick<Storage, 'getItem' 
     if (id && state.value.remember) persist({ ...state.value, threads: { ...state.value.threads, [id]: { source: 'web', saved: { ...value } } } })
     sessions.value = { ...sessions.value, [id]: { ...value } }
   }
-  return { state, sessions, error, enter, register, select,
+  // The running app-server serves one source at a time, so a conversation the runtime binds to the
+  // active connection has to keep using it even when the saved choice names another source. Only the
+  // effective session moves; the saved choice stays untouched as the user's own intent.
+  function bindSource(id: string, provider: string): void {
+    const current = sessions.value[id]
+    if (!current || !provider || current.provider === provider) return
+    sessions.value = { ...sessions.value, [id]: { ...current, provider } }
+  }
+  return { state, sessions, error, enter, register, select, bindSource,
     configure(defaults: ConversationChoice, remember: boolean): void { persist({ ...state.value, defaults, remember }) },
   }
 }

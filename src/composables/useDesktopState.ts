@@ -1513,7 +1513,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
     const effort = selectedReasoningEffort.value
     const tier = selectedSpeedMode.value
     const session = webPreferences.sessions.value[selectedThreadId.value]
-    if (session && normalizeProviderContextId(session.provider) !== readProviderIdForThread(selectedThreadId.value)) throw new Error('保存的模型属于其他来源，请重新选择模型。')
+    if (session) adoptLiveConversationSource(selectedThreadId.value)
     if (session?.model && availableModels.value.length && !model) throw new Error('保存的模型暂不可用，请重新选择模型。')
     const problem = modelSettingsProblem(model, effort, tier, hasImages)
     if (problem) throw new Error(problem)
@@ -1771,6 +1771,17 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
     webPreferences.select('', { ...session, provider: providerId })
   }
 
+  // An existing conversation is served by the live thread source: the single running app-server
+  // binds a resumed thread to the active connection, so a saved source that differs could never
+  // answer the turn. Move only the effective source and let the saved model choice stay as intent.
+  function adoptLiveConversationSource(contextId: string): void {
+    const session = webPreferences.sessions.value[contextId]
+    if (!session) return
+    const providerId = readProviderIdForThread(contextId)
+    if (!providerId || normalizeProviderContextId(session.provider) === providerId) return
+    webPreferences.bindSource(contextId, providerId)
+  }
+
   function ensureAvailableModelIds(...modelIds: string[]): void {
     const nextModelIds = [...availableModelIds.value]
     for (const modelId of modelIds) {
@@ -2019,6 +2030,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
       // Rebind before the catalog request so a failed or slow catalog cannot leave the pending
       // conversation reporting another connection's model source.
       if (!selectedThreadId.value) bindPendingConversationChoiceToActiveProvider()
+      else adoptLiveConversationSource(selectedThreadId.value)
       const targetProviderId = readProviderIdForThread(selectedThreadId.value)
       availableModels.value = availableModels.value.filter(model => model.providerId === targetProviderId)
       const isProviderBacked = targetProviderId !== 'codex'
@@ -4547,17 +4559,22 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
       const needsResume = resumedThreadById.value[threadId] !== true
       const resumedThread = needsResume ? await resumeThread(threadId) : null
       let detail = resumedThread
+      // A live resume is the only read that reports the source the running app-server actually
+      // serves; thread/read reports the source stored in the rollout. Let the live value own the
+      // conversation source so a later read cannot move it back to a connection that is not running.
+      let detailSawLiveThread = resumedThread !== null
       if (!detail) {
         try { detail = await getThreadDetail(threadId) } catch (cause) {
           if (!/thread.*(?:not loaded|not found)|no.*thread.*found/i.test(String(cause))) throw cause
           invalidateThreadResumeCache(threadId)
           detail = await resumeThread(threadId)
+          detailSawLiveThread = true
         }
       }
       if (identityRevision !== accountIdentityRevision) return
       if (detail.thread) snapshotThreads.value = { ...snapshotThreads.value, [threadId]: detail.thread }
 
-      if (detail.modelProvider) {
+      if (detail.modelProvider && (detailSawLiveThread || resumedThreadById.value[threadId] !== true)) {
         setThreadModelProviderId(threadId, detail.modelProvider)
       }
       if (detail.model) {
