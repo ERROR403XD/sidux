@@ -9,6 +9,10 @@ export function quotaExhausted(used: number): boolean {
   return quotaRemaining(used) === 0
 }
 
+export function quotaFull(used: number): boolean {
+  return quotaRemaining(used) === 100
+}
+
 export function quotaColor(used: number): string {
   const colors = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444']
   return colors[Math.min(4, Math.max(0, Math.floor((Number.isFinite(used) ? used : 0) / 20)))]!

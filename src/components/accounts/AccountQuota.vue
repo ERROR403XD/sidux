@@ -2,7 +2,7 @@
   <div class="account-quota-grid" :class="{ 'is-compact': compact }">
     <div v-for="(window, index) in windows" :key="index" class="account-quota-window">
       <span>{{ duration(window.windowDurationMins ?? window.windowMinutes) }}</span>
-      <span class="account-quota-track" :class="{ 'is-exhausted': quotaExhausted(window.usedPercent) }" role="progressbar" :aria-valuenow="remaining(window.usedPercent)" aria-valuemin="0" aria-valuemax="100" :aria-label="t('{v0} 剩余额度', { v0: duration(window.windowDurationMins ?? window.windowMinutes) })" :style="{ '--quota-color': quotaColor(window.usedPercent) }">
+      <span class="account-quota-track" :class="{ 'is-exhausted': quotaExhausted(window.usedPercent), 'is-full': quotaFull(window.usedPercent) }" role="progressbar" :aria-valuenow="remaining(window.usedPercent)" aria-valuemin="0" aria-valuemax="100" :aria-label="t('{v0} 剩余额度', { v0: duration(window.windowDurationMins ?? window.windowMinutes) })" :style="{ '--quota-color': quotaColor(window.usedPercent) }">
         <span :style="{ width: `${remaining(window.usedPercent)}%` }" />
       </span>
       <strong>{{ remaining(window.usedPercent) }}%</strong>
@@ -18,7 +18,7 @@ import { computed } from 'vue'
 import { useQuotaClock } from '../../composables/useQuotaClock'
 import type { UiRateLimitSnapshot, UiRateLimitWindow } from '../../types/codex'
 import { formatLocalDateTime } from '../../dateTime'
-import { quotaColor, quotaExhausted, quotaResetTime, quotaRemaining as remaining } from '../../quotaPresentation'
+import { quotaColor, quotaExhausted, quotaFull, quotaResetTime, quotaRemaining as remaining } from '../../quotaPresentation'
 const now = useQuotaClock()
 const props = defineProps<{ snapshot: UiRateLimitSnapshot; compact?: boolean }>()
 const windows = computed(() => [props.snapshot.primary, props.snapshot.secondary]

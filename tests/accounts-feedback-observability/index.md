@@ -24,6 +24,7 @@ Return to the [manual test index](../../tests.md).
 | [Qodo free-mode state write fixes](qodo-free-mode-state-write-fixes.md) |
 | [Multi-account isolated login and transactional switching](multi-account-isolated-login-and-transactional-switching.md) |
 | [Codex API 出口](api-proxy.md) |
+| [额度进度条发光状态](quota-bar-glow.md) |
 
 - [0.2.11 账号定时激活](account-activation-0211.md)
 

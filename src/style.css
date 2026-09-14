@@ -2432,14 +2432,9 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .account-quota-window time { opacity: .8; text-align: right; white-space: nowrap; }
 .account-quota-track { height: 7px; border: 1px solid var(--quota-color); border-radius: 4px; overflow: hidden; background: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--quota-color) 22%, transparent) 3px 5px); }
 .account-quota-track > span { display: block; height: 100%; background: var(--quota-color); }
-.account-quota-track.is-exhausted { box-shadow: 0 0 0 1px color-mix(in srgb, var(--quota-color) 60%, transparent), 0 0 9px 1px color-mix(in srgb, var(--quota-color) 70%, transparent); animation: account-quota-exhausted 2.6s ease-in-out infinite; }
-@keyframes account-quota-exhausted {
-  0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--quota-color) 45%, transparent), 0 0 5px 0 color-mix(in srgb, var(--quota-color) 50%, transparent); }
-  50% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--quota-color) 75%, transparent), 0 0 12px 2px color-mix(in srgb, var(--quota-color) 80%, transparent); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .account-quota-track.is-exhausted { animation: none; }
-}
+/* Completed quota bars keep a steady glow: 0% left means exhausted, 100% left means untouched. */
+.account-quota-track.is-exhausted,
+.account-quota-track.is-full { box-shadow: 0 0 0 1px color-mix(in srgb, var(--quota-color) 60%, transparent), 0 0 9px 1px color-mix(in srgb, var(--quota-color) 70%, transparent); }
 .account-card.is-active, :root.dark .account-card.is-active { border-color: #3b82f6; box-shadow: inset 3px 0 #3b82f6; }
 .account-usage-button > small { display: block; font-size: 11px; opacity: .8; }
 

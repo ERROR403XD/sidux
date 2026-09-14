@@ -1,6 +1,6 @@
 import { setUiLanguage } from './composables/useUiLanguage'
 import { beforeEach, afterEach, describe, expect, it } from 'vitest'
-import { quotaColor, quotaExhausted, quotaRemaining, quotaResetTime } from './quotaPresentation'
+import { quotaColor, quotaExhausted, quotaFull, quotaRemaining, quotaResetTime } from './quotaPresentation'
 
 import { setDisplayTimeZone } from './dateTime'
 
@@ -18,6 +18,12 @@ describe('quota presentation', () => {
   it('treats only a displayed remaining value of 0 as exhausted', () => {
     expect([0, 50, 99.4, 99.5].map(quotaExhausted)).toEqual([false, false, false, false])
     expect([99.6, 100, 101, Number.NaN].map(quotaExhausted)).toEqual([true, true, true, false])
+  })
+
+  it('treats only a displayed remaining value of 100 as full', () => {
+    expect([-1, 0, 0.4].map(quotaFull)).toEqual([true, true, true])
+    expect([0.6, 50, 100, 101].map(quotaFull)).toEqual([false, false, false, false])
+    expect(quotaFull(Number.NaN)).toBe(true)
   })
 })
 
