@@ -927,6 +927,119 @@ describe('provider model selection', () => {
     expect(state.readModelIdForThread('')).toBe('gpt-5.4-mini')
   })
 
+  it('rebinds the pending new conversation to the active connection after switching providers', async () => {
+    installTestWindow()
+    gatewayMocks.getThreadGroupsPage.mockResolvedValue({ groups: [], nextCursor: null })
+    gatewayMocks.getAvailableCollaborationModes.mockResolvedValue([{ value: 'default', label: 'Default' }])
+    gatewayMocks.getSkillsList.mockResolvedValue([])
+    gatewayMocks.getAccountRateLimits.mockResolvedValue(null)
+    gatewayMocks.getCurrentModelConfig.mockResolvedValue({
+      model: 'gpt-5.6-sol',
+      providerId: 'codex',
+      reasoningEffort: 'high',
+      speedMode: '',
+    })
+    gatewayMocks.getAvailableModelIds.mockImplementation(async (options?: { providerId?: string }) => (
+      options?.providerId === 'custom' ? ['custom-alpha', 'custom-beta'] : ['gpt-5.6-sol', 'gpt-5.6-luna']
+    ))
+    gatewayMocks.startThread.mockResolvedValue({
+      threadId: 'custom-thread',
+      model: 'custom-alpha',
+      modelProvider: 'custom',
+    })
+    gatewayMocks.startThreadTurn.mockResolvedValue('turn-1')
+    gatewayMocks.getThreadDetail.mockResolvedValue({
+      model: 'custom-alpha',
+      modelProvider: 'custom',
+      messages: [],
+      inProgress: false,
+      activeTurnId: '',
+      hasMoreOlder: false,
+      turnIndexByTurnId: {},
+    })
+
+    const state = useDesktopState()
+    state.configureWebDefaults({ model: 'gpt-5.6-sol', provider: 'codex', effort: 'high', tier: '' }, true)
+    state.primeSelectedThread('')
+    state.initializeWebConversation('')
+    await state.refreshAll({ includeSelectedThreadMessages: false, awaitAncillaryRefreshes: true })
+    expect(state.webDefaultsProvider.value).toBe('codex')
+    expect(state.selectedModelId.value).toBe('gpt-5.6-sol')
+
+    // Switch the connection without touching the model picker.
+    gatewayMocks.getCurrentModelConfig.mockResolvedValue({
+      model: 'custom-alpha',
+      providerId: 'custom',
+      reasoningEffort: 'medium',
+      speedMode: '',
+    })
+    await state.refreshAll({ includeSelectedThreadMessages: false, providerChanged: true, awaitAncillaryRefreshes: true })
+
+    expect(state.webDefaultsProvider.value).toBe('custom')
+    expect(state.availableModelIds.value).toEqual(['custom-alpha', 'custom-beta'])
+    expect(state.selectedModelId.value).toBe('custom-alpha')
+    expect(state.readModelIdForThread('')).toBe('custom-alpha')
+    // The saved default choice is intent, not a source binding, so it is left untouched.
+    expect(state.webPreferenceState.value.defaults).toEqual({
+      model: 'gpt-5.6-sol',
+      provider: 'codex',
+      effort: 'high',
+      tier: '',
+    })
+    expect(state.webPreferenceState.value.threads).toEqual({})
+
+    await state.sendMessageToNewThread('hi', '/tmp/project')
+    expect(gatewayMocks.startThread).toHaveBeenCalledWith('/tmp/project', 'custom-alpha')
+    state.stopPolling()
+  })
+
+  it('keeps a saved per-conversation source intact when the connection changes', async () => {
+    installTestWindow({
+      'codexapp.web-conversation-preferences.v1': JSON.stringify({
+        defaults: null,
+        remember: true,
+        threads: {
+          'openai-thread': {
+            source: 'web',
+            saved: { model: 'gpt-5.6-sol', provider: 'codex', effort: 'high', tier: '' },
+          },
+        },
+      }),
+    })
+    gatewayMocks.getThreadGroupsPage.mockResolvedValue({ groups: [], nextCursor: null })
+    gatewayMocks.getAvailableCollaborationModes.mockResolvedValue([{ value: 'default', label: 'Default' }])
+    gatewayMocks.getSkillsList.mockResolvedValue([])
+    gatewayMocks.getAccountRateLimits.mockResolvedValue(null)
+    gatewayMocks.getCurrentModelConfig.mockResolvedValue({
+      model: 'custom-alpha',
+      providerId: 'custom',
+      reasoningEffort: 'medium',
+      speedMode: '',
+    })
+    gatewayMocks.getAvailableModelIds.mockImplementation(async (options?: { providerId?: string }) => (
+      options?.providerId === 'custom' ? ['custom-alpha'] : ['gpt-5.6-sol']
+    ))
+    gatewayMocks.resumeThread.mockResolvedValue({
+      model: 'gpt-5.6-sol',
+      modelProvider: 'openai',
+      messages: [],
+      inProgress: false,
+      activeTurnId: '',
+      hasMoreOlder: false,
+      turnIndexByTurnId: {},
+    })
+
+    const state = useDesktopState()
+    state.primeSelectedThread('openai-thread')
+    await state.loadMessages('openai-thread')
+    await state.refreshAll({ includeSelectedThreadMessages: false, providerChanged: true, awaitAncillaryRefreshes: true })
+
+    expect(state.webDefaultsProvider.value).toBe('codex')
+    expect(state.selectedModelId.value).toBe('gpt-5.6-sol')
+    expect(state.webPreferenceState.value.threads['openai-thread'].saved.provider).toBe('codex')
+    state.stopPolling()
+  })
+
   it('loads provider models for a selected provider-backed thread during scheduled refreshes', async () => {
     installTestWindow()
     vi.mocked(window.setTimeout).mockImplementation(((callback: TimerHandler) => {

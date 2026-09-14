@@ -1387,7 +1387,9 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
   })
   function initializeWebConversation(threadId: string): void {
     if (!threadId && !webPreferences.state.value.defaults) return
-    const value = webPreferences.enter(threadId, webDefaultChoice.value)
+    webPreferences.enter(threadId, webDefaultChoice.value)
+    if (!threadId) bindPendingConversationChoiceToActiveProvider()
+    const value = webPreferences.sessions.value[threadId]
     if (value?.model) selectedModelId.value = effectiveConversationChoice(value, availableModels.value).model
   }
   function configureWebDefaults(value: ConversationChoice, remember: boolean): void {
@@ -1758,6 +1760,17 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
     return normalizeProviderContextId(threadModelProviderByThreadId.value[normalizedThreadId] ?? activeProviderId.value)
   }
 
+  // A pending new conversation has no saved thread identity, so its model source follows the live
+  // connection. The saved default choice stays untouched as user intent and is only re-applied to
+  // the pending session, so switching connections keeps existing preferences recoverable.
+  function bindPendingConversationChoiceToActiveProvider(): void {
+    const session = webPreferences.sessions.value['']
+    if (!session || !activeProviderId.value.trim()) return
+    const providerId = normalizeProviderContextId(activeProviderId.value)
+    if (normalizeProviderContextId(session.provider) === providerId) return
+    webPreferences.select('', { ...session, provider: providerId })
+  }
+
   function ensureAvailableModelIds(...modelIds: string[]): void {
     const nextModelIds = [...availableModelIds.value]
     for (const modelId of modelIds) {
@@ -2003,6 +2016,9 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
       const normalizedConfiguredModelId = currentConfig.model.trim()
       const normalizedProviderId = normalizeProviderContextId(currentConfig.providerId)
       activeProviderId.value = normalizedProviderId
+      // Rebind before the catalog request so a failed or slow catalog cannot leave the pending
+      // conversation reporting another connection's model source.
+      if (!selectedThreadId.value) bindPendingConversationChoiceToActiveProvider()
       const targetProviderId = readProviderIdForThread(selectedThreadId.value)
       availableModels.value = availableModels.value.filter(model => model.providerId === targetProviderId)
       const isProviderBacked = targetProviderId !== 'codex'
