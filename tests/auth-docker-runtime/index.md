@@ -20,5 +20,6 @@ Return to the [manual test index](../../tests.md).
 | [Android OpenCode Zen no-auth model filtering](android-opencode-zen-no-auth-model-filtering.md) |
 | [Docker auth promotion preserves legacy Zen threads](docker-auth-promotion-preserves-legacy-zen-threads.md) |
 | [Qodo provider/auth review fixes](qodo-provider-auth-review-fixes.md) |
+| [Subscription change keeps the ChatGPT account signed in](subscription-change-keeps-login.md) |
 | [CodexApp two-phase release switch](codexapp-two-phase-release-switch.md) |
 | [开发重启与后台终端空闲检查](runtime-reload-and-background-idle.md) |

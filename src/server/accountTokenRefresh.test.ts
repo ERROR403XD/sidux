@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { classifyAccountAuthError, refreshChatgptAccountCredential } from './accountTokenRefresh.js'
+import { ChatgptTokenRefreshError, classifyAccountAuthError, isTerminalAccountAuthError, refreshChatgptAccountCredential } from './accountTokenRefresh.js'
 
 function jwt(accountId: string): string {
   return `header.${Buffer.from(JSON.stringify({
@@ -47,5 +47,26 @@ describe('refreshChatgptAccountCredential', () => {
     ['network timeout', 'transient_error'],
   ])('classifies %s separately', (message, expected) => {
     expect(classifyAccountAuthError(new Error(message)).authStatus).toBe(expected)
+  })
+
+  it.each([
+    [{ httpStatus: 401, oauthError: 'invalid_grant' }, 'reauth_required'],
+    [{ httpStatus: 400, oauthError: 'token_revoked' }, 'reauth_required'],
+    [{ httpStatus: 401, oauthError: null }, 'reauth_required'],
+    [{ httpStatus: 500, oauthError: null }, 'transient_error'],
+    [{ httpStatus: 503, oauthError: 'temporarily_unavailable' }, 'transient_error'],
+    [{ httpStatus: 402, oauthError: 'payment_required' }, 'payment_required'],
+  ])('prefers the structured OAuth payload for %j', (options, expected) => {
+    const error = new ChatgptTokenRefreshError('ChatGPT token refresh failed.', options)
+    expect(classifyAccountAuthError(error).authStatus).toBe(expected)
+  })
+
+  it('treats a bare HTTP 401 as retryable while a structured invalid_grant stays terminal', () => {
+    const response = 'upstream rejected refresh token request'
+    const error = new ChatgptTokenRefreshError(response, { httpStatus: 401, oauthError: null })
+    expect(classifyAccountAuthError(error)).toMatchObject({ authStatus: 'reauth_required', unavailableReason: 'reauth_required' })
+    expect(isTerminalAccountAuthError(error)).toBe(false)
+    expect(isTerminalAccountAuthError(new ChatgptTokenRefreshError('revoked', { oauthError: 'invalid_grant' }))).toBe(true)
+    expect(isTerminalAccountAuthError(new Error('invalid_grant'))).toBe(true)
   })
 })

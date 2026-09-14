@@ -16,13 +16,21 @@ import {
   type StoredAccountEntry,
   type StoredAccountsState,
 } from './accountAuthStore.js'
-import { accessTokenExpiresAt, classifyAccountAuthError, refreshChatgptAccountCredential, type ChatgptAuthTokensRefreshParams, type ChatgptAuthTokensRefreshResponse } from './accountTokenRefresh.js'
+import { accessTokenExpiresAt, classifyAccountAuthError, isTerminalAccountAuthError, refreshChatgptAccountCredential, type ChatgptAuthTokensRefreshParams, type ChatgptAuthTokensRefreshResponse } from './accountTokenRefresh.js'
 
 const LOGIN_URL_TIMEOUT_MS = 15_000
 const LOGIN_CALLBACK_TIMEOUT_MS = 20_000
 const LOGIN_AUTH_FILE_TIMEOUT_MS = 10_000
 const ACCOUNT_INSPECTION_TIMEOUT_MS = 25_000
 const ACCOUNT_QUOTA_REFRESH_TTL_MS = 5 * 60_000
+// A failed token refresh is cached per credential revision so a burst of API/probe
+// calls does not hammer the token endpoint. The window must stay finite: a plan or
+// subscription change can make the upstream endpoint reject one refresh attempt while
+// the stored refresh token is still valid, and an unrecoverable flag would then force
+// the user to sign in again for no reason.
+const TRANSIENT_REFRESH_RETRY_WINDOW_MS = 30_000
+const AMBIGUOUS_REAUTH_RETRY_WINDOW_MS = 60_000
+const TERMINAL_REAUTH_RETRY_WINDOW_MS = 10 * 60_000
 
 export type RuntimeQuiescenceSnapshot = {
   idle: boolean
@@ -278,6 +286,19 @@ export class AccountAuthCoordinator {
     if (accessTokenExpiresAt(credential.auth.tokens?.access_token ?? '') < Date.now() + 300_000) {
       if (options.allowRefresh === false) throw new AccountCoordinatorError('background_refresh_skipped', '凭据需要刷新，跳过本次激活。', 503)
       await this.refreshTokensForStorage(storageId, { reason: 'api_proxy_expiry', previousAccountId: entry.accountId })
+      state = await this.store.readState()
+      entry = state.accounts.find(item => item.storageId === storageId)
+      if (!entry) throw new AccountCoordinatorError('account_not_found', '账号已移除。', 503)
+      credential = await this.store.readCredential(storageId)
+    } else if (entry.authStatus === 'reauth_required' && options.allowRefresh !== false) {
+      // The stored access token may still look unexpired while the account was marked
+      // as requiring sign-in by an earlier refresh failure. Retry the merged refresh
+      // once the cached failure window has elapsed instead of forcing a new login.
+      try {
+        await this.refreshTokensForStorage(storageId, { reason: 'reauth_recovery', previousAccountId: entry.accountId })
+      } catch {
+        // Keep the stored status; the route below reports the account as unavailable.
+      }
       state = await this.store.readState()
       entry = state.accounts.find(item => item.storageId === storageId)
       if (!entry) throw new AccountCoordinatorError('account_not_found', '账号已移除。', 503)
@@ -587,9 +608,16 @@ export class AccountAuthCoordinator {
     if (existing) return await existing
     const promise = this.withOperation('refresh', storageId, async () => {
       const state = await this.store.readState()
-      const entry = state.accounts.find((item) => item.storageId === storageId)
+      let entry = state.accounts.find((item) => item.storageId === storageId)
       if (!entry) throw new AccountCoordinatorError('account_not_found', 'The selected account was not found.', 404)
       if (this.quotaRetryAt(storageId) > Date.now()) return entry
+      if (entry.authStatus === 'reauth_required') {
+        // A plan or subscription change can reject a single refresh attempt while the
+        // stored refresh token is still valid. Retry the merged refresh before probing
+        // so the account returns to ready without asking the user to sign in again.
+        await this.refreshTokensForStorage(storageId, { reason: 'reauth_recovery', previousAccountId: entry.accountId }).catch(() => undefined)
+        entry = (await this.store.readState()).accounts.find((item) => item.storageId === storageId) ?? entry
+      }
       if (this.runtimeQuotaReader) {
         try {
           const runtime = await this.runtimeQuotaReader(storageId)
@@ -676,7 +704,12 @@ export class AccountAuthCoordinator {
       } catch (error) {
         if (this.executions.removedAfter(storageId, generation)) throw error
         const classified = classifyAccountAuthError(error)
-        this.tokenRefreshFailures.set(storageId, { revision: entry.credentialRevision, until: classified.authStatus === 'reauth_required' ? Infinity : Date.now() + 30_000, error })
+        const retryWindowMs = classified.authStatus !== 'reauth_required'
+          ? TRANSIENT_REFRESH_RETRY_WINDOW_MS
+          : isTerminalAccountAuthError(error)
+          ? TERMINAL_REAUTH_RETRY_WINDOW_MS
+          : AMBIGUOUS_REAUTH_RETRY_WINDOW_MS
+        this.tokenRefreshFailures.set(storageId, { revision: entry.credentialRevision, until: Date.now() + retryWindowMs, error })
         await this.patchAccount(storageId, {
           authStatus: classified.authStatus,
           unavailableReason: classified.unavailableReason,
