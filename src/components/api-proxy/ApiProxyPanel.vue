@@ -30,7 +30,7 @@
             <AppButton :disabled="busy" @click="openCreate()">{{ t('创建API key') }}</AppButton>
             <AppButton @click="showInvalid = !showInvalid">{{ t(showInvalid ? '返回生效 API key' : '查看失效 API key') }}</AppButton>
             <AppButton @click="usageDialog = true">{{ t('Token统计') }}</AppButton>
-            <AppButton :busy="busy" @click="savePolicies">{{ t('保存配置') }}</AppButton>
+            <AppButton :busy="savingPolicies" @click="savePolicies">{{ t('保存配置') }}</AppButton>
           </div>
         </div>
         <p v-if="!status.keys.length">{{ t('尚未创建 API key。') }}</p>
@@ -47,7 +47,7 @@
           </div>
           <div class="api-proxy-actions">
             <AppButton :disabled="busy || !!key.revokedAt" @click="renameTarget = key; renameValue = key.name">{{ t('重命名') }}</AppButton>
-            <AppSwitch :disabled="busy || !!key.revokedAt" :model-value="key.enabled" @change="updateKey(key, { enabled: $event })">{{ t('启用') }}</AppSwitch>
+            <AppSwitch :disabled="busy || isKeyBusy(key.id) || !!key.revokedAt" :model-value="key.enabled" @change="updateKey(key, { enabled: $event })">{{ t('启用') }}</AppSwitch>
             <AppButton :disabled="busy || !!key.revokedAt" @click="openCreate(key)">{{ t('轮换') }}</AppButton>
             <AppButton variant="danger" :disabled="busy || !!key.revokedAt" @click="revokeTarget = key; interruptKey = false">{{ t('撤销…') }}</AppButton>
           </div>
@@ -148,22 +148,36 @@ const selectedUsage = computed(() => {
 })
 const policyDrafts = ref<Record<string, { account: string; protected: boolean }>>({})
 const visibleKeys = computed(() => visibleApiProxyKeys(status.value?.keys || [], showInvalid.value))
+function pendingPolicyUpdates(): Array<{ key: ApiProxyKey; accountStorageId: string | null; protected: boolean }> {
+  const rows: Array<{ key: ApiProxyKey; accountStorageId: string | null; protected: boolean }> = []
+  for (const key of status.value?.keys || []) {
+    const draft = policyDrafts.value[key.id]
+    if (!draft || key.revokedAt) continue
+    const accountStorageId = draft.account === 'global' ? null : draft.account
+    if (accountStorageId === key.accountStorageId && draft.protected === key.protected) continue
+    rows.push({ key, accountStorageId, protected: draft.protected })
+  }
+  return rows
+}
 async function savePolicies(): Promise<void> {
-  await run(async () => {
-    for (const key of status.value?.keys || []) {
-      const draft = policyDrafts.value[key.id]
-      if (!draft || key.revokedAt) continue
-      const accountStorageId = draft.account === 'global' ? null : draft.account
-      if (accountStorageId === key.accountStorageId && draft.protected === key.protected) continue
-      await apiProxyRequest(`/keys/${key.id}`, { accountStorageId, protected: draft.protected })
-      key.accountStorageId = accountStorageId
-      key.protected = draft.protected
-    }
-  })
+  const rows = pendingPolicyUpdates()
+  if (!rows.length) return
+  savingPolicies.value = true
+  try {
+    await runKeys(rows.map(row => row.key.id), async () => {
+      for (const row of rows) {
+        await apiProxyRequest(`/keys/${row.key.id}`, { accountStorageId: row.accountStorageId, protected: row.protected })
+        row.key.accountStorageId = row.accountStorageId
+        row.key.protected = row.protected
+      }
+    })
+  } finally { savingPolicies.value = false }
 }
 const status = ref<ApiProxyStatus | null>(null)
 const settings = ref<ApiProxySettings>({ enabled: false, accountStorageId: null, globalConcurrency: 8, keyConcurrency: 4, drainTimeoutSeconds: 60 })
 const busy = ref(false)
+const busyKeyIds = ref<string[]>([])
+const savingPolicies = ref(false)
 const error = ref('')
 const createDialog = ref(false)
 const forceDialog = ref(false)
@@ -218,12 +232,22 @@ async function refresh(reset = false): Promise<void> {
   finally { refreshing = false }
 }
 async function run(action: () => Promise<void>): Promise<void> {
-  if (busy.value) return
+  if (busy.value || busyKeyIds.value.length) return
   busy.value = true
   error.value = ''
   try { await action() } catch (caught) { error.value = caught instanceof Error ? caught.message : '操作失败。' }
   finally { busy.value = false; await refresh(false) }
 }
+function isKeyBusy(id: string): boolean { return busyKeyIds.value.includes(id) }
+// 只让涉及的行进入忙碌状态，避免整面板按钮一起禁用、抖出闪烁。
+async function runKeys(ids: string[], action: () => Promise<void>): Promise<void> {
+  if (busy.value || busyKeyIds.value.length) return
+  busyKeyIds.value = [...ids]
+  error.value = ''
+  try { await action() } catch (caught) { error.value = caught instanceof Error ? caught.message : '操作失败。' }
+  finally { busyKeyIds.value = []; await refresh(false) }
+}
+async function runKey(id: string, action: () => Promise<void>): Promise<void> { await runKeys([id], action) }
 async function save(force: boolean): Promise<void> {
   await run(async () => {
     await apiProxyRequest('/settings', { settings: settings.value, force })
@@ -278,12 +302,12 @@ async function savePolicy(): Promise<void> {
   })
 }
 async function copySecret(): Promise<void> { try { await copyTextToClipboard(secret.value) } catch { error.value = '无法自动复制，请选中 key 手动复制。' } }
-async function updateKey(key: ApiProxyKey, input: unknown): Promise<void> { await run(async () => { await apiProxyRequest(`/keys/${key.id}`, input) }) }
+async function updateKey(key: ApiProxyKey, input: unknown): Promise<void> { await runKey(key.id, async () => { await apiProxyRequest(`/keys/${key.id}`, input) }) }
 async function revokeKey(): Promise<void> { const target = revokeTarget.value; if (!target) return; await run(async () => { await apiProxyRequest(`/keys/${target.id}`, { revoke: true, interrupt: interruptKey.value }); revokeTarget.value = null }) }
 async function renameKey(): Promise<void> { const target = renameTarget.value; if (!target) return; await run(async () => { await apiProxyRequest(`/keys/${target.id}`, { name: renameValue.value }); renameTarget.value = null }) }
 onMounted(() => {
   void refresh(true)
-  timer = setInterval(() => { if (!document.hidden && !busy.value) void refresh(false) }, 10_000)
+  timer = setInterval(() => { if (!document.hidden && !busy.value && !busyKeyIds.value.length) void refresh(false) }, 10_000)
 })
 onUnmounted(() => { disposed = true; if (timer) clearInterval(timer); secret.value = '' })
 </script>
