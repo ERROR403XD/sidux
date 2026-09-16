@@ -2508,27 +2508,49 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .composer-dropdown-menu-wrap .composer-dropdown-menu { width: 100%; min-width: 0; box-sizing: border-box; }
 .composer-dropdown-search-wrap, .composer-dropdown-search-input { width: 100%; box-sizing: border-box; min-width: 0; }
 .api-proxy-key-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
-.api-proxy-key-row { padding: 12px 0; align-items: flex-start; flex-wrap: wrap; }
-.api-proxy-key-copy { flex: 1 1 360px; }
+/* key 行用两列网格：左列放名称/最近使用与账号下拉框，右列放操作区与端点 tag。
+   下拉框占满左列（右端即“启用”开关左边界），端点 tag 在右列右对齐到卡片右边界。 */
+.api-proxy-keys-card { container-type: inline-size; }
+.api-proxy-key-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; row-gap: 4px; align-items: start; padding: 12px 0; }
+.api-proxy-key-copy { min-width: 0; grid-column: 1; grid-row: 1; }
 .api-proxy-key-endpoints.custom-connection-endpoints { flex-wrap: wrap; margin: 0; }
 .api-proxy-key-row > .api-proxy-actions { align-items: center; justify-content: flex-end; }
-.api-proxy-inline-policy { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+.api-proxy-key-row > .api-proxy-key-endpoints.custom-connection-endpoints { grid-column: 2; grid-row: 2; justify-self: end; align-self: center; }
+.api-proxy-inline-policy { display: flex; align-items: center; min-width: 0; gap: 8px 12px; grid-column: 1; grid-row: 2; }
 .api-proxy-inline-policy .app-select { flex: 1; }
 .api-proxy-inline-policy .api-proxy-check { flex-shrink: 0; margin: 0; white-space: nowrap; }
-/* 主账号下拉框固定宽度：切换 OpenAI / 自定义连接不改变行宽。 */
-.api-proxy-inline-policy .app-select.api-proxy-key-account { flex: 0 0 260px; width: 260px; max-width: 100%; }
+/* 主账号下拉框吃掉左列宽度但保留最小宽度：切换 OpenAI / 自定义连接都不改变行宽。 */
+.api-proxy-inline-policy .app-select.api-proxy-key-account { flex: 1 1 auto; width: 100%; min-width: 260px; max-width: 100%; }
 .api-proxy-key-form .app-select.api-proxy-key-account { flex: 0 1 auto; width: 100%; }
 .api-proxy-key-recent { display: block; }
-.api-proxy-key-controls { flex: 0 1 auto; align-items: center; justify-content: flex-end; }
+.api-proxy-key-controls { grid-column: 2; grid-row: 1; align-items: center; justify-content: flex-end; }
+@container (max-width: 860px) {
+  /* 容器变窄时退回单列：名称/最近使用、账号下拉框、端点 tag、操作区依次堆叠。 */
+  .api-proxy-key-row { grid-template-columns: minmax(0, 1fr); row-gap: 8px; }
+  .api-proxy-key-copy { grid-column: 1; grid-row: 1; }
+  .api-proxy-inline-policy { grid-column: 1; grid-row: 2; }
+  .api-proxy-key-row > .api-proxy-key-endpoints.custom-connection-endpoints { grid-column: 1; grid-row: 3; justify-self: start; }
+  .api-proxy-key-controls { grid-column: 1; grid-row: 4; justify-self: stretch; }
+}
 .api-proxy-advanced-open { align-items: center; }
 .api-proxy-advanced-group { display: grid; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--ui-border); }
 .api-proxy-advanced-group .api-proxy-muted { margin: 0; }
-.api-proxy-route-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 220px) auto; gap: 8px; align-items: center; }
+/* 高级选项里开关占左栏、对应控件占右栏；路由清单按“账号在左、模型在右”排列。 */
+.api-proxy-route-setting { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: center; }
+.api-proxy-route-setting > .app-button { justify-self: start; }
+.api-proxy-advanced-dialog { max-width: 640px; }
+.api-proxy-route-row { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr) auto; gap: 8px; align-items: center; }
 .api-proxy-route-row .app-input { width: 100%; min-width: 0; }
 .api-proxy-route-account .composer-dropdown-trigger { width: 100%; }
+.api-proxy-model-field { display: grid; min-width: 0; }
+:root .api-proxy-model-menu .api-proxy-model-options { margin: 0; padding: 4px; list-style: none; max-height: 240px; overflow-y: auto; }
+:root .api-proxy-model-menu .api-proxy-model-option { display: block; width: 100%; padding: 6px 8px; border: 0; border-radius: var(--ui-radius-control); background: transparent; color: var(--ui-text); font-size: 13px; line-height: 18px; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+:root .api-proxy-model-menu .api-proxy-model-option:is(:hover, [aria-selected="true"]) { background: var(--ui-hover); }
+:root .api-proxy-model-menu .api-proxy-model-empty { margin: 0; padding: 6px 8px; color: var(--ui-muted); font-size: 12px; line-height: 18px; }
 @media (max-width: 767px) {
-  .api-proxy-inline-policy .app-select.api-proxy-key-account { flex: 1 1 auto; width: 100%; }
+  .api-proxy-inline-policy .app-select.api-proxy-key-account { flex: 1 1 auto; width: 100%; min-width: 0; }
   .api-proxy-route-row { grid-template-columns: minmax(0, 1fr); }
+  .api-proxy-route-setting { gap: 8px; }
 }
 .api-proxy-key-row > .api-proxy-actions { gap: 8px; }
 .account-actions-menu { padding: 8px; gap: 4px; box-sizing: border-box; }

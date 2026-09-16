@@ -23,7 +23,7 @@
           <AppButton variant="danger" :disabled="busy" @click="forceDialog = true">{{ t('中断活动连接并保存配置…') }}</AppButton>
         </div>
       </section>
-      <section class="api-proxy-card">
+      <section class="api-proxy-card api-proxy-keys-card">
         <div class="api-proxy-heading api-proxy-key-heading">
           <h2>API key</h2>
           <div class="api-proxy-actions api-proxy-key-toolbar">
@@ -43,7 +43,16 @@
               <span v-if="showInvalid || !key.enabled">{{ t(keyLabel(key)) }}</span>
             </div>
             <small class="api-proxy-key-recent">{{ t('最近使用：') }}{{ date(key.lastUsedAt) }}</small>
-            <div v-if="!key.revokedAt && policyDrafts[key.id]" class="api-proxy-inline-policy">
+          </div>
+          <div v-if="!key.revokedAt" class="api-proxy-actions api-proxy-key-controls">
+            <AppSwitch :disabled="busy || isKeyBusy(key.id)" :model-value="key.enabled" @change="updateKey(key, { enabled: $event })">{{ t('启用') }}</AppSwitch>
+            <AppButton :disabled="busy || isKeyBusy(key.id)" @click="openAdvanced(key)">{{ t('高级选项') }}</AppButton>
+            <AppButton :disabled="busy || isKeyBusy(key.id)" @click="renameTarget = key; renameValue = key.name">{{ t('重命名') }}</AppButton>
+            <AppButton :disabled="busy || isKeyBusy(key.id)" @click="openCreate(key)">{{ t('轮换') }}</AppButton>
+            <AppButton variant="danger" :disabled="busy || isKeyBusy(key.id)" @click="revokeTarget = key; interruptKey = false">{{ t('撤销…') }}</AppButton>
+          </div>
+          <template v-if="!key.revokedAt && policyDrafts[key.id]">
+            <div class="api-proxy-inline-policy">
               <AppSelect
                 class="api-proxy-key-account"
                 :model-value="accountValue(policyDrafts[key.id]!)"
@@ -54,15 +63,8 @@
                 @update:model-value="setAccountValue(policyDrafts[key.id]!, $event)"
               />
             </div>
-          </div>
-          <div v-if="!key.revokedAt" class="api-proxy-actions api-proxy-key-controls">
-            <ConnectionEndpoints v-if="policyDrafts[key.id]" class="api-proxy-key-endpoints" :endpoints="keyEndpoints(policyDrafts[key.id]!)" :show-tooltips="false" />
-            <AppSwitch :disabled="busy || isKeyBusy(key.id)" :model-value="key.enabled" @change="updateKey(key, { enabled: $event })">{{ t('启用') }}</AppSwitch>
-            <AppButton :disabled="busy || isKeyBusy(key.id)" @click="openAdvanced(key)">{{ t('高级选项') }}</AppButton>
-            <AppButton :disabled="busy || isKeyBusy(key.id)" @click="renameTarget = key; renameValue = key.name">{{ t('重命名') }}</AppButton>
-            <AppButton :disabled="busy || isKeyBusy(key.id)" @click="openCreate(key)">{{ t('轮换') }}</AppButton>
-            <AppButton variant="danger" :disabled="busy || isKeyBusy(key.id)" @click="revokeTarget = key; interruptKey = false">{{ t('撤销…') }}</AppButton>
-          </div>
+            <ConnectionEndpoints class="api-proxy-key-endpoints" :endpoints="keyEndpoints(policyDrafts[key.id]!)" :show-tooltips="false" />
+          </template>
         </div>
       </section>
       <section class="api-proxy-card">
@@ -125,19 +127,44 @@
         <AppSwitch class="api-proxy-check" v-model="advancedDraft.protected" :disabled="busy">{{ t('受保护') }}</AppSwitch>
         <p class="api-proxy-muted">{{ t('受保护表示允许这把 key 使用被保护的 OpenAI 账号额度。') }}</p>
         <div class="api-proxy-advanced-group">
-          <AppSwitch class="api-proxy-check" v-model="advancedDraft.forceEnabled" :disabled="busy">{{ t('模型强制路由') }}</AppSwitch>
-          <label v-if="advancedDraft.forceEnabled">{{ t('强制使用模型') }}<input v-model="advancedDraft.forceModel" class="app-input" maxlength="200" :placeholder="t('模型名')" :disabled="busy" /></label>
+          <div class="api-proxy-route-setting">
+            <AppSwitch class="api-proxy-check" v-model="advancedDraft.forceEnabled" :disabled="busy">{{ t('模型强制路由') }}</AppSwitch>
+            <ApiKeyModelField
+              :model-value="advancedDraft.forceModel"
+              :account-id="resolvedAccountId(advancedDraft.account)"
+              :models="modelCatalog(resolvedAccountId(advancedDraft.account))"
+              :state="modelCatalogState(resolvedAccountId(advancedDraft.account))"
+              :disabled="busy || !advancedDraft.forceEnabled"
+              :placeholder="t('模型名')"
+              :aria-label="t('强制使用模型')"
+              @request="loadModelCatalog(resolvedAccountId(advancedDraft.account))"
+              @update:model-value="advancedDraft.forceModel = $event"
+            />
+          </div>
+          <p class="api-proxy-muted">{{ t('开启后所有经过此 key 的请求都改用这个模型名；只影响模型选择，不改账号。') }}</p>
         </div>
         <div class="api-proxy-advanced-group">
-          <AppSwitch class="api-proxy-check" v-model="advancedDraft.aggregateEnabled" :disabled="busy">{{ t('聚合路由') }}</AppSwitch>
+          <div class="api-proxy-route-setting">
+            <AppSwitch class="api-proxy-check" v-model="advancedDraft.aggregateEnabled" :disabled="busy">{{ t('聚合路由') }}</AppSwitch>
+            <AppButton :disabled="busy || !advancedDraft.aggregateEnabled" @click="addRouteRow()">{{ t('添加') }}</AppButton>
+          </div>
           <p class="api-proxy-muted">{{ t('聚合路由按模型把请求分派到不同账号；开关打开后此 key 的模型列表就是下面清单的并集。') }}</p>
           <template v-if="advancedDraft.aggregateEnabled">
             <div v-for="(row, index) in advancedDraft.entries" :key="index" class="api-proxy-route-row">
-              <input v-model="row.model" class="app-input" maxlength="200" :placeholder="t('模型名')" :aria-label="t('模型名')" :disabled="busy" />
               <AppSelect v-model="row.account" class="api-proxy-route-account" :options="routeAccountOptions" enable-search :search-placeholder="t('搜索账号')" :placeholder="t('选择账号')" :disabled="busy" />
+              <ApiKeyModelField
+                :model-value="row.model"
+                :account-id="resolvedAccountId(row.account)"
+                :models="modelCatalog(resolvedAccountId(row.account))"
+                :state="modelCatalogState(resolvedAccountId(row.account))"
+                :disabled="busy"
+                :placeholder="t('模型名')"
+                :aria-label="t('模型名')"
+                @request="loadModelCatalog(resolvedAccountId(row.account))"
+                @update:model-value="row.model = $event"
+              />
               <AppButton variant="danger" :disabled="busy" @click="removeRouteRow(index)">{{ t('移除') }}</AppButton>
             </div>
-            <AppButton :disabled="busy" @click="addRouteRow()">{{ t('添加一项') }}</AppButton>
           </template>
         </div>
       </template>
@@ -158,10 +185,13 @@ import AppButton from '../common/AppButton.vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppSelect from '../common/AppSelect.vue'
 import ConnectionEndpoints from '../accounts/ConnectionEndpoints.vue'
+import ApiKeyModelField from './ApiKeyModelField.vue'
+import type { ApiProxyModelCatalogState } from '../../api/apiProxyModels'
 import { formatLocalDateTime, displayTimeZone } from '../../dateTime'
 import { emptyUsage } from '../../api/proxyUsageTypes'
 import { copyTextToClipboard } from '../../utils/clipboard'
 import { apiProxyRequest, visibleApiProxyKeys, type ApiProxyKey, type ApiProxySettings, type ApiProxyStatus } from '../../api/apiProxy'
+import { apiProxyModelNames } from '../../api/apiProxyModels'
 import type { CustomEndpoint } from '../../customConnections'
 import { notifyOperation } from '../../composables/useOperationToast'
 
@@ -269,6 +299,28 @@ const createDraft = ref<KeyPolicyDraft>(emptyDraft())
 const advancedOpen = ref(false)
 const advancedKey = ref<ApiProxyKey | null>(null)
 const advancedDraft = ref<KeyPolicyDraft | null>(null)
+// 账号模型目录只用于路由输入框候选；按下需要时按账号读取一次并留在本次会话内复用。
+const modelCatalogs = ref<Record<string, { state: ApiProxyModelCatalogState; names: string[] }>>({})
+function modelCatalog(accountId: string | null): string[] {
+  return (accountId && modelCatalogs.value[accountId]?.names) || []
+}
+function modelCatalogState(accountId: string | null): ApiProxyModelCatalogState {
+  return (accountId && modelCatalogs.value[accountId]?.state) || 'idle'
+}
+async function loadModelCatalog(accountId: string | null): Promise<void> {
+  if (!accountId || disposed) return
+  const current = modelCatalogs.value[accountId]
+  if (current && current.state !== 'failed') return
+  modelCatalogs.value = { ...modelCatalogs.value, [accountId]: { state: 'loading', names: current?.names || [] } }
+  try {
+    const payload = await apiProxyRequest<unknown>(`/models?accountStorageId=${encodeURIComponent(accountId)}`)
+    if (disposed) return
+    modelCatalogs.value = { ...modelCatalogs.value, [accountId]: { state: 'ready', names: apiProxyModelNames(payload) } }
+  } catch {
+    if (disposed) return
+    modelCatalogs.value = { ...modelCatalogs.value, [accountId]: { state: 'failed', names: [] } }
+  }
+}
 function emptyDraft(): KeyPolicyDraft { return { account: 'global', protected: false, forceEnabled: false, forceModel: '', aggregateEnabled: false, entries: [] } }
 function keyAccountOptions(draft: KeyPolicyDraft) {
   const options = [{ value: 'global', label: t('全局账号') }, ...accountOptions.value.filter(option => option.value !== 'follow')]
