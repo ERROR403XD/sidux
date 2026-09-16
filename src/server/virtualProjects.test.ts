@@ -14,7 +14,7 @@ async function fixture() {
 }
 afterEach(async () => { for (const path of roots.splice(0)) await rm(path, { recursive: true, force: true }) })
 
-it('creates, renames and removes only CodexApp metadata, retaining the original directories and account state', async () => {
+it('creates, renames and removes only Sidux metadata, retaining the original directories and account state', async () => {
   const { home, store } = await fixture()
   await writeFile(join(home, 'auth.json'), 'fixture credential unchanged')
   const first = await store.save(undefined, ' 项目 / 中文 <> ')

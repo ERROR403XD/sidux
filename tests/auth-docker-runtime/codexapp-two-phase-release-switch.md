@@ -1,4 +1,4 @@
-# CodexApp two-phase release switch
+# Sidux two-phase release switch
 
 ## Feature / change
 
@@ -9,9 +9,9 @@ Validate `scripts/codexapp-release-switch.sh`: prepare an immutable release whil
 - Production is `codexapp.service` on `127.0.0.1:5900` with `CODEX_HOME=/root/.codex`.
 - The candidate source is committed and has already passed its unit, build, packaged Docker, UI, and account acceptance checks on `59001`.
 - After adding or re-authenticating the test account, the operator explicitly clicked **Switch**, confirmed that account became active, and then passed the real-account P6 request. A ready card alone is not evidence that its credentials are active.
-- The operator has a host shell that does not depend on the CodexApp browser session being replaced.
-- No CodexApp turn, queued message, approval, account operation, or direct host Codex CLI task is running.
-- All CodexApp browser tabs are closed before `activate` or `rollback`, preventing automatic reconnect traffic during the authentication invariant check.
+- The operator has a host shell that does not depend on the Sidux browser session being replaced.
+- No Sidux turn, queued message, approval, account operation, or direct host Codex CLI task is running.
+- All Sidux browser tabs are closed before `activate` or `rollback`, preventing automatic reconnect traffic during the authentication invariant check.
 
 ## Automated regression
 
@@ -27,7 +27,7 @@ Validate `scripts/codexapp-release-switch.sh`: prepare an immutable release whil
 2. Run `scripts/codexapp-release-switch.sh prepare` while production remains online.
 3. Confirm the command reports a release below `/home/docker/codexapp-releases/` and explicitly reports that production was unchanged.
 4. Confirm `/home/docker/codexapp-switch-state/latest-prepared` points to that release.
-5. End the current Codex turn. Do not ask the same turn to synchronously stop its own CodexApp.
+5. End the current Codex turn. Do not ask the same turn to synchronously stop its own Sidux.
 
 ## Activation actions
 
@@ -56,7 +56,7 @@ Validate `scripts/codexapp-release-switch.sh`: prepare an immutable release whil
 
 ## Rollback / cleanup
 
-1. End active work and close CodexApp browser tabs.
+1. End active work and close Sidux browser tabs.
 2. From the independent host shell run:
 
    ```bash

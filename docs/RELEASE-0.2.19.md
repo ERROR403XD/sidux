@@ -1,4 +1,4 @@
-# CodexApp 0.2.19
+# Sidux 0.2.19
 
 0.2 系列封版维护基线，包含自公开 0.2.17 以来的 0.2.18 与 0.2.19 改进。0.3 的项目工作台仍是独立设计方向，本版本保持现有执行与账号契约。 / Sealed maintenance baseline for the 0.2 series, including changes from 0.2.18 and 0.2.19 since public 0.2.17. The project-workspace UI planned for 0.3 remains separate; this release preserves existing execution and account contracts.
 

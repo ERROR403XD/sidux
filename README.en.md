@@ -1,11 +1,11 @@
-# CodexApp
+# Sidux
 
 [中文](README.md) | **English**
 
-[![Release](https://img.shields.io/github/v/release/ERROR403XD/codexapp)](https://github.com/ERROR403XD/codexapp/releases)
+[![Release](https://img.shields.io/github/v/release/ERROR403XD/sidux)](https://github.com/ERROR403XD/sidux/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-CodexApp is a self-hosted web interface for Codex app-server. Manage projects, conversations, accounts, and automations from desktop, tablet, or phone browsers. The release baseline is **0.2.19**. This is an independently maintained community project, unaffiliated with OpenAI.
+Sidux is a self-hosted web interface for Codex app-server. Manage projects, conversations, accounts, and automations from desktop, tablet, or phone browsers. The current public release baseline is **0.2.19**; starting with **0.2.20**, the project uses the Sidux name and icon consistently. This is an independently maintained community project, unaffiliated with OpenAI.
 
 ## Acceptable use and policy compliance
 
@@ -30,7 +30,7 @@ This project is forked from [friuns2/codex-mobile](https://github.com/friuns2/co
 
 This fork therefore continues development from the GitHub source, rather than the reportedly poisoned npm distribution. “Unpoisoned GitHub version” refers to the source baseline without the distribution-only injection described in that report; it is not a blanket security guarantee for all historical code or dependencies. Upstream ancestry is retained, while local development is published as a reviewed source snapshot, and release packages are built from this repository. The linked report is the source for the incident description, not an independently verified conclusion about every upstream release.
 
-**Install from this repository or its [GitHub Releases](https://github.com/ERROR403XD/codexapp/releases).** The package and command names remain `codexapp` for compatibility, but this GitHub release does not establish control over the same-named npm package. Do not use `npx codexapp` or `npm install -g codexapp` to obtain this fork.
+**Install from this repository or its [GitHub Releases](https://github.com/ERROR403XD/sidux/releases).** Starting with 0.2.20, use `sidux` as the primary command; `codexapp` and `codexui` remain compatibility aliases. Historical 0.2.19-and-earlier packages retain their `codexapp-<version>.tgz` filenames and launch commands. This GitHub release does not establish control over the same-named npm package.
 
 ## Features
 
@@ -55,7 +55,7 @@ This fork therefore continues development from the GitHub source, rather than th
 | Bilingual interface | Chinese/English settings, accounts, API proxy, automations, and project dialogs with persistent language preferences; user content is not translated. |
 | Deployment | Removed built-in tunneling and mandatory startup login; strict ports, two-phase release switching, and cache recovery. |
 
-Version 0.2.19 includes changes from 0.2.18 and 0.2.19: name-only projects, multiple daily scheduled times, steering-message recovery and deduplication, improved conversation filtering and error states, fixes to automation persistence and history recovery, and UI improvements. See the [release notes](https://github.com/ERROR403XD/codexapp/releases/tag/v0.2.19).
+Version 0.2.19 includes changes from 0.2.18 and 0.2.19: name-only projects, multiple daily scheduled times, steering-message recovery and deduplication, improved conversation filtering and error states, fixes to automation persistence and history recovery, and UI improvements. See the [release notes](https://github.com/ERROR403XD/sidux/releases/tag/v0.2.19).
 
 ## Requirements
 
@@ -70,8 +70,8 @@ Version 0.2.19 includes changes from 0.2.18 and 0.2.19: name-only projects, mult
 ### Build this repository
 
 ```bash
-git clone --branch v0.2.19 https://github.com/ERROR403XD/codexapp.git
-cd codexapp
+git clone --branch v0.2.19 https://github.com/ERROR403XD/sidux.git
+cd sidux
 pnpm install --frozen-lockfile
 pnpm run build
 node dist-cli/index.js --port 5900 --strict-port --no-open
@@ -81,7 +81,7 @@ Open `http://localhost:5900`, follow the terminal's web authentication instructi
 
 ### Install the GitHub Release package
 
-Download `codexapp-0.2.19.tgz` and `SHA256SUMS` from [v0.2.19](https://github.com/ERROR403XD/codexapp/releases/tag/v0.2.19), then run in the download directory:
+Download the historical package `codexapp-0.2.19.tgz` and `SHA256SUMS` from [v0.2.19](https://github.com/ERROR403XD/sidux/releases/tag/v0.2.19), then run in the download directory:
 
 ```bash
 sha256sum -c SHA256SUMS
@@ -102,7 +102,7 @@ The package contains built web/CLI assets; installation still downloads npm depe
 | `--no-password` | Disable the web password, suitable only for trusted environments with other access controls. |
 | `CODEX_HOME` | Separate credentials, conversations, and application state; otherwise uses the Codex default directory. |
 
-Run `node dist-cli/index.js --help` or installed `codexapp --help` for all options. Choose permission and approval policies appropriate to your tasks; these control local execution and do not remove provider safeguards or usage restrictions.
+Run `node dist-cli/index.js --help`, installed `sidux --help`, or the compatibility command `codexapp --help` for all options. Choose permission and approval policies appropriate to your tasks; these control local execution and do not remove provider safeguards or usage restrictions.
 
 The service listens on `0.0.0.0` and is reachable through the host's LAN address. Configure firewall rules, a password, or your own private network/reverse proxy as appropriate. Browser microphone features may require HTTPS. Project files and tools run on the server host.
 
@@ -156,6 +156,6 @@ The API proxy uses [router-for-me/CLIProxyAPI](https://github.com/router-for-me/
 
 ## Contributing and license
 
-[Issues](https://github.com/ERROR403XD/codexapp/issues) and pull requests are welcome. Include version, platform, reproduction steps, and sanitized logs; never attach `auth.json`, tokens, API keys, or private conversations. Follow [AGENTS.md](AGENTS.md) and update relevant tests and acceptance notes. Chinese is the primary README; keep this English version aligned for user-facing changes.
+[Issues](https://github.com/ERROR403XD/sidux/issues) and pull requests are welcome. Include version, platform, reproduction steps, and sanitized logs; never attach `auth.json`, tokens, API keys, or private conversations. Follow [AGENTS.md](AGENTS.md) and update relevant tests and acceptance notes. Chinese is the primary README; keep this English version aligned for user-facing changes.
 
 Licensed under [MIT](LICENSE). Thanks to the original authors and contributors, Codex, Vue, Vite, xterm.js, CLIProxyAPI, and their communities.

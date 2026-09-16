@@ -113,8 +113,8 @@ Usage:
   codexapp-release-switch.sh status
 
 Two-phase workflow:
-  1. Run prepare while the current CodexApp remains online.
-  2. End the current Codex turn and close every CodexApp browser tab.
+  1. Run prepare while the current Sidux remains online.
+  2. End the current Codex turn and close every Sidux browser tab.
   3. From a separate host shell, run activate latest --confirm-idle.
 
 The script never imports credentials from the test container. Production auth
@@ -474,7 +474,7 @@ check_release() {
   curl -fsS "$PRODUCTION_URL/" >/dev/null || die "Production health check failed: $PRODUCTION_URL/"
   check_idle_runtime
   log "Release is ready: $release"
-  log "Runtime is idle according to CodexApp. Direct host CLI activity must still be checked by the user."
+  log "Runtime is idle according to Sidux. Direct host CLI activity must still be checked by the user."
 }
 
 activate_release() {
@@ -492,7 +492,7 @@ activate_release() {
       *) requested="$argument" ;;
     esac
   done
-  [[ "$confirmed" == "1" ]] || die "Refusing cutover without --confirm-idle. End the Codex turn and close all CodexApp tabs first."
+  [[ "$confirmed" == "1" ]] || die "Refusing cutover without --confirm-idle. End the Codex turn and close all Sidux tabs first."
   release="$(validate_release "$requested")"
   check_runtime_boundary
   systemctl is-active --quiet "$SERVICE_NAME" || die "$SERVICE_NAME must be active before cutover."
@@ -549,7 +549,7 @@ rollback_release() {
   require_root
   require_cutover_commands
   shift
-  [[ "${1:-}" == "--confirm-idle" ]] || die "Refusing rollback without --confirm-idle. End active work and close all CodexApp tabs first."
+  [[ "${1:-}" == "--confirm-idle" ]] || die "Refusing rollback without --confirm-idle. End active work and close all Sidux tabs first."
   local active_transaction previous_transaction timestamp transaction
   active_transaction="$(read_first_line "$CURRENT_TRANSACTION_FILE" || true)"
   [[ -n "$active_transaction" && -d "$active_transaction" ]] || die "No active release-switch transaction is available to roll back."

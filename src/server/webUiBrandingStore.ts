@@ -63,7 +63,7 @@ export class WebUiBrandingStore {
   }
   async decorateHtml(html: string): Promise<string> {
     const settings = await this.snapshot()
-    const title = settings.title || 'Codex Web'
+    const title = settings.title || 'Sidux'
     const escaped = title.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!)
     return html.replace(/<title>[^<]*<\/title>/, () => `<title>${escaped}</title>`)
       .replace(/(<meta name="(?:apple-mobile-web-app-title|application-name)" content=")[^"]*("\s*\/?>)/g, (_match, before, after) => `${before}${escaped}${after}`)
@@ -80,14 +80,14 @@ export class WebUiBrandingStore {
     const settings = await this.snapshot()
     if (path === '/webui-assets/settings') end('application/json', JSON.stringify({ data: settings }))
     else if (path === '/manifest.webmanifest') {
-      end('application/manifest+json', JSON.stringify({ id: '/', name: settings.title || 'Codex Web', short_name: settings.title || 'Codex Web', start_url: '/', scope: '/', display: 'standalone', launch_handler: { client_mode: 'focus-existing' }, background_color: '#020617', theme_color: '#020617', icons: [192, 512].map(size => ({ src: webUiIconUrl(size, settings.logoVersion), sizes: `${size}x${size}`, type: 'image/png', purpose: 'any' })).concat([{ src: webUiIconUrl(512, settings.logoVersion, true), sizes: '512x512', type: 'image/png', purpose: 'maskable' }]) }))
+      end('application/manifest+json', JSON.stringify({ id: '/', name: settings.title || 'Sidux', short_name: settings.title || 'Sidux', start_url: '/', scope: '/', display: 'standalone', launch_handler: { client_mode: 'focus-existing' }, background_color: '#020617', theme_color: '#020617', icons: [192, 512].map(size => ({ src: webUiIconUrl(size, settings.logoVersion), sizes: `${size}x${size}`, type: 'image/png', purpose: 'any' })).concat([{ src: webUiIconUrl(512, settings.logoVersion, true), sizes: '512x512', type: 'image/png', purpose: 'maskable' }]) }))
     } else if (path === '/browserconfig.xml') {
       end('application/xml', `<browserconfig><msapplication><tile><square150x150logo src="${webUiIconUrl(150, settings.logoVersion)}"/><TileColor>#020617</TileColor></tile></msapplication></browserconfig>`)
     } else {
       const name = path === '/favicon.ico' ? 'icon-64' : path === '/apple-touch-icon.png' ? 'icon-180' : /^\/webui-assets\/(icon-(?:32|64|150|180|192|512)|maskable-512)\.png$/.exec(path)?.[1]
       if (!name) { res.statusCode = 404; res.end(); return true }
       const encoded = this.state.icons[name]
-      const defaultName = name === 'icon-180' ? 'apple-touch-icon.png' : name === 'maskable-512' ? 'maskable-512x512.png' : name === 'icon-512' ? 'pwa-512x512.png' : 'pwa-192x192.png'
+      const defaultName = name === 'maskable-512' ? 'maskable-512x512.png' : `${name}.png`
       if (!encoded) {
         if (defaultIconDirectory) {
           const path = join(defaultIconDirectory, defaultName)
