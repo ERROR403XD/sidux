@@ -691,10 +691,12 @@ export class ApiProxyGateway {
         return
       }
       if (req.method === 'GET' && path === '/models') {
-        if (!this.store.settings.enabled) throw new ProxyError('proxy_disabled', '请先启用出口。', 503)
         const keyId = url.searchParams.get('keyId') || undefined
         if (keyId && !this.store.findKey(keyId)) throw new ProxyError('key_not_found', 'Key不存在。', 404)
-        const selectedId = url.searchParams.get('accountStorageId') || await this.resolveAccount(keyId)
+        // 管理界面按账号预览模型目录用于 key 路由配置，不依赖出口是否已启用；经 key 取目录仍要求启用。
+        const previewId = url.searchParams.get('accountStorageId') || undefined
+        if (!this.store.settings.enabled && !previewId) throw new ProxyError('proxy_disabled', '请先启用出口。', 503)
+        const selectedId = previewId || await this.resolveAccount(keyId)
         const custom = getCustomConnectionStore(this.coordinator.store.codexHome).get(selectedId)
         if (custom) { json(res, 200, { data: customConnectionModels({ ...custom, hasApiKey: true }) }); return }
         const generation = await this.prepareAccount(selectedId, true)

@@ -361,6 +361,19 @@ it('rebinds the default outlet during a stalled stream and primary refresh while
   } finally { ctrl.abort(); f.setOperation(null) }
 })
 
+it('previews one account model catalog for key routing while the outlet stays disabled', async () => {
+  const f = await fixture()
+  try {
+    await f.gateway.store.saveSettings({ ...f.gateway.store.settings, enabled: false })
+    expect((await fetch(f.base + '/codex-api/api-proxy/models')).status).toBe(503)
+    const preview = await fetch(f.base + '/codex-api/api-proxy/models?accountStorageId=account')
+    expect(preview.status).toBe(200)
+    expect((await preview.json()).data[0].id).toBe('fixture')
+  } finally {
+    await f.gateway.store.saveSettings({ ...f.gateway.store.settings, enabled: true })
+  }
+})
+
 it('force-removes only connections belonging to the selected account without waiting for their streams', async () => {
   const f = await fixture()
   const a = 'a'.repeat(64), b = 'b'.repeat(64)
