@@ -12,7 +12,7 @@ Remove the legacy npm package reference from the startup welcome log and point u
 3. Locate the startup welcome message.
 
 #### Expected Results
-- The welcome log points to `https://github.com/friuns2/codexUI`.
+- The welcome log points to `https://github.com/ERROR403XD/sidux`.
 - The welcome log does not contain the legacy npm package URL.
 
 #### Rollback/Cleanup

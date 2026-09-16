@@ -1,4 +1,4 @@
-# CodexApp 0.2.16
+# Sidux 0.2.16
 
 中文 / English
 

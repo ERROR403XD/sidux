@@ -1,7 +1,7 @@
 {
-  "name": "Codex Web",
-  "short_name": "Codex Web",
-  "description": "A lightweight web interface for Codex that can be installed like an app in Chrome.",
+  "name": "Sidux",
+  "short_name": "Sidux",
+  "description": "Sidux is a lightweight web interface for Codex that can be installed like an app in Chrome.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

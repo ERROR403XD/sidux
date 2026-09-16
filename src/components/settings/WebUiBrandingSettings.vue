@@ -2,7 +2,7 @@
   <div class="webui-branding-settings settings-form-subgrid">
     <div class="sidebar-settings-row sidebar-settings-row--select settings-field-roomy">
       <label for="webui-title">{{ t('WebUI标题') }}</label>
-      <input id="webui-title" v-model="title" class="app-input" placeholder="Codex Web" maxlength="120" :disabled="busy || convertingLogo" @change="save({ title })" />
+      <input id="webui-title" v-model="title" class="app-input" placeholder="Sidux" maxlength="120" :disabled="busy || convertingLogo" @change="save({ title })" />
     </div>
     <div class="sidebar-settings-row sidebar-settings-row--select settings-field-roomy">
       <span>{{ t('标题显示') }}</span>

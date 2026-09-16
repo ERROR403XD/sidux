@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 
-export const FEEDBACK_URL = 'https://github.com/ERROR403XD/codexapp/issues'
+export const FEEDBACK_URL = 'https://github.com/ERROR403XD/sidux/issues'
 const MAX_DIAGNOSTICS = 20
 export const feedbackReport = ref<string | null>(null)
 
@@ -74,7 +74,7 @@ export function buildFeedbackReport(entries: FeedbackDiagnostic[] = diagnostics.
   const route = typeof window === 'undefined' ? '' : window.location.hash.split(/[/?]/)[1]
   const category = ['thread', 'settings', 'skills', 'automations', 'api-proxy'].includes(route || '') ? route : 'home/other'
   return [
-    `CodexApp ${import.meta.env.VITE_APP_VERSION || 'unknown'}`,
+    `Sidux ${import.meta.env.VITE_APP_VERSION || 'unknown'}`,
     `Time: ${new Date().toISOString()}`,
     `Route: ${category}`,
     `Theme: ${root?.classList?.contains('dark') ? 'dark' : 'light'}`,

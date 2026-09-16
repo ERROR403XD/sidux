@@ -28,7 +28,7 @@ it('persists branding, escapes HTML, publishes sized icons/ICO/manifest and rest
     const saved = await store.save({ title: 'My <script> $& "UI"', titleMode: 'prefix', icons })
     expect(saved.logoVersion).toHaveLength(16)
     expect(saved).not.toHaveProperty('icons')
-    const html = await store.decorateHtml('<head><meta name="apple-mobile-web-app-title" content="Codex Web"><title>Codex Web</title></head>')
+    const html = await store.decorateHtml('<head><meta name="apple-mobile-web-app-title" content="Sidux"><title>Sidux</title></head>')
     expect(html).toContain('My &lt;script&gt; $&amp; &quot;UI&quot;')
     expect(html).toContain('\\u003cscript>')
     expect(html).not.toContain('<script> $&')
@@ -49,7 +49,7 @@ it('persists branding, escapes HTML, publishes sized icons/ICO/manifest and rest
     await store.save({ icons: null })
     const restored = await fetch(base + '/webui-assets/icon-32.png', { redirect: 'manual' })
     expect(restored.status).toBe(302)
-    expect(restored.headers.get('location')).toBe('/icons/pwa-192x192.png')
+    expect(restored.headers.get('location')).toBe('/icons/icon-32.png')
   } finally {
     server.closeAllConnections()
     await new Promise<void>(resolve => server.close(() => resolve()))

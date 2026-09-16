@@ -5,7 +5,7 @@ Provider-backed model selector startup loading.
 
 #### Prerequisites/Setup
 1. Build the project with `pnpm run build`.
-2. Run a no-auth Docker container so Codex Web Local starts with OpenCode Zen fallback.
+2. Run a no-auth Docker container so Sidux starts with OpenCode Zen fallback.
 3. Open `http://127.0.0.1:<port>/#/` in the browser.
 
 #### Steps

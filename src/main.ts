@@ -5,7 +5,7 @@ import './style.css'
 import { t } from './composables/useUiLanguage'
 import { installFeedbackDiagnostics } from './composables/useFeedbackDiagnostics'
 
-console.log('Welcome to codexui. github: https://github.com/friuns2/codexUI')
+console.log('Welcome to Sidux. github: https://github.com/ERROR403XD/sidux')
 
 installFeedbackDiagnostics()
 

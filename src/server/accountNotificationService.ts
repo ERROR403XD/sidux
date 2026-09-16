@@ -109,7 +109,7 @@ export class AccountNotificationService {
     if (!settings.enabled || !settings.url) throw new Error('请先启用并保存通知配置。')
     let result = '测试发送结果未确认'
     try {
-      const response = await this.fetchImpl(settings.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: renderNoticeBody(settings.body, { message: 'CodexApp 通知测试：额度恢复通知渠道测试，此消息不代表真实额度重置。', account_id: '' }), redirect: 'error', signal: AbortSignal.timeout(10_000) })
+      const response = await this.fetchImpl(settings.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: renderNoticeBody(settings.body, { message: 'Sidux 通知测试：额度恢复通知渠道测试，此消息不代表真实额度重置。', account_id: '' }), redirect: 'error', signal: AbortSignal.timeout(10_000) })
       await response.body?.cancel()
       result = response.ok ? '测试通知已发送' : `测试通知失败：HTTP ${response.status}`
     } catch { /* Keep endpoint credentials and remote error payloads private. */ }
