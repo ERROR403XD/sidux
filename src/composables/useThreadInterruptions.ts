@@ -105,6 +105,12 @@ export function useThreadInterruptions() {
       })
       return
     }
+    if (notification.method === 'turn/started') {
+      const params = notification.params as { threadId?: string; thread_id?: string }
+      const threadId = params?.threadId || params?.thread_id || ''
+      if (threadId) updateIssues(threadId, [])
+      return
+    }
     if (notification.method !== 'codexapp/interruptions/changed') return
     const params = notification.params as { threadId?: string; issues?: ThreadInterruption[] }
     if (!params?.threadId || !Array.isArray(params.issues)) return

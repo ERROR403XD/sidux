@@ -5,7 +5,7 @@ import { expect, it, vi } from 'vitest'
 import { IgnoredQuotaErrors } from './ignoredQuotaErrors'
 import { ThreadInterruptionList } from './threadInterruptionList'
 
-it('keeps errors across reading, later success and restart; only per-turn ignore removes them, with undo and distinct later errors', async () => {
+it('keeps errors until a later turn starts; only per-turn ignore removes them, with undo and distinct later errors', async () => {
   const home = await mkdtemp(join(tmpdir(), 'interruptions-'))
   try {
     const marks = new IgnoredQuotaErrors(home)
@@ -18,11 +18,16 @@ it('keeps errors across reading, later success and restart; only per-turn ignore
     ])
     const expected = { a: [{ turnId: 'network', kind: 'error' }, { turnId: 'quota', kind: 'quota' }] }
     expect(await list.snapshot()).toEqual(expected)
-    await list.observe('turn/started', { threadId: 'a', turnId: 'new' })
     await list.observe('turn/completed', { threadId: 'a', turn: { id: 'new', status: 'completed' } })
     await list.observe('codexapp/completions/changed', { threadId: 'a', token: null })
     expect(await list.snapshot()).toEqual(expected)
     expect(await new ThreadInterruptionList(home, new IgnoredQuotaErrors(home)).snapshot()).toEqual(expected)
+    await list.observe('turn/started', { threadId: 'a', turnId: 'new' })
+    expect(await list.snapshot()).toEqual({})
+    expect(await new ThreadInterruptionList(home, new IgnoredQuotaErrors(home)).snapshot()).toEqual({})
+
+    await list.record('a', { id: 'network', status: 'failed', error: { message: 'connection reset' } })
+    await list.record('a', { id: 'quota', status: 'failed', error: { codexErrorInfo: 'usageLimitExceeded' } })
     await marks.set('a', 'quota', true)
     await list.publish('a')
     expect(await list.snapshot()).toEqual({ a: [expected.a[0]] })

@@ -36,7 +36,7 @@
         <p v-if="!status.keys.length">{{ t('尚未创建 API key。') }}</p>
         <p v-if="status.usage?.error" role="alert" class="api-proxy-error">{{ t(status.usage.error) }}</p>
         <div v-for="key in visibleKeys" :key="key.id" class="api-proxy-key-row">
-          <div class="api-proxy-key-copy"><div class="api-proxy-key-title"><strong>{{ key.name }}</strong><span>••••{{ key.suffix }}</span><small>{{ t('到期：') }}{{ t(key.expiresAt ? date(key.expiresAt) : '无限') }}</small><small>{{ t('最近使用：') }}{{ date(key.lastUsedAt) }}</small><span v-if="showInvalid || !key.enabled">{{ t(keyLabel(key)) }}</span><ConnectionEndpoints v-if="policyDrafts[key.id] && isCustomAccount(policyDrafts[key.id]!.account)" class="api-proxy-key-endpoints" :endpoints="customEndpoints(policyDrafts[key.id]!.account)" /></div>
+          <div class="api-proxy-key-copy"><div class="api-proxy-key-title"><strong>{{ key.name }}</strong><span>••••{{ key.suffix }}</span><small>{{ t('到期：') }}{{ t(key.expiresAt ? date(key.expiresAt) : '无限') }}</small><small>{{ t('最近使用：') }}{{ date(key.lastUsedAt) }}</small><span v-if="showInvalid || !key.enabled">{{ t(keyLabel(key)) }}</span></div>
             <div v-if="policyDrafts[key.id]" class="api-proxy-inline-policy">
               <AppSelect v-model="policyDrafts[key.id]!.account" :options="keyAccountOptions" enable-search :search-placeholder="t('搜索账号')" :disabled="busy || !!key.revokedAt" />
               <AppSwitch v-if="!isCustomAccount(policyDrafts[key.id]!.account)" class="api-proxy-check" v-model="policyDrafts[key.id]!.protected"  :disabled="busy || !!key.revokedAt">{{ t('受保护') }}</AppSwitch>
@@ -44,6 +44,7 @@
 
           </div>
           <div class="api-proxy-actions">
+            <ConnectionEndpoints v-if="policyDrafts[key.id] && isCustomAccount(policyDrafts[key.id]!.account)" class="api-proxy-key-endpoints" :endpoints="customEndpoints(policyDrafts[key.id]!.account)" />
             <AppSwitch :disabled="busy || isKeyBusy(key.id) || !!key.revokedAt" :model-value="key.enabled" @change="updateKey(key, { enabled: $event })">{{ t('启用') }}</AppSwitch>
             <AppButton :disabled="busy || !!key.revokedAt" @click="renameTarget = key; renameValue = key.name">{{ t('重命名') }}</AppButton>
             <AppButton :disabled="busy || !!key.revokedAt" @click="openCreate(key)">{{ t('轮换') }}</AppButton>
