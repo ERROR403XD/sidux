@@ -1,5 +1,6 @@
 import { AccountExecutionRegistry } from '../accountExecution.js'
 import { createServer, type Server } from 'node:http'
+import { connect } from 'node:net'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -639,5 +640,172 @@ describe('API key routing policy', () => {
       expect(JSON.parse(String((await received)[0])).type).toBe('response.completed')
       expect(prepared).toEqual([b])
     } finally { ws.terminate(); spy.mockRestore() }
+  })
+  it('keeps an aggregate model pinned to account B through a primary switch', async () => {
+    const f = await fixture()
+    const a = 'a'.repeat(64), b = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+    const aggregate = await f.gateway.store.createKey('aggregate-switch', null, { aggregateRoute: { enabled: true, entries: [{ model: 'slow', accountStorageId: b }] } })
+    const defaultAbort = new AbortController()
+    const aggregateAbort = new AbortController()
+    try {
+      const defaultResponse = await fetch(f.base + '/v1/responses', { method: 'POST', headers: f.headers(), body: JSON.stringify({ model: 'slow', stream: true }), signal: defaultAbort.signal })
+      const aggregateResponse = await fetch(f.base + '/v1/responses', { method: 'POST', headers: f.headers(aggregate.secret), body: JSON.stringify({ model: 'slow', stream: true }), signal: aggregateAbort.signal })
+      expect(defaultResponse.status).toBe(200)
+      expect(aggregateResponse.status).toBe(200)
+      f.setOperation({ kind: 'switch', storageId: b })
+      const release = await f.lifecycle().beforeMutation('switch', b)
+      release()
+      await vi.waitFor(() => expect([...f.gateway.activity.entries.values()].map(entry => entry.keyId)).toEqual([aggregate.key.id]))
+      expect([...f.gateway.activity.entries.values()][0]?.storageId).toBe(b)
+    } finally {
+      defaultAbort.abort()
+      aggregateAbort.abort()
+      f.setOperation(null)
+    }
+  })
+  it('rejects same-key WS continuation when the aggregate model changes accounts', async () => {
+    const f = await fixture()
+    const a = 'a'.repeat(64), b = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+    const generation = await f.gateway.component.prepare(null)
+    const prepared: string[] = []
+    const spy = vi.spyOn(ProxyComponent.prototype, 'prepare').mockImplementation(async id => { prepared.push(id!); return { ...generation, id: id!, storageId: id!, references: 0 } })
+    const key = await f.gateway.store.createKey('aggregate-continuation', null, { aggregateRoute: { enabled: true, entries: [{ model: 'gpt-a', accountStorageId: a }, { model: 'gpt-b', accountStorageId: b }] } })
+    const first = new WebSocket(f.base.replace('http:', 'ws:') + '/v1/responses', { headers: f.headers(key.secret) })
+    try {
+      await once(first, 'open')
+      const completed = once(first, 'message')
+      first.send(JSON.stringify({ type: 'response.create', model: 'gpt-a', input: [] }))
+      const previous = JSON.parse(String((await completed)[0])).response.id
+      first.terminate()
+      await once(first, 'close')
+
+      const second = new WebSocket(f.base.replace('http:', 'ws:') + '/v1/responses', { headers: f.headers(key.secret) })
+      try {
+        await once(second, 'open')
+        const rejected = once(second, 'message')
+        second.send(JSON.stringify({ type: 'response.create', model: 'gpt-b', previous_response_id: previous, input: [] }))
+        const payload = JSON.parse(String((await rejected)[0]))
+        expect(payload.error.code).toBe('previous_response_not_found')
+        expect(f.requests.filter(row => row.path === 'ws')).toHaveLength(1)
+        expect(prepared).toEqual([a, b])
+        await vi.waitFor(() => expect(f.gateway.activity.entries.size).toBe(0))
+      } finally { second.terminate() }
+    } finally { first.terminate(); spy.mockRestore() }
+  })
+  it('counts a dynamic aggregate upload before routing and force-stops it without upstream traffic', async () => {
+    const f = await fixture()
+    const a = 'a'.repeat(64), b = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+    const key = await f.gateway.store.createKey('aggregate-upload', null, { aggregateRoute: { enabled: true, entries: [{ model: 'gpt-b', accountStorageId: b }] } })
+    const port = Number(new URL(f.base).port)
+    const socket = connect(port, '127.0.0.1')
+    try {
+      await once(socket, 'connect')
+      socket.write(`POST /v1/responses HTTP/1.1\r\nHost: localhost\r\nAuthorization: Bearer ${key.secret}\r\nContent-Type: application/json\r\nContent-Length: 64\r\nConnection: close\r\n\r\n{"model":"gpt-b",`)
+      await vi.waitFor(() => expect(f.gateway.activity.snapshot().entries.some((row: any) => row.phase === 'reading')).toBe(true))
+      expect(f.gateway.activity.snapshot().activeRequests).toBe(1)
+      const stopped = await f.post('/codex-api/api-proxy/settings', { settings: { enabled: false }, force: true })
+      expect(stopped.status).toBe(200)
+      await vi.waitFor(() => expect(f.gateway.activity.entries.size).toBe(0))
+      expect(f.requests).toHaveLength(0)
+      expect(f.gateway.activity.entries.size).toBe(0)
+    } finally {
+      socket.destroy()
+    }
+  })
+  it('keeps an unbound aggregate upload when a primary switch does not affect its eventual account', async () => {
+    const f = await fixture()
+    const a = 'a'.repeat(64), b = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+    const key = await f.gateway.store.createKey('aggregate-switch-upload', null, { aggregateRoute: { enabled: true, entries: [{ model: 'gpt-b', accountStorageId: b }] } })
+    const socket = connect(Number(new URL(f.base).port), '127.0.0.1')
+    try {
+      await once(socket, 'connect')
+      socket.write(`POST /v1/responses HTTP/1.1\r\nHost: localhost\r\nAuthorization: Bearer ${key.secret}\r\nContent-Type: application/json\r\nContent-Length: 28\r\nConnection: close\r\n\r\n{"model":"gpt-b",`)
+      await vi.waitFor(() => expect(f.gateway.activity.snapshot().entries.some((row: any) => row.phase === 'reading')).toBe(true))
+      const release = await f.lifecycle().beforeMutation('switch', b)
+      release()
+      socket.write('"input":[]}')
+      await vi.waitFor(() => expect(f.requests).toHaveLength(1))
+      expect(f.requests[0]?.body.model).toBe('gpt-b')
+    } finally { socket.destroy() }
+  })
+  it('rechecks the primary-route block after a static account waits for its body', async () => {
+    const f = await fixture()
+    const socket = connect(Number(new URL(f.base).port), '127.0.0.1')
+    try {
+      await once(socket, 'connect')
+      socket.write(`POST /v1/responses HTTP/1.1\r\nHost: localhost\r\nAuthorization: Bearer ${f.first.secret}\r\nContent-Type: application/json\r\nContent-Length: 30\r\nConnection: close\r\n\r\n{"model":"fixture",`)
+      await vi.waitFor(() => expect(f.gateway.activity.entries.size).toBe(1))
+      expect([...f.gateway.activity.entries.values()][0]?.storageId).toBe('account')
+      f.setOperation({ kind: 'switch', storageId: 'other' })
+      socket.write('"input":[]}')
+      await vi.waitFor(() => expect(f.gateway.activity.entries.size).toBe(0))
+      expect(f.requests).toHaveLength(0)
+    } finally {
+      socket.destroy()
+      f.setOperation(null)
+    }
+  })
+  it('aborts an unbound aggregate upload when a listed target account is removed', async () => {
+    const f = await fixture()
+    const a = 'a'.repeat(64), b = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+    const key = await f.gateway.store.createKey('aggregate-remove', null, { aggregateRoute: { enabled: true, entries: [{ model: 'gpt-b', accountStorageId: b }] } })
+    const socket = connect(Number(new URL(f.base).port), '127.0.0.1')
+    try {
+      await once(socket, 'connect')
+      socket.write(`POST /v1/responses HTTP/1.1\r\nHost: localhost\r\nAuthorization: Bearer ${key.secret}\r\nContent-Type: application/json\r\nContent-Length: 64\r\nConnection: close\r\n\r\n{"model":"gpt-b",`)
+      await vi.waitFor(() => expect(f.gateway.activity.snapshot().entries.some((row: any) => row.phase === 'reading')).toBe(true))
+      const release = await f.lifecycle().beforeMutation('remove', b)
+      release()
+      await vi.waitFor(() => expect(f.gateway.activity.entries.size).toBe(0))
+      expect(f.requests).toHaveLength(0)
+    } finally { socket.destroy() }
+  })
+  it('does not start a second aggregate WebSocket prepare while the first frame is connecting', async () => {
+    const f = await fixture()
+    const account = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: account, accounts: [{ storageId: account }] })
+    const generation = await f.gateway.component.prepare(null)
+    const prepared: string[] = []
+    let releasePrepare!: () => void
+    const preparing = new Promise<void>(resolve => { releasePrepare = resolve })
+    const spy = vi.spyOn(ProxyComponent.prototype, 'prepare').mockImplementation(async id => {
+      prepared.push(id!)
+      await preparing
+      return { ...generation, id: id!, storageId: id!, references: 0 }
+    })
+    const key = await f.gateway.store.createKey('aggregate-double-first', null, { aggregateRoute: { enabled: true, entries: [{ model: 'gpt-b', accountStorageId: account }] } })
+    const ws = new WebSocket(f.base.replace('http:', 'ws:') + '/v1/responses', { headers: f.headers(key.secret) })
+    try {
+      await once(ws, 'open')
+      ws.send(JSON.stringify({ type: 'response.create', model: 'gpt-b', input: [] }))
+      await vi.waitFor(() => expect(prepared).toHaveLength(1))
+      ws.send(JSON.stringify({ type: 'response.create', model: 'gpt-b', input: [] }))
+      await sleep(20)
+      expect(prepared).toHaveLength(1)
+    } finally {
+      releasePrepare()
+      ws.terminate()
+      spy.mockRestore()
+    }
+  })
+  it('counts an aggregate WebSocket waiting for its first frame and drains it', async () => {
+    const f = await fixture()
+    const account = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: account, accounts: [{ storageId: account }] })
+    const key = await f.gateway.store.createKey('aggregate-waiting', null, { aggregateRoute: { enabled: true, entries: [{ model: 'gpt-b', accountStorageId: account }] } })
+    const ws = new WebSocket(f.base.replace('http:', 'ws:') + '/v1/responses', { headers: f.headers(key.secret) })
+    try {
+      await once(ws, 'open')
+      await vi.waitFor(() => expect(f.gateway.activity.snapshot().entries.some((row: any) => row.phase === 'waiting-first-frame')).toBe(true))
+      expect(f.gateway.activity.snapshot().activeRequests).toBe(0)
+      const drained = await f.post('/codex-api/api-proxy/drain', { draining: true })
+      expect(drained.status).toBe(200)
+      await vi.waitFor(() => expect(f.gateway.activity.entries.size).toBe(0))
+    } finally { ws.terminate() }
   })
 })
