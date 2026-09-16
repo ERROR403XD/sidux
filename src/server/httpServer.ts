@@ -253,7 +253,7 @@ export function createServer(options: ServerOptions = {}): ServerInstance {
           renderFrontendMissingHtml('Codex web UI assets are missing.', [
             `Expected: ${spaEntryFile}`,
             'If running from source, build frontend assets with: pnpm run build:frontend',
-            'If running with npx, clear the npx cache and reinstall codexapp.',
+            'If running with npx, clear the npx cache and reinstall the package.',
           ]),
         )
       return

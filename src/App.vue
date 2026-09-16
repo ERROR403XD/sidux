@@ -1695,8 +1695,8 @@ const contentTitle = computed(() => {
 })
 const browserHostName =
   typeof window !== 'undefined'
-    ? (window.location.hostname || window.location.host || 'codexui')
-    : 'codexui'
+    ? (window.location.hostname || window.location.host || 'sidux')
+    : 'sidux'
 const { branding } = useWebUiBranding()
 const pageTitle = computed(() => {
   const threadTitle = selectedThread.value?.title?.trim() ?? ''

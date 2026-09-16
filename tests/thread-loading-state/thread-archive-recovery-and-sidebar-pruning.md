@@ -20,7 +20,7 @@ Deleting a thread recovers from Codex `no rollout found` archive failures and re
 8. Switch to dark theme and repeat steps 1-5.
 
 #### Expected Results
-- Empty or not-yet-materialized threads are archived after CodexUI sets a fallback name and retries.
+- Empty or not-yet-materialized threads are archived after Sidux sets a fallback name and retries.
 - Already archived threads are treated as archived instead of surfacing a stale `no rollout found` error.
 - The sidebar prunes archived ids from its accumulated paginated list before refreshing.
 - Older unarchived threads may appear as the list refills, but archived threads do not remain visible.

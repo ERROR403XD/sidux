@@ -1,4 +1,4 @@
-### OpenCode Zen Provider & Wire API Selector in codexui
+### OpenCode Zen Provider & Wire API Selector in Sidux
 
 #### Feature/Change Name
 OpenCode Zen as built-in provider + API format selector for custom endpoints

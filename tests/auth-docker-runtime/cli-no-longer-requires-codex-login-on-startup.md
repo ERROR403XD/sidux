@@ -4,7 +4,7 @@
 - Use an empty disposable `CODEX_HOME`; do not remove or reuse the user's real `~/.codex/auth.json`.
 
 #### Steps
-1. Run `npx codexui` or `pnpm run dev`.
+1. Run the installed `sidux` command or `pnpm run dev`.
 2. Verify the CLI does not inspect authentication, print a login command, block, or prompt for login.
 3. Verify the server starts and the web UI loads successfully.
 4. Use the Provider dropdown in settings to select OpenRouter and start chatting without a Codex account.
