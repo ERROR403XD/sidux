@@ -13,7 +13,7 @@ Return to the [manual test index](../../tests.md).
 | [Feature: Codex.app Thread Provider Filter Patch (fix-codex-thread-filter.sh)](codex-app-thread-provider-filter-patch-fix-codex-thread-filter-sh.md) |
 | [Feature: Provider dropdown in settings (replaces free mode toggle)](provider-dropdown-in-settings-replaces-free-mode-toggle.md) |
 | [Codex CLI + OpenCode Zen Big Pickle Model](codex-cli-opencode-zen-big-pickle-model.md) |
-| [OpenCode Zen Provider & Wire API Selector in Sidux](opencode-zen-provider-and-wire-api-selector-in-codexui.md) |
+| [OpenCode Zen Provider & Wire API Selector in Sidux](opencode-zen-provider-and-wire-api-selector-in-sidux.md) |
 | [Provider Switch Model List Isolation](provider-switch-model-list-isolation.md) |
 | [Zen Proxy Port Resolution When Vite Auto-Increments](zen-proxy-port-resolution-when-vite-auto-increments.md) |
 | [Model List Search / Filter](model-list-search-filter.md) |
