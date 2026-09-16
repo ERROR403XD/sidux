@@ -2515,6 +2515,21 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .api-proxy-inline-policy { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
 .api-proxy-inline-policy .app-select { flex: 1; }
 .api-proxy-inline-policy .api-proxy-check { flex-shrink: 0; margin: 0; white-space: nowrap; }
+/* 主账号下拉框固定宽度：切换 OpenAI / 自定义连接不改变行宽。 */
+.api-proxy-inline-policy .app-select.api-proxy-key-account { flex: 0 0 260px; width: 260px; max-width: 100%; }
+.api-proxy-key-form .app-select.api-proxy-key-account { flex: 0 1 auto; width: 100%; }
+.api-proxy-key-recent { display: block; }
+.api-proxy-key-controls { flex: 0 1 auto; align-items: center; justify-content: flex-end; }
+.api-proxy-advanced-open { align-items: center; }
+.api-proxy-advanced-group { display: grid; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--ui-border); }
+.api-proxy-advanced-group .api-proxy-muted { margin: 0; }
+.api-proxy-route-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 220px) auto; gap: 8px; align-items: center; }
+.api-proxy-route-row .app-input { width: 100%; min-width: 0; }
+.api-proxy-route-account .composer-dropdown-trigger { width: 100%; }
+@media (max-width: 767px) {
+  .api-proxy-inline-policy .app-select.api-proxy-key-account { flex: 1 1 auto; width: 100%; }
+  .api-proxy-route-row { grid-template-columns: minmax(0, 1fr); }
+}
 .api-proxy-key-row > .api-proxy-actions { gap: 8px; }
 .account-actions-menu { padding: 8px; gap: 4px; box-sizing: border-box; }
 .account-actions-menu .app-button { width: 100%; min-width: 0; justify-content: flex-start; margin: 0; box-sizing: border-box; }

@@ -7,7 +7,7 @@
       :class="{ 'is-supported': endpoints.includes(endpoint.value) }"
       role="listitem"
       :aria-label="`${endpoint.label}: ${t(endpoints.includes(endpoint.value) ? '支持' : '不支持')}`"
-      :title="`${endpoint.value}: ${t(endpoints.includes(endpoint.value) ? '支持' : '不支持')}`"
+      :title="showTooltips ? `${endpoint.value}: ${t(endpoints.includes(endpoint.value) ? '支持' : '不支持')}` : undefined"
     >{{ endpoint.label }}</span>
   </div>
 </template>
@@ -16,7 +16,7 @@
 import { t } from '../../composables/useUiLanguage'
 import type { CustomEndpoint } from '../../customConnections'
 
-defineProps<{ endpoints: CustomEndpoint[] }>()
+withDefaults(defineProps<{ endpoints: CustomEndpoint[]; showTooltips?: boolean }>(), { showTooltips: true })
 const endpointOptions: { value: CustomEndpoint; label: string }[] = [
   { value: '/v1/models', label: 'models' },
   { value: '/v1/responses', label: 'responses' },
