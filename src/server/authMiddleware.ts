@@ -176,7 +176,7 @@ const LOGIN_PAGE_HTML = `<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Codex Web</title>
+<title>Sidux</title>
 <link rel="icon" type="image/png" href="/webui-assets/icon-32.png">
 <link rel="apple-touch-icon" href="/webui-assets/icon-180.png">
 <style>
@@ -195,7 +195,7 @@ button:hover{background:#2563eb}
 <body>
 <div class="card">
 <img src="/webui-assets/icon-192.png" alt="" width="56" height="56" style="display:block;object-fit:contain;margin:0 auto 16px">
-<h1>Codex Web</h1>
+<h1>Sidux</h1>
 <form id="f">
 <label for="pw">Password</label>
 <input id="pw" name="password" type="password" autocomplete="current-password" autofocus required>

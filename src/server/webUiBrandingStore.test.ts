@@ -4,7 +4,17 @@ import { tmpdir } from 'node:os'
 import { createServer } from 'node:http'
 import { expect, it } from 'vitest'
 import { WebUiBrandingStore } from './webUiBrandingStore'
-import { webUiDocumentTitle, webUiIconSizes } from '../webUiBranding'
+import { defaultWebUiBranding, webUiDocumentTitle, webUiIconSizes } from '../webUiBranding'
+
+it('defaults new profiles to the fixed Sidux brand', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'webui-branding-default-'))
+  try {
+    expect(await new WebUiBrandingStore(home).snapshot()).toEqual(defaultWebUiBranding)
+    expect(defaultWebUiBranding).toEqual({ title: 'Sidux', titleMode: 'fixed', logoVersion: '' })
+  } finally {
+    await rm(home, { recursive: true, force: true })
+  }
+})
 
 it('persists branding, escapes HTML, publishes sized icons/ICO/manifest and restores defaults', async () => {
   const home = await mkdtemp(join(tmpdir(), 'webui-branding-'))
@@ -49,7 +59,7 @@ it('persists branding, escapes HTML, publishes sized icons/ICO/manifest and rest
     await store.save({ icons: null })
     const restored = await fetch(base + '/webui-assets/icon-32.png', { redirect: 'manual' })
     expect(restored.status).toBe(302)
-    expect(restored.headers.get('location')).toBe('/icons/pwa-192x192.png')
+    expect(restored.headers.get('location')).toBe('/icons/icon-32.png')
   } finally {
     server.closeAllConnections()
     await new Promise<void>(resolve => server.close(() => resolve()))

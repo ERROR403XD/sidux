@@ -163,7 +163,7 @@
                 <CustomConnections @changed="onCustomConnectionsChanged" />
               </div>
               <footer class="account-panel-footer">
-                <div class="account-versions"><span>Codex {{ t(runtimeCapabilities?.cliVersion || '检测中…') }}</span><span>CodexApp {{ runtimeCapabilities?.appVersion || appVersion }}</span></div>
+                <div class="account-versions"><span>Codex {{ t(runtimeCapabilities?.cliVersion || '检测中…') }}</span><span>Sidux {{ runtimeCapabilities?.appVersion || appVersion }}</span></div>
                 <AppButton @click="openSettings">{{ t('全局设置 →') }}</AppButton>
               </footer>
             </div>
@@ -354,7 +354,7 @@
       <div class="notification-message-field"><label>{{ t('Allowed Telegram user IDs') }}<textarea v-model="telegramAllowedUserIdsDraft" class="app-input" rows="5" placeholder="123456789&#10;987654321&#10;*" spellcheck="false" :disabled="isTelegramSaving" /></label></div>
       <div class="notification-actions">
         <p v-if="telegramConfigError" class="account-panel-error" role="alert">{{ t(telegramConfigError) }}</p>
-        <AppButton :busy="isTelegramSaving" @click="saveTelegramConfig()">{{ t('保存Telegram设置') }}</AppButton>
+        <AppButton :variant="telegramConfigChanged ? 'primary' : 'default'" :busy="isTelegramSaving" @click="saveTelegramConfig()">{{ t('保存配置') }}</AppButton>
         <AppButton :disabled="isTelegramSaving || !telegramNotificationsEnabledDraft" @click="testTelegramNotification">{{ t('发送测试通知') }}</AppButton>
       </div>
       <div class="notification-quiet">
@@ -368,7 +368,7 @@
     </section>
   </div>
 </template>
-<template #about><div class="settings-about-versions"><div class="account-versions"><span>Codex {{ t(runtimeCapabilities?.cliVersion || '检测中…') }}</span><span>CodexApp {{ runtimeCapabilities?.appVersion || appVersion }}</span></div>
+<template #about><div class="settings-about-versions"><div class="account-versions"><span>Codex {{ t(runtimeCapabilities?.cliVersion || '检测中…') }}</span><span>Sidux {{ runtimeCapabilities?.appVersion || appVersion }}</span></div>
 <p v-if="runtimeCapabilities && runtimeCapabilities.appVersion !== appVersion" role="alert">{{ t('前端版本') }} {{ appVersion }} {{ t('与服务端版本不同，请刷新页面。') }}</p></div>
 <details class="runtime-capabilities"><summary>{{ t('运行版本与能力') }}</summary>
 <template v-if="runtimeCapabilities"><p>{{ t('模型：动态目录 · 工具：轻量摘要') }}</p><p>{{ t('异步问题：已接入') }}</p><p>{{ t('原生历史分页：') }}{{ t(runtimeCapabilities.features?.historyPaging ? '可用' : 'CLI 未声明，使用兼容路径') }}</p><p>{{ t('协议') }} {{ t(runtimeCapabilities.experimental ? 'experimental' : '默认') }} · {{ runtimeCapabilities.schemaHash.slice(0,12) }}</p><p>{{ t('CLI 声明') }} {{ runtimeCapabilities.methods.length }} {{ t('个方法，声明数量不代表客户端支持率。') }}</p><p>{{ t('检测时间') }} {{ runtimeCapabilities.generatedAt }}</p></template>
@@ -1576,6 +1576,16 @@ const telegramQuietDraft = ref({ quietEnabled: false, quietStart: '22:00', quiet
 const telegramAllowedUserIdsDraft = ref('')
 const telegramConfigError = ref('')
 const isTelegramSaving = ref(false)
+const savedTelegramConfiguration = ref('')
+const telegramConfigChanged = computed(() => savedTelegramConfiguration.value !== telegramConfigurationSnapshot())
+function telegramConfigurationSnapshot(): string {
+  return JSON.stringify({
+    botToken: telegramBotTokenDraft.value.trim(),
+    notificationsEnabled: telegramNotificationsEnabledDraft.value,
+    quiet: telegramQuietDraft.value,
+    allowedUserIds: parseTelegramAllowedUserIdsInput(telegramAllowedUserIdsDraft.value),
+  })
+}
 const isCreateFolderOpen = ref(false)
 const createFolderDraft = ref('')
 const createFolderError = ref('')
@@ -2303,6 +2313,7 @@ async function refreshTelegramConfig(): Promise<void> {
     telegramNotificationsEnabledDraft.value = config.notificationsEnabled
     telegramQuietDraft.value = { quietEnabled: config.quietEnabled, quietStart: config.quietStart, quietEnd: config.quietEnd }
     telegramAllowedUserIdsDraft.value = config.allowedUserIds.map((value) => String(value)).join('\n')
+    savedTelegramConfiguration.value = telegramConfigurationSnapshot()
     telegramConfigError.value = ''
   } catch (error) {
     telegramConfigError.value = error instanceof Error ? error.message : 'Failed to load Telegram configuration'

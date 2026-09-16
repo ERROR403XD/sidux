@@ -9,8 +9,8 @@ export function applyWebUiBranding(value: WebUiBranding): void {
   }
   const manifest = document.querySelector<HTMLLinkElement>('link[rel=manifest]')
   if (manifest) manifest.href = `/manifest.webmanifest?v=${encodeURIComponent(`${value.logoVersion}-${value.title}`)}`
-  document.querySelector('meta[name=apple-mobile-web-app-title]')?.setAttribute('content', value.title || 'Codex Web')
-  document.querySelector('meta[name=application-name]')?.setAttribute('content', value.title || 'Codex Web')
+  document.querySelector('meta[name=apple-mobile-web-app-title]')?.setAttribute('content', value.title || 'Sidux')
+  document.querySelector('meta[name=application-name]')?.setAttribute('content', value.title || 'Sidux')
 }
 export function useWebUiBranding() { return { branding, applyWebUiBranding } }
 if (typeof document !== 'undefined') {

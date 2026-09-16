@@ -19,8 +19,8 @@
         <p class="api-proxy-muted">{{ t('当前实际 API 账号：') }}{{ status.settings.enabled ? accountName(status.selectedStorageId || status.settings.accountStorageId || status.accounts.activeStorageId) : t('未启用') }}</p>
         <p class="api-proxy-muted">{{ t('切换时等待当前请求结束。') }}</p>
         <div class="api-proxy-actions">
-          <AppButton :busy="busy" @click="save(false)">{{ t('保存') }}</AppButton>
-          <AppButton variant="danger" :disabled="busy" @click="forceDialog = true">{{ t('中断活动连接并保存…') }}</AppButton>
+          <AppButton :variant="hasSettingsChanges ? 'primary' : 'default'" :busy="busy" @click="save(false)">{{ t('保存配置') }}</AppButton>
+          <AppButton variant="danger" :disabled="busy" @click="forceDialog = true">{{ t('中断活动连接并保存配置…') }}</AppButton>
         </div>
       </section>
       <section class="api-proxy-card">
@@ -30,24 +30,22 @@
             <AppButton :disabled="busy" @click="openCreate()">{{ t('创建API key') }}</AppButton>
             <AppButton @click="showInvalid = !showInvalid">{{ t(showInvalid ? '返回生效 API key' : '查看失效 API key') }}</AppButton>
             <AppButton @click="usageDialog = true">{{ t('Token统计') }}</AppButton>
-            <AppButton :busy="savingPolicies" @click="savePolicies">{{ t('保存配置') }}</AppButton>
+            <AppButton :variant="hasPolicyChanges ? 'primary' : 'default'" :busy="savingPolicies" @click="savePolicies">{{ t('保存配置') }}</AppButton>
           </div>
         </div>
         <p v-if="!status.keys.length">{{ t('尚未创建 API key。') }}</p>
         <p v-if="status.usage?.error" role="alert" class="api-proxy-error">{{ t(status.usage.error) }}</p>
         <div v-for="key in visibleKeys" :key="key.id" class="api-proxy-key-row">
-          <div class="api-proxy-key-copy"><div class="api-proxy-key-title"><strong>{{ key.name }}</strong><span>••••{{ key.suffix }}</span><small>{{ t('到期：') }}{{ t(key.expiresAt ? date(key.expiresAt) : '无限') }}</small><span v-if="showInvalid || !key.enabled">{{ t(keyLabel(key)) }}</span></div>
-            <small>{{ t('最近使用：') }}{{ date(key.lastUsedAt) }}</small>
+          <div class="api-proxy-key-copy"><div class="api-proxy-key-title"><strong>{{ key.name }}</strong><span>••••{{ key.suffix }}</span><small>{{ t('到期：') }}{{ t(key.expiresAt ? date(key.expiresAt) : '无限') }}</small><small>{{ t('最近使用：') }}{{ date(key.lastUsedAt) }}</small><span v-if="showInvalid || !key.enabled">{{ t(keyLabel(key)) }}</span><ConnectionEndpoints v-if="policyDrafts[key.id] && isCustomAccount(policyDrafts[key.id]!.account)" class="api-proxy-key-endpoints" :endpoints="customEndpoints(policyDrafts[key.id]!.account)" /></div>
             <div v-if="policyDrafts[key.id]" class="api-proxy-inline-policy">
               <AppSelect v-model="policyDrafts[key.id]!.account" :options="keyAccountOptions" enable-search :search-placeholder="t('搜索账号')" :disabled="busy || !!key.revokedAt" />
-              <span v-if="isCustomAccount(policyDrafts[key.id]!.account)" class="api-proxy-muted">{{ customEndpoints(policyDrafts[key.id]!.account).join(' · ') }}</span>
               <AppSwitch v-if="!isCustomAccount(policyDrafts[key.id]!.account)" class="api-proxy-check" v-model="policyDrafts[key.id]!.protected"  :disabled="busy || !!key.revokedAt">{{ t('受保护') }}</AppSwitch>
             </div>
 
           </div>
           <div class="api-proxy-actions">
-            <AppButton :disabled="busy || !!key.revokedAt" @click="renameTarget = key; renameValue = key.name">{{ t('重命名') }}</AppButton>
             <AppSwitch :disabled="busy || isKeyBusy(key.id) || !!key.revokedAt" :model-value="key.enabled" @change="updateKey(key, { enabled: $event })">{{ t('启用') }}</AppSwitch>
+            <AppButton :disabled="busy || !!key.revokedAt" @click="renameTarget = key; renameValue = key.name">{{ t('重命名') }}</AppButton>
             <AppButton :disabled="busy || !!key.revokedAt" @click="openCreate(key)">{{ t('轮换') }}</AppButton>
             <AppButton variant="danger" :disabled="busy || !!key.revokedAt" @click="revokeTarget = key; interruptKey = false">{{ t('撤销…') }}</AppButton>
           </div>
@@ -112,10 +110,10 @@
       <p v-if="isCustomAccount(keyAccountDraft)" class="api-proxy-muted">{{ customEndpoints(keyAccountDraft).join(' · ') }}</p>
         <AppSwitch v-if="!isCustomAccount(keyAccountDraft)" class="api-proxy-check" v-model="keyProtectedDraft"  :disabled="busy">{{ t('受保护') }}</AppSwitch>
       <p class="api-proxy-muted">{{ t('保护值在账号设置中配置，受保护Key共享所选账号的预留额度。保存会断开此Key的旧连接。') }}</p>
-      <template #footer><AppButton :disabled="busy" @click="policyTarget = null">{{ t('取消') }}</AppButton><AppButton :busy="busy" @click="savePolicy">{{ t('保存') }}</AppButton></template>
+      <template #footer><AppButton :disabled="busy" @click="policyTarget = null">{{ t('取消') }}</AppButton><AppButton :variant="policyTargetHasChanges ? 'primary' : 'default'" :busy="busy" @click="savePolicy">{{ t('保存配置') }}</AppButton></template>
     </AppDialog>
     <AppDialog :open="!!renameTarget" :title="t('重命名 API key')" :busy="busy" size="compact" @close="renameTarget = null"><input v-model="renameValue" class="app-input" maxlength="80" data-autofocus /><template #footer><AppButton :busy="busy" @click="renameKey">{{ t('保存') }}</AppButton></template></AppDialog>
-    <AppDialog :open="forceDialog" :title="t('中断活动连接并保存')" :busy="busy" size="compact" @close="forceDialog = false"><p>{{ t('将中断') }} {{ status?.activity.connections || 0 }} {{ t('个连接，其中') }} {{ status?.activity.activeRequests || 0 }} {{ t('个请求正在处理。客户端会收到中断，需要重新连接。') }}</p><template #footer><AppButton :disabled="busy" @click="forceDialog = false">{{ t('取消') }}</AppButton><AppButton variant="danger" :busy="busy" @click="save(true)">{{ t('中断并保存') }}</AppButton></template></AppDialog>
+    <AppDialog :open="forceDialog" :title="t('中断活动连接并保存配置')" :busy="busy" size="compact" @close="forceDialog = false"><p>{{ t('将中断') }} {{ status?.activity.connections || 0 }} {{ t('个连接，其中') }} {{ status?.activity.activeRequests || 0 }} {{ t('个请求正在处理。客户端会收到中断，需要重新连接。') }}</p><template #footer><AppButton :disabled="busy" @click="forceDialog = false">{{ t('取消') }}</AppButton><AppButton variant="danger" :busy="busy" @click="save(true)">{{ t('中断并保存配置') }}</AppButton></template></AppDialog>
   </div>
 </template>
 
@@ -128,10 +126,12 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppButton from '../common/AppButton.vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppSelect from '../common/AppSelect.vue'
+import ConnectionEndpoints from '../accounts/ConnectionEndpoints.vue'
 import { formatLocalDateTime, displayTimeZone } from '../../dateTime'
 import { emptyUsage } from '../../api/proxyUsageTypes'
 import { copyTextToClipboard } from '../../utils/clipboard'
 import { apiProxyRequest, visibleApiProxyKeys, type ApiProxyKey, type ApiProxySettings, type ApiProxyStatus } from '../../api/apiProxy'
+import type { CustomEndpoint } from '../../customConnections'
 
 const showInvalid = ref(false)
 const usageDialog = ref(false)
@@ -148,6 +148,7 @@ const selectedUsage = computed(() => {
 })
 const policyDrafts = ref<Record<string, { account: string; protected: boolean }>>({})
 const visibleKeys = computed(() => visibleApiProxyKeys(status.value?.keys || [], showInvalid.value))
+const hasPolicyChanges = computed(() => pendingPolicyUpdates().length > 0)
 function pendingPolicyUpdates(): Array<{ key: ApiProxyKey; accountStorageId: string | null; protected: boolean }> {
   const rows: Array<{ key: ApiProxyKey; accountStorageId: string | null; protected: boolean }> = []
   for (const key of status.value?.keys || []) {
@@ -192,6 +193,10 @@ const interruptKey = ref(false)
 const policyTarget = ref<ApiProxyKey | null>(null)
 const keyAccountDraft = ref('global')
 const keyProtectedDraft = ref(false)
+const policyTargetHasChanges = computed(() => {
+  if (!policyTarget.value) return false
+  return (policyTarget.value.accountStorageId || null) !== keyPolicy().accountStorageId || !!policyTarget.value.protected !== keyPolicy().protected
+})
 const keyAccountOptions = computed(() => [{ value: 'global', label: t('全局账号') }, ...accountOptions.value.filter(option => option.value !== 'follow')])
 const usageWindow = ref<'cumulative' | 'today' | 'week'>('cumulative')
 const usageWindows = [{ value: 'cumulative', label: '累计' }, { value: 'today', label: '今日' }, { value: 'week', label: '近 7 天' }]
@@ -200,13 +205,18 @@ let timer: ReturnType<typeof setInterval> | undefined
 let refreshing = false
 let disposed = false
 const selectedAccount = computed({ get: () => settings.value.accountStorageId || 'follow', set: value => { settings.value.accountStorageId = value === 'follow' ? null : value } })
+const hasSettingsChanges = computed(() => {
+  if (!status.value) return false
+  return JSON.stringify(settings.value) !== JSON.stringify(status.value.settings)
+})
 const accountOptions = computed(() => [{ value: 'follow', label: t('跟随 WebUI 当前账号') }, ...(status.value?.accounts.accounts || []).map(account => ({ value: account.storageId, label: `${accountDisplayName(account)} · ${t(accountStatusLabel(account.authStatus))}` }))])
 const baseUrl = `${window.location.origin}/v1`
 const keyActivityCount = computed(() => status.value?.activity.entries.filter(entry => entry.keyId === revokeTarget.value?.id).length || 0)
-const clientConfig = `model_provider = "codexapp_gateway"\nmodel = "gpt-5.6-luna"\n\n[model_providers.codexapp_gateway]\nname = "CodexApp API"\nbase_url = "${baseUrl}"\nenv_key = "CODEXAPP_API_KEY"\nwire_api = "responses"\nrequires_openai_auth = false\nsupports_websockets = true`
-function customEndpoints(id: string): string[] {
+const clientConfig = `model_provider = "sidux_gateway"\nmodel = "gpt-5.6-luna"\n\n[model_providers.sidux_gateway]\nname = "Sidux API"\nbase_url = "${baseUrl}"\nenv_key = "SIDUX_API_KEY"\nwire_api = "responses"\nrequires_openai_auth = false\nsupports_websockets = true`
+function customEndpoints(id: string): CustomEndpoint[] {
   const resolved = ['global', 'follow'].includes(id) ? settings.value.accountStorageId || status.value?.accounts.activeStorageId : id
-  return status.value?.accounts.accounts.find(row => row.storageId === resolved)?.supportedEndpoints || []
+  return (status.value?.accounts.accounts.find(row => row.storageId === resolved)?.supportedEndpoints || [])
+    .filter((endpoint): endpoint is CustomEndpoint => ['/v1/models', '/v1/responses', '/v1/chat/completions'].includes(endpoint))
 }
 function isCustomAccount(id: string): boolean {
   const resolved = ['global', 'follow'].includes(id) ? settings.value.accountStorageId || status.value?.accounts.activeStorageId : id

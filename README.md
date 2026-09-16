@@ -1,11 +1,11 @@
-# CodexApp
+# Sidux
 
 **中文** | [English](README.en.md)
 
 [![Release](https://img.shields.io/github/v/release/ERROR403XD/codexapp)](https://github.com/ERROR403XD/codexapp/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-CodexApp 是基于 Codex app-server 的自托管 Web 界面，让你在桌面、平板和手机浏览器中管理项目、会话、账号与自动化任务。当前发布基线为 **0.2.17**。这是社区维护的独立项目，与 OpenAI 官方产品没有隶属关系。
+Sidux（原 CodexApp）是基于 Codex app-server 的自托管 Web 界面，让你在桌面、平板和手机浏览器中管理项目、会话、账号与自动化任务。当前发布基线为 **0.2.17**。这是社区维护的独立项目，与 OpenAI 官方产品没有隶属关系。
 
 ## 使用边界与政策遵循
 
@@ -30,7 +30,7 @@ CodexApp 是基于 Codex app-server 的自托管 Web 界面，让你在桌面、
 
 因此，本项目从 GitHub 源码版本接续开发，不以被报告投毒的 npm 发布包为开发基线；此处“未投毒的 GitHub 版本”指未包含该报告所述发布包注入代码的源码基线，不代表对所有历史代码和依赖作出绝对安全保证。本分支保留上游来源，并以审核后的源码快照发布，发行包从本仓库源码构建。事件细节以所链接的公开报告为准，不将其扩展为未经独立核实的结论。
 
-**请使用本仓库的源码或 [GitHub Releases](https://github.com/ERROR403XD/codexapp/releases)。** 包名和命令仍保留 `codexapp` 以兼容现有部署，但本次 GitHub 发布不代表 npm 同名包由本仓库控制；不要用 `npx codexapp` 或 `npm install -g codexapp` 获取本分支。
+**请使用本仓库的源码或 [GitHub Releases](https://github.com/ERROR403XD/codexapp/releases)。** 新命令为 `sidux`；`codexapp` 和 `codexui` 继续作为兼容别名。现有仓库地址、数据目录、环境变量和服务名暂不迁移，以免破坏升级与回滚。
 
 ## 功能概览
 

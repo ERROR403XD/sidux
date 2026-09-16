@@ -31,7 +31,7 @@ describe('minimal feedback report', () => {
     const event = { preventDefault: vi.fn() } as unknown as MouseEvent
     openFeedbackReport(event)
     expect(event.preventDefault).toHaveBeenCalledOnce()
-    expect(feedbackReport.value).toContain('CodexApp')
+    expect(feedbackReport.value).toContain('Sidux')
     expect(FEEDBACK_URL).toBe('https://github.com/ERROR403XD/codexapp/issues')
   })
   it('bounds reports and deduplicates identical latest entries', () => {

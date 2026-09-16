@@ -1,7 +1,7 @@
 {
   "name": "codexapp",
-  "version": "0.2.20-dev.2",
-  "description": "A lightweight web interface for Codex that runs on top of the Codex app-server, allowing remote access from any browser",
+  "version": "0.2.20-dev.3",
+  "description": "Sidux is a lightweight web interface for Codex that runs on top of the Codex app-server, allowing remote access from any browser",
   "type": "module",
   "license": "MIT",
   "author": "Pavel Voronin, Igor Levochkin",
@@ -27,6 +27,7 @@
     "node": ">=18"
   },
   "bin": {
+    "sidux": "dist-cli/index.js",
     "codexapp": "dist-cli/index.js",
     "codexui": "dist-cli/index.js"
   },

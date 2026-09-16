@@ -9977,7 +9977,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           return
         }
         try {
-          await telegramBridge.sendTestNotification(chatIds, payload?.language === 'zh-CN' ? 'CodexApp 测试通知' : 'CodexApp test notification')
+          await telegramBridge.sendTestNotification(chatIds, payload?.language === 'zh-CN' ? 'Sidux 测试通知' : 'Sidux test notification')
           setJson(res, 200, { ok: true })
         } catch {
           setJson(res, 502, { error: '测试通知发送失败。' })

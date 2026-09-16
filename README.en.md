@@ -1,11 +1,11 @@
-# CodexApp
+# Sidux
 
 [中文](README.md) | **English**
 
 [![Release](https://img.shields.io/github/v/release/ERROR403XD/codexapp)](https://github.com/ERROR403XD/codexapp/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-CodexApp is a self-hosted web interface for Codex app-server. Manage projects, conversations, accounts, and automations from desktop, tablet, or phone browsers. The release baseline is **0.2.17**. This is an independently maintained community project, unaffiliated with OpenAI.
+Sidux (formerly CodexApp) is a self-hosted web interface for Codex app-server. Manage projects, conversations, accounts, and automations from desktop, tablet, or phone browsers. The release baseline is **0.2.17**. This is an independently maintained community project, unaffiliated with OpenAI.
 
 ## Acceptable use and policy compliance
 
@@ -30,7 +30,7 @@ This project is forked from [friuns2/codex-mobile](https://github.com/friuns2/co
 
 This fork therefore continues development from the GitHub source, rather than the reportedly poisoned npm distribution. “Unpoisoned GitHub version” refers to the source baseline without the distribution-only injection described in that report; it is not a blanket security guarantee for all historical code or dependencies. Upstream ancestry is retained, while local development is published as a reviewed source snapshot, and release packages are built from this repository. The linked report is the source for the incident description, not an independently verified conclusion about every upstream release.
 
-**Install from this repository or its [GitHub Releases](https://github.com/ERROR403XD/codexapp/releases).** The package and command names remain `codexapp` for compatibility, but this GitHub release does not establish control over the same-named npm package. Do not use `npx codexapp` or `npm install -g codexapp` to obtain this fork.
+**Install from this repository or its [GitHub Releases](https://github.com/ERROR403XD/codexapp/releases).** The new command is `sidux`; `codexapp` and `codexui` remain compatibility aliases. Existing repository URLs, data paths, environment variables, and service names are not migrated yet so upgrades and rollbacks keep working.
 
 ## Features
 

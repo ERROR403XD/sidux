@@ -1,5 +1,5 @@
 export type WebUiBranding = { title: string; titleMode: 'fixed' | 'prefix'; logoVersion: string }
-export const defaultWebUiBranding: WebUiBranding = { title: '', titleMode: 'prefix', logoVersion: '' }
+export const defaultWebUiBranding: WebUiBranding = { title: 'Sidux', titleMode: 'fixed', logoVersion: '' }
 export const webUiIconSizes = [32, 64, 150, 180, 192, 512] as const
 export function webUiDocumentTitle(settings: WebUiBranding, threadTitle: string, fallback: string): string {
   const title = settings.title.trim()

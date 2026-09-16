@@ -24,7 +24,7 @@ import { spawnSyncCommand } from '../utils/commandInvocation.js'
 import { listenOnPort } from './listenOnPort.js'
 import { maintainAutomationHistory } from '../server/automationHistoryMaintenance.js'
 
-const program = new Command().name('codexui').description('Web interface for Codex app-server')
+const program = new Command().name('sidux').description('Sidux web interface for Codex app-server')
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 program.command('automation-history')
@@ -293,7 +293,7 @@ async function startServer(options: {
 
   const lines = [
     '',
-    'Codex Web Local is running!',
+    'Sidux is running!',
     `  Version:  ${version}`,
     '  GitHub:   https://github.com/friuns2/codexui',
     '',
@@ -415,12 +415,12 @@ program
     await startServer({ ...opts, projectPath: launchProject })
   })
 
-program.command('help').description('Show codexui command help').action(() => {
+program.command('help').description('Show Sidux command help').action(() => {
   program.outputHelp()
 })
 
 program.parseAsync(process.argv).catch((error) => {
   const message = error instanceof Error ? error.message : String(error)
-  console.error(`\nFailed to run codexui: ${message}`)
+  console.error(`\nFailed to run Sidux: ${message}`)
   process.exit(1)
 })

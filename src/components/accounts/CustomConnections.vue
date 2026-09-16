@@ -25,7 +25,7 @@
         <div class="custom-connection-footer-actions">
           <AppButton v-if="draft.storageId" variant="danger" :disabled="busy" @click="remove">{{ t(confirmRemove ? '确认移除' : '移除') }}</AppButton>
           <AppButton v-else :disabled="busy" @click="dialog = false">{{ t('取消') }}</AppButton>
-          <AppButton :disabled="busy || !testToken" @click="save">{{ t('确定') }}</AppButton>
+          <AppButton :variant="hasChanges ? 'primary' : 'default'" :disabled="busy || !testToken" @click="save">{{ t('保存配置') }}</AppButton>
         </div>
       </template>
     </AppDialog>
@@ -33,7 +33,7 @@
 </template>
 <script setup lang="ts">
 import { notifyOperation } from '../../composables/useOperationToast'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { t } from '../../composables/useUiLanguage'
 import { useCustomConnections, customConnectionRequest } from '../../composables/useCustomConnections'
 import { customConnectionEndpoints, type CustomEndpoint, customProviderPresets, type CustomConnection, type CustomConnectionDraft, type CustomConnectionSnapshot } from '../../customConnections'
@@ -50,9 +50,12 @@ const testToken = ref('')
 const testedEndpoints = ref<CustomEndpoint[]>([])
 const confirmRemove = ref(false)
 const draft = ref<CustomConnectionDraft>({ alias: '', provider: 'openrouter', baseUrl: customProviderPresets[0]!.baseUrl, apiKey: '', model: '', wireApi: 'responses' })
+const savedConfiguration = ref('')
+const hasChanges = computed(() => savedConfiguration.value !== JSON.stringify(draft.value))
 watch(draft, () => { testToken.value = ''; testedEndpoints.value = []; confirmRemove.value = false }, { deep: true, flush: 'sync' })
 function open(connection?: CustomConnection): void {
   draft.value = connection ? { storageId: connection.storageId, alias: connection.alias, provider: connection.provider, baseUrl: connection.baseUrl, apiKey: '', model: connection.model, wireApi: connection.wireApi } : { alias: '', provider: 'openrouter', baseUrl: customProviderPresets[0]!.baseUrl, apiKey: '', model: '', wireApi: 'responses' }
+  savedConfiguration.value = JSON.stringify(draft.value)
   testedEndpoints.value = connection ? customConnectionEndpoints(connection) : []
   error.value = ''
   testToken.value = ''

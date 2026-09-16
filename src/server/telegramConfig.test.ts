@@ -45,7 +45,7 @@ it('persists the switch with credentials and chat IDs, migrates legacy config, a
     expect((await getConfig()).notificationsEnabled).toBe(true)
     expect(enabled).toHaveBeenLastCalledWith(true)
     expect((await post('test', { language: 'en' })).status).toBe(200)
-    expect(send).toHaveBeenCalledExactlyOnceWith([123], 'CodexApp test notification')
+    expect(send).toHaveBeenCalledExactlyOnceWith([123], 'Sidux test notification')
     expect(token).toHaveBeenLastCalledWith('fixture-token')
     expect(start).toHaveBeenCalled()
     const quiet = { quietEnabled: true, quietStart: '23:00', quietEnd: '07:30', timezone: 'America/New_York' }
