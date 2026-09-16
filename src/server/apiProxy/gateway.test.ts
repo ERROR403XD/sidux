@@ -1,6 +1,6 @@
 import { AccountExecutionRegistry } from '../accountExecution.js'
 import { createServer, type Server } from 'node:http'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { once } from 'node:events'
@@ -510,4 +510,121 @@ it('keeps publication activation freeze separate from account switching, normal 
     f.setOperation(null)
     expect((await f.post('/v1/responses', { model: 'fixture' })).status).toBe(200)
   } finally { controller.abort() }
+})
+
+describe('API key routing policy', () => {
+  it('normalizes route settings, keeps model case, and rejects illegal combinations', async () => {
+    const store = new ProxyStore(await home()); await store.ready
+    const account = 'a'.repeat(64)
+    const created = await store.createKey('route', null, {
+      forceRoute: { enabled: false, model: '  gpt-5.6-luna  ' },
+      aggregateRoute: { enabled: true, entries: [{ model: '  Case-Sensitive  ', accountStorageId: account }, { model: 'plain', accountStorageId: null }] },
+    })
+    expect(created.key.forceRoute).toEqual({ enabled: false, model: 'gpt-5.6-luna' })
+    expect(created.key.aggregateRoute).toEqual({ enabled: true, entries: [{ model: 'Case-Sensitive', accountStorageId: account }, { model: 'plain', accountStorageId: null }] })
+    // 强制路由的模型必须存在于聚合清单，比较区分大小写。
+    await expect(store.updateKey(created.key.id, { forceRoute: { enabled: true, model: 'plain' } })).resolves.toBeUndefined()
+    await expect(store.updateKey(created.key.id, { forceRoute: { enabled: true, model: 'casesensitive' } })).rejects.toThrow('不在聚合路由清单内')
+    expect(store.findKey(created.key.id)?.forceRoute).toEqual({ enabled: true, model: 'plain' })
+    await expect(store.updateKey(created.key.id, { aggregateRoute: { enabled: true, entries: [{ model: 'dup', accountStorageId: null }, { model: 'dup', accountStorageId: null }] } })).rejects.toThrow('重复模型')
+    await expect(store.updateKey(created.key.id, { aggregateRoute: { enabled: true, entries: [{ model: '   ', accountStorageId: null }] } })).rejects.toThrow('缺少模型名')
+    await expect(store.updateKey(created.key.id, { aggregateRoute: { enabled: true, entries: [] } })).rejects.toThrow('至少需要一项')
+    await expect(store.updateKey(created.key.id, { forceRoute: { enabled: true, model: '   ' } })).rejects.toThrow('必须填写模型名')
+    await expect(store.updateKey(created.key.id, { aggregateRoute: { enabled: true, entries: [{ model: 'any', accountStorageId: 'not-a-hash' }] } })).rejects.toThrow('第 1 项账号无效')
+    // 关闭聚合路由后强制路由不再受限；清单本身仍然保留在 key 上。
+    await expect(store.updateKey(created.key.id, { aggregateRoute: { enabled: false, entries: [] }, forceRoute: { enabled: true, model: 'anything' } })).resolves.toBeUndefined()
+    expect(store.findKey(created.key.id)?.forceRoute).toEqual({ enabled: true, model: 'anything' })
+    const restarted = new ProxyStore(store.directory); await restarted.ready
+    expect(restarted.findKey(created.key.id)?.forceRoute).toEqual({ enabled: true, model: 'anything' })
+    expect(restarted.findKey(created.key.id)?.aggregateRoute).toEqual({ enabled: false, entries: [] })
+    await store.close(); await restarted.close()
+  })
+  it('drops damaged route settings on load instead of failing to start', async () => {
+    const store = new ProxyStore(await home()); await store.ready
+    const created = await store.createKey('damaged', null)
+    await store.close()
+    const file = join(store.directory, 'state.json')
+    const state = JSON.parse(await readFile(file, 'utf8'))
+    state.keys[0].forceRoute = { enabled: 'yes', model: 5 }
+    state.keys[0].aggregateRoute = { enabled: true, entries: [{ model: 'x', accountStorageId: 'not-a-hash' }] }
+    await writeFile(file, JSON.stringify(state))
+    const restarted = new ProxyStore(store.directory); await restarted.ready
+    const key = restarted.findKey(created.key.id)
+    expect(key).toBeTruthy()
+    expect(key?.forceRoute).toBeUndefined()
+    expect(key?.aggregateRoute).toBeUndefined()
+    await restarted.close()
+  })
+  it('serves the aggregate model union and routes each model to its own account', async () => {
+    const f = await fixture()
+    const a = 'a'.repeat(64), b = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+    const generation = await f.gateway.component.prepare(null)
+    const prepared: string[] = []
+    const spy = vi.spyOn(ProxyComponent.prototype, 'prepare').mockImplementation(async id => { prepared.push(id!); return { ...generation, id: id!, storageId: id!, references: 0 } })
+    try {
+      const key = await f.gateway.store.createKey('aggregate', null, { aggregateRoute: { enabled: true, entries: [
+        { model: 'gpt-a', accountStorageId: a }, { model: 'gpt-b', accountStorageId: b }, { model: 'gpt-global', accountStorageId: null },
+      ] } })
+      const catalog = await (await fetch(f.base + '/v1/models', { headers: f.headers(key.secret) })).json()
+      expect(catalog).toMatchObject({ object: 'list' })
+      expect(catalog.data.map((row: any) => row.id)).toEqual(['gpt-a', 'gpt-b', 'gpt-global'])
+      expect(f.requests).toHaveLength(0)
+      expect((await f.post('/v1/responses', { model: 'gpt-b', input: [] }, key.secret)).status).toBe(200)
+      expect(prepared).toEqual([b])
+      expect(f.requests.at(-1)!.body.model).toBe('gpt-b')
+      // 清单外的模型按一般透传处理，落到 key 自己的账号（未选择时用全局账号）。
+      expect((await f.post('/v1/responses', { model: 'not-listed', input: [] }, key.secret)).status).toBe(200)
+      expect(prepared).toEqual([b, a])
+      expect(f.requests.at(-1)!.body.model).toBe('not-listed')
+      // 清单项的账号为“全局账号”时跟随全局设置。
+      expect((await f.post('/v1/responses', { model: 'gpt-global', input: [] }, key.secret)).status).toBe(200)
+      expect(prepared).toEqual([b, a, a])
+    } finally { spy.mockRestore() }
+  })
+  it('prefers the caller model and only overrides it when force routing is on', async () => {
+    const f = await fixture()
+    const key = await f.gateway.store.createKey('forced', null, { forceRoute: { enabled: true, model: 'gpt-forced' } })
+    expect((await f.post('/v1/responses', { model: 'caller-model', input: [] }, key.secret)).status).toBe(200)
+    expect(f.requests.at(-1)!.body.model).toBe('gpt-forced')
+    await f.gateway.store.updateKey(key.key.id, { forceRoute: { enabled: false, model: 'gpt-forced' } })
+    // 未开启强制路由时按调用方模型直传，不用本地 models 目录否决。
+    expect((await f.post('/v1/responses', { model: 'caller-model', input: [] }, key.secret)).status).toBe(200)
+    expect(f.requests.at(-1)!.body.model).toBe('caller-model')
+  })
+  it('lets a forced model win over the aggregate account choice', async () => {
+    const f = await fixture()
+    const a = 'a'.repeat(64), b = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+    const generation = await f.gateway.component.prepare(null)
+    const prepared: string[] = []
+    const spy = vi.spyOn(ProxyComponent.prototype, 'prepare').mockImplementation(async id => { prepared.push(id!); return { ...generation, id: id!, storageId: id!, references: 0 } })
+    try {
+      const key = await f.gateway.store.createKey('aggregate-forced', null, {
+        aggregateRoute: { enabled: true, entries: [{ model: 'gpt-a', accountStorageId: a }, { model: 'gpt-b', accountStorageId: b }] },
+        forceRoute: { enabled: true, model: 'gpt-b' },
+      })
+      for (const model of ['gpt-a', 'gpt-b']) expect((await f.post('/v1/responses', { model, input: [] }, key.secret)).status).toBe(200)
+      expect(prepared).toEqual([b, b])
+      expect(f.requests.map(row => row.body.model)).toEqual(['gpt-b', 'gpt-b'])
+    } finally { spy.mockRestore() }
+  })
+  it('opens an aggregate WebSocket upstream only on the first frame model', async () => {
+    const f = await fixture()
+    const a = 'a'.repeat(64), b = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+    const generation = await f.gateway.component.prepare(null)
+    const prepared: string[] = []
+    const spy = vi.spyOn(ProxyComponent.prototype, 'prepare').mockImplementation(async id => { prepared.push(id!); return { ...generation, id: id!, storageId: id!, references: 0 } })
+    const key = await f.gateway.store.createKey('aggregate-ws', null, { aggregateRoute: { enabled: true, entries: [{ model: 'gpt-b', accountStorageId: b }] } })
+    const ws = new WebSocket(f.base.replace('http:', 'ws:') + '/v1/responses', { headers: f.headers(key.secret) })
+    try {
+      await once(ws, 'open')
+      expect(prepared).toEqual([])
+      const received = once(ws, 'message')
+      ws.send(JSON.stringify({ type: 'response.create', model: 'gpt-b', input: [] }))
+      expect(JSON.parse(String((await received)[0])).type).toBe('response.completed')
+      expect(prepared).toEqual([b])
+    } finally { ws.terminate(); spy.mockRestore() }
+  })
 })

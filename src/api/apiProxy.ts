@@ -1,7 +1,13 @@
 export type ApiProxyKey = {
   accountStorageId?: string | null; protected?: boolean
+  forceRoute?: ApiProxyKeyForceRoute; aggregateRoute?: ApiProxyKeyAggregateRoute
   id: string; name: string; suffix: string; enabled: boolean; expiresAt: string | null; revokedAt: string | null; lastUsedAt: string | null
 }
+/** 模型强制路由：开启后用固定模型名改写所有经过此 key 的请求。 */
+export type ApiProxyKeyForceRoute = { enabled: boolean; model: string }
+/** 聚合路由：模型清单并集，每个模型指向一个账号（null 表示全局账号）。 */
+export type ApiProxyKeyAggregateRoute = { enabled: boolean; entries: ApiProxyKeyRouteEntry[] }
+export type ApiProxyKeyRouteEntry = { model: string; accountStorageId: string | null }
 export function isApiProxyKeyInvalid(key: Pick<ApiProxyKey, 'revokedAt' | 'expiresAt'>, now = Date.now()): boolean {
   if (key.revokedAt) return true
   const expiresAt = key.expiresAt ? Date.parse(key.expiresAt) : NaN
