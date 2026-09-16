@@ -961,7 +961,7 @@ function onRespondToolCallFailure(request: UiServerRequest): void {
       contentItems: [
         {
           type: 'inputText',
-          text: 'Tool call rejected from CodexUI.',
+          text: 'Tool call rejected from Sidux.',
         },
       ],
     },
@@ -990,7 +990,7 @@ function onRejectUnknownRequest(request: UiServerRequest): void {
     id: request.id,
     error: {
       code: -32000,
-      message: 'Rejected from CodexUI.',
+      message: 'Rejected from Sidux.',
     },
   })
 }
