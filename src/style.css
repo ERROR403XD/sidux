@@ -2044,8 +2044,9 @@
 .app-dialog-footer { border-top: 1px solid var(--ui-divider); flex-wrap: wrap; font-size: 12px; }
 :root .app-dialog-compact { width: min(460px, 100%); }
 
+/* 弹窗内的裸 button 统一加上外框；app-switch 自带滑轨样式，不参与这条按钮框线。 */
 :root button.app-button,
-:root [role="dialog"][aria-modal="true"] button:not(.app-button) {
+:root [role="dialog"][aria-modal="true"] button:not(.app-button):not(.app-switch) {
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius-control);
   background: var(--ui-surface);
@@ -2534,13 +2535,15 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 }
 .api-proxy-advanced-open { align-items: center; }
 .api-proxy-advanced-group { display: grid; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--ui-border); }
-.api-proxy-advanced-group .api-proxy-muted { margin: 0; }
-/* 高级选项里开关占左栏、对应控件占右栏；路由清单按“账号在左、模型在右”排列。 */
+/* 高级选项整体维持双栏：受保护开关、各路由开关占左栏，对应控件占右栏，
+   聚合清单也按同一组列宽排列（账号在左、模型在右），使上下分界线对齐。 */
 .api-proxy-route-setting { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: center; }
 .api-proxy-route-setting > .app-button { justify-self: start; }
 .api-proxy-advanced-dialog { max-width: 640px; }
-.api-proxy-route-row { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.api-proxy-route-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: center; }
+.api-proxy-route-model { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; min-width: 0; }
 .api-proxy-route-row .app-input { width: 100%; min-width: 0; }
+.api-proxy-advanced-dialog .api-proxy-model-field .app-input { width: 100%; min-width: 0; }
 .api-proxy-route-account .composer-dropdown-trigger { width: 100%; }
 .api-proxy-model-field { display: grid; min-width: 0; }
 :root .api-proxy-model-menu .api-proxy-model-options { margin: 0; padding: 4px; list-style: none; max-height: 240px; overflow-y: auto; }

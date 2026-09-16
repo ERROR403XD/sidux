@@ -124,8 +124,9 @@
     </AppDialog>
     <AppDialog :open="advancedOpen" :title="t('高级选项')" :busy="busy" panel-class="api-proxy-advanced-dialog" @close="closeAdvanced()">
       <template v-if="advancedDraft">
-        <AppSwitch class="api-proxy-check" v-model="advancedDraft.protected" :disabled="busy">{{ t('受保护') }}</AppSwitch>
-        <p class="api-proxy-muted">{{ t('受保护表示允许这把 key 使用被保护的 OpenAI 账号额度。') }}</p>
+        <div class="api-proxy-route-setting">
+          <AppSwitch class="api-proxy-check" v-model="advancedDraft.protected" :disabled="busy">{{ t('受保护') }}</AppSwitch>
+        </div>
         <div class="api-proxy-advanced-group">
           <div class="api-proxy-route-setting">
             <AppSwitch class="api-proxy-check" v-model="advancedDraft.forceEnabled" :disabled="busy">{{ t('模型强制路由') }}</AppSwitch>
@@ -141,29 +142,29 @@
               @update:model-value="advancedDraft.forceModel = $event"
             />
           </div>
-          <p class="api-proxy-muted">{{ t('开启后所有经过此 key 的请求都改用这个模型名；只影响模型选择，不改账号。') }}</p>
         </div>
         <div class="api-proxy-advanced-group">
           <div class="api-proxy-route-setting">
             <AppSwitch class="api-proxy-check" v-model="advancedDraft.aggregateEnabled" :disabled="busy">{{ t('聚合路由') }}</AppSwitch>
             <AppButton :disabled="busy || !advancedDraft.aggregateEnabled" @click="addRouteRow()">{{ t('添加') }}</AppButton>
           </div>
-          <p class="api-proxy-muted">{{ t('聚合路由按模型把请求分派到不同账号；开关打开后此 key 的模型列表就是下面清单的并集。') }}</p>
           <template v-if="advancedDraft.aggregateEnabled">
             <div v-for="(row, index) in advancedDraft.entries" :key="index" class="api-proxy-route-row">
               <AppSelect v-model="row.account" class="api-proxy-route-account" :options="routeAccountOptions" enable-search :search-placeholder="t('搜索账号')" :placeholder="t('选择账号')" :disabled="busy" />
-              <ApiKeyModelField
-                :model-value="row.model"
-                :account-id="resolvedAccountId(row.account)"
-                :models="modelCatalog(resolvedAccountId(row.account))"
-                :state="modelCatalogState(resolvedAccountId(row.account))"
-                :disabled="busy"
-                :placeholder="t('模型名')"
-                :aria-label="t('模型名')"
-                @request="loadModelCatalog(resolvedAccountId(row.account))"
-                @update:model-value="row.model = $event"
-              />
-              <AppButton variant="danger" :disabled="busy" @click="removeRouteRow(index)">{{ t('移除') }}</AppButton>
+              <div class="api-proxy-route-model">
+                <ApiKeyModelField
+                  :model-value="row.model"
+                  :account-id="resolvedAccountId(row.account)"
+                  :models="modelCatalog(resolvedAccountId(row.account))"
+                  :state="modelCatalogState(resolvedAccountId(row.account))"
+                  :disabled="busy"
+                  :placeholder="t('模型名')"
+                  :aria-label="t('模型名')"
+                  @request="loadModelCatalog(resolvedAccountId(row.account))"
+                  @update:model-value="row.model = $event"
+                />
+                <AppButton variant="danger" :disabled="busy" @click="removeRouteRow(index)">{{ t('移除') }}</AppButton>
+              </div>
             </div>
           </template>
         </div>
