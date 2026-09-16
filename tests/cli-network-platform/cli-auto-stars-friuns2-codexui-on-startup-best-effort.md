@@ -6,7 +6,7 @@
 
 #### Steps
 1. Ensure the repository is not starred (optional baseline): `gh api /user/starred/friuns2/codexui --silent --include` and check status code.
-2. Launch `codexui` CLI once.
+2. Launch the `sidux` CLI once.
 3. After startup, run: `gh api /user/starred/friuns2/codexui --silent --include`.
 4. Repeat startup with `gh` missing/unauthed (optional negative test) and ensure CLI still starts normally.
 
