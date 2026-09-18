@@ -1,6 +1,6 @@
 {
   "name": "codexapp",
-  "version": "0.2.20-dev.1",
+  "version": "0.2.20-dev.4",
   "description": "A lightweight web interface for Codex that runs on top of the Codex app-server, allowing remote access from any browser",
   "type": "module",
   "license": "MIT",
@@ -57,6 +57,8 @@
     "build": "pnpm run build:frontend && pnpm run build:cli",
     "postinstall": "node scripts/fix-pty-native-build.cjs",
     "test:unit": "vitest run",
+    "test:bridge": "vitest run --config protocol-bridge/vitest.config.ts",
+    "bridge:demo": "tsup protocol-bridge/demo/server.ts --format esm --platform node --target node18 --outDir protocol-bridge/demo/dist && node protocol-bridge/demo/dist/server.js",
     "preview": "vite preview",
     "prepublishOnly": "pnpm run build",
     "profile:browser": "node scripts/profile-browser-runtime.cjs",

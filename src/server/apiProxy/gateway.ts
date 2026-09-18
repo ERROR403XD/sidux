@@ -1,7 +1,7 @@
 import { getCustomConnectionStore } from '../customConnectionStore.js'
 import { forwardCustomConnection } from '../customConnectionProxy.js'
-import { customConnectionModels, customConnectionEndpoints } from '../../customConnections.js'
-import { AccountResourcePool } from '../accountResourcePool.js'
+import { customConnectionModels, customConnectionEndpoints, customConnectionBridgedEndpoints } from '../../customConnections.js'
+import { AccountResourcePool, WorkerPoolAllocationError, workerPoolAllocationUserMessage } from '../accountResourcePool.js'
 import { AccountExecutionError, resolveAccountSelection } from '../accountExecution.js'
 import { AccountNotificationService } from '../accountNotificationService.js'
 import { assertQuotaAvailable } from './quotaProtection.js'
@@ -98,9 +98,15 @@ export class ApiProxyGateway {
     }
   }
   private async prepareAccount(id: string, catalog = false, background = false): Promise<ComponentGeneration> {
-    const component = await this.accountComponents.getOrCreate(id, () => this.accountComponents.size === 0 && !this.component.status().selectedStorageId
-      ? this.component
-      : new ProxyComponent(join(this.store.directory, 'accounts', id), this.coordinator), !background)
+    let component: ProxyComponent | null
+    try {
+      component = await this.accountComponents.getOrCreate(id, () => this.accountComponents.size === 0 && !this.component.status().selectedStorageId
+        ? this.component
+        : new ProxyComponent(join(this.store.directory, 'accounts', id), this.coordinator), !background)
+    } catch (error) {
+      if (error instanceof WorkerPoolAllocationError) throw new ProxyError('account_capacity', workerPoolAllocationUserMessage(error.code), 503)
+      throw error
+    }
     if (!component) throw new ProxyError('account_capacity', '并行账号数已达8个，请等待连接结束。', 503)
     const generation = await component.prepare(id, { catalog })
     this.generationComponents.set(generation, component)
@@ -616,7 +622,7 @@ export class ApiProxyGateway {
         await connections.ready
         const custom = connections.get(selectedId)
         const accounts = await this.coordinator.listAccounts({ scheduleRefresh: false })
-        accounts.accounts.push(...connections.snapshot().connections.map(row => ({ storageId: row.storageId, alias: row.alias, email: null, accountId: row.baseUrl, authStatus: 'ready', kind: 'custom', supportedEndpoints: customConnectionEndpoints(row) } as any)))
+        accounts.accounts.push(...connections.snapshot().connections.map(row => ({ storageId: row.storageId, alias: row.alias, email: null, accountId: row.baseUrl, authStatus: 'ready', kind: 'custom', supportedEndpoints: customConnectionEndpoints(row), bridgedEndpoints: customConnectionBridgedEndpoints(row) } as any)))
         if (connections.active()) accounts.activeStorageId = connections.active()!.storageId
         json(res, 200, { data: { settings: this.store.settings, ...(selectedComponent || this.component).status(), selectedStorageId: selectedId, installed: !!custom || await this.component.available(), ...(custom ? { ready: true, lastError: null } : {}),
           usage: this.usage.summary(url.searchParams.get('timeZone') || 'UTC'),

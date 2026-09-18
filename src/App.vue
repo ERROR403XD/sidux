@@ -583,6 +583,9 @@
                   <span>{{ t(codexCliMissingError) }}</span>
                   <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, codexCliMissingError)">{{ t('Send feedback') }}</a>
                 </div>
+                <div v-if="newThreadSendError" class="composer-runtime-error" role="alert">
+                  <span>{{ t(newThreadSendError) }}</span>
+                </div>
                 <ThreadTerminalPanel
                   v-if="homeTerminalOpen && composerCwd"
                   ref="homeTerminalPanelRef"
@@ -997,7 +1000,7 @@ const AutomationsPanel = defineAsyncComponent(() => import('./components/content
 const { t, uiLanguage, uiLanguageOptions, setUiLanguage } = useUiLanguage()
 const { state: customConnections, active: activeCustomConnection, load: loadCustomConnections } = useCustomConnections()
 const displayAccounts = computed(() => activeCustomConnection.value ? accounts.value.map(account => ({ ...account, isActive: false })) : accounts.value)
-const executionAccounts = computed(() => [...accounts.value, ...customConnections.value.connections.filter(row => row.wireApi === 'responses').map(row => ({ storageId: row.storageId, alias: row.alias, email: null, accountId: row.baseUrl }))])
+const executionAccounts = computed(() => [...accounts.value, ...customConnections.value.connections.filter(row => row.wireApi === 'responses' || row.protocolBridge).map(row => ({ storageId: row.storageId, alias: row.alias, email: null, accountId: row.baseUrl }))])
 async function onCustomConnectionsChanged(changed = false): Promise<void> {
   invalidateModelCatalog()
   await loadCustomConnections()
@@ -1330,6 +1333,7 @@ const queueDraftEdits = ref<Record<string, QueueDraftEdit>>(loadQueueDraftEdits(
 const editingQueuedMessageState = computed(() => queueDraftEdits.value[selectedThreadId.value] ?? null)
 const replaceQueueDraftId = ref('')
 const queueDraftError = ref('')
+const newThreadSendError = ref('')
 watch(queueDraftError, message => { if (message) notifyOperation(message, 'error', selectedThreadId.value || undefined) }, { flush: 'sync' })
 
 function loadQueueDraftEdits(): Record<string, QueueDraftEdit> {
@@ -3626,6 +3630,7 @@ function onSubmitThreadMessage(payload: { text: string; imageUrls: string[]; fil
   if (isHomeRoute.value) {
     void submitFirstMessageForNewThread(payload.text, payload.imageUrls, payload.skills, payload.fileAttachments)
       .then(saved => payload.complete?.(saved))
+      .catch(() => payload.complete?.(false))
     return
   }
   queueDraftError.value = ''
@@ -5091,11 +5096,58 @@ watch(isMobile, (mobile) => {
   setSidebarCollapsed(mobile ? true : desktopSidebarCollapsed, false)
 }, { immediate: true })
 
+const NEW_THREAD_WATCHDOG_MS = 120_000
+const NEW_THREAD_UNAVAILABLE_MESSAGE = '当前会话运行资源正在回收或暂时不可用，请稍后重试。'
+const NEW_THREAD_POOL_FULL_MESSAGE = '会话运行资源已满，空闲会话正在回收，请稍后重试。'
+
+function newThreadFailureMessage(cause: unknown): string {
+  if (cause instanceof Error && cause.message === NEW_THREAD_UNAVAILABLE_MESSAGE) return NEW_THREAD_UNAVAILABLE_MESSAGE
+  const code = (cause as { workerPoolCode?: string })?.workerPoolCode
+  if (code === 'pool_full') return NEW_THREAD_POOL_FULL_MESSAGE
+  if (cause instanceof Error && /会话运行资源已满/.test(cause.message)) return NEW_THREAD_POOL_FULL_MESSAGE
+  if (code) return NEW_THREAD_UNAVAILABLE_MESSAGE
+  return cause instanceof Error ? cause.message : '发送失败，请重试'
+}
+
+function withNewThreadWatchdog(work: Promise<boolean>): Promise<boolean> {
+  let watchdogTimer: ReturnType<typeof setTimeout> | undefined
+  const watchdog = new Promise<never>((_, reject) => {
+    watchdogTimer = setTimeout(() => reject(new Error(NEW_THREAD_UNAVAILABLE_MESSAGE)), NEW_THREAD_WATCHDOG_MS)
+  })
+  return Promise.race([work, watchdog]).finally(() => { if (watchdogTimer) clearTimeout(watchdogTimer) })
+}
+
 async function submitFirstMessageForNewThread(
   text: string,
   imageUrls: string[] = [],
   skills: Array<{ name: string; path: string }> = [],
   fileAttachments: Array<{ label: string; path: string; fsPath: string }> = [],
+): Promise<boolean> {
+  newThreadSendError.value = ''
+  try {
+    // A server-side allocation wedge must never leave the composer pending:
+    // the watchdog turns an indefinitely pending thread/start into a visible,
+    // retryable failure while keeping the draft intact.
+    return await withNewThreadWatchdog(runNewThreadSubmission(text, imageUrls, skills, fileAttachments))
+  } catch (cause) {
+    const message = newThreadFailureMessage(cause)
+    newThreadSendError.value = message
+    notifyOperation(t(message), 'error')
+    const createdThreadId = (cause as { createdThreadId?: string })?.createdThreadId
+    if (createdThreadId && isHomeRoute.value) {
+      await router.replace({ name: 'thread', params: { threadId: createdThreadId } })
+      await nextTick()
+      if (selectedThreadId.value === createdThreadId) threadComposerRef.value?.hydrateDraft({ text, imageUrls, skills, fileAttachments })
+    }
+    return false
+  }
+}
+
+async function runNewThreadSubmission(
+  text: string,
+  imageUrls: string[],
+  skills: Array<{ name: string; path: string }>,
+  fileAttachments: Array<{ label: string; path: string; fsPath: string }>,
 ): Promise<boolean> {
   try {
     worktreeInitStatus.value = { phase: 'idle', title: '', message: '' }
@@ -5141,7 +5193,7 @@ async function submitFirstMessageForNewThread(
       await nextTick()
       if (selectedThreadId.value === createdThreadId) threadComposerRef.value?.hydrateDraft({ text, imageUrls, skills, fileAttachments })
     }
-    return false
+    throw cause
   }
 }
 

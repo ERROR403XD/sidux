@@ -1,0 +1,42 @@
+{
+  "model": "deepseek-chat",
+  "instructions": "You are Codex, based on GPT-5. You are running as a coding agent in the Codex CLI on a user's computer.",
+  "input": [
+    { "type": "message", "role": "user", "content": [{ "type": "input_text", "text": "Look at the repo and tell me the test entry point." }] },
+    { "type": "reasoning", "summary": [{ "type": "summary_text", "text": "Check package.json first." }] },
+    { "type": "message", "role": "assistant", "content": [{ "type": "output_text", "text": "I will inspect the package manifest." }] },
+    { "type": "function_call", "call_id": "call_7d3f", "name": "shell", "arguments": "{\"command\":[\"cat\",\"package.json\"],\"timeout_ms\":10000}" },
+    { "type": "function_call_output", "call_id": "call_7d3f", "output": "{\"output\":\"\\\"test:unit\\\": \\\"vitest run\\\"\",\"metadata\":{}}" },
+    { "type": "message", "role": "user", "content": [{ "type": "input_text", "text": "And the build?" }] }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "name": "shell",
+      "description": "Runs a shell command and returns its output.",
+      "strict": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "command": { "type": "array", "items": { "type": "string" } },
+          "timeout_ms": { "type": "number" }
+        },
+        "required": ["command"]
+      }
+    },
+    {
+      "type": "function",
+      "name": "apply_patch",
+      "description": "Apply a patch to the working tree.",
+      "strict": false,
+      "parameters": { "type": "object", "properties": { "input": { "type": "string" } }, "required": ["input"] }
+    }
+  ],
+  "tool_choice": "auto",
+  "parallel_tool_calls": false,
+  "reasoning": { "effort": "medium", "summary": "auto" },
+  "store": false,
+  "stream": true,
+  "include": ["reasoning.encrypted_content"],
+  "prompt_cache_key": "0f1a2b"
+}

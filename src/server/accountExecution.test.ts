@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest'
 import { AccountExecutionRegistry, resolveAccountSelection } from './accountExecution.js'
-import { AccountResourcePool } from './accountResourcePool.js'
+import { AccountResourcePool, WorkerPoolAllocationError } from './accountResourcePool.js'
 
 it('resolves all outlets by explicit selection, API default, then primary, without falling back from a removed binding', () => {
   const state = { activeStorageId: 'a', accounts: [{ storageId: 'a' }, { storageId: 'b' }, { storageId: 'c' }] }
@@ -29,9 +29,12 @@ it('revokes every selected-account adapter while preserving other accounts and i
 it('coalesces resource allocation and keeps capacity bounded during concurrent new-account requests', async () => {
   const pool = new AccountResourcePool<{ busy: boolean }>({ capacity: 2, idle: item => !item.busy, dispose: vi.fn(async () => {}) })
   const create = vi.fn(() => ({ busy: true }))
-  const resources = await Promise.all([pool.getOrCreate('a', create), pool.getOrCreate('a', create), pool.getOrCreate('b', create), pool.getOrCreate('c', create)])
+  const resources = await Promise.all([pool.getOrCreate('a', create), pool.getOrCreate('a', create), pool.getOrCreate('b', create), pool.getOrCreate('c', create).then(() => 'created', (error: unknown) => error)])
   expect(resources[0]).toBe(resources[1])
-  expect(resources[3]).toBeNull()
+  // Capacity stays bounded: the fourth request fails with the structured
+  // pool-full error instead of creating a third resource.
+  expect(resources[3]).toBeInstanceOf(WorkerPoolAllocationError)
+  expect((resources[3] as WorkerPoolAllocationError).code).toBe('pool_full')
   expect(pool.size).toBe(2)
   pool.get('a')!.busy = false
   expect(await pool.getOrCreate('c', create)).toBeTruthy()
@@ -59,8 +62,12 @@ it('does not evict a resource reused while its idle check was pending', async ()
   await Promise.resolve()
   expect(await pool.getOrCreate('a', () => ({}))).toBe(a)
   resolveIdle(true)
-  expect(await pending).toBeNull()
+  // The reuse protected the resource: the scan found nothing reclaimable and
+  // reports the structured pool-full error instead of disposing.
+  const outcome = await pending.then(() => 'created', (error: unknown) => error)
+  expect(outcome).toBeInstanceOf(WorkerPoolAllocationError)
   expect(dispose).not.toHaveBeenCalled()
+  expect(pool.get('a')).toBe(a)
 })
 
 it('normal work preempts only same-account activation, including idle-to-busy transitions', () => {

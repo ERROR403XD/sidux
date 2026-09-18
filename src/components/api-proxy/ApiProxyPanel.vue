@@ -40,7 +40,7 @@
             <small>{{ t('最近使用：') }}{{ date(key.lastUsedAt) }}</small>
             <div v-if="policyDrafts[key.id]" class="api-proxy-inline-policy">
               <AppSelect v-model="policyDrafts[key.id]!.account" :options="keyAccountOptions" enable-search :search-placeholder="t('搜索账号')" :disabled="busy || !!key.revokedAt" />
-              <span v-if="isCustomAccount(policyDrafts[key.id]!.account)" class="api-proxy-muted">{{ customEndpoints(policyDrafts[key.id]!.account).join(' · ') }}</span>
+              <ConnectionEndpoints v-if="isCustomAccount(policyDrafts[key.id]!.account)" :endpoints="customEndpoints(policyDrafts[key.id]!.account)" :bridged="customBridgedEndpoints(policyDrafts[key.id]!.account)" />
               <AppSwitch v-if="!isCustomAccount(policyDrafts[key.id]!.account)" class="api-proxy-check" v-model="policyDrafts[key.id]!.protected"  :disabled="busy || !!key.revokedAt">{{ t('受保护') }}</AppSwitch>
             </div>
 
@@ -95,7 +95,7 @@
         <label>{{ t('持续时间（天）') }} <input v-model="keyDurationDays" class="app-input" type="number" min="1" step="1" :placeholder="t('无限')" :disabled="busy" />
         </label>
         <label>{{ t('使用账号') }}<AppSelect v-model="keyAccountDraft" :options="keyAccountOptions" enable-search :search-placeholder="t('搜索账号')" :disabled="busy" /></label>
-        <p v-if="isCustomAccount(keyAccountDraft)" class="api-proxy-muted">{{ customEndpoints(keyAccountDraft).join(' · ') }}</p>
+        <ConnectionEndpoints v-if="isCustomAccount(keyAccountDraft)" :endpoints="customEndpoints(keyAccountDraft)" :bridged="customBridgedEndpoints(keyAccountDraft)" />
         <AppSwitch v-if="!isCustomAccount(keyAccountDraft)" class="api-proxy-check" v-model="keyProtectedDraft"  :disabled="busy">{{ t('受保护') }}</AppSwitch>
         <p v-if="rotateTarget" class="api-proxy-muted">{{ t('旧 key 将于 24 小时后到期，也可提前撤销。') }}</p>
       </div>
@@ -108,10 +108,10 @@
     </AppDialog>
     <AppDialog :open="!!policyTarget" :title="t('账号与额度保护')" :busy="busy" size="compact" @close="policyTarget = null">
       <p v-if="error" class="api-proxy-error" role="alert">{{ t(error) }}</p>
-      <label>{{ t('使用账号') }}<AppSelect v-model="keyAccountDraft" :options="keyAccountOptions" enable-search :search-placeholder="t('搜索账号')" :disabled="busy" /></label>
-      <p v-if="isCustomAccount(keyAccountDraft)" class="api-proxy-muted">{{ customEndpoints(keyAccountDraft).join(' · ') }}</p>
+        <label>{{ t('使用账号') }}<AppSelect v-model="keyAccountDraft" :options="keyAccountOptions" enable-search :search-placeholder="t('搜索账号')" :disabled="busy" /></label>
+        <ConnectionEndpoints v-if="isCustomAccount(keyAccountDraft)" :endpoints="customEndpoints(keyAccountDraft)" :bridged="customBridgedEndpoints(keyAccountDraft)" />
         <AppSwitch v-if="!isCustomAccount(keyAccountDraft)" class="api-proxy-check" v-model="keyProtectedDraft"  :disabled="busy">{{ t('受保护') }}</AppSwitch>
-      <p class="api-proxy-muted">{{ t('保护值在账号设置中配置，受保护Key共享所选账号的预留额度。保存会断开此Key的旧连接。') }}</p>
+        <p class="api-proxy-muted">{{ t('保护值在账号设置中配置，受保护Key共享所选账号的预留额度。保存会断开此Key的旧连接。') }}</p>
       <template #footer><AppButton :disabled="busy" @click="policyTarget = null">{{ t('取消') }}</AppButton><AppButton :busy="busy" @click="savePolicy">{{ t('保存') }}</AppButton></template>
     </AppDialog>
     <AppDialog :open="!!renameTarget" :title="t('重命名 API key')" :busy="busy" size="compact" @close="renameTarget = null"><input v-model="renameValue" class="app-input" maxlength="80" data-autofocus /><template #footer><AppButton :busy="busy" @click="renameKey">{{ t('保存') }}</AppButton></template></AppDialog>
@@ -122,12 +122,14 @@
 <script setup lang="ts">
 import AppSwitch from '../common/AppSwitch.vue'
 import { t } from '../../composables/useUiLanguage'
+import { notifyOperation } from '../../composables/useOperationToast'
 
 import { accountDisplayName } from '../../accountDisplay'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppButton from '../common/AppButton.vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppSelect from '../common/AppSelect.vue'
+import ConnectionEndpoints from '../accounts/ConnectionEndpoints.vue'
 import { formatLocalDateTime, displayTimeZone } from '../../dateTime'
 import { emptyUsage } from '../../api/proxyUsageTypes'
 import { copyTextToClipboard } from '../../utils/clipboard'
@@ -153,6 +155,7 @@ const visibleKeys = computed(() => (status.value?.keys || []).filter(key => {
 }))
 async function savePolicies(): Promise<void> {
   await run(async () => {
+    let changed = 0
     for (const key of status.value?.keys || []) {
       const draft = policyDrafts.value[key.id]
       if (!draft || key.revokedAt) continue
@@ -161,7 +164,11 @@ async function savePolicies(): Promise<void> {
       await apiProxyRequest(`/keys/${key.id}`, { accountStorageId, protected: draft.protected })
       key.accountStorageId = accountStorageId
       key.protected = draft.protected
+      changed++
     }
+    // Staying silent when nothing changed: the button is a batch save, and a
+    // no-op must not read as a successful save.
+    if (changed > 0) notifyOperation('API key 配置已保存', 'success')
   })
 }
 const status = ref<ApiProxyStatus | null>(null)
@@ -196,6 +203,10 @@ const clientConfig = `model_provider = "codexapp_gateway"\nmodel = "gpt-5.6-luna
 function customEndpoints(id: string): string[] {
   const resolved = ['global', 'follow'].includes(id) ? settings.value.accountStorageId || status.value?.accounts.activeStorageId : id
   return status.value?.accounts.accounts.find(row => row.storageId === resolved)?.supportedEndpoints || []
+}
+function customBridgedEndpoints(id: string): string[] {
+  const resolved = ['global', 'follow'].includes(id) ? settings.value.accountStorageId || status.value?.accounts.activeStorageId : id
+  return status.value?.accounts.accounts.find(row => row.storageId === resolved)?.bridgedEndpoints || []
 }
 function isCustomAccount(id: string): boolean {
   const resolved = ['global', 'follow'].includes(id) ? settings.value.accountStorageId || status.value?.accounts.activeStorageId : id
@@ -232,6 +243,7 @@ async function save(force: boolean): Promise<void> {
     await apiProxyRequest('/settings', { settings: settings.value, force })
     forceDialog.value = false
     await refresh(true)
+    notifyOperation('API 代理配置已保存', 'success')
   })
 }
 function openCreate(key?: ApiProxyKey): void {
@@ -261,7 +273,12 @@ async function createKey(): Promise<void> {
       expiresAt: expiresAt?.toISOString() ?? null,
     })
     secret.value = created.secret
-    if (rotateTarget.value) await apiProxyRequest(`/keys/${rotateTarget.value.id}`, { expiresAt: new Date(Date.now() + 86400_000).toISOString() })
+    if (rotateTarget.value) {
+      await apiProxyRequest(`/keys/${rotateTarget.value.id}`, { expiresAt: new Date(Date.now() + 86400_000).toISOString() })
+      notifyOperation('API key 已轮换，旧 key 24 小时后到期', 'success')
+    } else {
+      notifyOperation('API key 已创建', 'success')
+    }
   })
 }
 function setPolicyDraft(key?: ApiProxyKey): void {
@@ -282,7 +299,7 @@ async function savePolicy(): Promise<void> {
 }
 async function copySecret(): Promise<void> { try { await copyTextToClipboard(secret.value) } catch { error.value = '无法自动复制，请选中 key 手动复制。' } }
 async function updateKey(key: ApiProxyKey, input: unknown): Promise<void> { await run(async () => { await apiProxyRequest(`/keys/${key.id}`, input) }) }
-async function revokeKey(): Promise<void> { const target = revokeTarget.value; if (!target) return; await run(async () => { await apiProxyRequest(`/keys/${target.id}`, { revoke: true, interrupt: interruptKey.value }); revokeTarget.value = null }) }
+async function revokeKey(): Promise<void> { const target = revokeTarget.value; if (!target) return; await run(async () => { await apiProxyRequest(`/keys/${target.id}`, { revoke: true, interrupt: interruptKey.value }); revokeTarget.value = null; notifyOperation('API key 已撤销', 'success') }) }
 async function renameKey(): Promise<void> { const target = renameTarget.value; if (!target) return; await run(async () => { await apiProxyRequest(`/keys/${target.id}`, { name: renameValue.value }); renameTarget.value = null }) }
 onMounted(() => {
   void refresh(true)

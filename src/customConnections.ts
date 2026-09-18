@@ -7,13 +7,15 @@ export type CustomConnection = {
   baseUrl: string
   model: string
   wireApi: 'chat' | 'responses'
+  /** Opt-in protocol bridge: serves the endpoint this connection lacks natively. */
+  protocolBridge: boolean
   supportedEndpoints?: CustomEndpoint[]
   testedAt?: string
   models: ModelCapability[]
   revision: number
   hasApiKey: boolean
 }
-export type CustomConnectionDraft = Pick<CustomConnection, 'alias' | 'provider' | 'baseUrl' | 'model' | 'wireApi'> & { storageId?: string; apiKey: string }
+export type CustomConnectionDraft = Pick<CustomConnection, 'alias' | 'provider' | 'baseUrl' | 'model' | 'wireApi'> & { storageId?: string; apiKey: string; protocolBridge?: boolean }
 export type CustomConnectionSnapshot = { activeId: string | null; connections: CustomConnection[] }
 export const customProviderPresets = [
   { value: 'openrouter', label: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1' },
@@ -31,6 +33,24 @@ export function customConnectionModels(connection: CustomConnection) {
   }))
 }
 
-export function customConnectionEndpoints(connection: Pick<CustomConnection, 'wireApi' | 'supportedEndpoints'>): CustomEndpoint[] {
+/** Endpoints the connection probe confirmed natively (no bridge involved). */
+export function customConnectionNativeEndpoints(connection: Pick<CustomConnection, 'wireApi' | 'supportedEndpoints'>): CustomEndpoint[] {
   return connection.supportedEndpoints || ['/v1/models', connection.wireApi === 'responses' ? '/v1/responses' : '/v1/chat/completions']
+}
+
+/** Endpoints served through the protocol bridge when the toggle is on. */
+export function customConnectionBridgedEndpoints(connection: Pick<CustomConnection, 'wireApi' | 'protocolBridge' | 'supportedEndpoints'>): CustomEndpoint[] {
+  if (!connection.protocolBridge) return []
+  const native = customConnectionNativeEndpoints(connection)
+  const bridged: CustomEndpoint[] = []
+  if (!native.includes('/v1/responses')) bridged.push('/v1/responses')
+  if (!native.includes('/v1/chat/completions')) bridged.push('/v1/chat/completions')
+  return bridged
+}
+
+/** Servable endpoints: native ones plus bridge-served ones when enabled. */
+export function customConnectionEndpoints(connection: Pick<CustomConnection, 'wireApi' | 'protocolBridge' | 'supportedEndpoints'>): CustomEndpoint[] {
+  const native = customConnectionNativeEndpoints(connection)
+  const bridged = customConnectionBridgedEndpoints(connection)
+  return bridged.length > 0 ? [...native, ...bridged] : native
 }

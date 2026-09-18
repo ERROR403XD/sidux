@@ -18,10 +18,8 @@ export class CustomConnectionStore {
     try {
       const value = JSON.parse(await readFile(join(this.home, 'custom-connections.json'), 'utf8')) as State
       if (value.version !== 1 || !Array.isArray(value.connections) || value.connections.some(row => !/^[a-f0-9]{64}$/.test(row.storageId) || typeof row.apiKey !== 'string' || !Array.isArray(row.models))) throw new Error('自定义连接配置损坏')
-      if (value.connections.find(row => row.storageId === value.activeId)?.wireApi === 'chat') {
-        value.activeId = null
-        value.explicitSelection = true
-      }
+      // Connections saved before the protocol bridge toggle existed default to off.
+      value.connections = value.connections.map(row => ({ ...row, protocolBridge: row.protocolBridge === true }))
       this.state = value
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
@@ -38,10 +36,10 @@ export class CustomConnectionStore {
     const row: StoredConnection = {
       storageId: randomBytes(32).toString('hex'), alias: legacy.provider === 'custom' ? 'Custom API' : legacy.provider === 'opencode-zen' ? 'OpenCode' : 'OpenRouter',
       provider: legacy.provider === 'opencode-zen' ? 'opencode' : legacy.provider || 'custom', baseUrl, apiKey: legacy.apiKey, model: legacy.model,
-      wireApi: legacy.wireApi === 'chat' ? 'chat' : 'responses', revision: 1, runtimeToken: randomBytes(24).toString('hex'),
+      wireApi: legacy.wireApi === 'chat' ? 'chat' : 'responses', protocolBridge: false, revision: 1, runtimeToken: randomBytes(24).toString('hex'),
       models: [{ ...normalizeModelCapability(legacy.model, 'custom')!, efforts: [], serviceTiers: [] }],
     }
-    const state: State = { version: 1, activeId: legacy.enabled && row.wireApi === 'responses' ? row.storageId : null, explicitSelection: legacy.enabled && row.wireApi === 'chat', connections: [row] }
+    const state: State = { version: 1, activeId: legacy.enabled ? row.storageId : null, explicitSelection: !!legacy.enabled, connections: [row] }
     await privateJson(join(this.home, 'custom-connections.json'), state)
     this.state = state
   }
@@ -73,9 +71,11 @@ export class CustomConnectionStore {
     try { url = new URL(input.baseUrl) } catch { throw new Error('请输入有效的 Base URL') }
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error('请输入有效的 Base URL')
     if (!alias || alias.length > 80 || !apiKey || apiKey.length > 8192 || /[\r\n]/.test(apiKey) || model.length > 200) throw new Error('请填写别名、API key 和有效模型')
-    return { storageId: input.storageId, alias, provider: String(input.provider || 'custom').slice(0, 50), baseUrl: url.href.replace(/\/+$/, ''), model, apiKey, wireApi: input.wireApi === 'chat' ? 'chat' : 'responses' }
+    return { storageId: input.storageId, alias, provider: String(input.provider || 'custom').slice(0, 50), baseUrl: url.href.replace(/\/+$/, ''), model, apiKey, wireApi: input.wireApi === 'chat' ? 'chat' : 'responses', protocolBridge: input.protocolBridge === true }
   }
-  private digest(input: CustomConnectionDraft): string { return createHash('sha256').update(JSON.stringify({ ...input, wireApi: undefined })).digest('hex') }
+  // wireApi comes from the endpoint probe and protocolBridge is a local
+  // toggle — neither changes what a test proves, so both stay out of the digest.
+  private digest(input: CustomConnectionDraft): string { return createHash('sha256').update(JSON.stringify({ ...input, wireApi: undefined, protocolBridge: undefined })).digest('hex') }
   async test(input: CustomConnectionDraft): Promise<{ token: string; models: CustomConnection['models']; model: string; supportedEndpoints: CustomEndpoint[]; wireApi: 'responses' | 'chat' }> {
     await this.ready
     const draft = this.draft(input)
@@ -117,20 +117,33 @@ export class CustomConnectionStore {
   async save(input: CustomConnectionDraft, token: string): Promise<void> {
     await this.ready
     const draft = this.draft(input)
+    const previous = draft.storageId ? this.get(draft.storageId) : undefined
     const proof = this.proofs.get(token)
-    if (!proof || proof.expires < Date.now() || proof.digest !== this.digest(draft)) throw new Error('请先测试连接')
+    const proofValid = !!proof && proof.expires >= Date.now() && proof.digest === this.digest(draft)
+    // Toggling the protocol bridge alone does not touch what a test proves,
+    // so it may be saved without a fresh probe. Any credential change, or a
+    // fresh probe result, always goes through the proof path.
+    const onlyBridgeChanged = !proofValid && !!previous
+      && previous.alias === draft.alias && previous.provider === draft.provider
+      && previous.baseUrl === draft.baseUrl && previous.model === draft.model
+      && previous.apiKey === draft.apiKey
+    if (!proofValid && !onlyBridgeChanged) throw new Error('请先测试连接')
+    if (!previous && this.state.connections.length >= 32) throw new Error('自定义连接数量已达上限')
     await this.mutate(() => {
-      const previous = this.get(draft.storageId)
-      if (!previous && this.state.connections.length >= 32) throw new Error('自定义连接数量已达上限')
-      const row: StoredConnection = { ...draft, wireApi: proof.wireApi, supportedEndpoints: proof.supportedEndpoints, testedAt: proof.testedAt, storageId: previous?.storageId || randomBytes(32).toString('hex'), revision: (previous?.revision || 0) + 1, models: proof.models, runtimeToken: randomBytes(24).toString('hex') }
-      return { ...this.state, ...(this.state.activeId === row.storageId && row.wireApi !== 'responses' ? { activeId: null, explicitSelection: true } : {}), connections: [...this.state.connections.filter(item => item.storageId !== row.storageId), row] }
+      const row: StoredConnection = proofValid && proof
+        ? { ...draft, wireApi: proof.wireApi, protocolBridge: draft.protocolBridge === true, supportedEndpoints: proof.supportedEndpoints, testedAt: proof.testedAt, storageId: previous?.storageId || randomBytes(32).toString('hex'), revision: (previous?.revision || 0) + 1, models: proof.models, runtimeToken: randomBytes(24).toString('hex') }
+        : { ...previous!, ...draft, protocolBridge: draft.protocolBridge === true, wireApi: previous!.wireApi, supportedEndpoints: previous!.supportedEndpoints, testedAt: previous!.testedAt, models: previous!.models, storageId: previous!.storageId, revision: previous!.revision + 1, runtimeToken: randomBytes(24).toString('hex') }
+      // An active connection that can no longer serve Codex (chat without the
+      // bridge) is deselected, matching the pre-bridge save semantics.
+      const unusableActive = this.state.activeId === row.storageId && row.wireApi !== 'responses' && !row.protocolBridge
+      return { ...this.state, ...(unusableActive ? { activeId: null, explicitSelection: true } : {}), connections: [...this.state.connections.filter(item => item.storageId !== row.storageId), row] }
     })
-    this.proofs.delete(token)
+    if (proofValid && proof) this.proofs.delete(token)
   }
   async select(id: string | null): Promise<void> {
     await this.mutate(() => {
       if (id && !this.get(id)) throw new Error('自定义连接已移除')
-      if (id && this.get(id)?.wireApi !== 'responses') throw new Error('仅支持 Chat Completions，可用作 API key 出口')
+      if (id && this.get(id)!.wireApi === 'chat' && !this.get(id)!.protocolBridge) throw new Error('该连接仅支持 Chat Completions，可在账号设置中开启协议转换')
       return { ...this.state, activeId: id, explicitSelection: true }
     })
   }
@@ -147,7 +160,9 @@ export function getCustomConnectionStore(home = process.env.CODEX_HOME?.trim() |
   return store
 }
 export function customRuntimeConfig(connection: NonNullable<ReturnType<CustomConnectionStore['get']>>, port: number) {
-  if (connection.wireApi !== 'responses') throw new Error('Codex 需要 Responses API')
+  // Codex always speaks Responses to the local runtime route; chat-only
+  // connections need the protocol bridge toggle to serve it.
+  if (connection.wireApi !== 'responses' && !connection.protocolBridge) throw new Error('Codex 需要 Responses API，可在账号设置中开启协议转换')
   const provider = `custom_${connection.storageId}`
   return { args: ['-c', `model_provider=${JSON.stringify(provider)}`, '-c', `model=${JSON.stringify(connection.model)}`,
     '-c', `model_providers.${provider}.name="Custom connection"`, '-c', `model_providers.${provider}.base_url="http://127.0.0.1:${port}/codex-api/custom-connections/runtime/${connection.storageId}/${connection.revision}/v1"`,

@@ -270,3 +270,16 @@ Recommended smoke tests:
 - Provider CLI config: `src/server/freeMode.ts`
 - App server proxy routes: `src/server/codexAppServerBridge.ts`
 - UI API mode toggles: `src/App.vue`
+
+## Addendum (0.2.20-dev): Independent Protocol Bridge For Chat-Only Custom Connections
+
+This spec describes the legacy unified proxy wrappers (`src/server/unifiedResponsesProxy.ts` and friends). They remain unchanged and continue to serve OpenRouter, OpenCode Zen, and Responses-native custom endpoints.
+
+Chat Completions-only **custom connections** now use a separate, independent component instead:
+
+- Component: `protocol-bridge/` (self-contained directory, own tests and docs; see `protocol-bridge/README.md`).
+- Transport glue: `src/server/protocolBridgeTransport.ts` — the only main-app file that wires HTTP transport to the component (both directions since 0.2.20-dev.4).
+- Capability rule: conversion is **opt-in per connection** via the `protocolBridge` toggle in 自定义连接 → 账号卡片 → 账号设置 (shown for connections lacking a chat or responses endpoint). Bridged endpoints render as yellow tags on the connection card and on API keys bound to the connection in the API proxy panel. Native Responses connections never pass through it; the OpenAI-account reverse proxy (CLI Proxy API) is untouched.
+- Toggle-only changes save without a fresh provider probe; disabling the bridge on the active connection deselects it.
+- What it fixes relative to the legacy wrappers: full streaming tool-call reconstruction (the legacy wrapper disabled streaming whenever tools were involved), reasoning summary streaming events, usage capture from trailing stream chunks, byte-safe SSE parsing (UTF-8 splits, CRLF, multi-line data), and explicit `UnsupportedFeatureError` instead of silent field drops.
+- The TODO item "Add explicit handling for Chat Completions streaming tool-call deltas" above is implemented by this component; the remaining TODOs in this spec still apply to the legacy wrappers only.

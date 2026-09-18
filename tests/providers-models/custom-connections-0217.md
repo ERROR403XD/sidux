@@ -37,3 +37,34 @@
 预期：普通账号 A/B、Responses 自定义连接 A/B、旧 Zen、旧 OpenRouter、旧自定义端点，共 7 个出口、49 个有向组合，每组验证显式恢复、分支、直接发送前隐式恢复（147 个路径）；历史由源出口创建并完成首回合，目标 worker 的 provider 与选择一致，普通账号发送使用目标身份。既有测试继续验证事务切换、忙碌阻塞、回滚、自定义自动化隔离。此矩阵直接设置隔离存储中的选择状态，验证恢复路由，不代表真实 HTTP 切换入口或各厂商远端请求均做过验收。
 
 清理：脚本等待自身子进程退出后删除临时 home，无真实云端费用。Chat-only 连接按既有规则禁止作为会话出口；移除连接、失效凭据、目标模型不支持等错误不属于此 provider 注册修复。
+
+## 0.2.20-dev 协议桥：Chat-only 自定义连接启用 Codex
+
+前提：隔离 CODEX_HOME；一个仅支持 Chat Completions 的本地样本服务（固定回复 + 可控流式分片）；一个同时支持 Responses/Chat 的样本服务作对照。组件单测：`pnpm run test:bridge`；集成单测：`pnpm exec vitest run src/server/protocolBridgeTransport.test.ts src/server/customConnectionStore.test.ts src/server/apiProxy/customConnections.test.ts`。
+
+1. 添加 Chat-only 连接并测试：卡片 responses 徽标亮起（由协议桥服务），chat 徽标亮起；切换按钮可用（不再禁用）；选中后刷新页面，选择保持。
+2. 选中 Chat-only 连接新建会话，发送短消息：Codex 正常回复，无 provider not found/409/502；上游收到的是 Chat Completions 请求（样本服务断言 `/chat/completions` 被调用、请求含 `messages`），前端收到完整回复文本。
+3. 让样本服务返回工具调用（流式 delta 分片）：Codex 侧触发工具执行并回传结果，多轮工具回路闭环；参数跨多 chunk 时 JSON 完整。
+4. 让样本服务先发 reasoning_content 再发正文：界面实时显示推理浮层，最终消息完整；深浅主题检查。
+5. 上游返回 4xx/5xx：Codex 显示上游原始错误信息（非 Proxy error 包装），刷新后错误态保持。
+6. 客户端中途关闭页面：上游请求被取消（样本服务记录断连），服务端日志出现 [protocol-bridge] 结束行，无进程异常。
+7. 对照组：Responses 原生连接走旧链路（样本服务断言 `/responses` 被调用），行为与本节改动前一致；API 出口（apiProxy）对 Chat-only 连接的 `/v1/chat/completions` 直通与 `/v1/models` 不变，`/v1/responses/compact` 仍返回 unsupported_endpoint。
+8. 自动化任务选择 Chat-only 连接可正常领取执行（不再报「Codex 需要 Responses API」）。
+
+清理：移除样本连接与会话；停止样本服务；不影响生产账号与认证文件。
+
+## 0.2.20-dev.4 协议转换开关、黄色能力 tag 与 API 代理通知
+
+前提：隔离 CODEX_HOME；三个本地样本服务：仅 Chat Completions、仅 Responses、同时支持两者；一个已启用的 API 出口（服务与账号配置可用）。涉及单元测试：`pnpm run test:bridge`、`pnpm exec vitest run src/server/customConnectionStore.test.ts src/server/apiProxy/customConnections.test.ts src/server/protocolBridgeTransport.test.ts`。
+
+1. 添加仅 Chat 连接并在账号设置中查看：出现「协议转换」开关（默认关）。关闭状态下卡片 responses 徽标灰暗、切换按钮禁用（悬停提示开启协议转换）；API 出口对该连接的 `/v1/responses` 返回 unsupported_endpoint。
+2. 开启「协议转换」并保存：不需要重新测试连接（保存直接成功，revision+1）；卡片 responses 徽标变黄（经协议转换）；切换按钮可用；选中后 Codex 可正常对话与工具回路。
+3. 活跃连接的开关被关闭：保存成功且当前选择自动取消（activeId 置空）；重新开启后需手动重新选择。
+4. 添加仅 Responses 连接并开启「协议转换」：卡片 chat 徽标变黄；在 API 出口为该连接创建 API key，key 行与创建/账号弹窗中的端点 tag 同步显示黄色 chat；外部客户端 `POST /v1/chat/completions` 经反向转换由上游 Responses 服务，返回标准 chat 响应。
+5. 保存开关后刷新页面：开关状态、黄色徽标、激活状态持久保持。
+6. 同时支持两协议的连接：账号设置中不显示「协议转换」开关（无缺失端点）。
+7. API 出口通知（izitoast 风格，右上角成功绿条）：服务与账号点「保存」→「API 代理配置已保存」；API key 区点「保存配置」→有实际改动时「API key 配置已保存」，逐 key 无变化时保持静默不提示；「创建API key」→「API key 已创建」；「轮换」→「API key 已轮换，旧 key 24 小时后到期」；「撤销…」确认后 →「API key 已撤销」。失败路径仍显示红色错误。
+8. 对照组：OpenAI 账号反代（CLI Proxy API）行为不变——OpenAI 账号的 key 路由、受保护开关、WebSocket 适配均不出现协议桥相关改动；原生 Responses 自定义连接 `/v1/responses` 仍走旧直通链路。
+9. 明暗主题下检查黄色 tag（浅色 #fefce8 底、深色 #33270a 底）与绿色原生 tag 的对比度；375×812 下弹窗内开关与 tag 不溢出。
+
+清理：移除样本连接、key 与会话；停止样本服务；不影响生产账号与认证文件。
