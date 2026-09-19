@@ -500,7 +500,6 @@ export const zhSourceEnglish: Record<string, string> = {
   "最大": "Max",
   "超高": "Ultra",
   "模型与推理强度": "Model and reasoning effort",
-  "探测到上游明确拒绝推理参数，推理强度已禁用。": "The provider explicitly rejected the reasoning parameter; reasoning effort is disabled.",
   "搜索模型": "Search models",
   "可用模型": "Available models",
   "暂无可选模型": "No models available",

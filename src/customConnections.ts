@@ -1,7 +1,5 @@
 import type { ModelCapability } from './modelCapabilities'
 export type CustomEndpoint = '/v1/models' | '/v1/responses' | '/v1/chat/completions'
-/** Probe outcome for the reasoning parameter: only an explicit upstream rejection is conclusive. */
-export type ReasoningEffortSupport = 'rejected' | 'accepted' | 'unknown'
 export type CustomConnection = {
   storageId: string
   alias: string
@@ -11,17 +9,15 @@ export type CustomConnection = {
   wireApi: 'chat' | 'responses'
   /** Opt-in protocol bridge: serves the endpoint this connection lacks natively. */
   protocolBridge: boolean
-  /** Reasoning effort levels declared for this provider; empty keeps the catalog default (no reasoning param). */
+  /** Effort levels the connection probe confirmed (levels the upstream explicitly rejected are absent). */
   reasoningEfforts?: string[]
-  /** Set by the connection probe: `rejected` disables the effort picker regardless of any declaration. */
-  reasoningEffortSupport?: ReasoningEffortSupport
   supportedEndpoints?: CustomEndpoint[]
   testedAt?: string
   models: ModelCapability[]
   revision: number
   hasApiKey: boolean
 }
-export type CustomConnectionDraft = Pick<CustomConnection, 'alias' | 'provider' | 'baseUrl' | 'model' | 'wireApi'> & { storageId?: string; apiKey: string; protocolBridge?: boolean; reasoningEfforts?: string[] }
+export type CustomConnectionDraft = Pick<CustomConnection, 'alias' | 'provider' | 'baseUrl' | 'model' | 'wireApi'> & { storageId?: string; apiKey: string; protocolBridge?: boolean }
 export type CustomConnectionSnapshot = { activeId: string | null; connections: CustomConnection[] }
 export const customProviderPresets = [
   { value: 'openrouter', label: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1' },
@@ -36,14 +32,11 @@ export function normalizeReasoningEfforts(value: unknown): string[] {
   const declared = Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && allowed.has(item)) : []
   return customReasoningEffortLevels.filter(level => declared.includes(level))
 }
-export function normalizeReasoningSupport(value: unknown): ReasoningEffortSupport {
-  return value === 'rejected' || value === 'accepted' ? value : 'unknown'
-}
-/** A saved declaration overrides whatever the provider catalog exposed, so the composer picker matches the wire. */
-export function applyDeclaredEfforts(models: ModelCapability[], efforts: string[]): ModelCapability[] {
+/** Probed efforts replace whatever the provider catalog exposed, so the composer picker matches the wire. */
+export function applyProbedEfforts(models: ModelCapability[], efforts: string[]): ModelCapability[] {
   if (!efforts.length) return models
-  const declared = efforts.map(value => ({ value, description: '' }))
-  return models.map(model => ({ ...model, efforts: declared }))
+  const probed = efforts.map(value => ({ value, description: '' }))
+  return models.map(model => ({ ...model, efforts: probed }))
 }
 export function customConnectionModels(connection: CustomConnection) {
   return connection.models.map(model => ({

@@ -19,8 +19,8 @@ describe('custom connection credential boundaries', () => {
   it('tests real generation, saves redacted cards, and keeps OpenAI credentials and selection unchanged', async () => {
     const { store, draft, home, fetcher } = await fixture()
     const tested = await store.test(draft)
-    // models catalog + plain/variant probes for both protocols.
-    expect(fetcher).toHaveBeenCalledTimes(5)
+    // models catalog + plain probes for both protocols + one level probe per effort.
+    expect(fetcher).toHaveBeenCalledTimes(8)
     expect(tested.models[0]).toMatchObject({ efforts: [], serviceTiers: [], providerId: 'custom' })
     await store.save({ ...draft, model: tested.model }, tested.token)
     const card = store.snapshot().connections[0]
@@ -123,80 +123,50 @@ describe('custom connection credential boundaries', () => {
     expect(store.snapshot()).toMatchObject({ activeId: null, connections: [{ wireApi: 'chat', protocolBridge: false, supportedEndpoints: ['/v1/models', '/v1/chat/completions'] }] })
   })
 
-  it('declares reasoning efforts without a fresh probe and applies them to saved models', async () => {
-    const { store, draft, home } = await fixture()
-    const input = { ...draft, model: 'sample' }
-    const tested = await store.test(input)
-    // Probe path: unknown levels are dropped, duplicates collapse, order is canonical.
-    await store.save({ ...input, reasoningEfforts: ['high', 'bogus', 'low', 'low'] }, tested.token)
-    const card = store.snapshot().connections[0]!
-    expect(card.reasoningEfforts).toEqual(['low', 'high'])
-    expect(card.models[0].efforts?.map(item => item.value)).toEqual(['low', 'high'])
-    // Editing the declaration alone stays savable without re-probing the provider.
-    await store.save({ ...input, storageId: card.storageId, apiKey: '', reasoningEfforts: ['minimal'] }, '')
-    const edited = store.snapshot().connections[0]!
-    expect(edited.reasoningEfforts).toEqual(['minimal'])
-    expect(edited.models[0].efforts?.map(item => item.value)).toEqual(['minimal'])
-    expect(edited.revision).toBe(2)
-    // Clearing the declaration restores the catalog efforts verbatim.
-    await store.save({ ...input, storageId: card.storageId, apiKey: '', reasoningEfforts: [] }, '')
-    const cleared = store.snapshot().connections[0]!
-    expect(cleared.reasoningEfforts).toEqual([])
-    expect(cleared.models[0].efforts).toEqual([])
-    // Older state files without the field load as an empty declaration.
-    const reopened = new CustomConnectionStore(home)
-    await reopened.ready
-    expect(reopened.snapshot().connections[0]?.reasoningEfforts).toEqual([])
-  })
-
-})
-
-  it('probes the reasoning parameter and clamps declarations on an explicit rejection', async () => {
+  it('probes every effort level and drops only the levels the upstream rejects by name', async () => {
     const { store, draft, fetcher } = await fixture()
     fetcher.mockImplementation(async (url: string | URL | Request, options?: RequestInit) => {
       const target = String(url)
       const body = JSON.parse(String(options?.body || '{}')) as Record<string, unknown>
       if (target.endsWith('/models')) return new Response(JSON.stringify({ data: [{ id: 'sample' }] }))
       if (target.endsWith('/responses')) return new Response('not found', { status: 404 })
-      // Strict gateway: the plain chat probe passes, the variant is rejected
-      // with the parameter named, so the resolved wire (chat) is conclusive.
-      if ('reasoning_effort' in body) return new Response(JSON.stringify({ error: { message: "Unknown parameter: 'reasoning_effort'" } }), { status: 400 })
+      // Strict value validation: the parameter itself is accepted, but xhigh
+      // is rejected by name; every other level serves normally.
+      if ('reasoning_effort' in body && body.reasoning_effort === 'xhigh') return new Response(JSON.stringify({ error: { message: "invalid reasoning_effort: 'xhigh'" } }), { status: 400 })
       return new Response(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'hi' } }] }))
     })
     const input = { ...draft, model: 'sample' }
     const tested = await store.test(input)
     expect(tested.wireApi).toBe('chat')
-    expect(tested.reasoningEffortSupport).toBe('rejected')
-    // The user declares anyway; the server-side clamp keeps the picker state consistent.
-    await store.save({ ...input, reasoningEfforts: ['high'] }, tested.token)
+    expect(tested.reasoningEfforts).toEqual(['minimal', 'low', 'medium', 'high'])
+    await store.save(input, tested.token)
     const card = store.snapshot().connections[0]!
-    expect(card.reasoningEffortSupport).toBe('rejected')
-    expect(card.reasoningEfforts).toEqual([])
-    expect(card.models[0].efforts).toEqual([])
-    // A no-probe save cannot resurrect the declaration either.
-    await store.save({ ...input, storageId: card.storageId, apiKey: '', reasoningEfforts: ['low'] }, '')
+    expect(card.reasoningEfforts).toEqual(['minimal', 'low', 'medium', 'high'])
+    expect(card.models[0].efforts?.map(item => item.value)).toEqual(['minimal', 'low', 'medium', 'high'])
+    // A no-probe save keeps the previous verdicts — only a re-test refreshes them.
+    await store.save({ ...input, storageId: card.storageId, apiKey: '', protocolBridge: true }, '')
     const edited = store.snapshot().connections[0]!
-    expect(edited.reasoningEffortSupport).toBe('rejected')
-    expect(edited.reasoningEfforts).toEqual([])
+    expect(edited.reasoningEfforts).toEqual(['minimal', 'low', 'medium', 'high'])
+    expect(edited.revision).toBe(2)
   })
 
-  it('keeps declarations usable when the probe is accepted or inconclusive', async () => {
-    const { store, draft, fetcher } = await fixture()
-    fetcher.mockImplementation(async (url: string | URL | Request, options?: RequestInit) => {
+  it('keeps all levels when the upstream accepts the parameter or the probe is inconclusive', async () => {
+    const { store, draft, fetcher, home } = await fixture()
+    // Accepted: every level probe returns a normal chat completion.
+    fetcher.mockImplementation(async (url: string | URL | Request) => {
       const target = String(url)
       if (target.endsWith('/models')) return new Response(JSON.stringify({ data: [{ id: 'sample' }] }))
       if (target.endsWith('/responses')) return new Response('not found', { status: 404 })
-      // Accepted: the reasoning variant returns a normal chat completion.
       return new Response(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'hi' } }] }))
     })
     const input = { ...draft, model: 'sample' }
     const accepted = await store.test(input)
-    expect(accepted.reasoningEffortSupport).toBe('accepted')
-    await store.save({ ...input, reasoningEfforts: ['high'] }, accepted.token)
-    expect(store.snapshot().connections[0]!.models[0].efforts?.map(item => item.value)).toEqual(['high'])
+    expect(accepted.reasoningEfforts).toEqual(['minimal', 'low', 'medium', 'high', 'xhigh'])
+    await store.save(input, accepted.token)
+    expect(store.snapshot().connections[0]!.models[0].efforts?.map(item => item.value)).toEqual(['minimal', 'low', 'medium', 'high', 'xhigh'])
 
-    // Inconclusive: the variant fails for an unrelated reason (no parameter
-    // named), so no disabled state is recorded and a later declaration stands.
+    // Inconclusive: a level probe fails for an unrelated reason (no parameter
+    // named), so the level stays supported by default.
     fetcher.mockImplementation(async (url: string | URL | Request, options?: RequestInit) => {
       const target = String(url)
       const body = JSON.parse(String(options?.body || '{}')) as Record<string, unknown>
@@ -206,8 +176,14 @@ describe('custom connection credential boundaries', () => {
       return new Response(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'hi' } }] }))
     })
     const retested = await store.test({ ...input, storageId: store.snapshot().connections[0]!.storageId, apiKey: '' })
-    expect(retested.reasoningEffortSupport).toBe('unknown')
+    expect(retested.reasoningEfforts).toEqual(['minimal', 'low', 'medium', 'high', 'xhigh'])
+    // The persisted list round-trips through a reopened store.
+    const reopened = new CustomConnectionStore(home)
+    await reopened.ready
+    expect(reopened.snapshot().connections[0]?.reasoningEfforts).toEqual(['minimal', 'low', 'medium', 'high', 'xhigh'])
   })
+
+})
 
   it('shares connection identity with an execution bridge retained across module reloads', async () => {
   const { home } = await fixture()

@@ -75,7 +75,10 @@ it('routes two external keys independently, retains usage and never prepares Ope
     await connections.select(b.storageId)
     expect((await request(ka.secret, '/v1/chat/completions')).choices[0].message.content).toBe('A')
     expect(seen.slice(-3).map(row => row.key).sort()).toEqual(['Bearer fixture-a', 'Bearer fixture-a', 'Bearer fixture-b'])
-    expect(seen.slice(-3).every(row => !row.body.reasoning && !row.body.reasoning_effort && !row.body.service_tier)).toBe(true)
+    // The level probes served normally, so the connections declare efforts and
+    // client reasoning params pass through; service_tier is still stripped
+    // because the catalog declares no tiers.
+    expect(seen.slice(-3).every(row => !row.body.service_tier && row.body.reasoning?.effort === 'high')).toBe(true)
     // /v1/responses on a bridged chat-only connection goes through the
     // protocol bridge; /v1/responses/compact stays unsupported.
     const beforeUnsupported = seen.length
