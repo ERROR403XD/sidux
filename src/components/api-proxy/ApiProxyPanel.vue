@@ -63,7 +63,7 @@
                 @update:model-value="setAccountValue(policyDrafts[key.id]!, $event)"
               />
             </div>
-            <ConnectionEndpoints class="api-proxy-key-endpoints" :endpoints="keyEndpoints(policyDrafts[key.id]!)" :show-tooltips="false" />
+            <ConnectionEndpoints class="api-proxy-key-endpoints" :endpoints="keyEndpoints(policyDrafts[key.id]!)" :bridged="keyBridgedEndpoints(policyDrafts[key.id]!)" :show-tooltips="false" />
           </template>
         </div>
       </section>
@@ -278,6 +278,8 @@ async function savePolicies(): Promise<void> {
         await apiProxyRequest(`/keys/${row.key.id}`, row.payload)
       }
     })
+    // 静默保存会让人误以为没生效；有实际改动且没有报错时才提示。
+    if (!error.value) notifyOperation('API key 配置已保存', 'success')
   } finally { savingPolicies.value = false }
 }
 const status = ref<ApiProxyStatus | null>(null)
@@ -363,6 +365,20 @@ function keyEndpoints(draft: KeyPolicyDraft): CustomEndpoint[] {
   for (const row of draft.entries) {
     if (!row.account) continue
     for (const endpoint of accountEndpoints(row.account)) supported.add(endpoint)
+  }
+  return endpointOrder.filter(endpoint => supported.has(endpoint))
+}
+/** 桥接端点：dev.4 起自定义连接开启协议转换后会补齐缺失端点，tag 需要单独着色。 */
+function accountBridgedEndpoints(id: string): CustomEndpoint[] {
+  const account = status.value?.accounts.accounts.find(row => row.storageId === resolvedAccountId(id))
+  return endpointOrder.filter(endpoint => (account?.bridgedEndpoints || []).includes(endpoint))
+}
+function keyBridgedEndpoints(draft: KeyPolicyDraft): CustomEndpoint[] {
+  if (!draft.aggregateEnabled) return accountBridgedEndpoints(draft.account)
+  const supported = new Set<CustomEndpoint>()
+  for (const row of draft.entries) {
+    if (!row.account) continue
+    for (const endpoint of accountBridgedEndpoints(row.account)) supported.add(endpoint)
   }
   return endpointOrder.filter(endpoint => supported.has(endpoint))
 }
@@ -459,6 +475,7 @@ async function save(force: boolean): Promise<void> {
     await apiProxyRequest('/settings', { settings: settings.value, force })
     forceDialog.value = false
     await refresh(true)
+    notifyOperation('API 代理配置已保存', 'success')
   })
 }
 function openCreate(key?: ApiProxyKey): void {
@@ -488,12 +505,17 @@ async function createKey(): Promise<void> {
       expiresAt: expiresAt?.toISOString() ?? null,
     })
     secret.value = created.secret
-    if (rotateTarget.value) await apiProxyRequest(`/keys/${rotateTarget.value.id}`, { expiresAt: new Date(Date.now() + 86400_000).toISOString() })
+    if (rotateTarget.value) {
+      await apiProxyRequest(`/keys/${rotateTarget.value.id}`, { expiresAt: new Date(Date.now() + 86400_000).toISOString() })
+      notifyOperation('API key 已轮换，旧 key 24 小时后到期', 'success')
+    } else {
+      notifyOperation('API key 已创建', 'success')
+    }
   })
 }
 async function copySecret(): Promise<void> { try { await copyTextToClipboard(secret.value) } catch { error.value = '无法自动复制，请选中 key 手动复制。' } }
 async function updateKey(key: ApiProxyKey, input: unknown): Promise<void> { await runKey(key.id, async () => { await apiProxyRequest(`/keys/${key.id}`, input) }) }
-async function revokeKey(): Promise<void> { const target = revokeTarget.value; if (!target) return; await run(async () => { await apiProxyRequest(`/keys/${target.id}`, { revoke: true, interrupt: interruptKey.value }); revokeTarget.value = null }) }
+async function revokeKey(): Promise<void> { const target = revokeTarget.value; if (!target) return; await run(async () => { await apiProxyRequest(`/keys/${target.id}`, { revoke: true, interrupt: interruptKey.value }); revokeTarget.value = null; notifyOperation('API key 已撤销', 'success') }) }
 async function renameKey(): Promise<void> { const target = renameTarget.value; if (!target) return; await run(async () => { await apiProxyRequest(`/keys/${target.id}`, { name: renameValue.value }); renameTarget.value = null }) }
 onMounted(() => {
   void refresh(true)

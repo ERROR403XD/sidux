@@ -72,16 +72,34 @@ describe('custom connection credential boundaries', () => {
     expect(store.snapshot().connections.map(row => row.alias)).toEqual(['First renamed', 'Second', 'Third', 'Fourth'])
   })
 
-  it('keeps chat-only connections available for API keys but rejects Codex selection and runtime', async () => {
+  it('lets bridged chat-only connections serve Codex, and gates unbridged ones out', async () => {
     const { store, draft, fetcher } = await fixture()
     fetcher.mockImplementation(async url => new Response(JSON.stringify(String(url).endsWith('/models') ? { data: [{ id: 'sample' }] } : { choices: [{ message: { content: 'hi' } }] })))
-    const input = { ...draft, model: 'sample', wireApi: 'chat' as const }
+    const input = { ...draft, model: 'sample', wireApi: 'chat' as const, protocolBridge: true }
     const tested = await store.test(input)
+    expect(tested.wireApi).toBe('chat')
     await store.save(input, tested.token)
-    const card = store.snapshot().connections[0]
-    await expect(store.select(card.storageId)).rejects.toThrow('仅支持 Chat Completions')
-    expect(() => customRuntimeConfig(store.get(card.storageId)!, 4190)).toThrow('Responses')
+    const card = store.snapshot().connections[0]!
+    // Bridged chat-only connections are selectable and get a runtime config:
+    // Codex keeps wire_api="responses" toward the local route, which the bridge serves.
+    await store.select(card.storageId)
+    const config = customRuntimeConfig(store.get(card.storageId)!, 4190)
+    expect(config.args.join(' ')).toContain(`custom_${card.storageId}`)
+    expect(config.args.join(' ')).toContain('/runtime/')
+    expect(config.args.join(' ')).toContain('wire_api="responses"')
+    expect(store.snapshot().activeId).toBe(card.storageId)
+
+    // Toggling the bridge off must be savable without a fresh probe, and the
+    // unbridged connection is refused as a Codex outlet again.
+    await store.save({ ...input, storageId: card.storageId, apiKey: '', protocolBridge: false }, '')
+    const unbridged = store.snapshot().connections[0]!
+    expect(unbridged.protocolBridge).toBe(false)
     expect(store.snapshot().activeId).toBeNull()
+    await expect(store.select(unbridged.storageId)).rejects.toThrow('开启协议转换')
+    expect(() => customRuntimeConfig(store.get(unbridged.storageId)!, 4190)).toThrow('协议转换')
+    // Re-enable without a probe: the toggle round-trips.
+    await store.save({ ...input, storageId: card.storageId, apiKey: '', protocolBridge: true }, '')
+    expect(store.snapshot().connections[0]).toMatchObject({ protocolBridge: true, revision: 3 })
   })
 
   it('probes both generation protocols and refreshes saved endpoints when support changes', async () => {
@@ -98,7 +116,10 @@ describe('custom connection credential boundaries', () => {
     const edit = { ...input, storageId: id, apiKey: '' }
     const retested = await store.test(edit)
     await store.save(edit, retested.token)
-    expect(store.snapshot()).toMatchObject({ activeId: null, connections: [{ wireApi: 'chat', supportedEndpoints: ['/v1/models', '/v1/chat/completions'] }] })
+    // A previously-Responses connection that loses native support becomes
+    // chat-only with the bridge off: it is deselected until the toggle is
+    // enabled in its account settings.
+    expect(store.snapshot()).toMatchObject({ activeId: null, connections: [{ wireApi: 'chat', protocolBridge: false, supportedEndpoints: ['/v1/models', '/v1/chat/completions'] }] })
   })
 
 })

@@ -5,8 +5,8 @@
     <div class="account-panel-list">
       <article v-for="connection in state.connections" :key="connection.storageId" class="account-card" :class="{ 'is-active': state.activeId === connection.storageId }" :data-connection-id="connection.storageId">
         <div class="account-card-heading"><strong>{{ connection.alias }}</strong><span class="account-plan-badge">{{ connection.provider }}</span></div>
-        <ConnectionEndpoints :endpoints="customConnectionEndpoints(connection)" />
-        <footer class="account-card-actions"><AppButton @click="open(connection)">{{ t('账号设置') }}</AppButton><AppButton :disabled="busy || connection.wireApi !== 'responses' || state.activeId === connection.storageId" @click="select(connection.storageId)">{{ t(state.activeId === connection.storageId ? '当前使用' : '切换至此账号') }}</AppButton></footer>
+        <ConnectionEndpoints :endpoints="customConnectionEndpoints(connection)" :bridged="customConnectionBridgedEndpoints(connection)" />
+        <footer class="account-card-actions"><AppButton @click="open(connection)">{{ t('账号设置') }}</AppButton><AppButton :disabled="busy || (connection.wireApi === 'chat' && !connection.protocolBridge) || state.activeId === connection.storageId" :title="connection.wireApi === 'chat' && !connection.protocolBridge ? t('该连接仅支持 Chat Completions，可在账号设置中开启协议转换') : undefined" @click="select(connection.storageId)">{{ t(state.activeId === connection.storageId ? '当前使用' : '切换至此账号') }}</AppButton></footer>
       </article>
     </div>
     <AppDialog :open="dialog" :title="t(draft.storageId ? '账号设置' : '添加账号')" :busy="busy" panel-class="custom-connection-dialog" @close="dialog = false">
@@ -17,7 +17,10 @@
         <label class="custom-connection-wide">Base URL<input v-model="draft.baseUrl" class="app-input" type="url" placeholder="https://api.example.com/v1" :disabled="busy" /></label>
         <label class="custom-connection-wide">API key<input v-model="draft.apiKey" class="app-input" type="password" autocomplete="off" :placeholder="t(draft.storageId ? '留空保留现有密钥' : '输入 API key')" :disabled="busy" /></label>
         <label>{{ t('模型') }}<input v-model="draft.model" class="app-input" :placeholder="t('自动读取，或输入模型名')" :disabled="busy" /></label>
-        <ConnectionEndpoints v-if="testedEndpoints.length" class="custom-connection-wide" :endpoints="testedEndpoints" />
+        <div v-if="bridgeToggleAvailable" class="custom-connection-bridge">
+          <AppSwitch v-model="draft.protocolBridge" :disabled="busy">{{ t('协议转换') }}</AppSwitch>
+        </div>
+        <ConnectionEndpoints v-if="testedEndpoints.length" class="custom-connection-wide" :endpoints="testedEndpoints" :bridged="testedBridgeEndpoints" />
         <p v-if="testToken" class="custom-connection-wide account-panel-notice" role="status">{{ t('连接成功') }}</p>
       </div>
       <template #footer>
@@ -36,10 +39,11 @@ import { notifyOperation } from '../../composables/useOperationToast'
 import { computed, onMounted, ref, watch } from 'vue'
 import { t } from '../../composables/useUiLanguage'
 import { useCustomConnections, customConnectionRequest } from '../../composables/useCustomConnections'
-import { customConnectionEndpoints, type CustomEndpoint, customProviderPresets, type CustomConnection, type CustomConnectionDraft, type CustomConnectionSnapshot } from '../../customConnections'
+import { customConnectionBridgedEndpoints, customConnectionEndpoints, customConnectionNativeEndpoints, type CustomEndpoint, customProviderPresets, type CustomConnection, type CustomConnectionDraft, type CustomConnectionSnapshot } from '../../customConnections'
 import AppButton from '../common/AppButton.vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppSelect from '../common/AppSelect.vue'
+import AppSwitch from '../common/AppSwitch.vue'
 import ConnectionEndpoints from './ConnectionEndpoints.vue'
 const emit = defineEmits<{ changed: [accountChanged: boolean] }>()
 const { state, load } = useCustomConnections()
@@ -49,14 +53,32 @@ const error = ref('')
 const testToken = ref('')
 const testedEndpoints = ref<CustomEndpoint[]>([])
 const confirmRemove = ref(false)
-const draft = ref<CustomConnectionDraft>({ alias: '', provider: 'openrouter', baseUrl: customProviderPresets[0]!.baseUrl, apiKey: '', model: '', wireApi: 'responses' })
+const draft = ref<CustomConnectionDraft>({ alias: '', provider: 'openrouter', baseUrl: customProviderPresets[0]!.baseUrl, apiKey: '', model: '', wireApi: 'responses', protocolBridge: false })
 const savedConfiguration = ref('')
 const hasChanges = computed(() => savedConfiguration.value !== JSON.stringify(draft.value))
-watch(draft, () => { testToken.value = ''; testedEndpoints.value = []; confirmRemove.value = false }, { deep: true, flush: 'sync' })
+// Only proof-relevant fields invalidate the test; the protocol bridge toggle
+// must be savable without re-probing the provider. The sync flush keeps the
+// clear-before-refill order when test() writes the resolved model back.
+const proofSignature = computed(() => JSON.stringify([draft.value.storageId ?? '', draft.value.alias, draft.value.provider, draft.value.baseUrl, draft.value.apiKey, draft.value.model]))
+watch(proofSignature, () => { testToken.value = ''; testedEndpoints.value = []; confirmRemove.value = false }, { flush: 'sync' })
+const nativeEndpoints = computed<CustomEndpoint[]>(() => {
+  if (testedEndpoints.value.length) return testedEndpoints.value
+  return draft.value.storageId ? state.value.connections.find(row => row.storageId === draft.value.storageId)?.supportedEndpoints ?? [] : []
+})
+const bridgeToggleAvailable = computed(() => {
+  const native = nativeEndpoints.value
+  return native.length > 0 && (!native.includes('/v1/responses') || !native.includes('/v1/chat/completions'))
+})
+const testedBridgeEndpoints = computed(() => {
+  if (!bridgeToggleAvailable.value || !draft.value.protocolBridge) return []
+  return customConnectionBridgedEndpoints({ wireApi: draft.value.wireApi, protocolBridge: true, supportedEndpoints: nativeEndpoints.value })
+})
 function open(connection?: CustomConnection): void {
-  draft.value = connection ? { storageId: connection.storageId, alias: connection.alias, provider: connection.provider, baseUrl: connection.baseUrl, apiKey: '', model: connection.model, wireApi: connection.wireApi } : { alias: '', provider: 'openrouter', baseUrl: customProviderPresets[0]!.baseUrl, apiKey: '', model: '', wireApi: 'responses' }
+  draft.value = connection
+    ? { storageId: connection.storageId, alias: connection.alias, provider: connection.provider, baseUrl: connection.baseUrl, apiKey: '', model: connection.model, wireApi: connection.wireApi, protocolBridge: connection.protocolBridge }
+    : { alias: '', provider: 'openrouter', baseUrl: customProviderPresets[0]!.baseUrl, apiKey: '', model: '', wireApi: 'responses', protocolBridge: false }
   savedConfiguration.value = JSON.stringify(draft.value)
-  testedEndpoints.value = connection ? customConnectionEndpoints(connection) : []
+  testedEndpoints.value = connection ? customConnectionNativeEndpoints(connection) : []
   error.value = ''
   testToken.value = ''
   confirmRemove.value = false

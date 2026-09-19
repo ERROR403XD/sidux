@@ -6,11 +6,12 @@ import { IgnoredQuotaErrors } from './ignoredQuotaErrors.js'
 import { ThreadInterruptionList } from './threadInterruptionList.js'
 import { SidebarThreadStatusReader } from './sidebarThreadStatusReader.js'
 import { getCustomConnectionStore, customRuntimeConfig } from './customConnectionStore.js'
+import { handleResponsesViaProtocolBridge } from './protocolBridgeTransport.js'
 import { getWebUiBrandingStore } from './webUiBrandingStore.js'
 import { customConnectionModels } from '../customConnections.js'
 import { readProjectDirectories, saveProjectDirectories } from './projectDirectories.js'
 import { ThreadCompletionList } from './threadCompletionList.js'
-import { AccountResourcePool } from './accountResourcePool.js'
+import { AccountResourcePool, WorkerPoolAllocationError, workerPoolAllocationUserMessage } from './accountResourcePool.js'
 import { resolveAccountSelection, type AccountExecutionLease } from './accountExecution.js'
 import { DirectoryPluginCache } from './directoryPluginCache.js'
 import { DirectoryMcpReader } from './directoryMcpReader.js'
@@ -5585,6 +5586,11 @@ export class AppServerProcess {
   constructor(private readonly runtimeOptions: { isolatedTask?: boolean; requestIdOffset?: number } = {}) {
     this.nextId = runtimeOptions.requestIdOffset || 1
   }
+  /** Invoked only for abnormal child exits (dispose() paths set `stopping` first). */
+  onProcessExited: () => void = () => {}
+  workerPoolDiagnostics() {
+    return this.sessionWorkers.snapshot()
+  }
   private runtimeStorageId: string | null = null
   private assignedStorageId: string | null = null
   private sessionOperations = 0
@@ -5597,6 +5603,18 @@ export class AppServerProcess {
   // that session's boundary. Idle eviction closes the process and awaits exit.
   private readonly sessionWorkers = new AccountResourcePool<AppServerProcess>({
     capacity: 16,
+    // A wedged worker must never wedge the allocation chain: every allocation
+    // has a total deadline, candidate idle checks have their own shorter cap,
+    // and reclaiming waits for a real child exit only up to a hard cap.
+    allocationTimeoutMs: 45_000,
+    idleCheckTimeoutMs: 5_000,
+    disposeTimeoutMs: 15_000,
+    metrics: worker => ({
+      busy: !!(worker.currentTaskRun || worker.sessionOperations || worker.activeTurnThreadIds.size || worker.pendingServerRequests.size || worker.pending.size),
+      activeTurns: worker.activeTurnThreadIds.size,
+      nativeRpcs: worker.pending.size,
+      serverRequests: worker.pendingServerRequests.size,
+    }),
     idle: async (worker, _key, scope) => {
       if (worker.currentTaskRun || worker.sessionOperations || worker.activeTurnThreadIds.size || worker.pendingServerRequests.size || worker.pending.size) return false
       if (!worker.process) return true
@@ -5632,12 +5650,15 @@ export class AppServerProcess {
     if (owned) {
       // Touch the pool so an asynchronous idle check cannot evict this use.
       const entry = [...this.sessionWorkers].find(([, worker]) => worker === owned)!
-      return this.sessionWorkers.getOrCreate(entry[0], () => owned, true, scope)
+      return this.mapAllocationError(this.sessionWorkers.getOrCreate(entry[0], () => owned, true, scope))
     }
-    return this.sessionWorkers.getOrCreate(key, () => {
+    return this.mapAllocationError(this.sessionWorkers.getOrCreate(key, () => {
       const worker = new AppServerProcess({ isolatedTask: true, requestIdOffset: this.nextWorkerId++ * 1_000_000 })
       worker.queueStateReader = async () => ({})
       worker.quotaBlocked = (threadId, turnId) => this.quotaBlocked(threadId, turnId)
+      // An abnormally exited worker must release its pool slot immediately;
+      // its exit handler clears owned threads and pending work.
+      worker.onProcessExited = () => { this.sessionWorkers.delete(key) }
       worker.onNotification(notification => {
         if (notification.method === 'account/rateLimits/updated') void worker.observeAccountQuota(notification.params).catch(() => undefined)
         if (/^(account\/|codexapp\/runtime\/)/.test(notification.method)) return
@@ -5645,7 +5666,14 @@ export class AppServerProcess {
         this.forwardTaskNotification(this.remapTaskRequest(worker, notification))
       })
       return worker
-    }, true, scope)
+    }, true, scope))
+  }
+  private mapAllocationError(allocation: Promise<AppServerProcess | null>): Promise<AppServerProcess | null> {
+    return allocation.catch(error => {
+      if (!(error instanceof WorkerPoolAllocationError)) throw error
+      console.info(`[worker-pool] allocation failed code=${error.code} ${this.sessionWorkers.snapshotJson()}`)
+      throw Object.assign(new Error(workerPoolAllocationUserMessage(error.code)), { rpcRejected: true, submissionNotSent: true, workerPoolCode: error.code })
+    })
   }
   private async configureSession(storageId: string | null, kind: 'primary' | 'automation', ownerId: string, scope?: AutomationPreparation): Promise<void> {
     scope?.assertActive()
@@ -5737,7 +5765,7 @@ export class AppServerProcess {
       else await getCustomConnectionStore().ready
       scope?.assertActive()
       const custom = settings.accountStorageId ? getCustomConnectionStore().get(settings.accountStorageId) : getCustomConnectionStore().active()
-      if (custom && custom.wireApi !== 'responses') throw new Error('Codex 需要 Responses API')
+      if (custom && custom.wireApi === 'chat' && !custom.protocolBridge) throw new Error('该连接仅支持 Chat Completions，可在账号设置中开启协议转换')
       const storageId = custom?.storageId || (followsOtherProvider ? null : resolveAccountSelection(state, settings).storageId)
       if (coordinator.blocksApiAccount(settings.accountStorageId || null)) return false
       if (storageId && !custom) {
@@ -5996,7 +6024,16 @@ export class AppServerProcess {
       this.initialized = false
       this.initializePromise = null
       this.readBuffer = ''
+      this.activeTurnThreadIds.clear()
+      this.activeTurnIds.clear()
+      this.terminalTurnIds.clear()
+      this.ownedThreadIds.clear()
       this.emitNotification({ method: 'codexapp/runtime/stopped', params: {} })
+      if (!this.stopping) {
+        // Abnormal exit: the owning pool must release the slot so a fresh
+        // worker can be allocated instead of routing into a dead process.
+        this.onProcessExited()
+      }
     })
   }
 
@@ -6529,7 +6566,7 @@ export class AppServerProcess {
       if (owner || (mutatingTurn && threadId) || ['thread/start', 'thread/resume', 'thread/fork'].includes(method)) {
         const worker = await this.sessionWorker(method === 'thread/start' || method === 'thread/fork' ? `chat:${randomUUID()}` : threadId, scope)
         scope?.assertActive()
-        if (!worker) throw Object.assign(new Error('会话运行资源已满，请先结束一个活动会话后重试'), { rpcRejected: true, submissionNotSent: true })
+        if (!worker) throw Object.assign(new Error('会话运行资源已满，空闲会话正在回收，请稍后重试。'), { rpcRejected: true, submissionNotSent: true })
         const selectsAccount = mutatingTurn || ['thread/start', 'thread/resume', 'thread/fork'].includes(method)
         if (selectsAccount) worker.sessionOperations++
         try {
@@ -7580,17 +7617,31 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
       const runtimeConnection = /^\/codex-api\/custom-connections\/runtime\/([a-f0-9]{64})\/(\d+)\/v1\/responses$/.exec(url.pathname)
       if (runtimeConnection && req.method === 'POST') {
         const connection = connections.get(runtimeConnection[1])
-        if (!isLoopbackRemoteAddress(req.socket.remoteAddress) || !connection || connection.wireApi !== 'responses' || connection.revision !== Number(runtimeConnection[2]) || req.headers.authorization !== `Bearer ${connection.runtimeToken}`) {
+        if (!isLoopbackRemoteAddress(req.socket.remoteAddress) || !connection || connection.revision !== Number(runtimeConnection[2]) || req.headers.authorization !== `Bearer ${connection.runtimeToken}`) {
           setJson(res, 409, { error: '连接配置已变化，请重新发送' })
           return
         }
-        handleCustomEndpointProxyRequest(req, res, { baseUrl: connection.baseUrl, bearerToken: connection.apiKey, wireApi: connection.wireApi, sanitizeRequest: payload => {
+        const sanitize = (payload: Record<string, unknown>) => {
           const value = { ...payload }
           const model = connection.models.find(row => row.id === value.model)
           if (!model?.efforts?.length) { delete value.reasoning; delete value.reasoning_effort }
           if (!model?.serviceTiers?.length) delete value.service_tier
           return value
-        } })
+        }
+        if (connection.wireApi === 'chat') {
+          if (!connection.protocolBridge) {
+            setJson(res, 409, { error: '该连接仅支持 Chat Completions，可在账号设置中开启协议转换' })
+            return
+          }
+          // Chat-only connection with the bridge toggle: Codex keeps speaking
+          // Responses to the local route; the bridge performs the conversion.
+          // Codex ships non-function tool descriptors (namespace); omit them
+          // instead of failing the turn.
+          const payload = sanitize(asRecord(await readJsonBody(req)) || {})
+          await handleResponsesViaProtocolBridge(res, { baseUrl: connection.baseUrl, apiKey: connection.apiKey, compatOptions: { unsupportedTools: 'omit' } }, payload)
+          return
+        }
+        handleCustomEndpointProxyRequest(req, res, { baseUrl: connection.baseUrl, bearerToken: connection.apiKey, wireApi: connection.wireApi, sanitizeRequest: sanitize })
         return
       }
       if (url.pathname === '/codex-api/custom-connections' && req.method === 'GET') {
@@ -7624,6 +7675,11 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           setJson(res, 200, { data: customConnectionModels({ ...custom, hasApiKey: true }), source: 'custom' })
           return
         }
+      }
+      if (url.pathname === '/codex-api/worker-pools' && req.method === 'GET') {
+        // Identity-free counters only: no storageIds, tokens, keys or content.
+        setJson(res, 200, { data: appServer.workerPoolDiagnostics() })
+        return
       }
       if (url.pathname === '/codex-api/zen-proxy/v1/responses' && req.method === 'POST') {
         if (!isLoopbackRemoteAddress(req.socket.remoteAddress)) {
