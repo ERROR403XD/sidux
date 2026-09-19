@@ -61,7 +61,8 @@ it('tests and adds a connection during an OpenAI quota refresh without changing 
     expect(saved.status).toBe(200)
     expect(saved.body.data.connections).toHaveLength(1)
     expect(saved.body.data.activeId).toBeNull()
-    expect(probes).toBe(3)
+    // models catalog + plain/variant reasoning probes for both protocols.
+    expect(probes).toBe(5)
     expect(coordinator.isAccountOperationInProgress()).toBe(true)
     expect((await coordinator.store.readState()).activeStorageId).toBe(primary.account.storageId)
     expect(await readFile(join(home, 'auth.json'), 'utf8')).toBe(before)

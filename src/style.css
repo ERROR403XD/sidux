@@ -2822,16 +2822,19 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .custom-connection-form .app-select .composer-dropdown-trigger { width: 100%; }
 .custom-connection-bridge { display: flex; align-items: flex-end; min-width: 0; }
 .custom-connection-bridge .app-switch { width: 100%; padding-bottom: 6px; }
-/* 推理强度声明：一行可多选的档位芯片，选中态用主色描边，不引入原生多选控件。 */
-.custom-connection-efforts { display: grid; gap: 8px; }
+/* 模型输入与协议转换开关同排（开关缺失时模型占满整行）；
+   推理强度声明与端点 tag 同排，375 宽度下自然换行。 */
+.custom-connection-model-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; }
+.custom-connection-efforts-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .custom-connection-efforts-label { font-size: 13px; color: var(--ui-text); }
 .custom-connection-efforts-options { display: flex; flex-wrap: wrap; gap: 8px; }
 .custom-connection-effort { padding: 4px 12px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); background: var(--ui-field); color: var(--ui-text); font-size: 12px; line-height: 18px; cursor: pointer; }
 .custom-connection-effort:is(:hover, :focus-visible) { border-color: var(--ui-accent, #6366f1); }
 .custom-connection-effort[aria-pressed="true"] { border-color: var(--ui-accent, #6366f1); color: var(--ui-accent, #6366f1); background: var(--ui-hover); font-weight: 600; }
 .custom-connection-effort:disabled { opacity: .55; cursor: default; }
-.custom-connection-efforts-hint { color: var(--ui-muted); font-size: 11px; line-height: 16px; }
-@media (max-width: 520px) { .custom-connection-form { grid-template-columns: minmax(0, 1fr); } }
+.custom-connection-efforts-row .custom-connection-endpoints { margin: 0 0 0 auto; flex-wrap: wrap; }
+.custom-connection-efforts-warning { margin: 0; color: var(--ui-notice-warning); font-size: 11px; line-height: 16px; }
+@media (max-width: 520px) { .custom-connection-form { grid-template-columns: minmax(0, 1fr); } .custom-connection-model-row { grid-template-columns: minmax(0, 1fr); } }
 
 .custom-connection-endpoints { display: flex; gap: 6px; margin: 12px 0; }
 .custom-connection-endpoint { display: inline-flex; align-items: center; justify-content: center; width: 82px; padding: 4px 6px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-control); font-size: 11px; color: var(--ui-muted); background: var(--ui-hover); opacity: .55; }

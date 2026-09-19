@@ -1,5 +1,7 @@
 import type { ModelCapability } from './modelCapabilities'
 export type CustomEndpoint = '/v1/models' | '/v1/responses' | '/v1/chat/completions'
+/** Probe outcome for the reasoning parameter: only an explicit upstream rejection is conclusive. */
+export type ReasoningEffortSupport = 'rejected' | 'accepted' | 'unknown'
 export type CustomConnection = {
   storageId: string
   alias: string
@@ -11,6 +13,8 @@ export type CustomConnection = {
   protocolBridge: boolean
   /** Reasoning effort levels declared for this provider; empty keeps the catalog default (no reasoning param). */
   reasoningEfforts?: string[]
+  /** Set by the connection probe: `rejected` disables the effort picker regardless of any declaration. */
+  reasoningEffortSupport?: ReasoningEffortSupport
   supportedEndpoints?: CustomEndpoint[]
   testedAt?: string
   models: ModelCapability[]
@@ -31,6 +35,9 @@ export function normalizeReasoningEfforts(value: unknown): string[] {
   const allowed = new Set<string>(customReasoningEffortLevels)
   const declared = Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && allowed.has(item)) : []
   return customReasoningEffortLevels.filter(level => declared.includes(level))
+}
+export function normalizeReasoningSupport(value: unknown): ReasoningEffortSupport {
+  return value === 'rejected' || value === 'accepted' ? value : 'unknown'
 }
 /** A saved declaration overrides whatever the provider catalog exposed, so the composer picker matches the wire. */
 export function applyDeclaredEfforts(models: ModelCapability[], efforts: string[]): ModelCapability[] {

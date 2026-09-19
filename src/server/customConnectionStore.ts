@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { privateJson } from './apiProxy/store.js'
 import { normalizeModelCapability } from '../modelCapabilities.js'
-import { type CustomEndpoint, type CustomConnection, type CustomConnectionDraft, type CustomConnectionSnapshot, applyDeclaredEfforts, normalizeReasoningEfforts } from '../customConnections.js'
+import { type CustomEndpoint, type CustomConnection, type CustomConnectionDraft, type CustomConnectionSnapshot, type ReasoningEffortSupport, applyDeclaredEfforts, normalizeReasoningEfforts, normalizeReasoningSupport } from '../customConnections.js'
 
 type StoredConnection = Omit<CustomConnection, 'hasApiKey'> & { apiKey: string; runtimeToken: string }
 type State = { explicitSelection?: boolean; version: 1; activeId: string | null; connections: StoredConnection[] }
@@ -12,14 +12,14 @@ export class CustomConnectionStore {
   readonly ready: Promise<void>
   private state: State = { version: 1, activeId: null, connections: [] }
   private writes: Promise<unknown> = Promise.resolve()
-  private proofs = new Map<string, { digest: string; models: CustomConnection['models']; supportedEndpoints: CustomEndpoint[]; wireApi: 'responses' | 'chat'; testedAt: string; expires: number }>()
+  private proofs = new Map<string, { digest: string; models: CustomConnection['models']; supportedEndpoints: CustomEndpoint[]; wireApi: 'responses' | 'chat'; reasoningEffortSupport: ReasoningEffortSupport; testedAt: string; expires: number }>()
   constructor(readonly home: string, private fetcher: typeof fetch = (...args) => fetch(...args)) { this.ready = this.restore() }
   private async restore(): Promise<void> {
     try {
       const value = JSON.parse(await readFile(join(this.home, 'custom-connections.json'), 'utf8')) as State
       if (value.version !== 1 || !Array.isArray(value.connections) || value.connections.some(row => !/^[a-f0-9]{64}$/.test(row.storageId) || typeof row.apiKey !== 'string' || !Array.isArray(row.models))) throw new Error('自定义连接配置损坏')
       // Connections saved before the protocol bridge toggle existed default to off.
-      value.connections = value.connections.map(row => ({ ...row, protocolBridge: row.protocolBridge === true, reasoningEfforts: normalizeReasoningEfforts(row.reasoningEfforts) }))
+      value.connections = value.connections.map(row => ({ ...row, protocolBridge: row.protocolBridge === true, reasoningEfforts: normalizeReasoningEfforts(row.reasoningEfforts), reasoningEffortSupport: normalizeReasoningSupport(row.reasoningEffortSupport) }))
       this.state = value
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
@@ -45,8 +45,11 @@ export class CustomConnectionStore {
   }
   // Stored models stay as probed; the declared reasoning efforts are merged
   // in on read so clearing the declaration restores the catalog verbatim.
+  // A probe-detected rejection wins over any declaration: the picker must
+  // fall back to the disabled state exactly like an undeclared connection.
   private materialize(row: StoredConnection): StoredConnection {
-    return { ...row, models: applyDeclaredEfforts(row.models, normalizeReasoningEfforts(row.reasoningEfforts)) }
+    const declared = normalizeReasoningSupport(row.reasoningEffortSupport) === 'rejected' ? [] : normalizeReasoningEfforts(row.reasoningEfforts)
+    return { ...row, models: applyDeclaredEfforts(row.models, declared) }
   }
   get(id: string | null | undefined): StoredConnection | undefined {
     const row = this.state.connections.find(item => item.storageId === id)
@@ -91,7 +94,7 @@ export class CustomConnectionStore {
   // are local toggles — none of them changes what a test proves, so all stay
   // out of the digest.
   private digest(input: CustomConnectionDraft): string { return createHash('sha256').update(JSON.stringify({ ...input, wireApi: undefined, protocolBridge: undefined, reasoningEfforts: undefined })).digest('hex') }
-  async test(input: CustomConnectionDraft): Promise<{ token: string; models: CustomConnection['models']; model: string; supportedEndpoints: CustomEndpoint[]; wireApi: 'responses' | 'chat' }> {
+  async test(input: CustomConnectionDraft): Promise<{ token: string; models: CustomConnection['models']; model: string; supportedEndpoints: CustomEndpoint[]; wireApi: 'responses' | 'chat'; reasoningEffortSupport: ReasoningEffortSupport }> {
     await this.ready
     const draft = this.draft(input)
     let rows: unknown[] = []
@@ -110,24 +113,52 @@ export class CustomConnectionStore {
     if (!draft.model) throw new Error('模型目录不可用，请填写模型名')
     if (!models.some(row => row.id === draft.model)) models.unshift({ ...normalizeModelCapability(draft.model, 'custom')!, efforts: [], serviceTiers: [] })
     const protocols = ['responses', 'chat'] as const
-    const probes = await Promise.allSettled(protocols.map(async protocol => {
+    const probeBodies = {
+      responses: { model: draft.model, input: 'hi', stream: false, max_output_tokens: 16 },
+      chat: { model: draft.model, messages: [{ role: 'user', content: 'hi' }], stream: false, max_tokens: 16 },
+    } satisfies Record<(typeof protocols)[number], Record<string, unknown>>
+    // The reasoning variant mirrors the plain probe with the parameter the
+    // runtime paths would inject. Only a rejection whose error names the
+    // parameter counts as "unsupported" — most gateways silently ignore it,
+    // so a 200 is weak evidence and never overrides a user declaration.
+    const probeVariants = {
+      responses: { ...probeBodies.responses, reasoning: { effort: 'low' } },
+      chat: { ...probeBodies.chat, reasoning_effort: 'low' },
+    } satisfies Record<(typeof protocols)[number], Record<string, unknown>>
+    const probeOnce = async (protocol: (typeof protocols)[number], body: Record<string, unknown>) => {
       const response = await this.fetcher(`${draft.baseUrl}/${protocol === 'chat' ? 'chat/completions' : 'responses'}`, {
         method: 'POST', headers: { Authorization: `Bearer ${draft.apiKey}`, 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(30000),
-        body: JSON.stringify(protocol === 'chat' ? { model: draft.model, messages: [{ role: 'user', content: 'hi' }], stream: false, max_tokens: 16 } : { model: draft.model, input: 'hi', stream: false, max_output_tokens: 16 }),
+        body: JSON.stringify(body),
       })
-      const body = await response.json().catch(() => null) as any
-      return response.ok && (protocol === 'chat' ? Array.isArray(body?.choices) && body.choices.length > 0 : Array.isArray(body?.output) && body.status !== 'failed')
-    }))
-    probes.forEach((result, index) => {
-      if (result.status === 'fulfilled' && result.value) supportedEndpoints.push(protocols[index] === 'responses' ? '/v1/responses' : '/v1/chat/completions')
+      const text = await response.text().catch(() => '')
+      let parsed: any = null
+      try { parsed = JSON.parse(text) } catch { /* non-JSON bodies only count as served when the shape check passes */ }
+      const served = response.ok && (protocol === 'chat' ? Array.isArray(parsed?.choices) && parsed.choices.length > 0 : Array.isArray(parsed?.output) && parsed.status !== 'failed')
+      return { served, text }
+    }
+    // Flat order: [responses-plain, responses-variant, chat-plain, chat-variant].
+    const probes = await Promise.allSettled(protocols.flatMap(protocol => [probeOnce(protocol, probeBodies[protocol]), probeOnce(protocol, probeVariants[protocol])]))
+    const probeResults = probes.map(result => result.status === 'fulfilled' ? result.value : null)
+    probeResults.forEach((result, index) => {
+      if (result?.served && index % 2 === 0) supportedEndpoints.push(protocols[index / 2] === 'responses' ? '/v1/responses' : '/v1/chat/completions')
     })
     if (!supportedEndpoints.some(endpoint => endpoint !== '/v1/models')) throw new Error('连接测试失败，请检查地址、模型和凭据')
+    const classifyReasoningSupport = (protocol: (typeof protocols)[number]): ReasoningEffortSupport => {
+      const plain = probeResults[protocols.indexOf(protocol) * 2]
+      const variant = probeResults[protocols.indexOf(protocol) * 2 + 1]
+      if (!plain?.served || !variant) return 'unknown'
+      if (variant.served) return 'accepted'
+      return /reasoning/i.test(variant.text) ? 'rejected' : 'unknown'
+    }
     const wireApi = supportedEndpoints.includes('/v1/responses') ? 'responses' : 'chat'
+    // The runtime only speaks the resolved wire, so the other protocol's
+    // verdict is irrelevant to the picker.
+    const reasoningEffortSupport = classifyReasoningSupport(wireApi)
     const token = randomBytes(24).toString('hex')
     for (const [key, proof] of this.proofs) if (proof.expires < Date.now()) this.proofs.delete(key)
     if (this.proofs.size >= 32) this.proofs.delete(this.proofs.keys().next().value!)
-    this.proofs.set(token, { digest: this.digest(draft), models, supportedEndpoints, wireApi, testedAt: new Date().toISOString(), expires: Date.now() + 10 * 60000 })
-    return { token, models, model: draft.model, supportedEndpoints, wireApi }
+    this.proofs.set(token, { digest: this.digest(draft), models, supportedEndpoints, wireApi, reasoningEffortSupport, testedAt: new Date().toISOString(), expires: Date.now() + 10 * 60000 })
+    return { token, models, model: draft.model, supportedEndpoints, wireApi, reasoningEffortSupport }
   }
   async save(input: CustomConnectionDraft, token: string): Promise<void> {
     await this.ready
@@ -147,10 +178,15 @@ export class CustomConnectionStore {
       && previous.apiKey === draft.apiKey
     if (!proofValid && !onlyLocalChanges) throw new Error('请先测试连接')
     if (!previous && this.state.connections.length >= 32) throw new Error('自定义连接数量已达上限')
+    // A fresh proof carries its own probe verdict; a no-probe save keeps the
+    // previous one. Either way a `rejected` verdict clamps the declaration to
+    // empty so the picker stays disabled on the server side too.
+    const support = normalizeReasoningSupport(proofValid && proof ? proof.reasoningEffortSupport : previous?.reasoningEffortSupport)
+    const declaredEfforts = support === 'rejected' ? [] : draft.reasoningEfforts
     await this.mutate(() => {
       const row: StoredConnection = proofValid && proof
-        ? { ...draft, wireApi: proof.wireApi, protocolBridge: draft.protocolBridge === true, supportedEndpoints: proof.supportedEndpoints, testedAt: proof.testedAt, storageId: previous?.storageId || randomBytes(32).toString('hex'), revision: (previous?.revision || 0) + 1, models: proof.models, runtimeToken: randomBytes(24).toString('hex') }
-        : { ...previous!, ...draft, protocolBridge: draft.protocolBridge === true, wireApi: previous!.wireApi, supportedEndpoints: previous!.supportedEndpoints, testedAt: previous!.testedAt, models: previous!.models, storageId: previous!.storageId, revision: previous!.revision + 1, runtimeToken: randomBytes(24).toString('hex') }
+        ? { ...draft, reasoningEfforts: declaredEfforts, reasoningEffortSupport: support, wireApi: proof.wireApi, protocolBridge: draft.protocolBridge === true, supportedEndpoints: proof.supportedEndpoints, testedAt: proof.testedAt, storageId: previous?.storageId || randomBytes(32).toString('hex'), revision: (previous?.revision || 0) + 1, models: proof.models, runtimeToken: randomBytes(24).toString('hex') }
+        : { ...previous!, ...draft, reasoningEfforts: declaredEfforts, reasoningEffortSupport: support, protocolBridge: draft.protocolBridge === true, wireApi: previous!.wireApi, supportedEndpoints: previous!.supportedEndpoints, testedAt: previous!.testedAt, models: previous!.models, storageId: previous!.storageId, revision: previous!.revision + 1, runtimeToken: randomBytes(24).toString('hex') }
       // Editing an existing connection keeps its position so the settings list does not reorder under the pointer.
       const connections = previous
         ? this.state.connections.map(item => (item.storageId === row.storageId ? row : item))

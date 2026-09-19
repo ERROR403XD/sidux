@@ -85,12 +85,14 @@
 
 前提：隔离 CODEX_HOME；一个指向 OpenAI 兼容上游的自定义连接（如本地样本服务或 DeepSeek）。涉及单元测试：`pnpm exec vitest run src/server/customConnectionStore.test.ts src/server/customConnectionEfforts.test.ts`；UI 验证脚本 `output/playwright/verify-dev6-efforts-ui.cjs`（需要 `127.0.0.1:4413` 空闲作样本上游）。
 
-1. 「账号设置」弹窗「模型」下方出现「推理强度」芯片行：极低 / 低 / 中 / 高 / 极高（wire 值 minimal / low / medium / high / xhigh），可多选、可取消；下方有说明文字。未选择任何档位时行为与旧版完全一致（推理强度选择器显示 N/A、请求剥离 reasoning 参数）。
+1. 「账号设置」弹窗内：「模型」输入框与「协议转换」开关同排（开关缺失时模型占满整行）；「推理强度」标签 + 档位芯片（极低 / 低 / 中 / 高 / 极高，wire 值 minimal / low / medium / high / xhigh，可多选、可取消）与端点能力 tag 同排，tag 右对齐到弹窗内容右边界，375 宽度下自然换行；无冗余说明文字。未选择任何档位时行为与旧版完全一致（推理强度选择器显示 N/A、请求剥离 reasoning 参数）。
 2. 选择「中」「高」→ 测试连接 → 保存配置：连接测试不因声明而失效（声明不参与探测摘要）；保存后重新打开弹窗，芯片回显为「中」「高」。
 3. 免复测编辑：重新打开弹窗后重新点一次「测试连接」（UI 保存需要测试令牌，与协议转换开关一致），再取消「中」只留「高」→ 保存成功（revision+1），无需重新填写凭据。
 4. 打开使用该连接的会话，输入框「模型与推理强度」选择器列出声明档位（custom 连接显示 wire 原值）；选择「高」后发送消息，上游 `POST /chat/completions` 请求体带 `"reasoning_effort": "high"`（responses 原生连接为 `reasoning.effort`；仅 Chat 连接开协议转换后由桥接转换写入 `reasoning_effort`）。
 5. 对照组：未声明档位的连接保持旧行为——上游请求体不含 `reasoning_effort` / `reasoning`，选择器显示 N/A；`GET /codex-api/accounts/models?storageId=<id>` 的 `supportedReasoningEfforts` 与声明一致。
 6. 容错：手工构造含未知档位（如 `"bogus"`）或重复档位的保存请求时，非法值被丢弃、重复值合并、顺序固定为 minimal → xhigh；旧版本状态文件（无该字段）加载后视为未声明。
 7. 明暗主题分别检查芯片选中态（主色描边）与提示文字对比度；375×812 下弹窗无横向溢出。
+8. 推理参数探测（拒绝兜底）：把连接指向一个「chat 正常服务、但 400 点名拒绝 `reasoning_effort`」的上游，点「测试连接」：芯片全部禁用，芯片行下方出现警示「探测到上游明确拒绝推理参数，推理强度已禁用。」，已选档位被清空；保存后快照记录 `reasoningEffortSupport: "rejected"` 且 `reasoningEfforts` 为空，重新打开弹窗芯片保持禁用；该连接的推理强度选择器显示 N/A（与未声明一致），上游请求不含 reasoning 参数。探测只在「测试连接」时发生（每协议多一个 16-token 变体请求）；上游 200 时只记录 `accepted`（不拒绝 ≠ 确认生效），错误未点名参数或端点不存在时记录 `unknown`，两者都不影响声明。
+9. 对照组：旧状态文件（无 `reasoningEffortSupport` 字段）加载为 `unknown`，声明行为不变。
 
 回滚/清理：还原 `src/customConnections.ts`、`src/server/customConnectionStore.ts`、`src/components/accounts/CustomConnections.vue` 与 `src/style.css` 的芯片样式即可；旧状态文件含 `reasoningEfforts` 字段会被忽略，无需迁移。移除样本连接，停止样本服务。

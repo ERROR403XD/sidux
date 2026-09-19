@@ -19,7 +19,8 @@ describe('custom connection credential boundaries', () => {
   it('tests real generation, saves redacted cards, and keeps OpenAI credentials and selection unchanged', async () => {
     const { store, draft, home, fetcher } = await fixture()
     const tested = await store.test(draft)
-    expect(fetcher).toHaveBeenCalledTimes(3)
+    // models catalog + plain/variant probes for both protocols.
+    expect(fetcher).toHaveBeenCalledTimes(5)
     expect(tested.models[0]).toMatchObject({ efforts: [], serviceTiers: [], providerId: 'custom' })
     await store.save({ ...draft, model: tested.model }, tested.token)
     const card = store.snapshot().connections[0]
@@ -150,7 +151,65 @@ describe('custom connection credential boundaries', () => {
 
 })
 
-it('shares connection identity with an execution bridge retained across module reloads', async () => {
+  it('probes the reasoning parameter and clamps declarations on an explicit rejection', async () => {
+    const { store, draft, fetcher } = await fixture()
+    fetcher.mockImplementation(async (url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      const body = JSON.parse(String(options?.body || '{}')) as Record<string, unknown>
+      if (target.endsWith('/models')) return new Response(JSON.stringify({ data: [{ id: 'sample' }] }))
+      if (target.endsWith('/responses')) return new Response('not found', { status: 404 })
+      // Strict gateway: the plain chat probe passes, the variant is rejected
+      // with the parameter named, so the resolved wire (chat) is conclusive.
+      if ('reasoning_effort' in body) return new Response(JSON.stringify({ error: { message: "Unknown parameter: 'reasoning_effort'" } }), { status: 400 })
+      return new Response(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'hi' } }] }))
+    })
+    const input = { ...draft, model: 'sample' }
+    const tested = await store.test(input)
+    expect(tested.wireApi).toBe('chat')
+    expect(tested.reasoningEffortSupport).toBe('rejected')
+    // The user declares anyway; the server-side clamp keeps the picker state consistent.
+    await store.save({ ...input, reasoningEfforts: ['high'] }, tested.token)
+    const card = store.snapshot().connections[0]!
+    expect(card.reasoningEffortSupport).toBe('rejected')
+    expect(card.reasoningEfforts).toEqual([])
+    expect(card.models[0].efforts).toEqual([])
+    // A no-probe save cannot resurrect the declaration either.
+    await store.save({ ...input, storageId: card.storageId, apiKey: '', reasoningEfforts: ['low'] }, '')
+    const edited = store.snapshot().connections[0]!
+    expect(edited.reasoningEffortSupport).toBe('rejected')
+    expect(edited.reasoningEfforts).toEqual([])
+  })
+
+  it('keeps declarations usable when the probe is accepted or inconclusive', async () => {
+    const { store, draft, fetcher } = await fixture()
+    fetcher.mockImplementation(async (url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      if (target.endsWith('/models')) return new Response(JSON.stringify({ data: [{ id: 'sample' }] }))
+      if (target.endsWith('/responses')) return new Response('not found', { status: 404 })
+      // Accepted: the reasoning variant returns a normal chat completion.
+      return new Response(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'hi' } }] }))
+    })
+    const input = { ...draft, model: 'sample' }
+    const accepted = await store.test(input)
+    expect(accepted.reasoningEffortSupport).toBe('accepted')
+    await store.save({ ...input, reasoningEfforts: ['high'] }, accepted.token)
+    expect(store.snapshot().connections[0]!.models[0].efforts?.map(item => item.value)).toEqual(['high'])
+
+    // Inconclusive: the variant fails for an unrelated reason (no parameter
+    // named), so no disabled state is recorded and a later declaration stands.
+    fetcher.mockImplementation(async (url: string | URL | Request, options?: RequestInit) => {
+      const target = String(url)
+      const body = JSON.parse(String(options?.body || '{}')) as Record<string, unknown>
+      if (target.endsWith('/models')) return new Response(JSON.stringify({ data: [{ id: 'sample' }] }))
+      if (target.endsWith('/responses')) return new Response('not found', { status: 404 })
+      if ('reasoning_effort' in body) return new Response(JSON.stringify({ error: { message: 'insufficient quota' } }), { status: 400 })
+      return new Response(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'hi' } }] }))
+    })
+    const retested = await store.test({ ...input, storageId: store.snapshot().connections[0]!.storageId, apiKey: '' })
+    expect(retested.reasoningEffortSupport).toBe('unknown')
+  })
+
+  it('shares connection identity with an execution bridge retained across module reloads', async () => {
   const { home } = await fixture()
   const firstModule = await import('./customConnectionStore')
   const store = firstModule.getCustomConnectionStore(home)
