@@ -2519,8 +2519,10 @@ fieldset.thread-pending-request-shell { min-width: 0; margin: 0; }
 .api-proxy-inline-policy { display: flex; align-items: center; min-width: 0; gap: 8px 12px; grid-column: 1; grid-row: 2; }
 .api-proxy-inline-policy .app-select { flex: 1; }
 .api-proxy-inline-policy .api-proxy-check { flex-shrink: 0; margin: 0; white-space: nowrap; }
-/* 主账号下拉框吃掉左列宽度但保留最小宽度：切换 OpenAI / 自定义连接都不改变行宽。 */
-.api-proxy-inline-policy .app-select.api-proxy-key-account { flex: 1 1 auto; width: 100%; min-width: 260px; max-width: 100%; }
+/* 主账号下拉框吃掉左列宽度但保留最小宽度：切换 OpenAI / 自定义连接都不改变行宽。
+   下限用 min(260px, 100%) 而不是固定 260px：左列被右列操作区挤到 260px 以下时
+   （窗口较窄、按钮文案更宽或容器查询未生效），下拉框随列收缩，不会横向溢出。 */
+.api-proxy-inline-policy .app-select.api-proxy-key-account { flex: 1 1 auto; width: 100%; min-width: min(260px, 100%); max-width: 100%; }
 .api-proxy-key-form .app-select.api-proxy-key-account { flex: 0 1 auto; width: 100%; }
 .api-proxy-key-recent { display: block; }
 .api-proxy-key-controls { grid-column: 2; grid-row: 1; align-items: center; justify-content: flex-end; }
