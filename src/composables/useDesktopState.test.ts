@@ -993,6 +993,36 @@ describe('provider model selection', () => {
     state.stopPolling()
   })
 
+  it('gives attachment-only new threads a readable title and persists it', async () => {
+    installTestWindow()
+    gatewayMocks.getPendingServerRequests.mockResolvedValue([])
+    gatewayMocks.getThreadGroupsPage.mockResolvedValue({ groups: [], nextCursor: null })
+    gatewayMocks.startThread.mockResolvedValue({ threadId: 'image-thread', model: 'gpt-5.6-sol', modelProvider: 'codex' })
+    gatewayMocks.startThreadTurn.mockResolvedValue('turn-1')
+    const state = useDesktopState()
+    state.primeSelectedThread('')
+
+    // Image-only send: the stored first user message must be non-empty
+    // (empty first_user_message threads are omitted from thread/list) and
+    // the sidebar title falls back to the attachment-derived label.
+    await state.sendMessageToNewThread('', '/tmp/project', ['blob:http://localhost/upload-1'])
+    const imageThread = state.projectGroups.value.flatMap(group => group.threads).find(thread => thread.id === 'image-thread')
+    expect(imageThread?.title).toBe('[Image]')
+    expect(gatewayMocks.startThreadTurn).toHaveBeenCalledTimes(1)
+    // The placeholder lives in the gateway turn payload (covered in codexGateway.test.ts);
+    // at this layer the send keeps the raw empty text while the title is synthesized.
+    expect(gatewayMocks.startThreadTurn.mock.calls[0]![1]).toBe('')
+    expect(gatewayMocks.persistThreadTitle).toHaveBeenCalledWith('image-thread', '[Image]')
+
+    // Text-file-only send: the title is the first attachment label.
+    gatewayMocks.startThread.mockResolvedValue({ threadId: 'file-thread', model: 'gpt-5.6-sol', modelProvider: 'codex' })
+    await state.sendMessageToNewThread('', '/tmp/project', [], [], [{ label: 'notes.txt', path: '/tmp/notes.txt', fsPath: '/tmp/notes.txt' }])
+    const fileThread = state.projectGroups.value.flatMap(group => group.threads).find(thread => thread.id === 'file-thread')
+    expect(fileThread?.title).toBe('notes.txt')
+    expect(gatewayMocks.persistThreadTitle).toHaveBeenCalledWith('file-thread', 'notes.txt')
+    state.stopPolling()
+  })
+
   it('keeps a saved per-conversation source intact when the connection changes', async () => {
     installTestWindow({
       'codexapp.web-conversation-preferences.v1': JSON.stringify({

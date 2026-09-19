@@ -1941,7 +1941,15 @@ export async function startThreadTurn(
     const allFileAttachments = [...fileAttachments, ...localImageAttachments]
     const dedupedFileAttachments = allFileAttachments.filter((entry, index) =>
       allFileAttachments.findIndex((candidate) => candidate.fsPath === entry.fsPath) === index)
-    const finalText = buildTextWithAttachments(text, dedupedFileAttachments)
+    // Attachment-only sends (no typed text) must still store a non-empty
+    // first user message: the app-server omits threads with an empty
+    // first_user_message from thread/list, which made such conversations
+    // invisible in the sidebar after a reload.
+    const trimmedUserText = text.trim()
+    const effectivePrompt = trimmedUserText.length > 0
+      ? text
+      : imageUrls.length > 0 ? '[Image]' : dedupedFileAttachments.length > 0 ? '[Attachment]' : ''
+    const finalText = buildTextWithAttachments(effectivePrompt, dedupedFileAttachments)
     const input: Array<Record<string, unknown>> = [{ type: 'text', text: finalText }]
     for (const imageUrl of imageUrls) {
       const normalizedUrl = imageUrl.trim()

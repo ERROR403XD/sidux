@@ -7239,9 +7239,15 @@ export class BackendQueueProcessor {
     const dedupedFileAttachments = allFileAttachments.filter((entry, index) =>
       allFileAttachments.findIndex((candidate) => candidate.fsPath === entry.fsPath) === index)
 
+    // Attachment-only queued turns must keep a non-empty user text: empty
+    // first_user_message threads are omitted from thread/list entirely.
+    const queuedText = turn.message.text.trim().length > 0
+      ? turn.message.text
+      : turn.message.imageUrls.length > 0 ? '[Image]' : dedupedFileAttachments.length > 0 ? '[Attachment]' : ''
+
     const input: Array<Record<string, unknown>> = [{
       type: 'text',
-      text: buildTextWithAttachments(turn.message.text, dedupedFileAttachments),
+      text: buildTextWithAttachments(queuedText, dedupedFileAttachments),
     }]
 
     for (const imageUrl of turn.message.imageUrls) {

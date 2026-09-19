@@ -1350,6 +1350,16 @@ function toOptimisticThreadTitle(message: string): string {
   return firstLine.slice(0, 80)
 }
 
+/** Display title for attachment-only sends (no typed text): the sidebar needs a readable label. */
+function attachmentOnlyTitle(imageUrls: string[], fileAttachments: Array<{ label: string; path: string }>): string {
+  const hasImages = imageUrls.length > 0
+  const firstFile = fileAttachments.map(file => file.label.trim()).find(label => label.length > 0) ?? ''
+  if (hasImages && firstFile) return `[Image] ${firstFile}`
+  if (hasImages) return '[Image]'
+  if (firstFile) return firstFile
+  return ''
+}
+
 function toForkedThreadTitle(title: string): string {
   const normalizedTitle = title.trim() || 'Untitled thread'
   return /^fork:\s+/iu.test(normalizedTitle) ? normalizedTitle : `Fork: ${normalizedTitle}`
@@ -4222,10 +4232,20 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
     }
   }
 
-  async function requestThreadTitleGeneration(threadId: string, prompt: string, cwd: string | null): Promise<void> {
+  async function requestThreadTitleGeneration(threadId: string, prompt: string, cwd: string | null, fallbackTitle = ''): Promise<void> {
     if (threadTitleById.value[threadId]) return
     const trimmed = prompt.trim()
-    if (!trimmed) return
+    if (!trimmed) {
+      // Attachment-only send: no prompt to summarize, so fall back to the
+      // attachment-derived label and persist it — otherwise the title cache
+      // never fills and the thread shows the raw scaffold title after reload.
+      const fallback = fallbackTitle.trim()
+      if (!fallback) return
+      threadTitleById.value = { ...threadTitleById.value, [threadId]: fallback }
+      applyThreadFlags()
+      void persistThreadTitle(threadId, fallback)
+      return
+    }
     const truncated = trimmed.length > 300 ? trimmed.slice(0, 300) : trimmed
     try {
       const title = await generateThreadTitle(truncated, cwd)
@@ -5118,7 +5138,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
       }
       if (!threadId) return ''
 
-      insertOptimisticThread(threadId, targetCwd, nextText || '[Image]', confirmedProjectId)
+      insertOptimisticThread(threadId, targetCwd, nextText || attachmentOnlyTitle(imageUrls, fileAttachments), confirmedProjectId)
       appendOptimisticUserMessage(threadId, nextText, imageUrls, skills, fileAttachments)
       blockInterruptUntilThreadIsPersisted(threadId)
       resumedThreadById.value = {
@@ -5147,6 +5167,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
       const capturedThreadId = threadId
       const capturedCwd = targetCwd || null
       const capturedPrompt = nextText
+      const capturedFallbackTitle = attachmentOnlyTitle(imageUrls, fileAttachments)
       await startTurnForThread(threadId, nextText, imageUrls, skills, fileAttachments, selectedMode)
         .catch((unknownError) => {
           shouldAutoScrollOnNextAgentEvent = false
@@ -5160,7 +5181,7 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
         .finally(() => {
           isSendingMessage.value = false
         })
-      void requestThreadTitleGeneration(capturedThreadId, capturedPrompt, capturedCwd)
+      void requestThreadTitleGeneration(capturedThreadId, capturedPrompt, capturedCwd, capturedFallbackTitle)
       return threadId
     } catch (unknownError) {
       shouldAutoScrollOnNextAgentEvent = false
