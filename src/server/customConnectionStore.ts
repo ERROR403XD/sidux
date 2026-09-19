@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { privateJson } from './apiProxy/store.js'
 import { normalizeModelCapability } from '../modelCapabilities.js'
-import { type CustomEndpoint, type CustomConnection, type CustomConnectionDraft, type CustomConnectionSnapshot } from '../customConnections.js'
+import { type CustomEndpoint, type CustomConnection, type CustomConnectionDraft, type CustomConnectionSnapshot, applyDeclaredEfforts, normalizeReasoningEfforts } from '../customConnections.js'
 
 type StoredConnection = Omit<CustomConnection, 'hasApiKey'> & { apiKey: string; runtimeToken: string }
 type State = { explicitSelection?: boolean; version: 1; activeId: string | null; connections: StoredConnection[] }
@@ -19,7 +19,7 @@ export class CustomConnectionStore {
       const value = JSON.parse(await readFile(join(this.home, 'custom-connections.json'), 'utf8')) as State
       if (value.version !== 1 || !Array.isArray(value.connections) || value.connections.some(row => !/^[a-f0-9]{64}$/.test(row.storageId) || typeof row.apiKey !== 'string' || !Array.isArray(row.models))) throw new Error('自定义连接配置损坏')
       // Connections saved before the protocol bridge toggle existed default to off.
-      value.connections = value.connections.map(row => ({ ...row, protocolBridge: row.protocolBridge === true }))
+      value.connections = value.connections.map(row => ({ ...row, protocolBridge: row.protocolBridge === true, reasoningEfforts: normalizeReasoningEfforts(row.reasoningEfforts) }))
       this.state = value
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
@@ -43,11 +43,25 @@ export class CustomConnectionStore {
     await privateJson(join(this.home, 'custom-connections.json'), state)
     this.state = state
   }
-  get(id: string | null | undefined): StoredConnection | undefined { return this.state.connections.find(row => row.storageId === id) }
+  // Stored models stay as probed; the declared reasoning efforts are merged
+  // in on read so clearing the declaration restores the catalog verbatim.
+  private materialize(row: StoredConnection): StoredConnection {
+    return { ...row, models: applyDeclaredEfforts(row.models, normalizeReasoningEfforts(row.reasoningEfforts)) }
+  }
+  get(id: string | null | undefined): StoredConnection | undefined {
+    const row = this.state.connections.find(item => item.storageId === id)
+    return row ? this.materialize(row) : undefined
+  }
   explicitSelection(): boolean { return this.state.explicitSelection === true }
   active(): StoredConnection | undefined { return this.get(this.state.activeId) }
   snapshot(): CustomConnectionSnapshot {
-    return { activeId: this.state.activeId, connections: this.state.connections.map(({ apiKey, runtimeToken: _token, ...row }) => ({ ...structuredClone(row), hasApiKey: !!apiKey })) }
+    return {
+      activeId: this.state.activeId,
+      connections: this.state.connections.map(row => {
+        const { apiKey, runtimeToken: _token, ...rest } = this.materialize(row)
+        return { ...structuredClone(rest), hasApiKey: !!apiKey }
+      }),
+    }
   }
   private mutate(update: () => State): Promise<void> {
     const write = this.writes.then(async () => {
@@ -71,11 +85,12 @@ export class CustomConnectionStore {
     try { url = new URL(input.baseUrl) } catch { throw new Error('请输入有效的 Base URL') }
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error('请输入有效的 Base URL')
     if (!alias || alias.length > 80 || !apiKey || apiKey.length > 8192 || /[\r\n]/.test(apiKey) || model.length > 200) throw new Error('请填写别名、API key 和有效模型')
-    return { storageId: input.storageId, alias, provider: String(input.provider || 'custom').slice(0, 50), baseUrl: url.href.replace(/\/+$/, ''), model, apiKey, wireApi: input.wireApi === 'chat' ? 'chat' : 'responses', protocolBridge: input.protocolBridge === true }
+    return { storageId: input.storageId, alias, provider: String(input.provider || 'custom').slice(0, 50), baseUrl: url.href.replace(/\/+$/, ''), model, apiKey, wireApi: input.wireApi === 'chat' ? 'chat' : 'responses', protocolBridge: input.protocolBridge === true, reasoningEfforts: normalizeReasoningEfforts(input.reasoningEfforts) }
   }
-  // wireApi comes from the endpoint probe and protocolBridge is a local
-  // toggle — neither changes what a test proves, so both stay out of the digest.
-  private digest(input: CustomConnectionDraft): string { return createHash('sha256').update(JSON.stringify({ ...input, wireApi: undefined, protocolBridge: undefined })).digest('hex') }
+  // wireApi comes from the endpoint probe; protocolBridge and reasoningEfforts
+  // are local toggles — none of them changes what a test proves, so all stay
+  // out of the digest.
+  private digest(input: CustomConnectionDraft): string { return createHash('sha256').update(JSON.stringify({ ...input, wireApi: undefined, protocolBridge: undefined, reasoningEfforts: undefined })).digest('hex') }
   async test(input: CustomConnectionDraft): Promise<{ token: string; models: CustomConnection['models']; model: string; supportedEndpoints: CustomEndpoint[]; wireApi: 'responses' | 'chat' }> {
     await this.ready
     const draft = this.draft(input)
@@ -117,17 +132,20 @@ export class CustomConnectionStore {
   async save(input: CustomConnectionDraft, token: string): Promise<void> {
     await this.ready
     const draft = this.draft(input)
-    const previous = draft.storageId ? this.get(draft.storageId) : undefined
+    // Save must diff and extend the raw stored row; the public get() returns
+    // the materialized view with declared efforts merged in.
+    const previous = draft.storageId ? this.state.connections.find(row => row.storageId === draft.storageId) : undefined
     const proof = this.proofs.get(token)
     const proofValid = !!proof && proof.expires >= Date.now() && proof.digest === this.digest(draft)
-    // Toggling the protocol bridge alone does not touch what a test proves,
-    // so it may be saved without a fresh probe. Any credential change, or a
-    // fresh probe result, always goes through the proof path.
-    const onlyBridgeChanged = !proofValid && !!previous
+    // Local-only fields (protocol bridge toggle, declared reasoning efforts)
+    // do not touch what a test proves, so they may be saved without a fresh
+    // probe. Any credential change, or a fresh probe result, always goes
+    // through the proof path.
+    const onlyLocalChanges = !proofValid && !!previous
       && previous.alias === draft.alias && previous.provider === draft.provider
       && previous.baseUrl === draft.baseUrl && previous.model === draft.model
       && previous.apiKey === draft.apiKey
-    if (!proofValid && !onlyBridgeChanged) throw new Error('请先测试连接')
+    if (!proofValid && !onlyLocalChanges) throw new Error('请先测试连接')
     if (!previous && this.state.connections.length >= 32) throw new Error('自定义连接数量已达上限')
     await this.mutate(() => {
       const row: StoredConnection = proofValid && proof

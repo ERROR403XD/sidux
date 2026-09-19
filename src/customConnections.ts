@@ -9,13 +9,15 @@ export type CustomConnection = {
   wireApi: 'chat' | 'responses'
   /** Opt-in protocol bridge: serves the endpoint this connection lacks natively. */
   protocolBridge: boolean
+  /** Reasoning effort levels declared for this provider; empty keeps the catalog default (no reasoning param). */
+  reasoningEfforts?: string[]
   supportedEndpoints?: CustomEndpoint[]
   testedAt?: string
   models: ModelCapability[]
   revision: number
   hasApiKey: boolean
 }
-export type CustomConnectionDraft = Pick<CustomConnection, 'alias' | 'provider' | 'baseUrl' | 'model' | 'wireApi'> & { storageId?: string; apiKey: string; protocolBridge?: boolean }
+export type CustomConnectionDraft = Pick<CustomConnection, 'alias' | 'provider' | 'baseUrl' | 'model' | 'wireApi'> & { storageId?: string; apiKey: string; protocolBridge?: boolean; reasoningEfforts?: string[] }
 export type CustomConnectionSnapshot = { activeId: string | null; connections: CustomConnection[] }
 export const customProviderPresets = [
   { value: 'openrouter', label: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1' },
@@ -23,6 +25,19 @@ export const customProviderPresets = [
   { value: 'opencode', label: 'OpenCode', baseUrl: 'https://opencode.ai/zen/v1' },
   { value: 'custom', label: '自定义', baseUrl: '' },
 ]
+/** Levels accepted on the wire for OpenAI-compatible providers, in slider order. */
+export const customReasoningEffortLevels = ['minimal', 'low', 'medium', 'high', 'xhigh'] as const
+export function normalizeReasoningEfforts(value: unknown): string[] {
+  const allowed = new Set<string>(customReasoningEffortLevels)
+  const declared = Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && allowed.has(item)) : []
+  return customReasoningEffortLevels.filter(level => declared.includes(level))
+}
+/** A saved declaration overrides whatever the provider catalog exposed, so the composer picker matches the wire. */
+export function applyDeclaredEfforts(models: ModelCapability[], efforts: string[]): ModelCapability[] {
+  if (!efforts.length) return models
+  const declared = efforts.map(value => ({ value, description: '' }))
+  return models.map(model => ({ ...model, efforts: declared }))
+}
 export function customConnectionModels(connection: CustomConnection) {
   return connection.models.map(model => ({
     id: model.id, model: model.model, displayName: model.displayName, isDefault: model.id === connection.model,

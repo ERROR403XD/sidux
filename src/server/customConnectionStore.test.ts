@@ -122,6 +122,32 @@ describe('custom connection credential boundaries', () => {
     expect(store.snapshot()).toMatchObject({ activeId: null, connections: [{ wireApi: 'chat', protocolBridge: false, supportedEndpoints: ['/v1/models', '/v1/chat/completions'] }] })
   })
 
+  it('declares reasoning efforts without a fresh probe and applies them to saved models', async () => {
+    const { store, draft, home } = await fixture()
+    const input = { ...draft, model: 'sample' }
+    const tested = await store.test(input)
+    // Probe path: unknown levels are dropped, duplicates collapse, order is canonical.
+    await store.save({ ...input, reasoningEfforts: ['high', 'bogus', 'low', 'low'] }, tested.token)
+    const card = store.snapshot().connections[0]!
+    expect(card.reasoningEfforts).toEqual(['low', 'high'])
+    expect(card.models[0].efforts?.map(item => item.value)).toEqual(['low', 'high'])
+    // Editing the declaration alone stays savable without re-probing the provider.
+    await store.save({ ...input, storageId: card.storageId, apiKey: '', reasoningEfforts: ['minimal'] }, '')
+    const edited = store.snapshot().connections[0]!
+    expect(edited.reasoningEfforts).toEqual(['minimal'])
+    expect(edited.models[0].efforts?.map(item => item.value)).toEqual(['minimal'])
+    expect(edited.revision).toBe(2)
+    // Clearing the declaration restores the catalog efforts verbatim.
+    await store.save({ ...input, storageId: card.storageId, apiKey: '', reasoningEfforts: [] }, '')
+    const cleared = store.snapshot().connections[0]!
+    expect(cleared.reasoningEfforts).toEqual([])
+    expect(cleared.models[0].efforts).toEqual([])
+    // Older state files without the field load as an empty declaration.
+    const reopened = new CustomConnectionStore(home)
+    await reopened.ready
+    expect(reopened.snapshot().connections[0]?.reasoningEfforts).toEqual([])
+  })
+
 })
 
 it('shares connection identity with an execution bridge retained across module reloads', async () => {

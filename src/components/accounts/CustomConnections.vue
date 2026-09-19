@@ -17,6 +17,13 @@
         <label class="custom-connection-wide">Base URL<input v-model="draft.baseUrl" class="app-input" type="url" placeholder="https://api.example.com/v1" :disabled="busy" /></label>
         <label class="custom-connection-wide">API key<input v-model="draft.apiKey" class="app-input" type="password" autocomplete="off" :placeholder="t(draft.storageId ? '留空保留现有密钥' : '输入 API key')" :disabled="busy" /></label>
         <label>{{ t('模型') }}<input v-model="draft.model" class="app-input" :placeholder="t('自动读取，或输入模型名')" :disabled="busy" /></label>
+        <div class="custom-connection-wide custom-connection-efforts">
+          <span class="custom-connection-efforts-label">{{ t('推理强度') }}</span>
+          <div class="custom-connection-efforts-options" role="group" :aria-label="t('推理强度')">
+            <button v-for="level in customReasoningEffortLevels" :key="level" type="button" class="custom-connection-effort" :aria-pressed="draft.reasoningEfforts?.includes(level) === true" :disabled="busy" @click="toggleEffort(level)">{{ t(effortLevelLabels[level]) }}</button>
+          </div>
+          <small class="custom-connection-efforts-hint">{{ t('声明该提供方支持的推理强度档位，保存后可在输入框的推理强度选择器中选择。') }}</small>
+        </div>
         <div v-if="bridgeToggleAvailable" class="custom-connection-bridge">
           <AppSwitch v-model="draft.protocolBridge" :disabled="busy">{{ t('协议转换') }}</AppSwitch>
         </div>
@@ -39,7 +46,7 @@ import { notifyOperation } from '../../composables/useOperationToast'
 import { computed, onMounted, ref, watch } from 'vue'
 import { t } from '../../composables/useUiLanguage'
 import { useCustomConnections, customConnectionRequest } from '../../composables/useCustomConnections'
-import { customConnectionBridgedEndpoints, customConnectionEndpoints, customConnectionNativeEndpoints, type CustomEndpoint, customProviderPresets, type CustomConnection, type CustomConnectionDraft, type CustomConnectionSnapshot } from '../../customConnections'
+import { customConnectionBridgedEndpoints, customConnectionEndpoints, customConnectionNativeEndpoints, customReasoningEffortLevels, type CustomEndpoint, customProviderPresets, type CustomConnection, type CustomConnectionDraft, type CustomConnectionSnapshot } from '../../customConnections'
 import AppButton from '../common/AppButton.vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppSelect from '../common/AppSelect.vue'
@@ -53,8 +60,13 @@ const error = ref('')
 const testToken = ref('')
 const testedEndpoints = ref<CustomEndpoint[]>([])
 const confirmRemove = ref(false)
-const draft = ref<CustomConnectionDraft>({ alias: '', provider: 'openrouter', baseUrl: customProviderPresets[0]!.baseUrl, apiKey: '', model: '', wireApi: 'responses', protocolBridge: false })
+const draft = ref<CustomConnectionDraft>({ alias: '', provider: 'openrouter', baseUrl: customProviderPresets[0]!.baseUrl, apiKey: '', model: '', wireApi: 'responses', protocolBridge: false, reasoningEfforts: [] })
 const savedConfiguration = ref('')
+const effortLevelLabels: Record<(typeof customReasoningEffortLevels)[number], string> = { minimal: '极低', low: '低', medium: '中', high: '高', xhigh: '极高' }
+function toggleEffort(level: (typeof customReasoningEffortLevels)[number]): void {
+  const declared = draft.value.reasoningEfforts ?? []
+  draft.value.reasoningEfforts = declared.includes(level) ? declared.filter(item => item !== level) : [...declared, level]
+}
 const hasChanges = computed(() => savedConfiguration.value !== JSON.stringify(draft.value))
 // Only proof-relevant fields invalidate the test; the protocol bridge toggle
 // must be savable without re-probing the provider. The sync flush keeps the
@@ -75,8 +87,8 @@ const testedBridgeEndpoints = computed(() => {
 })
 function open(connection?: CustomConnection): void {
   draft.value = connection
-    ? { storageId: connection.storageId, alias: connection.alias, provider: connection.provider, baseUrl: connection.baseUrl, apiKey: '', model: connection.model, wireApi: connection.wireApi, protocolBridge: connection.protocolBridge }
-    : { alias: '', provider: 'openrouter', baseUrl: customProviderPresets[0]!.baseUrl, apiKey: '', model: '', wireApi: 'responses', protocolBridge: false }
+    ? { storageId: connection.storageId, alias: connection.alias, provider: connection.provider, baseUrl: connection.baseUrl, apiKey: '', model: connection.model, wireApi: connection.wireApi, protocolBridge: connection.protocolBridge, reasoningEfforts: [...(connection.reasoningEfforts ?? [])] }
+    : { alias: '', provider: 'openrouter', baseUrl: customProviderPresets[0]!.baseUrl, apiKey: '', model: '', wireApi: 'responses', protocolBridge: false, reasoningEfforts: [] }
   savedConfiguration.value = JSON.stringify(draft.value)
   testedEndpoints.value = connection ? customConnectionNativeEndpoints(connection) : []
   error.value = ''
