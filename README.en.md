@@ -5,7 +5,7 @@
 [![Release](https://img.shields.io/github/v/release/ERROR403XD/codexapp)](https://github.com/ERROR403XD/codexapp/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Sidux (formerly CodexApp) is a self-hosted web interface for Codex app-server. Manage projects, conversations, accounts, and automations from desktop, tablet, or phone browsers. The release baseline is **0.2.17**. This is an independently maintained community project, unaffiliated with OpenAI.
+Sidux (formerly CodexApp) is a self-hosted web interface for Codex app-server. Manage projects, conversations, accounts, and automations from desktop, tablet, or phone browsers. The release baseline is **0.2.20**. This is an independently maintained community project, unaffiliated with OpenAI.
 
 ## Acceptable use and policy compliance
 
@@ -57,7 +57,7 @@ This fork therefore continues development from the GitHub source, rather than th
 
 The wider plugin refresh button aligns with the list right edge; the filter fits its content and the search field fills the remaining space with consistent control gaps.
 
-Version 0.2.17 adds custom connections and optional scheduled account activation, improves plugin loading, notification settings, and WebUI appearance settings. Automation switches preserve row order until refresh. Viewed conversations no longer receive a completion dot; image-message echoes are deduplicated; unanswered questions stay above the composer; system theme uses a monitor icon. Scheduled activation is disabled by default, prioritizes foreground work, skips busy accounts, and bounds requests.
+Version 0.2.20 adds automatic reasoning-effort capability probing for custom connections, with capability-aware fallback when a connection rejects the parameter; it refines API-key rows and model/reasoning controls, improves attachment-only new-thread titles, and repairs queued rows that were already sent while the page was away. The protocol bridge, API proxy, and multi-account runtime boundaries from the candidate line remain covered by the release verification.
 
 ## Requirements
 
@@ -72,7 +72,7 @@ Version 0.2.17 adds custom connections and optional scheduled account activation
 ### Build this repository
 
 ```bash
-git clone --branch v0.2.17 https://github.com/ERROR403XD/codexapp.git
+git clone --branch v0.2.20 https://github.com/ERROR403XD/codexapp.git
 cd codexapp
 pnpm install --frozen-lockfile
 pnpm run build
@@ -83,11 +83,11 @@ Open `http://localhost:5900`, follow the terminal's web authentication instructi
 
 ### Install the GitHub Release package
 
-Download `codexapp-0.2.17.tgz` and `SHA256SUMS` from [v0.2.17](https://github.com/ERROR403XD/codexapp/releases/tag/v0.2.17), then run in the download directory:
+Download `codexapp-0.2.20.tgz` and `SHA256SUMS` from [v0.2.20](https://github.com/ERROR403XD/codexapp/releases/tag/v0.2.20), then run in the download directory:
 
 ```bash
 sha256sum -c SHA256SUMS
-npm install -g ./codexapp-0.2.17.tgz
+npm install -g ./codexapp-0.2.20.tgz
 codexapp --port 5900 --strict-port --no-open
 ```
 
@@ -137,9 +137,9 @@ pnpm run build
 pnpm run test:unit
 ```
 
-Vue 3 / TypeScript / Vite power the frontend. Node.js / Express connect to Codex app-server over WebSocket/RPC; the terminal uses xterm.js / node-pty. Source is in `src/` and `scripts/`; see [tests.md](tests.md) and [public release verification](docs/RELEASE-0.2.17.md).
+Vue 3 / TypeScript / Vite power the frontend. Node.js / Express connect to Codex app-server over WebSocket/RPC; the terminal uses xterm.js / node-pty. Source is in `src/` and `scripts/`; see [tests.md](tests.md) and [public release verification](docs/RELEASE-0.2.20.md).
 
-See [0.2.17 release verification](docs/RELEASE-0.2.17.md) for the tested scope and limitations. Private conversations, host paths, screenshots, and raw acceptance records are excluded.
+See [0.2.20 release verification](docs/RELEASE-0.2.20.md) for the tested scope and limitations. Private conversations, host paths, screenshots, and raw acceptance records are excluded.
 
 ## Troubleshooting
 
