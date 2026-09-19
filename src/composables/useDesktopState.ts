@@ -5716,6 +5716,9 @@ export function useDesktopState(options: { isThreadVisible?: (threadId: string) 
         }
         notificationReady = true
         clearAllTransientTurnErrors()
+        // 队列推送不携带令牌、断线期间的 codexapp/queue/changed 不会重放；
+        // 每次连接（重）建立后主动对齐一次，清掉服务端已结算的残留排队行。
+        void refreshQueueState().catch(() => {})
         void recoverBridgeState(reconnected)
         return
       }

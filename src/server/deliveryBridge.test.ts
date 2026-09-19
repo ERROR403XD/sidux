@@ -156,6 +156,25 @@ describe('durable bridge delivery', () => {
     release()
     expect(await processor.readState()).toEqual({})
   })
+
+  it('treats dropping an already-delivered queued row as idempotent and returns its receipt', async () => {
+    const { processor, message, rpc, busy } = await fixture()
+    busy(true)
+    await processor.mutate({ protocol: 2, expectedContextId: 'fixture-account', type: 'add', threadId: 'fixture', message })
+    busy(false)
+    // 回合结束后队列自动发送：行从待发清单结算成 accepted 回执（页面重进时若错过推送就会留下残影）。
+    await processor.processThreadQueue('fixture')
+    expect(await processor.deliveries.result(message.id)).toMatchObject({ status: 'accepted', turnId: 'native-turn' })
+    rpc.mockClear()
+    const dropped = await processor.mutate({ protocol: 2, type: 'remove', threadId: 'fixture', messageId: message.id })
+    expect(dropped.state).toEqual({})
+    expect(dropped.delivered).toMatchObject({ id: message.id, turnId: 'native-turn' })
+    // 幂等：重复丢弃同一行不再报错，也不触发任何投递。
+    const again = await processor.mutate({ protocol: 2, type: 'remove', threadId: 'fixture', messageId: message.id })
+    expect(again.delivered).toMatchObject({ id: message.id })
+    expect(rpc).not.toHaveBeenCalled()
+    await expect(processor.mutate({ protocol: 2, type: 'move', threadId: 'fixture', messageId: message.id, revision: 1, targetId: message.id })).rejects.toThrow('已发送或已移除')
+  })
 })
 
 it('delivers an interrupted thread continuation through the durable queue exactly once', async () => {

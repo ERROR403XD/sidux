@@ -7059,7 +7059,9 @@ export class BackendQueueProcessor {
       const row = await this.deliveries.result(id)
       if (!row || row.threadId !== threadId) throw new Error('该消息状态已变化，请刷新队列')
       if (!('message' in row)) {
-        if (!['reconcile', 'steer'].includes(String(body.type))) throw new Error('该消息已发送或已移除，请刷新队列')
+        // 行已结算（自动发送或撤销）时丢弃/放弃是幂等操作：不改动回执，直接返回最新状态让页面清掉残留行。
+        // reconcile/steer 维持原有跳过行为；其余操作对回执无意义，仍然报错。
+        if (!['remove', 'abandon', 'reconcile', 'steer'].includes(String(body.type))) throw new Error('该消息已发送或已移除，请刷新队列')
       } else if (body.type === 'reconcile') {
         await this.deliveries.reconcile(id)
       } else {

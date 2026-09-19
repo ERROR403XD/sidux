@@ -1537,6 +1537,26 @@ describe('runtime reconnect capabilities', () => {
     await vi.waitFor(() => expect(gatewayMocks.getAvailableModelIds).toHaveBeenCalledTimes(baseline + 1))
     state.stopPolling()
   })
+
+  it('re-syncs queue state on ready so a row auto-sent while away stops rendering as queued', async () => {
+    installTestWindow()
+    gatewayMocks.getPendingServerRequests.mockResolvedValue([])
+    gatewayMocks.getThreadGroupsPage.mockResolvedValue({ groups: [], nextCursor: null })
+    const queued = { id: 'queue-stale', text: 'sent while away', imageUrls: [], skills: [], fileAttachments: [], delivery: { status: 'queued', revision: 1 } }
+    gatewayMocks.getThreadQueueState.mockResolvedValue({ 'queue-thread': [queued] })
+    let callback!: (event: { method: string; params: unknown; atIso: string }) => void
+    gatewayMocks.subscribeCodexNotifications.mockImplementation(fn => { callback = fn; return () => {} })
+    const state = useDesktopState()
+    state.primeSelectedThread('queue-thread')
+    state.startPolling()
+    await state.refreshQueueState()
+    expect(state.selectedThreadQueuedMessages.value.map(row => row.id)).toEqual(['queue-stale'])
+    // 浏览器离开期间回合已结束、排队消息被自动发送：服务端队列里不再有这一行。
+    gatewayMocks.getThreadQueueState.mockResolvedValue({})
+    callback({ method: 'ready', params: {}, atIso: '' })
+    await vi.waitFor(() => expect(state.selectedThreadQueuedMessages.value).toEqual([]))
+    state.stopPolling()
+  })
 })
 
 
