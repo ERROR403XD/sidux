@@ -126,3 +126,25 @@
 - Never create or maintain separate wiki logging/changelog files or logging sections anywhere in the repo. Git commit messages are the main and only chronological log for wiki work and related documentation changes.
 - For query: read `llm-wiki/wiki/index.md` first, then relevant pages.
 - For lint: check orphans and stale/contradictory claims; put follow-up questions in the relevant wiki topic page or a tracked issue, not any log/changelog file.
+
+## 源码与本机部署边界
+
+- `/mnt/NAS02-Code/Sidux` 是本项目唯一权威源码树和 Git 工作树。今后 Windows 与 Ubuntu 都可以在该 NFS 路径上交替开发、测试和提交；不要把 `/home/Code/codexapp` 或 `/home/Code/Sidux` 当作第二份源码入口。
+- `/home/Code/codexapp` 是迁移前的旧工作树，仅作历史对照和恢复参考。除非用户明确授权，不从那里覆盖 NFS 工作树，也不在两棵树之间直接复制未审查的代码或 `.git`。
+- `/home/Code/Sidux` 是本机辅助目录，用于中间产物、临时验证输出和不应进入 Git 的本机部署说明；它不承载项目源码、凭据或会话状态。部署仍以本机实际运行目录、systemd 和切换脚本的现场检查为准。
+- 跨系统切换前先确认当前 NFS 挂载和工作树状态；同一时间只允许一个系统写入该工作树。交接至少记录分支、提交、版本、测试结果和未提交变更，不能用文件拷贝覆盖另一系统的工作成果。
+- `node_modules/`、`dist/`、`dist-cli/`、`output/` 和平台原生依赖不属于源码交接内容。Windows 与 Ubuntu 不共享未经重建的原生依赖；在目标系统开发、打包或部署前按锁文件重新安装/构建，并以 Linux 侧产物作为本机最终部署门槛。
+- Windows 上的测试或 prepare 只能作为开发验证和交接材料；最终部署到本机 Ubuntu 时，必须在 Ubuntu 上完成与目标平台匹配的 prepare、精确发布目录检查和实际运行验收。`prepare` 不等于 `activate`，生产切换仍需独立空闲检查和明确授权。
+- 本机部署不得从开发环境复制认证、账号、会话或其他持久运行状态；只切换经过验证的代码发布目录。敏感值不得写入仓库或 `/home/Code/Sidux` 的说明文件。
+
+<!-- codexapp:work-directories:start -->
+## 项目工作目录
+
+当前项目除主目录外，还包含以下工作目录。请根据任务在这些目录中查找和修改相关文件；操作各目录前先阅读适用于该目录的 AGENTS.md，不要把附加目录误当作主目录的子目录。
+
+```json
+[
+  "/home/Code/Sidux"
+]
+```
+<!-- codexapp:work-directories:end -->
