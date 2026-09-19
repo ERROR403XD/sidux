@@ -16,7 +16,7 @@
         <label>{{ t('提供方') }}<AppSelect :model-value="draft.provider" :options="customProviderPresets.map(row => ({ value: row.value, label: t(row.label) }))" :disabled="busy" @update:model-value="setProvider" /></label>
         <label class="custom-connection-wide">Base URL<input v-model="draft.baseUrl" class="app-input" type="url" placeholder="https://api.example.com/v1" :disabled="busy" /></label>
         <label class="custom-connection-wide">API key<input v-model="draft.apiKey" class="app-input" type="password" autocomplete="off" :placeholder="t(draft.storageId ? '留空保留现有密钥' : '输入 API key')" :disabled="busy" /></label>
-        <div class="custom-connection-wide custom-connection-model-row">
+        <div class="custom-connection-wide custom-connection-model-row" :class="{ 'is-single': !bridgeToggleAvailable }">
           <label>{{ t('模型') }}<input v-model="draft.model" class="app-input" :placeholder="t('自动读取，或输入模型名')" :disabled="busy" /></label>
           <div v-if="bridgeToggleAvailable" class="custom-connection-bridge">
             <AppSwitch v-model="draft.protocolBridge" :disabled="busy">{{ t('协议转换') }}</AppSwitch>
