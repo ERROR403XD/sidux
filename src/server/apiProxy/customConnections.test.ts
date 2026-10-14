@@ -14,7 +14,10 @@ it('routes two external keys independently, retains usage and never prepares Ope
   const seen: Array<{ key: string; url: string; body: any }> = []
   const upstream = createServer(async (req, res) => {
     res.setHeader('Content-Type', 'application/json')
-    if (req.url === '/models') { res.end(JSON.stringify({ data: [{ id: 'sample' }] })); return }
+    if (req.url === '/models') {
+      if (req.headers.authorization === 'Bearer fixture-d') { res.writeHead(404); res.end(JSON.stringify({ error: { message: 'no models endpoint' } })); return }
+      res.end(JSON.stringify({ data: [{ id: 'sample' }] })); return
+    }
     let text = ''
     for await (const chunk of req) text += chunk
     const body = JSON.parse(text)
@@ -27,11 +30,11 @@ it('routes two external keys independently, retains usage and never prepares Ope
         res.end(JSON.stringify({ error: { message: 'no responses endpoint' } }))
         return
       }
-      res.end(JSON.stringify({ id: 'resp_1', object: 'response', status: 'completed', model: 'sample', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: key === 'Bearer fixture-c' ? 'C' : 'X' }] }], usage: { input_tokens: 2, output_tokens: 1, total_tokens: 3 } }))
+      res.end(JSON.stringify({ id: 'resp_1', object: 'response', status: 'completed', model: 'sample', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: key === 'Bearer fixture-c' ? 'C' : key === 'Bearer fixture-d' ? 'D' : 'X' }] }], usage: { input_tokens: 2, output_tokens: 1, total_tokens: 3 } }))
       return
     }
     // Connection c is Responses-only; its Chat probe must fail.
-    if ((req.url || '').endsWith('/chat/completions') && key === 'Bearer fixture-c') {
+    if ((req.url || '').endsWith('/chat/completions') && (key === 'Bearer fixture-c' || key === 'Bearer fixture-d')) {
       res.writeHead(404)
       res.end(JSON.stringify({ error: { message: 'no chat endpoint' } }))
       return
@@ -59,16 +62,23 @@ it('routes two external keys independently, retains usage and never prepares Ope
     expect(cTested.wireApi).toBe('responses')
     expect(cTested.supportedEndpoints).toEqual(['/v1/models', '/v1/responses'])
     await connections.save(cDraft, cTested.token)
+    const dDraft = { alias: 'd', provider: 'custom', baseUrl, apiKey: 'fixture-d', model: 'manual', wireApi: 'responses' as const, protocolBridge: true, manualModels: ['manual', 'local'] }
+    const dTested = await connections.test(dDraft)
+    expect(dTested.supportedEndpoints).toEqual(['/v1/responses'])
+    await connections.save(dDraft, dTested.token)
     const [a, b] = connections.snapshot().connections
     await connections.select(a.storageId)
     await gateway.store.saveSettings({ ...gateway.store.settings, enabled: true })
     const ka = await gateway.store.createKey('A', null, { accountStorageId: a.storageId })
     const kb = await gateway.store.createKey('B', null, { accountStorageId: b.storageId })
     const kc = await gateway.store.createKey('C', null, { accountStorageId: connections.snapshot().connections[2]!.storageId })
+    const kd = await gateway.store.createKey('D', null, { accountStorageId: connections.snapshot().connections[3]!.storageId })
     front.listen(0, '127.0.0.1')
     await once(front, 'listening')
     const url = `http://127.0.0.1:${(front.address() as any).port}`
     const request = (key: string, path: string) => fetch(url + path, { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'sample', input: 'hi', messages: [{ role: 'user', content: 'hi' }], reasoning: { effort: 'high' }, service_tier: 'priority', stream: false }) }).then(res => res.json())
+    const modelCatalog = await fetch(url + '/v1/models', { headers: { Authorization: `Bearer ${kd.secret}` } }).then(res => res.json())
+    expect(modelCatalog.data.map((model: { id: string }) => model.id)).toEqual(['manual', 'local'])
     const [ra, rb] = await Promise.all([request(ka.secret, '/v1/chat/completions'), request(kb.secret, '/v1/chat/completions')])
     expect(ra.choices[0].message.content).toBe('A')
     expect(rb.choices[0].message.content).toBe('B')

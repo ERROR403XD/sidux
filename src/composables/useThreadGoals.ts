@@ -1,5 +1,6 @@
 import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue'
 import { subscribeCodexNotifications } from '../api/codexGateway'
+import { notifyOperation } from './useOperationToast'
 import { readThreadGoal, type ThreadGoal } from '../threadGoal'
 
 export function useThreadGoals(threadIds: Ref<string[]>, selectedId: Ref<string>) {
@@ -13,6 +14,7 @@ export function useThreadGoals(threadIds: Ref<string[]>, selectedId: Ref<string>
   let ready = false
   let timer: ReturnType<typeof setTimeout> | undefined
   const changedAt = new Map<string, number>()
+  let failureNotified = false
   const visibleIds = computed(() => new Set([selectedId.value, ...threadIds.value].filter(Boolean)))
 
   function update(goal: ThreadGoal | null, id: string) {
@@ -44,17 +46,25 @@ export function useThreadGoals(threadIds: Ref<string[]>, selectedId: Ref<string>
         if (disposed) return
         const next = { ...goals.value }
         for (const id of batch) {
+          if (!Object.hasOwn(payload.data, id)) continue
           const goal = readThreadGoal(payload.data?.[id], id)
           if ((changedAt.get(id) ?? 0) <= started) next[id] = goal
         }
         goals.value = next
       }
       error.value = ''
+      failureNotified = false
       const currentIds = visibleIds.value
       goals.value = Object.fromEntries(Object.entries(goals.value).filter(([id]) => currentIds.has(id)))
       for (const id of changedAt.keys()) if (!currentIds.has(id)) changedAt.delete(id)
     } catch (cause) {
-      if (!disposed) error.value = cause instanceof Error ? cause.message : '持续目标读取失败'
+      if (!disposed) {
+        error.value = cause instanceof Error ? cause.message : '持续目标读取失败'
+        if (!failureNotified) {
+          notifyOperation(error.value, 'warning', 'thread-goals')
+          failureNotified = true
+        }
+      }
     } finally {
       loading = false
       if (pending && !disposed) {

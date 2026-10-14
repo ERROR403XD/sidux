@@ -38,6 +38,7 @@ import { ThreadGoalReader } from './threadGoalReader.js'
 import { ThreadCompactionGate } from './threadCompactionGate.js'
 import { normalizeAutomationModelSettings } from '../automationOptions.js'
 import { AutomationEngine } from './automationEngine.js'
+import { executeAutomationByRequest } from './automationExecute.js'
 import { ThreadQuotaResume } from './threadQuotaResume.js'
 import { boundedQuotaRead } from '../quotaRefresh.js'
 import { createAutomationRuntime } from './automationRuntime.js'
@@ -4395,7 +4396,7 @@ function slugifyAutomationId(threadId: string, name: string): string {
 
 async function readAutomationRecordFromFile(filePath: string): Promise<ThreadAutomationRecord | null> {
   try {
-    const record = parseAutomationToml(await readFile(filePath, 'utf8'))
+    const record = parseAutomationToml(await readFile(filePath, 'utf8'), basename(dirname(filePath)))
     const engine = (globalThis as any)[SHARED_BRIDGE_KEY]?.automationEngine as AutomationEngine | undefined
     return record && engine ? engine.decorate(record) : record
   } catch {
@@ -5633,7 +5634,7 @@ export class AppServerProcess {
 
   private threadWorker(threadId: string): AppServerProcess | undefined {
     if (!threadId) return undefined
-    return [...this.sessionWorkers.values()].find(worker => worker.ownedThreadIds.has(threadId)) || this.sessionWorkers.get(threadId)
+    return [...this.sessionWorkers.availableValues()].find(worker => worker.ownedThreadIds.has(threadId)) || this.sessionWorkers.getAvailable(threadId)
   }
   private runtimeAccountId(): Promise<string | null> {
     if (this.runtimeOptions.isolatedTask) return Promise.resolve(this.assignedStorageId)
@@ -5658,7 +5659,9 @@ export class AppServerProcess {
       worker.quotaBlocked = (threadId, turnId) => this.quotaBlocked(threadId, turnId)
       // An abnormally exited worker must release its pool slot immediately;
       // its exit handler clears owned threads and pending work.
-      worker.onProcessExited = () => { this.sessionWorkers.delete(key) }
+      worker.onProcessExited = () => {
+        if (this.sessionWorkers.get(key) === worker) this.sessionWorkers.delete(key)
+      }
       worker.onNotification(notification => {
         if (notification.method === 'account/rateLimits/updated') void worker.observeAccountQuota(notification.params).catch(() => undefined)
         if (/^(account\/|codexapp\/runtime\/)/.test(notification.method)) return
@@ -6530,18 +6533,18 @@ export class AppServerProcess {
     }
     if (!this.runtimeOptions.isolatedTask) {
       coordinator.runtimeQuotaReader = async storageId => {
-        const candidates = [this, ...this.sessionWorkers.values()]
+        const candidates = [this, ...this.sessionWorkers.availableValues()]
         for (const candidate of candidates) {
           if (candidate.initialized && await candidate.runtimeAccountId() === storageId) return (await candidate.readRuntimeQuota(storageId)).account
         }
         return null
       }
       coordinator.activeUsageAccounts = async () => {
-        const ids = await Promise.all([this, ...this.sessionWorkers.values()].filter(candidate => candidate.activeTurnThreadIds.size).map(candidate => candidate.runtimeAccountId()))
+        const ids = await Promise.all([this, ...this.sessionWorkers.availableValues()].filter(candidate => candidate.activeTurnThreadIds.size).map(candidate => candidate.runtimeAccountId()))
         return [...new Set(ids.filter((id): id is string => !!id))]
       }
       coordinator.setProtectionInterrupt(async storageId => {
-        for (const candidate of [this, ...this.sessionWorkers.values()]) {
+        for (const candidate of [this, ...this.sessionWorkers.availableValues()]) {
           if (await candidate.runtimeAccountId() !== storageId || candidate.taskLease?.protected || !candidate.activeTurnThreadIds.size) continue
           const config = asRecord(asRecord(await candidate.call('config/read', {}))?.config)
           if (config?.model_provider && config.model_provider !== 'openai') continue
@@ -6555,7 +6558,7 @@ export class AppServerProcess {
     if (!this.runtimeOptions.isolatedTask) {
       if (method === 'thread/loaded/list') {
         const ids = new Set<string>()
-        for (const worker of this.sessionWorkers.values()) {
+        for (const worker of this.sessionWorkers.availableValues()) {
           if (!worker.process) continue
           const loaded = asRecord(await worker.rpc(method, params))
           for (const id of Array.isArray(loaded?.data) ? loaded.data : []) if (typeof id === 'string') ids.add(id)
@@ -9726,6 +9729,14 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
       if (req.method === 'GET' && url.pathname === '/codex-api/automation-runtime') {
         await automationEngine.readyPromise
         setJson(res, 200, { data: automationEngine.snapshot() })
+        return
+      }
+      if (req.method === 'POST' && url.pathname === '/automation/execute') {
+        let payload: unknown = null
+        try { payload = await readJsonBody(req) } catch { setJson(res, 400, { error: '请求体不是有效的 JSON' }); return }
+        const outcome = await executeAutomationByRequest(automationEngine, payload)
+        setJson(res, outcome.status, outcome.body)
+        if (outcome.status === 200) void automationEngine.tick()
         return
       }
       if (req.method === 'GET' && url.pathname === '/codex-api/automation-runs') {

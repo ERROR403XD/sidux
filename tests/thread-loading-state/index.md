@@ -36,3 +36,4 @@ Return to the [manual test index](../../tests.md).
 | [Non-thread startup selection priming](non-thread-startup-selection-priming.md) |
 | [0.2.2 原生历史分页与精确分支](native-history-and-exact-fork.md) |
 | [0.2.2 搜索更新、范围与取消](thread-search-freshness-and-cancellation.md) |
+| [Feature: Ancillary goal and status read degradation](ancillary-metadata-read-degradation.md) |

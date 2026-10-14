@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { customConnectionEndpoints, customConnectionManualEndpoints, customConnectionModels, normalizeManualModels } from '../customConnections'
 import { CustomConnectionStore, customRuntimeConfig } from './customConnectionStore'
 const directories: string[] = []
 afterEach(async () => { await Promise.all(directories.splice(0).map(path => rm(path, { recursive: true, force: true }))) })
@@ -54,6 +55,23 @@ describe('custom connection credential boundaries', () => {
     await store.save(edited, retest.token)
     expect(store.get(card.storageId)?.apiKey).toBe('fixture-key')
     expect(store.snapshot().connections[0]).toMatchObject({ alias: 'Renamed', revision: 2 })
+  })
+  it('persists a local model catalog and serves models without an upstream route', async () => {
+    const { store, draft, fetcher } = await fixture()
+    fetcher.mockImplementation(async (url) => new Response(JSON.stringify(String(url).endsWith('/models') ? { error: 'missing' } : { output: [{ type: 'message', content: [{ type: 'output_text', text: 'hi' }] }] }), { status: String(url).endsWith('/models') ? 404 : 200 }))
+    const input = { ...draft, model: 'manual', manualModels: ['manual', 'other'] }
+    const tested = await store.test(input)
+    await store.save(input, tested.token)
+    let card = store.snapshot().connections[0]!
+    expect(card.supportedEndpoints).toEqual(['/v1/responses'])
+    expect(card.manualModels).toEqual(['manual', 'other'])
+    expect(customConnectionEndpoints(card)).toEqual(['/v1/responses', '/v1/models'])
+    expect(customConnectionManualEndpoints(card)).toEqual(['/v1/models'])
+    expect(customConnectionModels(card).map(model => model.id)).toEqual(['manual', 'other'])
+    await store.save({ ...input, storageId: card.storageId, apiKey: '', manualModels: normalizeManualModels(['manual', 'second', 'second']) }, '')
+    card = store.snapshot().connections[0]!
+    expect(card.manualModels).toEqual(['manual', 'second'])
+    expect(card.revision).toBe(2)
   })
   it('keeps an edited connection in its list position instead of appending it', async () => {
     const { store, draft } = await fixture()

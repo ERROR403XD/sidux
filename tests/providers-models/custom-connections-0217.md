@@ -94,3 +94,33 @@
 7. 兼容：旧状态文件的 `reasoningEfforts` 规范化加载（未知档位剔除、顺序规范化）；无该字段视为未探测。
 
 回滚/清理：还原 `src/customConnections.ts`、`src/server/customConnectionStore.ts`、`src/components/accounts/CustomConnections.vue` 与 `src/style.css` 即可；状态文件无需迁移。移除样本连接，停止样本服务。
+
+## 0.2.21-dev.3 推理探测后的选择器稳定与 system 消息前置
+
+前提：隔离 `CODEX_HOME`；一个已选中的 Chat-only 自定义连接，开启「协议转换」，并保存两个可选模型。准备一个会把后置 `system`/`developer` 消息原样转给 Chat 模板的样本上游，或使用协议桥单元测试夹具。
+
+1. 在会话模型选择器中选择第二个模型，打开账号设置，点击「测试连接」并保存。凭据与执行身份不变时，模型选择器不得先跳回上次连接配置的第一个模型再跳回用户选择；输入框不出现「模型目录暂时不可用」。
+2. 仅修改别名或协议转换开关后直接保存（不重新测试）：模型与推理强度选项保持不变；重新测试后推理档位按新探测结果更新。
+3. 通过该连接发起包含历史 `system`/`developer` 消息的 Responses 请求。转换后的 Chat `messages` 必须把所有 system 消息按原相对顺序放到开头，再保留 user/assistant/tool 顺序；请求不再因上游模板返回 `System message must be at the beginning.` / `wrong_api_format` 失败。
+4. 对照原生 Responses 连接与 OpenAI 账号：模型目录请求、推理强度探测和消息顺序均不经过 Responses→Chat 重排逻辑。
+
+回滚/清理：还原 `src/App.vue` 与 `protocol-bridge/src/chat/requestDecoder.ts`，移除样本连接并停止样本上游；不迁移连接状态文件。
+
+## 0.2.21-dev.3 手动模型目录与 Responses-only 反向转换
+
+前提：隔离 `CODEX_HOME`；三个本地样本服务分别提供：仅 Responses、仅 Chat、仅 Responses 且 `/models` 返回 404。运行 `pnpm exec vitest run src/server/customConnectionStore.test.ts src/server/apiProxy/customConnections.test.ts` 与 `pnpm run test:bridge`。
+
+1. 仅 Responses 连接开启「协议转换」：卡片与 API key 行的 chat 端点 tag 显示黄色，Responses 仍为原生绿色；外部客户端调用 `/v1/chat/completions` 时由本地协议桥反向转换到上游 Responses，响应符合 Chat 格式。账号设置 UI、开关与持久化行为沿用 Chat-only 转 Responses 的相同处理。
+2. `/models` 不可用但在连接表单中添加至少一个手动模型：models tag 显示黄色，模型选择器不再要求探测目录；重复 ID 去重、空 ID 拒绝、可逐项移除，保存并刷新后列表保持。若后续 models 探测成功，原生目录优先，manual tag 恢复为原生 models tag。
+3. 明暗主题、中英文、1440×1000、768×1024、375×812 检查手动模型列表、黄色 tag 和上下文摘要；无横向溢出，黄色 tag 与原生绿色可明确区分。
+
+回滚/清理：移除样本连接与会话，停止样本服务；不迁移连接状态文件。
+
+### 0.2.21-dev.3：手动端点的互斥显示
+
+前提：浏览器接口样本中配置一个仅原生支持 Responses、手动维护 models 的连接；API key 固定到同一连接，不向上游发送测试请求。
+
+1. 查看保存后的账号卡片、账号设置弹窗和 API key 卡片。models 均为黄色“手动维护”，responses 为绿色“支持”，未开启转换的 chat 为不支持。
+2. 刷新页面，状态保持一致；原生支持 models 的连接仍显示绿色，桥接 chat 保留黄色“经协议转换”。
+3. 明暗主题检查真实卡片 class、aria-label 与颜色，不能只验收首页或侧栏。
+4. 清理：关闭样本浏览器上下文和拦截，不改真实连接配置；本项不改变持久模型目录或接口行为。

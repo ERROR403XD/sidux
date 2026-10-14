@@ -2,10 +2,10 @@
 
 [中文](README.md) | **English**
 
-[![Release](https://img.shields.io/github/v/release/ERROR403XD/codexapp)](https://github.com/ERROR403XD/codexapp/releases)
+[![Release](https://img.shields.io/github/v/release/ERROR403XD/codexapp)](https://github.com/ERROR403XD/sidux/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Sidux (formerly CodexApp) is a self-hosted web interface for Codex app-server. Manage projects, conversations, accounts, and automations from desktop, tablet, or phone browsers. The release baseline is **0.2.20**. This is an independently maintained community project, unaffiliated with OpenAI.
+Sidux (formerly CodexApp) is a self-hosted web interface for Codex app-server. Manage projects, conversations, accounts, and automations from desktop, tablet, or phone browsers. The release baseline is **0.2.21**. This is an independently maintained community project, unaffiliated with OpenAI.
 
 ## Acceptable use and policy compliance
 
@@ -30,7 +30,7 @@ This project is forked from [friuns2/codex-mobile](https://github.com/friuns2/co
 
 This fork therefore continues development from the GitHub source, rather than the reportedly poisoned npm distribution. “Unpoisoned GitHub version” refers to the source baseline without the distribution-only injection described in that report; it is not a blanket security guarantee for all historical code or dependencies. Upstream ancestry is retained, while local development is published as a reviewed source snapshot, and release packages are built from this repository. The linked report is the source for the incident description, not an independently verified conclusion about every upstream release.
 
-**Install from this repository or its [GitHub Releases](https://github.com/ERROR403XD/codexapp/releases).** The new command is `sidux`; `codexapp` and `codexui` remain compatibility aliases. Existing repository URLs, data paths, environment variables, and service names are not migrated yet so upgrades and rollbacks keep working.
+**Install from this repository or its [GitHub Releases](https://github.com/ERROR403XD/sidux/releases).** The new command is `sidux`; `codexapp` and `codexui` remain compatibility aliases. Existing repository URLs, data paths, environment variables, and service names are not migrated yet so upgrades and rollbacks keep working.
 
 ## Features
 
@@ -57,7 +57,7 @@ This fork therefore continues development from the GitHub source, rather than th
 
 The wider plugin refresh button aligns with the list right edge; the filter fits its content and the search field fills the remaining space with consistent control gaps.
 
-Version 0.2.20 adds automatic reasoning-effort capability probing for custom connections, with capability-aware fallback when a connection rejects the parameter; it refines API-key rows and model/reasoning controls, improves attachment-only new-thread titles, and repairs queued rows that were already sent while the page was away. The protocol bridge, API proxy, and multi-account runtime boundaries from the candidate line remain covered by the release verification.
+Version 0.2.21 promotes the final dev.3 baseline to stable, improving external automation execution and persistence, activation-history pagination and index recovery, quota continuation, ancillary metadata degradation, and custom connection capability labels.
 
 ## Requirements
 
@@ -72,10 +72,10 @@ Version 0.2.20 adds automatic reasoning-effort capability probing for custom con
 ### Build this repository
 
 ```bash
-git clone --branch v0.2.20 https://github.com/ERROR403XD/codexapp.git
-cd codexapp
-pnpm install --frozen-lockfile
-pnpm run build
+git clone --branch v0.2.21 https://github.com/ERROR403XD/sidux.git
+cd sidux
+npm ci
+npm run build
 node dist-cli/index.js --port 5900 --strict-port --no-open
 ```
 
@@ -83,11 +83,11 @@ Open `http://localhost:5900`, follow the terminal's web authentication instructi
 
 ### Install the GitHub Release package
 
-Download `codexapp-0.2.20.tgz` and `SHA256SUMS` from [v0.2.20](https://github.com/ERROR403XD/codexapp/releases/tag/v0.2.20), then run in the download directory:
+Download `codexapp-0.2.21.tgz` and `SHA256SUMS` from [v0.2.21](https://github.com/ERROR403XD/sidux/releases/tag/v0.2.21), then run in the download directory:
 
 ```bash
 sha256sum -c SHA256SUMS
-npm install -g ./codexapp-0.2.20.tgz
+npm install -g ./codexapp-0.2.21.tgz
 codexapp --port 5900 --strict-port --no-open
 ```
 
@@ -137,9 +137,9 @@ pnpm run build
 pnpm run test:unit
 ```
 
-Vue 3 / TypeScript / Vite power the frontend. Node.js / Express connect to Codex app-server over WebSocket/RPC; the terminal uses xterm.js / node-pty. Source is in `src/` and `scripts/`; see [tests.md](tests.md) and [public release verification](docs/RELEASE-0.2.20.md).
+Vue 3 / TypeScript / Vite power the frontend. Node.js / Express connect to Codex app-server over WebSocket/RPC; the terminal uses xterm.js / node-pty. Source is in `src/` and `scripts/`; see [tests.md](tests.md) and [public release verification](docs/RELEASE-0.2.21.md).
 
-See [0.2.20 release verification](docs/RELEASE-0.2.20.md) for the tested scope and limitations. Private conversations, host paths, screenshots, and raw acceptance records are excluded.
+See [0.2.21 release verification](docs/RELEASE-0.2.21.md) for the tested scope and limitations. Private conversations, host paths, screenshots, and raw acceptance records are excluded.
 
 ## Troubleshooting
 
@@ -156,6 +156,6 @@ The API proxy uses [router-for-me/CLIProxyAPI](https://github.com/router-for-me/
 
 ## Contributing and license
 
-[Issues](https://github.com/ERROR403XD/codexapp/issues) and pull requests are welcome. Include version, platform, reproduction steps, and sanitized logs; never attach `auth.json`, tokens, API keys, or private conversations. Follow [AGENTS.md](AGENTS.md) and update relevant tests and acceptance notes. Chinese is the primary README; keep this English version aligned for user-facing changes.
+[Issues](https://github.com/ERROR403XD/sidux/issues) and pull requests are welcome. Include version, platform, reproduction steps, and sanitized logs; never attach `auth.json`, tokens, API keys, or private conversations. Follow [AGENTS.md](AGENTS.md) and update relevant tests and acceptance notes. Chinese is the primary README; keep this English version aligned for user-facing changes.
 
 Licensed under [MIT](LICENSE). Thanks to the original authors and contributors, Codex, Vue, Vite, xterm.js, CLIProxyAPI, and their communities.

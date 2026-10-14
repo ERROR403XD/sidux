@@ -58,6 +58,7 @@ export type StoredAccountEntry = {
   lastResetUsedAtIso?: string | null
   quotaSnapshot: StoredRateLimitSnapshot | null
   quotaUpdatedAtIso: string | null
+  quotaFailedAtIso: string | null
   quotaStatus: AccountQuotaStatus
   quotaError: string | null
   unavailableReason: AccountUnavailableReason | null
@@ -281,6 +282,7 @@ function normalizeEntry(value: unknown): StoredAccountEntry | null {
     lastResetUsedAtIso: typeof record?.lastResetUsedAtIso === 'string' ? record.lastResetUsedAtIso : null,
     protectionPercent: Math.max(0, Math.min(100, readNumber(record?.protectionPercent) ?? 0)),
     quotaUpdatedAtIso: readString(record?.quotaUpdatedAtIso),
+    quotaFailedAtIso: readString(record?.quotaFailedAtIso),
     quotaStatus,
     quotaError: readString(record?.quotaError),
     unavailableReason,
@@ -466,6 +468,7 @@ export class AccountAuthStore {
           lastResetUsedAtIso: existing?.lastResetUsedAtIso ?? null,
           protectionPercent: existing?.protectionPercent ?? 0,
           quotaUpdatedAtIso: existing?.quotaUpdatedAtIso ?? null,
+          quotaFailedAtIso: existing?.quotaFailedAtIso ?? null,
           quotaStatus: existing?.quotaStatus ?? 'idle',
           quotaError: existing?.quotaError ?? null,
           unavailableReason: existing?.unavailableReason ?? null,
@@ -496,6 +499,7 @@ export class AccountAuthStore {
           lastActivatedAtIso: now,
           quotaSnapshot: null,
           quotaUpdatedAtIso: null,
+          quotaFailedAtIso: null,
           quotaStatus: 'idle',
           quotaError: null,
           unavailableReason: null,
@@ -606,6 +610,7 @@ export class AccountAuthStore {
         lastResetUsedAtIso: existing?.lastResetUsedAtIso ?? null,
         protectionPercent: existing?.protectionPercent ?? 0,
         quotaUpdatedAtIso: existing?.quotaUpdatedAtIso ?? null,
+        quotaFailedAtIso: null,
         quotaStatus: existing?.quotaStatus ?? 'idle',
         quotaError: null,
         unavailableReason: null,

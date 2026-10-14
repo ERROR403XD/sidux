@@ -177,7 +177,7 @@ describe('durable bridge delivery', () => {
   })
 })
 
-it('delivers an interrupted thread continuation through the durable queue exactly once', async () => {
+it('delivers a quota-interrupted thread continuation through the durable queue exactly once', async () => {
   const { ThreadQuotaResume } = await import('./threadQuotaResume')
   const { processor, rpc, message } = await fixture()
   const home = await mkdtemp(join(tmpdir(), 'resume-delivery-'))
@@ -187,7 +187,7 @@ it('delivers an interrupted thread continuation through the durable queue exactl
     const response = await processor.submit({ protocol: 2, threadId, message: continuation, params, expectedContextId: 'fixture-account' })
     expect(response.status).toBe('accepted')
   })
-  const runtime = { inspect: vi.fn(async () => ({ active: false, turnId: 'interrupted-turn', status: 'interrupted', error: '' })), available: async () => true, submit, cancel: async () => {}, changed: () => {} }
+  const runtime = { inspect: vi.fn(async () => ({ active: false, turnId: 'interrupted-turn', status: 'interrupted', error: 'quota exceeded' })), available: async () => true, submit, cancel: async () => {}, changed: () => {} }
   const service = new ThreadQuotaResume(home, runtime, false)
   cleanups.unshift(async () => { await service.close(); await rm(home, { recursive: true, force: true }) })
   await service.set('fixture', true)

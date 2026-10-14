@@ -809,6 +809,36 @@ describe('provider model selection', () => {
     })
   })
 
+  it('keeps a provider-scoped custom model during a same-provider catalog refresh', async () => {
+    installTestWindow({
+      'codex-web-local.selected-model-by-context.v1': JSON.stringify({
+        '__new-thread-provider__::custom': 'custom-beta',
+      }),
+    })
+    gatewayMocks.getThreadGroupsPage.mockResolvedValue({ groups: [], nextCursor: null })
+    gatewayMocks.getAvailableCollaborationModes.mockResolvedValue([{ value: 'default', label: 'Default' }])
+    gatewayMocks.getSkillsList.mockResolvedValue([])
+    gatewayMocks.getAccountRateLimits.mockResolvedValue(null)
+    gatewayMocks.getCurrentModelConfig.mockResolvedValue({
+      model: 'custom-alpha',
+      providerId: 'custom',
+      reasoningEffort: 'medium',
+      speedMode: '',
+    })
+    gatewayMocks.getAvailableModelIds.mockResolvedValue(['custom-alpha', 'custom-beta'])
+
+    const state = useDesktopState()
+    await state.refreshAll({ includeSelectedThreadMessages: false, awaitAncillaryRefreshes: true })
+
+    expect(gatewayMocks.getAvailableModelIds).toHaveBeenLastCalledWith({
+      includeProviderModels: true,
+      requireProviderModels: true,
+      providerId: 'custom',
+    })
+    expect(state.selectedModelId.value).toBe('custom-beta')
+    expect(state.readModelIdForThread('')).toBe('custom-beta')
+  })
+
   it('stores the new-thread Codex model in a provider-scoped slot', async () => {
     installTestWindow({
       'codex-web-local.selected-model-by-context.v1': JSON.stringify({

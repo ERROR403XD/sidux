@@ -129,7 +129,7 @@ export function responsesRequestToChatRequest(
     throw new ProtocolConversionError('Responses "input" must be a string or an array of items')
   }
 
-  const request: ChatRequest = { model, messages }
+  const request: ChatRequest = { model, messages: systemMessagesFirst(messages) }
 
   const stream = body.stream === true
   if (body.stream !== undefined) request.stream = stream
@@ -161,6 +161,14 @@ export function responsesRequestToChatRequest(
   warnDroppedTopLevelFields(body, warnings)
 
   return { request, warnings }
+}
+
+function systemMessagesFirst(messages: ChatMessage[]): ChatMessage[] {
+  const systemMessages = messages.filter(message => message.role === 'system')
+  if (systemMessages.length === 0) return messages
+  const otherMessages = messages.filter(message => message.role !== 'system')
+  const reordered = [...systemMessages, ...otherMessages]
+  return reordered.every((message, index) => message === messages[index]) ? messages : reordered
 }
 
 function decodeInputItems(

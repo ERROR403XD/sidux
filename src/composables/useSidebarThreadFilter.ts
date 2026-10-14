@@ -4,6 +4,7 @@ import type { UiProjectGroup } from '../types/codex'
 import { matchesSidebarThreadFilter, type SidebarThreadFilter } from '../sidebarThreadFilter'
 import { ActiveSidebarSession } from '../activeSidebarSession'
 import { useThreadInterruptions } from './useThreadInterruptions'
+import { notifyOperation } from './useOperationToast'
 
 export function useSidebarThreadFilter(groups: Ref<UiProjectGroup[]>, selectedId: Ref<string>) {
   const filter = ref<SidebarThreadFilter>('all')
@@ -12,7 +13,7 @@ export function useSidebarThreadFilter(groups: Ref<UiProjectGroup[]>, selectedId
   const loadedInterrupted = ref<Record<string, boolean | null>>({})
   const interrupted = computed(() => ({ ...loadedInterrupted.value, ...Object.fromEntries(Object.keys(problems.value).map(id => [id, true])) }))
   const loading = ref(false)
-  const error = ref('')
+  const incomplete = ref(false)
   const threads = computed(() => groups.value.flatMap(group => group.threads))
   const activeSession = reactive(new ActiveSidebarSession())
   let previousMatches = new Set<string>()
@@ -21,6 +22,7 @@ export function useSidebarThreadFilter(groups: Ref<UiProjectGroup[]>, selectedId
     activeSession.reset(value === 'active', threads.value, selectedId.value)
     retainedThreadId.value = ''
     previousMatches.clear()
+    loading.value = value === 'interrupted'
   }, { flush: 'sync' })
   watch(() => [filter.value === 'active' ? threads.value.map(({ id, inProgress, unread }) => ({ id, inProgress, unread })) : [], selectedId.value] as const,
     ([rows, id]) => activeSession.update(rows, id))
@@ -30,6 +32,14 @@ export function useSidebarThreadFilter(groups: Ref<UiProjectGroup[]>, selectedId
   let revision = 0
   let controller: AbortController | undefined
   let timer: ReturnType<typeof setTimeout> | undefined
+  let failureNotified = false
+
+  function warnIncomplete(): void {
+    incomplete.value = true
+    if (failureNotified) return
+    notifyOperation('会话状态读取失败，请重试', 'warning', 'conversation-status')
+    failureNotified = true
+  }
 
   function retainBeforeSelect(id: string): void {
     if (filter.value !== 'all' && matchingIds.value.has(id)) retainedThreadId.value = id
@@ -50,12 +60,13 @@ export function useSidebarThreadFilter(groups: Ref<UiProjectGroup[]>, selectedId
     controller = request
     const started = ++revision
     loading.value = true
-    error.value = ''
-    loadedInterrupted.value = {}
     try {
       const ids = threads.value.filter(thread => !thread.inProgress && !problems.value[thread.id]?.length).map(thread => thread.id)
       const versions = new Map(threads.value.map(thread => [thread.id, thread.updatedAtIso]))
-      const next: Record<string, boolean | null> = {}
+      // Keep unvisited batches and unknown results from this immutable snapshot.
+      const previous = loadedInterrupted.value
+      const next: Record<string, boolean | null> = Object.fromEntries(ids.map(id => [id, previous[id] ?? null]))
+      let hasUnknown = false
       for (let offset = 0; offset < ids.length; offset += 100) {
         const batch = ids.slice(offset, offset + 100)
         const response = await fetch('/codex-api/sidebar-thread-status', {
@@ -65,13 +76,21 @@ export function useSidebarThreadFilter(groups: Ref<UiProjectGroup[]>, selectedId
         if (!response.ok) throw new Error('会话状态读取失败，请重试')
         const payload = await response.json() as { data: Record<string, boolean | null> }
         if (disposed || started !== revision) return
-        for (const id of batch) next[id] = typeof payload.data?.[id] === 'boolean' ? payload.data[id]! : null
+        for (const id of batch) {
+          const value = payload.data?.[id]
+          if (typeof value === 'boolean') next[id] = value
+          else hasUnknown = true
+        }
         loadedInterrupted.value = { ...next }
       }
       loadedInterrupted.value = next
-      if (Object.values(next).some(value => value === null)) error.value = '部分会话状态未能确认，请重试'
+      if (hasUnknown) warnIncomplete()
+      else {
+        incomplete.value = false
+        failureNotified = false
+      }
     } catch {
-      if (!request.signal.aborted && !disposed && started === revision) error.value = '会话状态读取失败，请重试'
+      if (!request.signal.aborted && !disposed && started === revision) warnIncomplete()
     } finally {
       if (!disposed && started === revision) loading.value = false
     }
@@ -83,7 +102,7 @@ export function useSidebarThreadFilter(groups: Ref<UiProjectGroup[]>, selectedId
   watch(() => [filter.value, threads.value.map(thread => `${thread.id}:${thread.updatedAtIso}:${thread.inProgress}`).join('|')], () => {
     revision += 1
     controller?.abort()
-    loading.value = false
+    loading.value = filter.value === 'interrupted'
     schedule()
   })
   const unsubscribe = subscribeCodexNotifications(notification => {
@@ -101,7 +120,7 @@ export function useSidebarThreadFilter(groups: Ref<UiProjectGroup[]>, selectedId
     delete loadedInterrupted.value[id]
     revision += 1
     controller?.abort()
-    loading.value = false
+    loading.value = filter.value === 'interrupted'
     schedule()
   })
   function onVisible(): void {
@@ -117,5 +136,5 @@ export function useSidebarThreadFilter(groups: Ref<UiProjectGroup[]>, selectedId
     window.removeEventListener('focus', onVisible)
     document.removeEventListener('visibilitychange', onVisible)
   })
-  return { filter, retainedThreadId, activeSession, problems, problemError, ignoringProblems, ignoreThreadProblems, interrupted, loading, error: computed(() => error.value || problemError.value), refresh, retainBeforeSelect }
+  return { filter, retainedThreadId, activeSession, problems, problemError, ignoringProblems, ignoreThreadProblems, interrupted, loading, incomplete, refresh, retainBeforeSelect }
 }

@@ -80,6 +80,24 @@ describe('responsesRequestToChatRequest', () => {
     expect(request.tool_choice).toEqual({ type: 'function', function: { name: 'shell' } })
   })
 
+  it('moves later system and developer messages before conversation messages', () => {
+    const { request } = responsesRequestToChatRequest({
+      model: 'm',
+      input: [
+        { type: 'message', role: 'user', content: 'first' },
+        { type: 'message', role: 'system', content: 'later system' },
+        { type: 'message', role: 'developer', content: 'later developer' },
+        { type: 'message', role: 'user', content: 'second' },
+      ],
+    })
+    expect(request.messages).toEqual([
+      { role: 'system', content: 'later system' },
+      { role: 'system', content: 'later developer' },
+      { role: 'user', content: 'first' },
+      { role: 'user', content: 'second' },
+    ])
+  })
+
   it('converts inline image parts to chat image_url parts', () => {
     const { request } = responsesRequestToChatRequest({
       model: 'm',

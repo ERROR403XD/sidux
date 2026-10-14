@@ -1,12 +1,108 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, rename, rm } from 'node:fs/promises'
+import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, expect, it, vi } from 'vitest'
 import { ThreadQuotaResume } from './threadQuotaResume.js'
+import * as persistence from './apiProxy/store.js'
 const homes: string[] = []
 const services: ThreadQuotaResume[] = []
 afterEach(async () => {
+  vi.restoreAllMocks()
   await Promise.all(services.splice(0).map(service => service.close()))
   await Promise.all(homes.splice(0).map(home => rm(home, { recursive: true, force: true })))
+})
+
+it('halts failed enabling without publishing an intent or sending after storage recovers', async () => {
+  const { home, service, runtime } = await fixture()
+  await service.ready
+  const path = join(home, 'codexapp-quota-resume.json')
+  await mkdir(path)
+  await expect(service.set('thread-a', true)).rejects.toThrow('保存结果未确认')
+  await rm(path, { recursive: true })
+  runtime.available.mockResolvedValue(true)
+  await expect(service.tick()).rejects.toThrow('已停止续跑')
+  await expect(service.snapshot()).rejects.toThrow('已停止续跑')
+  const restarted = new ThreadQuotaResume(home, runtime, false)
+  services.push(restarted)
+  await restarted.tick()
+  expect(await restarted.snapshot()).toEqual({})
+  expect(runtime.submit).not.toHaveBeenCalled()
+})
+
+it('recovers a failed pre-send claim from durable waiting state instead of becoming stuck submitted', async () => {
+  const { home, service, runtime } = await fixture()
+  const path = join(home, 'codexapp-quota-resume.json')
+  await service.set('thread-a', true)
+  await rename(path, `${path}.saved`)
+  await mkdir(path)
+  runtime.available.mockResolvedValue(true)
+  await expect(service.tick()).rejects.toThrow('保存结果未确认')
+  await rm(path, { recursive: true })
+  await rename(`${path}.saved`, path)
+  await expect(service.tick()).rejects.toThrow('已停止续跑')
+  expect(runtime.submit).not.toHaveBeenCalled()
+  expect(JSON.parse(await readFile(path, 'utf8')).marks['thread-a'].status).toBe('waiting')
+  const restarted = new ThreadQuotaResume(home, runtime, false)
+  services.push(restarted)
+  await restarted.tick()
+  await restarted.tick()
+  expect(runtime.submit).toHaveBeenCalledTimes(1)
+})
+
+it('reconciles an ambiguous committed claim before any retry after restart', async () => {
+  const { home, service, runtime } = await fixture()
+  await service.set('thread-a', true)
+  const write = persistence.privateJson
+  vi.spyOn(persistence, 'privateJson').mockImplementationOnce(async (...args) => {
+    await write(...args)
+    throw Object.assign(new Error('post-rename failure'), { code: 'EIO' })
+  })
+  runtime.available.mockResolvedValue(true)
+  await expect(service.tick()).rejects.toThrow('保存结果未确认')
+  await expect(service.tick()).rejects.toThrow('已停止续跑')
+  expect(runtime.submit).not.toHaveBeenCalled()
+  const reconcile = vi.fn(async () => 'unknown' as const)
+  const restarted = new ThreadQuotaResume(home, { ...runtime, reconcile }, false)
+  services.push(restarted)
+  await restarted.tick()
+  expect(reconcile).toHaveBeenCalledOnce()
+  expect((await restarted.snapshot())['thread-a']?.status).toBe('unknown')
+  expect(runtime.submit).not.toHaveBeenCalled()
+})
+
+it('does not treat a failed notification as failed persistence or skip a durable submission', async () => {
+  const { service, runtime } = await fixture()
+  runtime.changed.mockImplementation(() => { throw new Error('notification unavailable') })
+  await service.set('thread-a', true)
+  runtime.available.mockResolvedValue(true)
+  await service.tick()
+  expect(runtime.submit).toHaveBeenCalledOnce()
+  expect((await service.snapshot())['thread-a']?.status).toBe('submitted')
+})
+
+it('does not swallow a persistence failure as an unreadable thread and dispatch other work', async () => {
+  const { service, runtime } = await fixture()
+  runtime.inspect.mockResolvedValue({ active: false, turnId: 'done', status: 'completed', error: '' })
+  await service.set('thread-a', true)
+  runtime.inspect.mockResolvedValue({ active: false, turnId: 'failed-turn', status: 'failed', error: 'quota' })
+  await service.set('thread-b', true)
+  vi.spyOn(persistence, 'privateJson').mockRejectedValueOnce(new Error('storage unavailable'))
+  runtime.available.mockResolvedValue(true)
+  await expect(service.tick()).rejects.toThrow('保存结果未确认')
+  expect(runtime.available).not.toHaveBeenCalled()
+  expect(runtime.submit).not.toHaveBeenCalled()
+})
+
+it('keeps a failed removal halted and restores its durable intent on restart', async () => {
+  const { home, service, runtime } = await fixture()
+  await service.set('thread-a', true)
+  vi.spyOn(persistence, 'privateJson').mockRejectedValueOnce(new Error('storage unavailable'))
+  await expect(service.set('thread-a', false)).rejects.toThrow('保存结果未确认')
+  await expect(service.tick()).rejects.toThrow('已停止续跑')
+  const restarted = new ThreadQuotaResume(home, runtime, false)
+  services.push(restarted)
+  expect((await restarted.snapshot())['thread-a']?.status).toBe('waiting')
+  expect(runtime.submit).not.toHaveBeenCalled()
 })
 async function fixture() {
   const home = await mkdtemp(tmpdir() + '/quota-resume-')
@@ -156,4 +252,35 @@ it('eventually reconciles the ninth unknown delivery without replaying the earli
   expect((await resumed.snapshot())['thread-8']).toMatchObject({ status: 'waiting', attemptId: null })
   expect((await resumed.snapshot())['thread-0']?.status).toBe('unknown')
   expect(runtime.submit).toHaveBeenCalledTimes(9)
+})
+
+it.each([
+  { status: 'interrupted', error: '' },
+  { status: 'failed', error: 'model unavailable' },
+  { status: 'failed', error: 'network disconnected' },
+])('arms $status/$error without immediately resuming non-quota work', async state => {
+  const { service, runtime } = await fixture()
+  runtime.inspect.mockResolvedValue({ active: false, turnId: 'non-quota-turn', ...state })
+  runtime.available.mockResolvedValue(true)
+  await service.set('thread-a', true)
+  await service.tick()
+  await service.tick()
+  expect(runtime.submit).not.toHaveBeenCalled()
+  expect((await service.snapshot())['thread-a']?.status).toBe('armed')
+  runtime.inspect.mockResolvedValue({ active: false, turnId: 'later-quota-turn', status: 'failed', error: 'quota' })
+  await service.tick()
+  expect(runtime.submit).toHaveBeenCalledTimes(1)
+})
+
+it.each(['same-turn-nonquota', 'new-turn-interrupted', 'new-turn-completed'])('rechecks waiting work after the user changes its state: %s', async scenario => {
+  const { service, runtime } = await fixture()
+  await service.set('thread-a', true)
+  runtime.available.mockResolvedValue(true)
+  runtime.inspect.mockResolvedValue({
+    active: false, turnId: scenario === 'same-turn-nonquota' ? 'failed-turn' : 'new-turn',
+    status: scenario === 'new-turn-completed' ? 'completed' : 'interrupted', error: '',
+  })
+  await service.tick()
+  expect(runtime.submit).not.toHaveBeenCalled()
+  expect((await service.snapshot())['thread-a']?.status).toBe('armed')
 })

@@ -111,10 +111,10 @@
               {{ option.label }}
             </button>
           </div>
-          <p v-if="!isSidebarCollapsed && sidebarFilter === 'interrupted' && sidebarFilterError" class="sidebar-filter-error" role="alert">
-            {{ t(sidebarFilterError) }} <button type="button" @click="refreshSidebarFilter">{{ t('重试') }}</button>
+          <p v-if="!isSidebarCollapsed && sidebarFilter === 'interrupted' && sidebarFilterIncomplete && !sidebarFilterLoading" class="sidebar-filter-status" role="status">
+            {{ t('部分会话状态未能确认，请重试') }} <AppButton @click="refreshSidebarFilter">{{ t('重试') }}</AppButton>
           </p>
-          <SidebarThreadTree :status-filter="sidebarFilter" :retained-thread-id="retainedThreadId" :active-retained-ids="sidebarActiveSession.retainedIds" :interruptions="sidebarProblems" :ignoring-problems="sidebarIgnoringProblems" :interruption-error="sidebarProblemError" @ignore-thread-problems="ignoreThreadProblems" :quota-interrupted="sidebarInterrupted" :filter-loading="sidebarFilterLoading" ref="sidebarThreadTreeRef" :groups="sidebarThreadGroups" :accounts="executionAccounts" :models="availableModelIds" :model-capabilities="availableModels" :goals="threadGoals" :quota-resume-marks="quotaResumeMarks" :quota-resume-error="quotaResumeError" @toggle-quota-resume="toggleQuotaResume" :project-display-name-by-id="projectDisplayNameById"
+          <SidebarThreadTree :status-filter="sidebarFilter" :retained-thread-id="retainedThreadId" :active-retained-ids="sidebarActiveSession.retainedIds" :interruptions="sidebarProblems" :ignoring-problems="sidebarIgnoringProblems" :interruption-error="sidebarProblemError" @ignore-thread-problems="ignoreThreadProblems" :quota-interrupted="sidebarInterrupted" :filter-loading="sidebarFilterLoading" :filter-incomplete="sidebarFilterIncomplete" ref="sidebarThreadTreeRef" :groups="sidebarThreadGroups" :accounts="executionAccounts" :models="availableModelIds" :model-capabilities="availableModels" :goals="threadGoals" :quota-resume-marks="quotaResumeMarks" :quota-resume-error="quotaResumeError" @toggle-quota-resume="toggleQuotaResume" :project-display-name-by-id="projectDisplayNameById"
             :project-git-repo-by-name="projectGitRepoByName"
             :project-cwd-by-name="projectCwdByName"
             v-if="!isSidebarCollapsed"
@@ -633,7 +633,6 @@
 
               <template v-else>
                 <div class="content-thread">
-                  <p v-if="threadGoalsError" class="thread-goal-read-error" role="alert">{{ t(threadGoalsError) }} <AppButton @click="refreshThreadGoals">{{ t('重新读取') }}</AppButton></p>
                   <p v-if="pendingCompactionRequest" class="thread-compaction-pending" role="status">{{ t('压缩请求等待确认。') }}<AppButton @click="onComposerCommand({ name: 'compact', complete: () => {} })">{{ t('检查压缩') }}</AppButton></p>
                   <ThreadTasksPanel :thread-id="selectedThreadId" :identity="selectedThread?.task || null" @return-task="onReturnTask" @open-task="onOpenRelatedTask" @search-tasks="isTaskSearchOpen = true">
                     <template #tools><ThreadProcessPanel :key="`${selectedThreadId}:${composerCwd}:${directoryAccountRevision}`" :thread-id="selectedThreadId" :cwd="composerCwd" /></template>
@@ -1007,7 +1006,7 @@ async function onCustomConnectionsChanged(changed = false): Promise<void> {
   if (!changed) {
     // Editing or adding a connection does not change threads or the selected conversation.
     // Refresh provider/model state silently so the settings page keeps its scroll and layout.
-    await refreshAll({ includeSelectedThreadMessages: false, includeThreads: false, providerChanged: true })
+    await refreshAll({ includeSelectedThreadMessages: false, includeThreads: false })
     return
   }
   await refreshAll({ accountChanged: true, includeSelectedThreadMessages: true, awaitAncillaryRefreshes: true })
@@ -1425,7 +1424,7 @@ const sidebarThreadGroups = computed(() => {
   return groups
 })
 
-const { filter: sidebarFilter, retainedThreadId, activeSession: sidebarActiveSession, problems: sidebarProblems, problemError: sidebarProblemError, ignoringProblems: sidebarIgnoringProblems, ignoreThreadProblems, interrupted: sidebarInterrupted, loading: sidebarFilterLoading, error: sidebarFilterError, refresh: refreshSidebarFilter, retainBeforeSelect } = useSidebarThreadFilter(sidebarThreadGroups, selectedThreadId)
+const { filter: sidebarFilter, retainedThreadId, activeSession: sidebarActiveSession, problems: sidebarProblems, problemError: sidebarProblemError, ignoringProblems: sidebarIgnoringProblems, ignoreThreadProblems, interrupted: sidebarInterrupted, loading: sidebarFilterLoading, incomplete: sidebarFilterIncomplete, refresh: refreshSidebarFilter, retainBeforeSelect } = useSidebarThreadFilter(sidebarThreadGroups, selectedThreadId)
 const sidebarFilterOptions = computed(() => [
   { value: 'active', label: t('活跃') },
   { value: 'unread', label: t('未读') },
@@ -3541,7 +3540,7 @@ const { marks: quotaResumeMarks, error: quotaResumeError, toggle: toggleQuotaRes
 const goalThreadIds = computed(() => projectGroups.value.flatMap(group => group.threads.map(thread => thread.id)))
 const goalSelectedThreadId = computed(() => isHomeRoute.value ? '' : selectedThreadId.value || '')
 const pendingCompactionRequest = computed(() => ['requested', 'unknown'].includes(compactionRequests.value[goalSelectedThreadId.value]?.status ?? ''))
-const { goals: threadGoals, selectedGoal, error: threadGoalsError, update: updateThreadGoal, refresh: refreshThreadGoals } = useThreadGoals(goalThreadIds, goalSelectedThreadId)
+const { goals: threadGoals, selectedGoal, update: updateThreadGoal, refresh: refreshThreadGoals } = useThreadGoals(goalThreadIds, goalSelectedThreadId)
 const isTaskSearchOpen = ref(false)
 const taskReturnId = computed(() => {
   const id = taskId(route.query.fromTask)

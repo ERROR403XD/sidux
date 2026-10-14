@@ -6,6 +6,8 @@ import type { ThreadGoal } from '../threadGoal'
 
 const gateway = vi.hoisted(() => ({ subscribeCodexNotifications: vi.fn() }))
 vi.mock('../api/codexGateway', () => gateway)
+const toast = vi.hoisted(() => ({ notifyOperation: vi.fn() }))
+vi.mock('./useOperationToast', () => toast)
 const renderer = createRenderer<any, any>({
   createElement: () => ({}), createText: () => ({}), createComment: () => ({}),
   insert: () => {}, remove: () => {}, setText: () => {}, setElementText: () => {},
@@ -57,11 +59,29 @@ describe('goal snapshot recovery', () => {
     await vi.advanceTimersByTimeAsync(150)
     expect(state.error.value).toContain('可能已过期')
     expect(state.selectedGoal.value).toEqual(goal)
+    expect(toast.notifyOperation).toHaveBeenCalledTimes(1)
+    expect(toast.notifyOperation).toHaveBeenLastCalledWith(expect.stringContaining('可能已过期'), 'warning', 'thread-goals')
+    state.refresh()
+    await vi.advanceTimersByTimeAsync(150)
+    expect(toast.notifyOperation).toHaveBeenCalledTimes(1)
     fetcher.mockResolvedValue(answer({ selected: null, sidebar: null }))
     state.refresh()
     await vi.advanceTimersByTimeAsync(150)
     await nextTick()
     expect(state.selectedGoal.value).toBeNull()
+    expect(state.error.value).toBe('')
+  })
+
+  it('preserves the last known goal when an individual native read is omitted', async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(answer({ selected: goal, sidebar: null }))
+      .mockResolvedValueOnce(answer({}))
+    vi.stubGlobal('fetch', fetcher)
+    const { state } = mount()
+    await vi.advanceTimersByTimeAsync(150)
+    state.refresh()
+    await vi.advanceTimersByTimeAsync(150)
+    expect(state.selectedGoal.value).toEqual(goal)
     expect(state.error.value).toBe('')
   })
 })

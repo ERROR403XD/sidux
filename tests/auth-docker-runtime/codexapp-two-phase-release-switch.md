@@ -32,12 +32,19 @@ Validate `scripts/codexapp-release-switch.sh`: prepare an immutable release whil
 ## Activation actions
 
 1. Close every browser tab connected to ports `5900` and `59001`.
-2. From a separate host shell, confirm there is no direct `codex` task, then run:
+2. From a separate host shell, set the exact release directory printed by
+   `prepare`, confirm there is no direct `codex` task, then run:
 
    ```bash
-   /home/Code/codexapp/scripts/codexapp-release-switch.sh check latest
-   /home/Code/codexapp/scripts/codexapp-release-switch.sh activate latest --confirm-idle
+   SCRIPT=/mnt/NAS02-Code/Sidux/scripts/codexapp-release-switch.sh
+   RELEASE=<exact-release-directory-from-prepare>
+   sudo bash "$SCRIPT" check "$RELEASE"
+   sudo bash "$SCRIPT" activate "$RELEASE" --confirm-idle
    ```
+
+   Do not use the old `/home/Code/codexapp` worktree as the script entrypoint,
+   and do not replace the exact release path with `latest` during a production
+   cutover.
 
 3. Confirm the isolated `codexapp-multi-account-dev` container is stopped.
 4. Run `scripts/codexapp-release-switch.sh status` and confirm `active_release` points to the prepared release.
@@ -60,7 +67,7 @@ Validate `scripts/codexapp-release-switch.sh`: prepare an immutable release whil
 2. From the independent host shell run:
 
    ```bash
-   /home/Code/codexapp/scripts/codexapp-release-switch.sh rollback --confirm-idle
+   sudo bash /mnt/NAS02-Code/Sidux/scripts/codexapp-release-switch.sh rollback --confirm-idle
    ```
 
 3. Confirm `5900` is healthy, the previous release is active, and the production account remains signed in.

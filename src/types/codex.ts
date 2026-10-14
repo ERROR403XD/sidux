@@ -335,6 +335,7 @@ export type UiAccountEntry = {
   lastActivatedAtIso: string | null
   quotaSnapshot: UiRateLimitSnapshot | null
   quotaUpdatedAtIso: string | null
+  quotaFailedAtIso: string | null
   quotaStatus: UiAccountQuotaStatus
   quotaError: string | null
   unavailableReason: UiAccountUnavailableReason | null

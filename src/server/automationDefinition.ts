@@ -23,19 +23,23 @@ export type ThreadAutomationRecord = AutomationModelSettings & {
 
 const knownKeys = new Set(['version', 'id', 'kind', 'name', 'prompt', 'rrule', 'status', 'target_thread_id', 'cwds', 'created_at', 'updated_at', 'model', 'model_reasoning_effort', 'service_tier', 'timezone', 'account_storage_id', 'protected'])
 
-export function parseAutomationToml(raw: string): ThreadAutomationRecord | null {
+export function parseAutomationToml(raw: string, fallbackId?: string): ThreadAutomationRecord | null {
   try {
     const value = parse(raw)
     const kind = value.kind ?? (value.cwds ? 'cron' : 'heartbeat')
     const status = value.status ?? 'ACTIVE'
-    if (!['id', 'name', 'prompt', 'rrule'].every((key) => typeof value[key] === 'string' && String(value[key]).trim())) return null
+    // Externally authored task files may omit the id; the directory name is then
+    // the unique id so every task stays addressable, including paused ones.
+    const id = typeof value.id === 'string' && value.id.trim() ? String(value.id).trim() : fallbackId?.trim() ?? ''
+    if (!['name', 'prompt', 'rrule'].every((key) => typeof value[key] === 'string' && String(value[key]).trim())) return null
+    if (!id) return null
     if (kind !== 'heartbeat' && kind !== 'cron') return null
     if (status !== 'ACTIVE' && status !== 'PAUSED') return null
     if (value.cwds !== undefined && (!Array.isArray(value.cwds) || !value.cwds.every((cwd) => typeof cwd === 'string'))) return null
     return {
       ...normalizeAutomationModelSettings({ model: value.model, reasoningEffort: value.model_reasoning_effort, serviceTier: value.service_tier, accountStorageId: value.account_storage_id, protected: value.protected }),
       timezone: typeof value.timezone === 'string' ? value.timezone : undefined,
-      id: String(value.id), kind, name: String(value.name), prompt: String(value.prompt), rrule: String(value.rrule), status,
+      id, kind, name: String(value.name), prompt: String(value.prompt), rrule: String(value.rrule), status,
       targetThreadId: typeof value.target_thread_id === 'string' ? value.target_thread_id : null,
       cwds: (value.cwds ?? []) as string[],
       extraTomlLines: stringify(Object.fromEntries(Object.entries(value).filter(([key]) => !knownKeys.has(key)))).trim().split('\n').filter(Boolean),
@@ -73,6 +77,18 @@ export async function writeAutomationFileAtomic(path: string, contents: string):
   const temporary = `${path}.${randomUUID()}.tmp`
   try {
     await writeFile(temporary, contents, { encoding: 'utf8', mode: 0o600 })
-    await rename(temporary, path)
+    // Windows file scanners briefly hold freshly written files open, so the rename
+    // can fail with EPERM/EBUSY/EACCES; back off briefly instead of halting the
+    // scheduler. POSIX rename is atomic and these codes stay exceptional there.
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        await rename(temporary, path)
+        break
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code
+        if (attempt >= 4 || (code !== 'EPERM' && code !== 'EBUSY' && code !== 'EACCES')) throw error
+        await new Promise((resolve) => setTimeout(resolve, 50 * 2 ** attempt))
+      }
+    }
   } finally { await rm(temporary, { force: true }) }
 }

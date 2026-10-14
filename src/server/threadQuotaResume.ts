@@ -14,6 +14,7 @@ type Runtime = {
   changed(): void
 }
 export const isQuotaFailure = (error: string) => /rate.?limit|usage.?limit|quota|429|额度|限额/iu.test(error)
+const isQuotaBlocked = (state: ThreadState) => !state.active && ['failed', 'interrupted'].includes(state.status) && isQuotaFailure(state.error)
 
 // The delivery ledger owns submission deduplication; this file only owns intent.
 export class ThreadQuotaResume {
@@ -21,6 +22,7 @@ export class ThreadQuotaResume {
   private serial: Promise<unknown> = Promise.resolve()
   private ticking = false
   private stopped = false
+  private storageFailure: Error | null = null
   private inspectionOffset = 0
   private waitingOffset = 0
   private unknownOffset = 0
@@ -45,17 +47,37 @@ export class ThreadQuotaResume {
       this.timer.unref()
     }
   }
-  private async save(): Promise<void> {
-    await privateJson(this.path, { version: 1, marks: this.marks })
-    this.runtime.changed()
+  private async saveMark(threadId: string, mark?: QuotaResumeMark): Promise<void> {
+    const next = { ...this.marks }
+    if (mark) next[threadId] = mark
+    else delete next[threadId]
+    try {
+      await privateJson(this.path, { version: 1, marks: next })
+    } catch {
+      // Atomic rename may have committed before a later filesystem failure.
+      // Do not publish speculative state or retry delivery until restart/reconciliation.
+      this.storageFailure = new Error('续跑状态保存结果未确认，已停止续跑；请检查存储并重启服务核对。')
+      this.notifyChanged()
+      throw this.storageFailure
+    }
+    this.marks = next
+    this.notifyChanged()
+  }
+  private notifyChanged(): void {
+    try { this.runtime.changed() } catch { /* Notification failure cannot undo a durable state transition. */ }
   }
   private operation<T>(run: () => Promise<T>): Promise<T> {
-    const next = this.serial.then(async () => { await this.ready; return run() })
+    const next = this.serial.then(async () => {
+      await this.ready
+      if (this.storageFailure) throw this.storageFailure
+      return run()
+    })
     this.serial = next.catch(() => undefined)
     return next
   }
   async snapshot(): Promise<Record<string, QuotaResumeMark>> {
     await this.ready
+    if (this.storageFailure) throw this.storageFailure
     return structuredClone(this.marks)
   }
   set(threadId: string, enabled: boolean): Promise<void> {
@@ -64,24 +86,19 @@ export class ThreadQuotaResume {
       if (!enabled) {
         const attempt = this.marks[threadId]?.attemptId
         if (attempt) await this.runtime.cancel(attempt)
-        delete this.marks[threadId]
+        await this.saveMark(threadId)
       } else if (!this.marks[threadId]) {
         if (Object.keys(this.marks).length >= 1000) throw new Error('续跑标记数量已达上限')
         const state = await this.runtime.inspect(threadId)
-        this.marks[threadId] = { status: !state.active && ['failed', 'interrupted'].includes(state.status) ? 'waiting' : 'armed', blockedTurnId: state.turnId, attemptId: null }
+        await this.saveMark(threadId, { status: isQuotaBlocked(state) ? 'waiting' : 'armed', blockedTurnId: state.turnId, attemptId: null })
       }
-      await this.save()
     })
   }
   blocked(threadId: string, turnId: string | null): Promise<void> {
     return this.operation(async () => {
       const mark = this.marks[threadId]
       if (!mark) return
-      mark.status = 'waiting'
-      mark.blockedTurnId = turnId
-      mark.attemptId = null
-      delete mark.lastError
-      await this.save()
+      await this.saveMark(threadId, { status: 'waiting', blockedTurnId: turnId, attemptId: null })
     })
   }
   observe(notification: { method: string; params: unknown }): void {
@@ -94,9 +111,7 @@ export class ThreadQuotaResume {
       void this.operation(async () => {
         const mark = this.marks[id]
         if (!mark) return
-        mark.status = 'armed'
-        mark.attemptId = null
-        await this.save()
+        await this.saveMark(id, { status: 'armed', blockedTurnId: mark.blockedTurnId, attemptId: null })
       }).catch(() => undefined)
     }
   }
@@ -118,21 +133,15 @@ export class ThreadQuotaResume {
         const count = Math.min(8, candidates.length)
         for (let index = 0; index < count; index++) {
           const [threadId, mark] = candidates[(this.inspectionOffset + index) % candidates.length]!
-          try {
-            const state = await this.runtime.inspect(threadId)
-            if (state.active) continue
-            if (['failed', 'interrupted'].includes(state.status) && isQuotaFailure(state.error)
-              && (mark.status === 'armed' || state.turnId !== mark.blockedTurnId)) {
-              mark.status = 'waiting'
-              mark.blockedTurnId = state.turnId
-              mark.attemptId = null
-              await this.save()
-            } else if (mark.status === 'submitted' && state.status === 'completed') {
-              mark.status = 'armed'
-              mark.attemptId = null
-              await this.save()
-            }
-          } catch { /* One unreadable thread must not stop other continuations. */ }
+          let state: ThreadState
+          try { state = await this.runtime.inspect(threadId) }
+          catch { continue }
+          if (state.active) continue
+          if (isQuotaBlocked(state) && (mark.status === 'armed' || state.turnId !== mark.blockedTurnId)) {
+            await this.saveMark(threadId, { status: 'waiting', blockedTurnId: state.turnId, attemptId: null })
+          } else if (mark.status === 'submitted' && state.status === 'completed') {
+            await this.saveMark(threadId, { status: 'armed', blockedTurnId: mark.blockedTurnId, attemptId: null })
+          }
         }
         if (candidates.length) this.inspectionOffset = (this.inspectionOffset + count) % candidates.length
         for (const [threadId, mark] of this.rotatingBatch('unknown')) {
@@ -141,9 +150,7 @@ export class ThreadQuotaResume {
           try { status = await this.runtime.reconcile(threadId, mark.attemptId, mark.attemptedAt) }
           catch { continue }
           if (status !== mark.status) {
-            mark.status = status
-            if (status === 'waiting') mark.attemptId = null
-            await this.save()
+            await this.saveMark(threadId, { ...mark, status, attemptId: status === 'waiting' ? null : mark.attemptId })
           }
         }
         const waiting = this.rotatingBatch('waiting')
@@ -154,22 +161,22 @@ export class ThreadQuotaResume {
           try { state = await this.runtime.inspect(threadId) }
           catch { continue }
           if (state.active) continue
-          if (state.turnId !== mark.blockedTurnId && state.status === 'completed') {
-            mark.status = 'armed'
-            await this.save()
+          if (state.turnId !== mark.blockedTurnId || !isQuotaBlocked(state)) {
+            await this.saveMark(threadId, { status: 'armed', blockedTurnId: mark.blockedTurnId, attemptId: null })
             continue
           }
-          mark.status = 'submitted'
-          mark.attemptId = createDeliveryId()
-          mark.attemptedAt = Date.now()
-          delete mark.lastError
-          await this.save()
-          try { await this.runtime.submit(threadId, mark.attemptId) }
+          const attemptId = createDeliveryId()
+          const submitted: QuotaResumeMark = { status: 'submitted', blockedTurnId: mark.blockedTurnId, attemptId, attemptedAt: Date.now() }
+          await this.saveMark(threadId, submitted)
+          try { await this.runtime.submit(threadId, attemptId) }
           catch (cause) {
-            mark.lastError = cause instanceof Error ? cause.message : '续跑提交失败，结果未确认'
-            mark.status = (cause as { retryableQuota?: boolean })?.retryableQuota ? 'waiting' : 'unknown'
-            if (mark.status === 'waiting') mark.attemptId = null
-            await this.save()
+            const status = (cause as { retryableQuota?: boolean })?.retryableQuota ? 'waiting' : 'unknown'
+            await this.saveMark(threadId, {
+              ...submitted,
+              status,
+              attemptId: status === 'waiting' ? null : attemptId,
+              lastError: cause instanceof Error ? cause.message : '续跑提交失败，结果未确认',
+            })
           }
           break
         }

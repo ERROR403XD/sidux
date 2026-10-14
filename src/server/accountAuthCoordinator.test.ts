@@ -102,6 +102,37 @@ afterEach(async () => {
 })
 
 describe('AccountAuthCoordinator', () => {
+  it('keeps the last successful quota timestamp when a refresh fails', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-23T10:00:00Z'))
+    const authStore = await store()
+    const saved = await authStore.upsertCredential(credential('account-a', 'user-a'), { activate: true })
+    let failure = false
+    const createProbe = vi.fn(() => ({
+      inspect: vi.fn(async () => {
+        if (failure) throw new Error('quota network fixture failure')
+        return inspection()
+      }),
+      dispose: vi.fn(),
+    }) as unknown as AccountAppServerProbe)
+    const coordinator = new AccountAuthCoordinator(authStore, { createProbe })
+    const success = await coordinator.refreshAccount(saved.account.storageId)
+    const successfulAt = success.quotaUpdatedAtIso
+    expect(successfulAt).toBe('2026-09-23T10:00:00.000Z')
+
+    failure = true
+    vi.setSystemTime(new Date('2026-09-23T10:11:00Z'))
+    const failed = await coordinator.refreshAccount(saved.account.storageId)
+    expect(failed.quotaStatus).toBe('error')
+    expect(failed.quotaError).toBe('quota network fixture failure')
+    expect(failed.quotaUpdatedAtIso).toBe(successfulAt)
+    expect(failed.quotaFailedAtIso).toBe('2026-09-23T10:11:00.000Z')
+    vi.setSystemTime(new Date('2026-09-23T10:12:00Z'))
+    const failedAgain = await coordinator.refreshAccount(saved.account.storageId)
+    expect(failedAgain.quotaFailedAtIso).toBe('2026-09-23T10:11:00.000Z')
+    vi.useRealTimers()
+  })
+
   it('merges rolling quota without losing weekly/reset metadata and ignores a late older full read', async () => {
     const authStore = await store()
     const saved = await authStore.upsertCredential(credential('account-a', 'user-a'), { activate: true })

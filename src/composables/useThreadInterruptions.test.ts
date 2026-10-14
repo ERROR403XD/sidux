@@ -2,6 +2,8 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { createRenderer, defineComponent } from 'vue'
 import { useThreadInterruptions } from './useThreadInterruptions'
 
+const toast = vi.hoisted(() => ({ notifyOperation: vi.fn() }))
+vi.mock('./useOperationToast', () => toast)
 const renderer = createRenderer<any, any>({ createElement: () => ({}), createText: () => ({}), createComment: () => ({}), insert() {}, remove() {}, setText() {}, setElementText() {}, parentNode: () => null, nextSibling: () => null, patchProp() {} })
 let unmount = () => {}
 afterEach(() => { unmount(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.clearAllMocks() })
@@ -29,6 +31,27 @@ it('coalesces ready snapshots and overlays new/ignored problems on a late respon
   notify('codexapp/interruptions/changed', { threadId: 'a', issues: [{ turnId: 'fresh', kind: 'quota' }] })
   expect(state.issues.value).toEqual({ a: [{ turnId: 'fresh', kind: 'quota' }] })
   expect(fetcher).toHaveBeenCalledTimes(1)
+})
+
+it('keeps read failures non-persistent and warns once per outage', async () => {
+  const fetcher = vi.fn()
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { a: [{ turnId: 'old', kind: 'error' }] } }) })
+    .mockResolvedValueOnce({ ok: false })
+    .mockResolvedValueOnce({ ok: false })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ data: {} }) })
+  vi.stubGlobal('fetch', fetcher)
+  const { state, notify } = mount()
+  await state.refresh()
+  await state.refresh()
+  await state.refresh()
+  expect(state.issues.value.a).toHaveLength(1)
+  expect(state.error.value).toBe('')
+  expect(toast.notifyOperation).toHaveBeenCalledTimes(1)
+  expect(toast.notifyOperation).toHaveBeenCalledWith('会话状态读取失败，请重试', 'warning', 'conversation-status')
+  notify('ready')
+  await vi.waitFor(() => expect(state.issues.value).toEqual({}))
+  expect(state.issues.value).toEqual({})
+  expect(toast.notifyOperation).toHaveBeenCalledTimes(1)
 })
 
 it('keeps a problem visible through unrelated events until a new turn starts', async () => {

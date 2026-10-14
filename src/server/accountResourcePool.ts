@@ -96,6 +96,7 @@ export class AccountResourcePool<T> extends Map<string, T> {
   private allocation: Promise<unknown> = Promise.resolve()
   private allocationWaitingCount = 0
   private reclaimingWorkers = 0
+  private readonly reclaiming = new Map<string, T>()
   private phase: WorkerPoolDiagnosticSnapshot['allocationPhase'] = 'idle'
   private allocationStartedAt: number | null = null
   private lastReclaimFailure: WorkerPoolDiagnosticSnapshot['lastReclaimFailure'] = null
@@ -104,8 +105,27 @@ export class AccountResourcePool<T> extends Map<string, T> {
 
   constructor(private options: PoolOptions<T>) { super() }
 
+  getAvailable(key: string): T | undefined {
+    return this.reclaiming.has(key) ? undefined : this.get(key)
+  }
+
+  *availableValues(): IterableIterator<T> {
+    for (const [key, resource] of this) {
+      if (!this.reclaiming.has(key)) yield resource
+    }
+  }
+
+  private assertNotReclaiming(key: string): void {
+    if (this.reclaiming.has(key)) {
+      throw new WorkerPoolAllocationError('worker_reclaiming', 'worker shutdown is still in progress', true)
+    }
+  }
+
   getOrCreate(key: string, create: () => T, allowEviction = true, preparation?: AutomationPreparation): Promise<T | null> {
     preparation?.assertActive()
+    if (this.reclaiming.has(key)) {
+      return Promise.reject(new WorkerPoolAllocationError('worker_reclaiming', 'worker shutdown is still in progress', true))
+    }
     const cached = this.get(key)
     if (cached) {
       this.accesses.set(key, (this.accesses.get(key) || 0) + 1)
@@ -132,8 +152,9 @@ export class AccountResourcePool<T> extends Map<string, T> {
     })
     // The chain must always settle, even when the raced work hangs: abandoned
     // work stops at its next checkpoint instead of blocking later callers.
-    this.allocation = guarded.then(() => undefined, () => undefined)
-    return preparation ? preparation.read(() => guarded) : guarded
+    const completed = guarded.finally(() => { if (totalTimer) clearTimeout(totalTimer) })
+    this.allocation = completed.then(() => undefined, () => undefined)
+    return preparation ? preparation.read(() => completed) : completed
   }
 
   private async runAllocation(
@@ -147,6 +168,7 @@ export class AccountResourcePool<T> extends Map<string, T> {
     try {
       preparation?.assertActive()
       if (token.abandoned) throw new WorkerPoolAllocationError('allocation_timeout', 'worker allocation exceeded its total deadline', true)
+      this.assertNotReclaiming(key)
       const existing = this.get(key)
       if (existing) {
         this.accesses.set(key, (this.accesses.get(key) || 0) + 1)
@@ -165,6 +187,8 @@ export class AccountResourcePool<T> extends Map<string, T> {
       }
       preparation?.assertActive()
       if (token.abandoned) throw new WorkerPoolAllocationError('allocation_timeout', 'worker allocation exceeded its total deadline', true)
+      this.assertNotReclaiming(key)
+      if (this.size >= this.options.capacity) throw this.poolExhaustedError()
       this.phase = 'creating'
       let resource: T
       try {
@@ -202,6 +226,7 @@ export class AccountResourcePool<T> extends Map<string, T> {
     this.scanSawIdleTimeout = false
     for (const [candidateKey, candidate] of this) {
       if (token.abandoned) return false
+      if (this.reclaiming.has(candidateKey)) continue
       preparation?.assertActive()
       const observed = this.accesses.get(candidateKey)
       let idle: boolean
@@ -231,28 +256,32 @@ export class AccountResourcePool<T> extends Map<string, T> {
       if (this.accesses.get(candidateKey) !== observed || this.get(candidateKey) !== candidate) continue
       this.phase = 'disposing'
       this.reclaimingWorkers++
-      let disposeFailure: { code: string; message: string } | null = null
+      this.reclaiming.set(candidateKey, candidate)
+      const disposal = Promise.resolve().then(() => this.options.dispose(candidate)).then(() => {
+        // A deadline ends the caller's wait, not the resource's lifetime.
+        // Keep the slot quarantined until shutdown actually succeeds.
+        if (this.get(candidateKey) === candidate) {
+          this.delete(candidateKey)
+          this.accesses.delete(candidateKey)
+        }
+        if (this.reclaiming.get(candidateKey) === candidate) {
+          this.reclaiming.delete(candidateKey)
+          this.reclaimingWorkers--
+        }
+      })
       try {
         await raceWithTimeout(
-          Promise.resolve(this.options.dispose(candidate)),
+          disposal,
           this.options.disposeTimeoutMs ?? Number.POSITIVE_INFINITY,
           () => new WorkerPoolAllocationError('worker_reclaiming', 'worker disposal exceeded its deadline', true),
         )
       } catch (error) {
-        disposeFailure = {
+        this.lastReclaimFailure = {
+          at: Date.now(),
           code: error instanceof WorkerPoolAllocationError ? 'dispose_timeout' : 'dispose_failed',
           message: error instanceof Error ? error.message : String(error),
         }
-      } finally {
-        this.reclaimingWorkers--
-      }
-      this.delete(candidateKey)
-      this.accesses.delete(candidateKey)
-      if (disposeFailure) {
-        this.lastReclaimFailure = { at: Date.now(), ...disposeFailure }
-        // The dispose keeps running in the background and the worker's own
-        // exit handler still cleans its state; the pool must not keep a
-        // half-shut worker hostage, so the slot is released either way.
+        continue
       }
       return true
     }

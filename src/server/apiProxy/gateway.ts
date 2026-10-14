@@ -1,6 +1,6 @@
 import { getCustomConnectionStore } from '../customConnectionStore.js'
 import { forwardCustomConnection } from '../customConnectionProxy.js'
-import { customConnectionModels, customConnectionEndpoints, customConnectionBridgedEndpoints } from '../../customConnections.js'
+import { customConnectionModels, customConnectionEndpoints, customConnectionBridgedEndpoints, customConnectionManualEndpoints } from '../../customConnections.js'
 import { AccountResourcePool, WorkerPoolAllocationError, workerPoolAllocationUserMessage } from '../accountResourcePool.js'
 import { AccountExecutionError, resolveAccountSelection, type AccountExecutionLease } from '../accountExecution.js'
 import { AccountNotificationService } from '../accountNotificationService.js'
@@ -906,7 +906,7 @@ export class ApiProxyGateway {
         await connections.ready
         const custom = connections.get(selectedId)
         const accounts = await this.coordinator.listAccounts({ scheduleRefresh: false })
-        accounts.accounts.push(...connections.snapshot().connections.map(row => ({ storageId: row.storageId, alias: row.alias, email: null, accountId: row.baseUrl, authStatus: 'ready', kind: 'custom', supportedEndpoints: customConnectionEndpoints(row), bridgedEndpoints: customConnectionBridgedEndpoints(row) } as any)))
+        accounts.accounts.push(...connections.snapshot().connections.map(row => ({ storageId: row.storageId, alias: row.alias, email: null, accountId: row.baseUrl, authStatus: 'ready', kind: 'custom', supportedEndpoints: customConnectionEndpoints(row), bridgedEndpoints: customConnectionBridgedEndpoints(row), manualEndpoints: customConnectionManualEndpoints(row) } as any)))
         if (connections.active()) accounts.activeStorageId = connections.active()!.storageId
         json(res, 200, { data: { settings: this.store.settings, ...(selectedComponent || this.component).status(), selectedStorageId: selectedId, installed: !!custom || await this.component.available(), ...(custom ? { ready: true, lastError: null } : {}),
           usage: this.usage.summary(url.searchParams.get('timeZone') || 'UTC'),

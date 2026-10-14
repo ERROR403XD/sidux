@@ -6,6 +6,7 @@ import { parse } from 'smol-toml'
 import { parseAutomationToml, serializeAutomationToml } from './automationDefinition.js'
 import { createAutomationSchedule } from './automationSchedule.js'
 import { AutomationEngine, type AutomationRuntime, type AutomationInspection } from './automationEngine.js'
+import { executeAutomationByRequest } from './automationExecute.js'
 import { AutomationStore } from './automationStore.js'
 import { createAutomationRuntime } from './automationRuntime.js'
 
@@ -21,6 +22,14 @@ describe('automation definitions and time', () => {
     expect(parse(serializeAutomationToml(value)).scheduler).toEqual({ private_flag: true })
     expect(parseAutomationToml(serializeAutomationToml(value))?.cwds).toEqual(value.cwds)
     expect(parseAutomationToml(`id='unclosed`)).toBeNull()
+  })
+  it('adopts the fallback id when the toml omits it so externally authored tasks stay addressable', () => {
+    const raw = `name='外部任务'\nkind='cron'\nprompt='内容'\nrrule='FREQ=DAILY'\ncwds=['/tmp/work']\n`
+    expect(parseAutomationToml(raw)).toBeNull()
+    expect(parseAutomationToml(raw, 'external-task')?.id).toBe('external-task')
+    expect(parseAutomationToml(`id='  '\n${raw}`, 'external-task')?.id).toBe('external-task')
+    expect(parseAutomationToml(`id='explicit'\n${raw}`, 'external-task')?.id).toBe('explicit')
+    expect(parseAutomationToml(`name='x'\nprompt='x'\nrrule='FREQ=DAILY'`)).toBeNull()
   })
   it('calculates Monday 01:00 Shanghai independently of host timezone', () => {
     const schedule = createAutomationSchedule('FREQ=WEEKLY;BYDAY=MO;BYHOUR=1;BYMINUTE=0', 'Asia/Shanghai', Date.parse('2026-09-06T00:00:00Z'))
@@ -196,6 +205,50 @@ describe('durable automation execution', () => {
     expect(f.runtime.start).toHaveBeenCalledTimes(1)
     expect(f.engine.activity()).toEqual(['thread-1'])
   })
+  it('executes paused cron tasks by id, resolving the definition target internally', async () => {
+    const f = await fixture()
+    const record = parseAutomationToml(await readFile(f.path, 'utf8'))!
+    await writeFile(f.path, serializeAutomationToml({ ...record, status: 'PAUSED' }))
+    await f.engine.refresh()
+    await expect(f.engine.execute('missing')).rejects.toThrow('找不到自动化任务')
+    const run = await f.engine.execute('test')
+    expect(run).toMatchObject({ automationId: 'test', target: f.home, status: 'queued', trigger: 'manual' })
+    expect(run.key).toContain('external-')
+    // A second concurrent trigger is blocked while the first run is still queued.
+    await expect(f.engine.execute('test')).rejects.toThrow('已有待执行任务')
+    await f.engine.tick()
+    expect(f.runtime.start).toHaveBeenCalledTimes(1)
+    f.engine.notification({ method: 'turn/completed', params: { threadId: 'thread-1', turn: { id: 'turn-1', status: 'completed' } } })
+    await f.engine.refresh()
+    expect(f.engine.runs('test').data.find(row => row.runId === run.runId)?.status).toBe('completed')
+    const again = await f.engine.execute('test')
+    expect(again.status).toBe('queued')
+    await f.engine.tick()
+    expect(f.runtime.start).toHaveBeenCalledTimes(2)
+  })
+  it('executes paused heartbeat tasks by id through the external entry', async () => {
+    const f = await fixture({ heartbeat: true })
+    const record = parseAutomationToml(await readFile(f.path, 'utf8'))!
+    await writeFile(f.path, serializeAutomationToml({ ...record, status: 'PAUSED' }))
+    await f.engine.refresh()
+    const run = await f.engine.execute('test')
+    expect(run).toMatchObject({ target: 'thread-existing', status: 'queued' })
+    await f.engine.tick()
+    expect(f.runtime.start).toHaveBeenCalledTimes(1)
+  })
+  it('triggers a directory-named external task through execute', async () => {
+    const f = await fixture()
+    const dir = join(f.home, 'automations', 'external-task')
+    await mkdir(dir, { recursive: true })
+    await writeFile(join(dir, 'automation.toml'), [
+      `name = '外部任务'`, 'kind = \'cron\'', 'prompt = \'外部写入\'', 'rrule = \'FREQ=DAILY\'',
+      `cwds = ['${f.home}']`, 'status = \'PAUSED\'', '',
+    ].join('\n'))
+    const run = await f.engine.execute('external-task')
+    expect(run).toMatchObject({ automationId: 'external-task', target: f.home, status: 'queued' })
+    await f.engine.tick()
+    expect(f.runtime.start).toHaveBeenCalledTimes(1)
+  })
   it('does not replay ambiguous start responses, including after restart', async () => {
     const f = await fixture()
     vi.mocked(f.runtime.start).mockRejectedValue(new Error('ECONNRESET after submission'))
@@ -251,6 +304,21 @@ describe('durable automation execution', () => {
     expect(f.engine.runs('test').data[0]?.status).toBe('cancelled')
     await rm(f.path); await f.engine.refresh()
     expect(f.engine.snapshot().definitions).toHaveLength(0)
+  })
+  it('gives directory-name ids to task files without an id, including paused ones', async () => {
+    const f = await fixture()
+    const dir = join(f.home, 'automations', 'external-task')
+    await mkdir(dir, { recursive: true })
+    await writeFile(join(dir, 'automation.toml'), [
+      `name = '外部任务'`, 'kind = \'cron\'', 'prompt = \'外部写入\'', 'rrule = \'FREQ=DAILY\'',
+      `cwds = ['${f.home.replace(/\\/g, '/')}']`, 'status = \'PAUSED\'', '',
+    ].join('\n'))
+    await f.engine.refresh()
+    expect(f.engine.snapshot().definitions.find((row) => row.id === 'external-task')?.nextRunAtMs).toBeNull()
+    expect(f.engine.snapshot().definitions.find((row) => row.id === 'test')).toBeTruthy()
+    const adopted = parseAutomationToml(await readFile(join(dir, 'automation.toml'), 'utf8'), 'external-task')!
+    expect(adopted.status).toBe('PAUSED')
+    expect(serializeAutomationToml({ ...adopted, status: 'ACTIVE' })).toContain('id = "external-task"')
   })
   it('retries only definitely unsubmitted transient failures and limits attempts', async () => {
     const f = await fixture()
@@ -491,4 +559,81 @@ it('never discards an existing heartbeat target when a preparation-only process 
   await f.engine.tick()
   expect(f.runtime.start).toHaveBeenCalledTimes(1)
   expect(f.runtime.createThread).not.toHaveBeenCalled()
+})
+
+
+it.each(['manual', 'execute'] as const)('rejects a failed %s admission without executing it after recovery or restart', async method => {
+  const f = await fixture({ rule: 'FREQ=DAILY' })
+  const write = vi.spyOn(AutomationStore.prototype, 'write').mockRejectedValueOnce(Object.assign(new Error('fixture ENOSPC'), { code: 'ENOSPC' }))
+  try {
+    const request = method === 'manual' ? f.engine.manual('test', f.home, 'failed-admission') : f.engine.execute('test')
+    await expect(request).rejects.toMatchObject({ code: 'storage_failed', status: 500 })
+    expect(f.engine.snapshot()).toMatchObject({ ready: false, queuedCount: 0 })
+  } finally { write.mockRestore() }
+  await f.engine.tick()
+  expect(f.runtime.start).not.toHaveBeenCalled()
+  await f.engine.dispose()
+  const restarted = await f.make()
+  await restarted.tick()
+  expect(f.runtime.start).not.toHaveBeenCalled()
+  expect(restarted.runs('test').data).toEqual([])
+})
+
+it('acknowledges a committed admission after an atomic-write error and preserves its identity on restart', async () => {
+  const f = await fixture({ rule: 'FREQ=DAILY' })
+  const original = AutomationStore.prototype.write
+  const write = vi.spyOn(AutomationStore.prototype, 'write').mockImplementationOnce(async function (this: AutomationStore, state) {
+    await original.call(this, state)
+    throw new Error('fixture error after rename')
+  })
+  let admitted
+  try { admitted = await f.engine.manual('test', f.home, 'committed-admission') }
+  finally { write.mockRestore() }
+  expect(admitted.status).toBe('queued')
+  expect(f.engine.snapshot().ready).toBe(false)
+  await f.engine.tick()
+  expect(f.runtime.start).not.toHaveBeenCalled()
+  await f.engine.dispose()
+  const restarted = await f.make()
+  expect((await restarted.manual('test', f.home, 'committed-admission')).runId).toBe(admitted.runId)
+  await restarted.tick()
+  expect(f.runtime.start).toHaveBeenCalledTimes(1)
+})
+
+it('reports an uncertain admission with its run ID and stops dispatch when verification cannot read storage', async () => {
+  const f = await fixture({ rule: 'FREQ=DAILY' })
+  const write = vi.spyOn(AutomationStore.prototype, 'write').mockRejectedValueOnce(new Error('fixture write error'))
+  const read = vi.spyOn(AutomationStore.prototype, 'read').mockRejectedValueOnce(new Error('fixture read error'))
+  try {
+    const outcome = await executeAutomationByRequest(f.engine, { id: 'test' })
+    expect(outcome).toMatchObject({ status: 503, body: { code: 'admission_unknown', runId: expect.any(String) } })
+    expect(f.engine.snapshot().ready).toBe(false)
+  } finally { write.mockRestore(); read.mockRestore() }
+  await f.engine.tick()
+  expect(f.runtime.start).not.toHaveBeenCalled()
+})
+
+it('returns 503 for a real standby scheduler and 409 for a real queued target', async () => {
+  const f = await fixture()
+  const standby = await f.make()
+  expect(await executeAutomationByRequest(standby, { id: 'test' })).toMatchObject({ status: 503, body: { code: 'not_ready' } })
+  expect((await executeAutomationByRequest(f.engine, { id: 'test' })).status).toBe(200)
+  expect(await executeAutomationByRequest(f.engine, { id: 'test' })).toMatchObject({ status: 409, body: { code: 'queued_conflict' } })
+})
+
+it('executes a scanner-accepted 201 character directory ID through the request adapter', async () => {
+  const f = await fixture()
+  const id = 'x'.repeat(201)
+  const directory = join(f.home, 'automations', id)
+  await mkdir(directory)
+  await writeFile(join(directory, 'automation.toml'), (await readFile(f.path, 'utf8')).replace(/^id = .*\n/m, ''))
+  const response = await executeAutomationByRequest(f.engine, { id })
+  expect(response).toMatchObject({ status: 200, body: { data: { run: { automationId: id } } } })
+})
+
+it('does not turn a committed admission into a failure when a change listener throws', async () => {
+  const f = await fixture()
+  f.engine.subscribe(() => { throw new Error('fixture notification failed') })
+  expect((await f.engine.execute('test')).status).toBe('queued')
+  expect(f.engine.snapshot().ready).toBe(true)
 })

@@ -2,10 +2,10 @@
 
 **中文** | [English](README.en.md)
 
-[![Release](https://img.shields.io/github/v/release/ERROR403XD/codexapp)](https://github.com/ERROR403XD/codexapp/releases)
+[![Release](https://img.shields.io/github/v/release/ERROR403XD/codexapp)](https://github.com/ERROR403XD/sidux/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Sidux（原 CodexApp）是基于 Codex app-server 的自托管 Web 界面，让你在桌面、平板和手机浏览器中管理项目、会话、账号与自动化任务。当前发布基线为 **0.2.20**。这是社区维护的独立项目，与 OpenAI 官方产品没有隶属关系。
+Sidux（原 CodexApp）是基于 Codex app-server 的自托管 Web 界面，让你在桌面、平板和手机浏览器中管理项目、会话、账号与自动化任务。当前发布基线为 **0.2.21**。这是社区维护的独立项目，与 OpenAI 官方产品没有隶属关系。
 
 ## 使用边界与政策遵循
 
@@ -30,7 +30,7 @@ Sidux（原 CodexApp）是基于 Codex app-server 的自托管 Web 界面，让�
 
 因此，本项目从 GitHub 源码版本接续开发，不以被报告投毒的 npm 发布包为开发基线；此处“未投毒的 GitHub 版本”指未包含该报告所述发布包注入代码的源码基线，不代表对所有历史代码和依赖作出绝对安全保证。本分支保留上游来源，并以审核后的源码快照发布，发行包从本仓库源码构建。事件细节以所链接的公开报告为准，不将其扩展为未经独立核实的结论。
 
-**请使用本仓库的源码或 [GitHub Releases](https://github.com/ERROR403XD/codexapp/releases)。** 新命令为 `sidux`；`codexapp` 和 `codexui` 继续作为兼容别名。现有仓库地址、数据目录、环境变量和服务名暂不迁移，以免破坏升级与回滚。
+**请使用本仓库的源码或 [GitHub Releases](https://github.com/ERROR403XD/sidux/releases)。** 新命令为 `sidux`；`codexapp` 和 `codexui` 继续作为兼容别名。现有仓库地址、数据目录、环境变量和服务名暂不迁移，以免破坏升级与回滚。
 
 ## 功能概览
 
@@ -57,7 +57,7 @@ Sidux（原 CodexApp）是基于 Codex app-server 的自托管 Web 界面，让�
 
 插件页刷新按钮加宽并靠右对齐；筛选器按内容宽度显示，搜索框填满剩余空间，控件间距统一。
 
-0.2.20 新增自定义连接的推理强度能力自动探测，在连接不支持参数时按能力回退；改进 API key 行布局、模型/推理强度控件和附件-only 新会话标题；修复离开页面期间已自动发送队列行的重连自愈。协议桥、API 代理和多账号运行边界延续本轮候选版本的验证结果。
+0.2.21 将最后的 dev.3 基线提升为正式版，完善自动化外部执行与持久化、账号激活历史分页和索引恢复，并改进配额续接、附属元数据降级及自定义连接能力标记。
 
 ## 环境要求
 
@@ -72,10 +72,10 @@ Sidux（原 CodexApp）是基于 Codex app-server 的自托管 Web 界面，让�
 ### 从本仓库源码构建
 
 ```bash
-git clone --branch v0.2.20 https://github.com/ERROR403XD/codexapp.git
-cd codexapp
-pnpm install --frozen-lockfile
-pnpm run build
+git clone --branch v0.2.21 https://github.com/ERROR403XD/sidux.git
+cd sidux
+npm ci
+npm run build
 node dist-cli/index.js --port 5900 --strict-port --no-open
 ```
 
@@ -83,11 +83,11 @@ node dist-cli/index.js --port 5900 --strict-port --no-open
 
 ### 使用本仓库 Release 安装包
 
-从 [v0.2.20](https://github.com/ERROR403XD/codexapp/releases/tag/v0.2.20) 下载 `codexapp-0.2.20.tgz` 和 `SHA256SUMS`，在下载目录执行：
+从 [v0.2.21](https://github.com/ERROR403XD/sidux/releases/tag/v0.2.21) 下载 `codexapp-0.2.21.tgz` 和 `SHA256SUMS`，在下载目录执行：
 
 ```bash
 sha256sum -c SHA256SUMS
-npm install -g ./codexapp-0.2.20.tgz
+npm install -g ./codexapp-0.2.21.tgz
 codexapp --port 5900 --strict-port --no-open
 ```
 
@@ -107,6 +107,17 @@ codexapp --port 5900 --strict-port --no-open
 完整参数运行 `node dist-cli/index.js --help` 或安装后的 `codexapp --help`。权限和审批策略应按实际任务设置；这些设置仅控制本地执行，不解除供应方的安全措施或使用限制。
 
 服务监听 `0.0.0.0`，可通过主机局域网地址访问。请按网络环境配置防火墙、访问密码或自行管理的私有网络/反向代理。麦克风、语音等浏览器能力可能需要 HTTPS 安全上下文。项目文件和工具实际在服务所在主机执行。
+
+### 本机用户测试入口：59001
+
+开发轮次的用户测试统一使用 `59001`，生产服务继续使用 `5900`。在权威源码树中构建并更新测试容器：
+
+```bash
+cd /mnt/NAS02-Code/Sidux
+CODEXAPP_REPLACE_DEV=1 ./scripts/run-multi-account-dev.sh
+```
+
+测试页面为 `http://127.0.0.1:59001/`；需要局域网设备测试时使用本机局域网地址的 `59001`。替换容器会复用 `codexapp-multi-account-dev-home`（`CODEX_HOME=/codex-home`）和 `codexapp-0190-test-workspace`，因此 59001 上已配置的账号认证、设置、会话、历史和测试工作区会跨开发轮次保留。这里不从 5900 复制认证或设置；需要空白环境时另建临时卷，不能清空标准测试卷。
 
 ### 可选 API 代理（Linux x64，源码安装）
 
@@ -137,9 +148,9 @@ pnpm run build
 pnpm run test:unit
 ```
 
-前端使用 Vue 3 / TypeScript / Vite；Node.js / Express 通过 WebSocket 与 RPC 对接 Codex app-server，终端使用 xterm.js / node-pty。开发入口为 `src/`、`scripts/`，测试索引为 [tests.md](tests.md)，公开验收说明见 [docs/RELEASE-0.2.20.md](docs/RELEASE-0.2.20.md)。
+前端使用 Vue 3 / TypeScript / Vite；Node.js / Express 通过 WebSocket 与 RPC 对接 Codex app-server，终端使用 xterm.js / node-pty。开发入口为 `src/`、`scripts/`，测试索引为 [tests.md](tests.md)，公开验收说明见 [docs/RELEASE-0.2.21.md](docs/RELEASE-0.2.21.md)。
 
-发布验证范围与限制见 [0.2.20 发布说明](docs/RELEASE-0.2.20.md)。私人环境的会话、路径、截图及验收原始记录不随仓库分发。
+发布验证范围与限制见 [0.2.21 发布说明](docs/RELEASE-0.2.21.md)。私人环境的会话、路径、截图及验收原始记录不随仓库分发。
 
 ## 常见问题
 
@@ -156,6 +167,6 @@ API 代理使用 [router-for-me/CLIProxyAPI](https://github.com/router-for-me/CL
 
 ## 贡献、反馈与许可证
 
-欢迎提交 [Issue](https://github.com/ERROR403XD/codexapp/issues) 或 Pull Request。请附版本、系统、复现步骤和脱敏日志；不要上传 `auth.json`、token、API key 或私有会话。修改功能时补充相关测试和验收记录，遵循 [AGENTS.md](AGENTS.md)。中文 README 为主文档，涉及用户使用方式的变更请同步英文版。
+欢迎提交 [Issue](https://github.com/ERROR403XD/sidux/issues) 或 Pull Request。请附版本、系统、复现步骤和脱敏日志；不要上传 `auth.json`、token、API key 或私有会话。修改功能时补充相关测试和验收记录，遵循 [AGENTS.md](AGENTS.md)。中文 README 为主文档，涉及用户使用方式的变更请同步英文版。
 
 本项目使用 [MIT License](LICENSE)。感谢上游及更早项目的贡献者，以及 Codex、Vue、Vite、xterm.js 和 CLIProxyAPI 等项目。

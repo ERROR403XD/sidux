@@ -63,7 +63,7 @@
                 @update:model-value="setAccountValue(policyDrafts[key.id]!, $event)"
               />
             </div>
-            <ConnectionEndpoints class="api-proxy-key-endpoints" :endpoints="keyEndpoints(policyDrafts[key.id]!)" :bridged="keyBridgedEndpoints(policyDrafts[key.id]!)" :show-tooltips="false" />
+            <ConnectionEndpoints class="api-proxy-key-endpoints" :endpoints="keyEndpoints(policyDrafts[key.id]!)" :bridged="keyBridgedEndpoints(policyDrafts[key.id]!)" :manual="keyManualEndpoints(policyDrafts[key.id]!)" :show-tooltips="false" />
           </template>
         </div>
       </section>
@@ -373,6 +373,10 @@ function accountBridgedEndpoints(id: string): CustomEndpoint[] {
   const account = status.value?.accounts.accounts.find(row => row.storageId === resolvedAccountId(id))
   return endpointOrder.filter(endpoint => (account?.bridgedEndpoints || []).includes(endpoint))
 }
+function accountManualEndpoints(id: string): CustomEndpoint[] {
+  const account = status.value?.accounts.accounts.find(row => row.storageId === resolvedAccountId(id))
+  return endpointOrder.filter(endpoint => (account?.manualEndpoints || []).includes(endpoint))
+}
 function keyBridgedEndpoints(draft: KeyPolicyDraft): CustomEndpoint[] {
   if (!draft.aggregateEnabled) return accountBridgedEndpoints(draft.account)
   const supported = new Set<CustomEndpoint>()
@@ -381,6 +385,15 @@ function keyBridgedEndpoints(draft: KeyPolicyDraft): CustomEndpoint[] {
     for (const endpoint of accountBridgedEndpoints(row.account)) supported.add(endpoint)
   }
   return endpointOrder.filter(endpoint => supported.has(endpoint))
+}
+function keyManualEndpoints(draft: KeyPolicyDraft): CustomEndpoint[] {
+  if (!draft.aggregateEnabled) return accountManualEndpoints(draft.account)
+  const manual = new Set<CustomEndpoint>()
+  for (const row of draft.entries) {
+    if (!row.account) continue
+    for (const endpoint of accountManualEndpoints(row.account)) manual.add(endpoint)
+  }
+  return endpointOrder.filter(endpoint => manual.has(endpoint))
 }
 function accountExists(id: string): boolean {
   return (status.value?.accounts.accounts || []).some(row => row.storageId === id)

@@ -5,6 +5,8 @@ import type { UiProjectGroup, UiThread } from '../types/codex'
 
 const gateway = vi.hoisted(() => ({ subscribeCodexNotifications: vi.fn() }))
 vi.mock('../api/codexGateway', () => gateway)
+const toast = vi.hoisted(() => ({ notifyOperation: vi.fn() }))
+vi.mock('./useOperationToast', () => toast)
 const renderer = createRenderer<any, any>({
   createElement: () => ({}), createText: () => ({}), createComment: () => ({}),
   insert() {}, remove() {}, setText() {}, setElementText() {},
@@ -28,6 +30,117 @@ function mount() {
   return { groups, selected, state, notify: (method: string, params: unknown) => listeners.forEach(fn => fn({ method, params })) }
 }
 describe('sidebar selection lifetime', () => {
+  it.each(['unknown', 'failure'] as const)('preserves cached matches across 201 rows when a later batch returns %s', async outcome => {
+    let phase = 0
+    let release!: () => void
+    vi.stubGlobal('fetch', vi.fn(async (url, options) => {
+      if (url === '/codex-api/thread-interruptions') return { ok: true, json: async () => ({ data: {} }) }
+      const ids: string[] = JSON.parse(options.body).threadIds
+      if (phase && ids[0] === 'row-100') {
+        await new Promise<void>(resolve => { release = resolve })
+        if (outcome === 'failure') return { ok: false }
+      }
+      return { ok: true, json: async () => ({ data: Object.fromEntries(ids.map(id => [id, phase && id === 'row-200' ? null : id === 'row-200'])) }) }
+    }))
+    const { groups, state } = mount()
+    groups.value[0]!.threads = Array.from({ length: 201 }, (_, index) => ({ id: `row-${index}`, inProgress: false, updatedAtIso: 'v1' } as UiThread))
+    state.filter.value = 'interrupted'
+    await vi.advanceTimersByTimeAsync(150)
+    expect(state.interrupted.value['row-200']).toBe(true)
+    phase = 1
+    const reading = state.refresh()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(state.interrupted.value['row-200']).toBe(true)
+    expect(state.loading.value).toBe(true)
+    release()
+    await reading
+    expect(state.interrupted.value['row-200']).toBe(true)
+    expect(state.incomplete.value).toBe(true)
+    expect(toast.notifyOperation).toHaveBeenCalledOnce()
+  })
+
+  it('distinguishes initial unknown results from confirmed empty and only warns once until recovery', async () => {
+    let known = false
+    vi.stubGlobal('fetch', vi.fn(async url => ({ ok: true, json: async () => ({ data: url === '/codex-api/thread-interruptions' ? {} : { a: known ? false : null, b: false } }) })))
+    const { state } = mount()
+    state.filter.value = 'interrupted'
+    await vi.advanceTimersByTimeAsync(150)
+    await state.refresh()
+    expect(state.incomplete.value).toBe(true)
+    expect(state.loading.value).toBe(false)
+    expect(state.interrupted.value.a).toBeNull()
+    expect(toast.notifyOperation).toHaveBeenCalledOnce()
+    known = true
+    await state.refresh()
+    expect(state.incomplete.value).toBe(false)
+    expect(state.interrupted.value).toEqual({ a: false, b: false })
+    known = false
+    await state.refresh()
+    expect(toast.notifyOperation).toHaveBeenCalledTimes(2)
+  })
+
+  it('retains known statuses when individual reads are unknown and warns once per request outage', async () => {
+    const fetcher = vi.fn(url => {
+      if (url === '/codex-api/thread-interruptions') return Promise.resolve({ ok: true, json: async () => ({ data: {} }) })
+      if (fetcher.mock.calls.filter(call => call[0] === url).length <= 2) return Promise.resolve({ ok: true, json: async () => ({ data: { a: true, b: false } }) })
+      if (fetcher.mock.calls.filter(call => call[0] === url).length === 3) return Promise.resolve({ ok: true, json: async () => ({ data: { a: null, b: null } }) })
+      return Promise.resolve({ ok: false })
+    })
+    vi.stubGlobal('fetch', fetcher)
+    const { groups, state } = mount()
+    state.filter.value = 'interrupted'
+    await vi.advanceTimersByTimeAsync(150)
+    expect(state.interrupted.value).toEqual({ a: true, b: false })
+    groups.value[0]!.threads[0]!.updatedAtIso = 'changed'
+    await vi.advanceTimersByTimeAsync(150)
+    expect(state.interrupted.value).toEqual({ a: true, b: false })
+    groups.value[0]!.threads[1]!.updatedAtIso = 'changed'
+    await vi.advanceTimersByTimeAsync(150)
+    expect(state.interrupted.value).toEqual({ a: true, b: false })
+    groups.value[0]!.threads[0]!.updatedAtIso = 'changed-again'
+    await vi.advanceTimersByTimeAsync(150)
+    expect(state.interrupted.value).toEqual({ a: true, b: false })
+    expect(toast.notifyOperation).toHaveBeenCalledTimes(1)
+    expect(toast.notifyOperation).toHaveBeenCalledWith('会话状态读取失败，请重试', 'warning', 'conversation-status')
+  })
+
+  it('keeps known interrupted matches visible while a new status read is pending', async () => {
+    let finish!: (value: unknown) => void
+    const fetcher = vi.fn(url => {
+      if (url === '/codex-api/thread-interruptions') return Promise.resolve({ ok: true, json: async () => ({ data: {} }) })
+      return new Promise(resolve => { finish = resolve })
+    })
+    vi.stubGlobal('fetch', fetcher)
+    const { state, notify } = mount()
+    notify('codexapp/interruptions/changed', { threadId: 'a', issues: [{ turnId: 'turn-a', kind: 'quota' }] })
+    state.filter.value = 'interrupted'
+    await nextTick()
+    expect(state.loading.value).toBe(true)
+    expect(state.interrupted.value).toEqual({ a: true })
+    await vi.advanceTimersByTimeAsync(150)
+    finish({ ok: true, json: async () => ({ data: { a: false, b: false } }) })
+    await vi.advanceTimersByTimeAsync(200)
+    expect(state.interrupted.value).toEqual({ a: true, b: false })
+  })
+
+  it('keeps the interrupted empty state suppressed while a stale status is reread', async () => {
+    const fetcher = vi.fn(url => {
+      if (url === '/codex-api/thread-interruptions') return Promise.resolve({ ok: true, json: async () => ({ data: {} }) })
+      return Promise.resolve({ ok: true, json: async () => ({ data: { a: true, b: false } }) })
+    })
+    vi.stubGlobal('fetch', fetcher)
+    const { state, notify } = mount()
+    state.filter.value = 'interrupted'
+    await vi.advanceTimersByTimeAsync(150)
+    notify('thread/status/changed', { threadId: 'a' })
+    expect(state.interrupted.value).toEqual({ b: false })
+    expect(state.loading.value).toBe(true)
+    await vi.advanceTimersByTimeAsync(150)
+    expect(fetcher.mock.calls.filter(call => call[0] === '/codex-api/sidebar-thread-status')).toHaveLength(2)
+    expect(state.loading.value).toBe(false)
+    expect(state.interrupted.value).toEqual({ a: true, b: false })
+  })
+
   it('retains a clicked blue-dot row through acknowledgement until another conversation is selected', async () => {
     const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: {} }) })
     vi.stubGlobal('fetch', fetcher)

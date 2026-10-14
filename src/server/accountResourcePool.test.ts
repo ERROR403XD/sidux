@@ -116,21 +116,43 @@ describe('AccountResourcePool allocation lifecycle', () => {
     expect(pool.size).toBe(1)
   })
 
-  it('caps disposal waiting, records the failure and still releases the slot', async () => {
-    const dispose = vi.fn(() => new Promise<void>(() => {}))
+  it('keeps a timed-out disposal quarantined until shutdown completes', async () => {
+    let finish!: () => void
+    const dispose = vi.fn(() => new Promise<void>(resolve => { finish = resolve }))
     const pool = new AccountResourcePool<{ id: string }>({
-      capacity: 1,
-      idle: () => true,
-      dispose,
-      allocationTimeoutMs: 1_000,
-      disposeTimeoutMs: 20,
+      capacity: 1, idle: () => true, dispose,
+      allocationTimeoutMs: 1_000, disposeTimeoutMs: 20,
     })
     await pool.getOrCreate('a', () => ({ id: 'a' }))
-    const b = await pool.getOrCreate('b', () => ({ id: 'b' }))
-    expect(dispose).toHaveBeenCalledTimes(1)
-    expect(b).toEqual({ id: 'b' })
+    const createB = vi.fn(() => ({ id: 'b' }))
+    await expect(pool.getOrCreate('b', createB)).rejects.toMatchObject({ code: 'worker_reclaiming' })
+    await expect(pool.getOrCreate('a', () => ({ id: 'new-a' }))).rejects.toMatchObject({ code: 'worker_reclaiming' })
+    expect(createB).not.toHaveBeenCalled()
     expect(pool.size).toBe(1)
-    expect(pool.snapshot().lastReclaimFailure?.code).toBe('dispose_timeout')
+    expect(pool.getAvailable('a')).toBeUndefined()
+    expect([...pool.availableValues()]).toEqual([])
+    expect(pool.snapshot()).toMatchObject({ reclaimingWorkers: 1, lastReclaimFailure: { code: 'dispose_timeout' } })
+    finish()
+    await vi.waitFor(() => expect(pool.size).toBe(0))
+    expect(await pool.getOrCreate('b', createB)).toEqual({ id: 'b' })
+    expect(dispose).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects same-key reuse throughout asynchronous reclamation and preserves replacements', async () => {
+    let finish!: () => void
+    const dispose = vi.fn(() => new Promise<void>(resolve => { finish = resolve }))
+    const pool = new AccountResourcePool<{ id: string }>({ capacity: 1, idle: () => true, dispose })
+    const a = await pool.getOrCreate('a', () => ({ id: 'a' }))
+    const pending = pool.getOrCreate('b', () => ({ id: 'b' })).catch(error => error)
+    await vi.waitFor(() => expect(dispose).toHaveBeenCalledWith(a))
+    await expect(pool.getOrCreate('a', () => ({ id: 'other' }))).rejects.toMatchObject({ code: 'worker_reclaiming', retryable: true })
+    // An explicit owner replacement must not be removed by the old disposal.
+    const replacement = { id: 'replacement' }
+    pool.set('a', replacement)
+    finish()
+    expect(await pending).toMatchObject({ code: 'pool_full' })
+    expect(pool.getAvailable('a')).toBe(replacement)
+    expect(pool.size).toBe(1)
   })
 
   it('reclaims workers in pool insertion order', async () => {

@@ -624,14 +624,14 @@ export class AccountAuthCoordinator {
           if (runtime) return runtime
         } catch (error) {
           const classified = classifyAccountAuthError(error)
-          const failed = await this.patchAccount(storageId, { authStatus: classified.authStatus, unavailableReason: classified.unavailableReason, quotaStatus: 'error', quotaError: getErrorMessage(error, '额度读取失败'), quotaUpdatedAtIso: new Date().toISOString() })
+          const failed = await this.patchAccount(storageId, { authStatus: classified.authStatus, unavailableReason: classified.unavailableReason, quotaStatus: 'error', quotaError: getErrorMessage(error, '额度读取失败'), quotaFailedAtIso: entry.quotaFailedAtIso ?? new Date().toISOString() })
           for (const listener of this.quotaListeners) listener(failed)
           await this.quotaObserver?.(failed).catch(() => undefined)
           return failed
         }
       }
       const quotaRevision = this.quotaRevision(storageId)
-      await this.patchAccount(storageId, { authStatus: 'refreshing', quotaStatus: 'loading', quotaError: null })
+      await this.patchAccount(storageId, { authStatus: 'refreshing', quotaStatus: 'loading', quotaError: null, quotaFailedAtIso: null })
       let revision = entry.credentialRevision
       const probe = this.createProbe({
         profileDir: `${this.store.accountsRoot}/${storageId}`,
@@ -651,7 +651,7 @@ export class AccountAuthCoordinator {
           unavailableReason: classified.unavailableReason,
           quotaStatus: 'error',
           quotaError: getErrorMessage(error, 'Failed to refresh account quota.'),
-          quotaUpdatedAtIso: new Date().toISOString(),
+          quotaFailedAtIso: entry.quotaFailedAtIso ?? new Date().toISOString(),
         })
         await this.quotaObserver?.(failed).catch(() => undefined)
         for (const listener of this.quotaListeners) listener(failed)
@@ -936,6 +936,7 @@ export class AccountAuthCoordinator {
       quotaSnapshot,
       resetCredits: normalizeResetCredits(asRecord(inspection.rateLimits)?.rateLimitResetCredits),
       quotaUpdatedAtIso: new Date().toISOString(),
+      quotaFailedAtIso: null,
       quotaStatus: 'ready',
       quotaError: null,
       unavailableReason: null,
@@ -983,6 +984,7 @@ export class AccountAuthCoordinator {
         unavailableReason: classified.unavailableReason,
         quotaStatus: 'error',
         quotaError: getErrorMessage(error, 'Failed to validate the target account.'),
+        quotaFailedAtIso: entry.quotaFailedAtIso ?? new Date().toISOString(),
       })
       throw error
     }

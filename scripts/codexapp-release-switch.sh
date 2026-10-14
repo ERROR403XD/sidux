@@ -114,8 +114,14 @@ Usage:
 
 Two-phase workflow:
   1. Run prepare while the current CodexApp remains online.
-  2. End the current Codex turn and close every CodexApp browser tab.
-  3. From a separate host shell, run activate latest --confirm-idle.
+  2. Record the exact release directory printed by prepare; prefer that path
+     over latest so a later prepare cannot change the activation target.
+  3. End the current Codex turn and close every CodexApp browser tab.
+  4. From a separate host shell, run check <release-directory>, then
+     activate <release-directory> --confirm-idle.
+
+Production activation is intentionally not performed by prepare or check.
+Run activate only after the real idle check passes in the independent shell.
 
 The script never imports credentials from the test container. Production auth
 state is snapshotted only after the old service stops and must remain byte-for-
@@ -598,7 +604,7 @@ rollback_release() {
 }
 
 show_status() {
-  local active_state sub_state main_pid current_transaction latest release_line="none" token
+  local active_state sub_state main_pid current_transaction latest release_line="none"
   active_state="$(systemctl show "$SERVICE_NAME" -p ActiveState --value 2>/dev/null || true)"
   sub_state="$(systemctl show "$SERVICE_NAME" -p SubState --value 2>/dev/null || true)"
   main_pid="$(systemctl show "$SERVICE_NAME" -p MainPID --value 2>/dev/null || true)"
@@ -606,14 +612,11 @@ show_status() {
   latest="$(read_first_line "$STATE_ROOT/latest-prepared" || true)"
   if [[ -f "$DROPIN_FILE" ]]; then
     release_line="custom-dropin"
-    while IFS= read -r token; do
-      case "$token" in
-        "$RELEASE_ROOT"/*/dist-cli/index.js)
-          release_line="$token"
-          break
-          ;;
-      esac
-    done < <(tr ' ' '\n' < "$DROPIN_FILE")
+    # The active release can live outside RELEASE_ROOT (for example, a
+    # preserved NAS release). Report the actual ExecStart target instead of
+    # hiding it behind custom-dropin.
+    release_line="$(sed -nE 's#^ExecStart=.* ([^[:space:]]+)/dist-cli/index\.js([[:space:]].*)?$#\1#p' "$DROPIN_FILE" | head -n 1)"
+    [[ -n "$release_line" ]] || release_line="custom-dropin"
   else
     release_line="base-unit"
   fi

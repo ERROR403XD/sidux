@@ -102,7 +102,12 @@
           </div>
           <div>
             <dt>ID</dt>
-            <dd>{{ selectedRow.automation.id }}</dd>
+            <dd class="automation-detail-id">
+              <span class="automation-detail-id-value" :title="selectedRow.automation.id">{{ selectedRow.automation.id }}</span>
+              <button class="automation-detail-copy" type="button" :title="t('复制任务 ID')" :aria-label="t('复制任务 ID')" @click="copyAutomationId(selectedRow.automation.id)">
+                <IconTablerCopy />
+              </button>
+            </dd>
           </div>
           <div><dt>{{ t('账号与保护') }}</dt><dd>{{ t(selectedRow.automation.accountStorageId ? '固定账号' : '跟随全局账号') }} · {{ t(selectedRow.automation.protected ? '受保护' : '普通任务') }}</dd></div>
           <div><dt>{{ t('模型') }}</dt><dd>{{ t(selectedRow.automation.model || '跟随运行时默认') }}</dd></div>
@@ -139,6 +144,8 @@ const { t } = useUiLanguage()
 import { computed, onMounted, ref, watch } from 'vue'
 import { deleteProjectAutomation, deleteThreadAutomation, upsertProjectAutomation, upsertThreadAutomation, getProjectAutomationMap, getThreadAutomationMap } from '../../api/codexGateway'
 import type { UiProjectGroup, UiThreadAutomation, UiThreadAutomationStatus } from '../../types/codex'
+import { copyTextToClipboard } from '../../utils/clipboard'
+import IconTablerCopy from '../icons/IconTablerCopy.vue'
 import IconTablerBolt from '../icons/IconTablerBolt.vue'
 import IconTablerPlayerStopFilled from '../icons/IconTablerPlayerStopFilled.vue'
 
@@ -377,6 +384,15 @@ function statusLabel(status: UiThreadAutomationStatus): string {
   return status === 'PAUSED' ? t('Paused') : t('Active')
 }
 
+async function copyAutomationId(id: string): Promise<void> {
+  try {
+    await copyTextToClipboard(id)
+    notifyOperation(t('已复制任务 ID'), 'success')
+  } catch {
+    notifyOperation(t('复制失败，请手动复制任务 ID'), 'error')
+  }
+}
+
 function emitEditAutomation(row: AutomationRow): void {
   emit('edit-automation', {
     scope: row.scope,
@@ -580,6 +596,22 @@ function getPathLeaf(path: string): string {
 
 .automation-detail-grid dd {
   @apply m-0 truncate text-sm text-zinc-900;
+}
+
+.automation-detail-id {
+  @apply flex min-w-0 items-center gap-1.5;
+}
+
+.automation-detail-id-value {
+  @apply min-w-0 flex-1 truncate;
+}
+
+.automation-detail-copy {
+  @apply flex h-5 w-5 shrink-0 items-center justify-center rounded border border-zinc-200 bg-white text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700;
+}
+
+.automation-detail-copy svg {
+  @apply h-3 w-3;
 }
 
 .automations-empty {

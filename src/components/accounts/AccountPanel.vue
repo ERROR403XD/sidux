@@ -14,11 +14,14 @@
           <span class="account-plan-badge">{{ account.planType || t('unknown') }}</span>
         </div>
         <p v-if="account.authStatus !== 'ready'" class="account-card-meta">{{ t(status(account)) }}</p>
-        <p v-if="account.quotaUpdatedAtIso" class="account-card-meta">{{ t('更新于') }} {{ formatLocalDateTime(account.quotaUpdatedAtIso, { second: '2-digit' }) }}</p>
+        <p
+          v-if="account.quotaUpdatedAtIso"
+          class="account-card-meta"
+          :class="{ 'is-quota-stale': staleQuotaIds.has(account.storageId) }"
+        >{{ t('更新于') }} {{ formatLocalDateTime(account.quotaUpdatedAtIso, { second: '2-digit' }) }}</p>
         <p v-if="account.protectionPercent" class="account-card-meta">{{ t('主额度保护') }} {{ account.protectionPercent }}%<span v-if="account.quotaSnapshot?.primary?.windowMinutes === 300 || account.quotaSnapshot?.secondary?.windowMinutes === 300"> {{ t('· 5h保护') }} {{ Math.min(100, account.protectionPercent * 2) }}%</span></p>
         <AccountQuota v-if="account.quotaSnapshot" :snapshot="account.quotaSnapshot" />
         <p v-else class="account-card-meta">{{ account.quotaStatus === 'loading' ? t('Loading quota…') : t('Quota unavailable') }}</p>
-        <p v-if="account.quotaError" class="account-panel-error">{{ t(account.quotaError) }}</p>
         <AccountResetCredits :account="account" :disabled="busy" @changed="$emit('reload')" />
         <footer class="account-card-actions">
           <AccountOptions :account="account" @changed="$emit('reload')" />
@@ -44,7 +47,7 @@
 
 <script setup lang="ts">
 import { accountDisplayName } from '../../accountDisplay'
-import { ref, type ComponentPublicInstance } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, type ComponentPublicInstance } from 'vue'
 import type { UiAccountEntry } from '../../types/codex'
 import { useUiLanguage } from '../../composables/useUiLanguage'
 import AppButton from '../common/AppButton.vue'
@@ -54,7 +57,7 @@ import AccountOptions from './AccountOptions.vue'
 import AccountResetCredits from './AccountResetCredits.vue'
 import AccountQuota from './AccountQuota.vue'
 
-defineProps<{
+const props = defineProps<{
   accounts: UiAccountEntry[]
   busy: boolean
   error: string
@@ -73,6 +76,14 @@ const emit = defineEmits<{
   remove: [storageId: string]
 }>()
 const { t } = useUiLanguage()
+const QUOTA_STALE_AFTER_MS = 10 * 60_000
+const now = ref(Date.now())
+let quotaClock: ReturnType<typeof setInterval> | undefined
+const staleQuotaIds = computed(() => new Set(props.accounts.filter(account => {
+  if (account.quotaStatus !== 'error' || !account.quotaError || !account.quotaFailedAtIso) return false
+  const failedAt = Date.parse(account.quotaFailedAtIso)
+  return Number.isFinite(failedAt) && now.value - failedAt >= QUOTA_STALE_AFTER_MS
+}).map(account => account.storageId)))
 const menuId = ref('')
 const anchors = ref<Record<string, HTMLElement>>({})
 function setAnchor(id: string, element: Element | ComponentPublicInstance | null): void {
@@ -84,4 +95,10 @@ function run(action: 'quota' | 'reauth', id: string): void {
   if (action === 'quota') emit('quota', id)
   else emit('reauth', id)
 }
+onMounted(() => {
+  quotaClock = setInterval(() => { now.value = Date.now() }, 30_000)
+})
+onBeforeUnmount(() => {
+  if (quotaClock) clearInterval(quotaClock)
+})
 </script>

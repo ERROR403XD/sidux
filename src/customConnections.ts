@@ -1,4 +1,4 @@
-import type { ModelCapability } from './modelCapabilities'
+import { normalizeModelCapability, type ModelCapability } from './modelCapabilities'
 export type CustomEndpoint = '/v1/models' | '/v1/responses' | '/v1/chat/completions'
 export type CustomConnection = {
   storageId: string
@@ -11,13 +11,15 @@ export type CustomConnection = {
   protocolBridge: boolean
   /** Effort levels the connection probe confirmed (levels the upstream explicitly rejected are absent). */
   reasoningEfforts?: string[]
+  /** Local model catalog used when the upstream does not serve /v1/models. */
+  manualModels?: string[]
   supportedEndpoints?: CustomEndpoint[]
   testedAt?: string
   models: ModelCapability[]
   revision: number
   hasApiKey: boolean
 }
-export type CustomConnectionDraft = Pick<CustomConnection, 'alias' | 'provider' | 'baseUrl' | 'model' | 'wireApi'> & { storageId?: string; apiKey: string; protocolBridge?: boolean }
+export type CustomConnectionDraft = Pick<CustomConnection, 'alias' | 'provider' | 'baseUrl' | 'model' | 'wireApi' | 'manualModels'> & { storageId?: string; apiKey: string; protocolBridge?: boolean }
 export type CustomConnectionSnapshot = { activeId: string | null; connections: CustomConnection[] }
 export const customProviderPresets = [
   { value: 'openrouter', label: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1' },
@@ -38,8 +40,24 @@ export function applyProbedEfforts(models: ModelCapability[], efforts: string[])
   const probed = efforts.map(value => ({ value, description: '' }))
   return models.map(model => ({ ...model, efforts: probed }))
 }
-export function customConnectionModels(connection: CustomConnection) {
-  return connection.models.map(model => ({
+export function normalizeManualModels(value: unknown): string[] {
+  const rows = Array.isArray(value) ? value : []
+  const seen = new Set<string>()
+  for (const row of rows) {
+    if (typeof row !== 'string') continue
+    const model = row.trim().slice(0, 200)
+    if (!model || /[\r\n]/.test(model)) continue
+    seen.add(model)
+    if (seen.size >= 200) break
+  }
+  return [...seen]
+}
+export function customConnectionModels(connection: Pick<CustomConnection, 'models' | 'model' | 'manualModels'> & { hasApiKey?: boolean }) {
+  const models = [...connection.models]
+  for (const id of normalizeManualModels(connection.manualModels)) {
+    if (!models.some(model => model.id === id)) models.push({ ...normalizeModelCapability(id, 'custom')!, efforts: [], serviceTiers: [] })
+  }
+  return models.map(model => ({
     id: model.id, model: model.model, displayName: model.displayName, isDefault: model.id === connection.model,
     supportedReasoningEfforts: (model.efforts || []).map(effort => ({ reasoningEffort: effort.value, description: effort.description })),
     defaultReasoningEffort: model.defaultEffort,
@@ -51,6 +69,11 @@ export function customConnectionModels(connection: CustomConnection) {
 /** Endpoints the connection probe confirmed natively (no bridge involved). */
 export function customConnectionNativeEndpoints(connection: Pick<CustomConnection, 'wireApi' | 'supportedEndpoints'>): CustomEndpoint[] {
   return connection.supportedEndpoints || ['/v1/models', connection.wireApi === 'responses' ? '/v1/responses' : '/v1/chat/completions']
+}
+/** Endpoints served locally from saved settings rather than upstream. */
+export function customConnectionManualEndpoints(connection: Pick<CustomConnection, 'wireApi' | 'supportedEndpoints' | 'manualModels'>): CustomEndpoint[] {
+  const native = customConnectionNativeEndpoints(connection)
+  return !native.includes('/v1/models') && normalizeManualModels(connection.manualModels).length ? ['/v1/models'] : []
 }
 
 /** Endpoints served through the protocol bridge when the toggle is on. */
@@ -64,8 +87,9 @@ export function customConnectionBridgedEndpoints(connection: Pick<CustomConnecti
 }
 
 /** Servable endpoints: native ones plus bridge-served ones when enabled. */
-export function customConnectionEndpoints(connection: Pick<CustomConnection, 'wireApi' | 'protocolBridge' | 'supportedEndpoints'>): CustomEndpoint[] {
+export function customConnectionEndpoints(connection: Pick<CustomConnection, 'wireApi' | 'protocolBridge' | 'supportedEndpoints' | 'manualModels'>): CustomEndpoint[] {
   const native = customConnectionNativeEndpoints(connection)
   const bridged = customConnectionBridgedEndpoints(connection)
-  return bridged.length > 0 ? [...native, ...bridged] : native
+  const manual = customConnectionManualEndpoints(connection)
+  return [...native, ...bridged, ...manual]
 }

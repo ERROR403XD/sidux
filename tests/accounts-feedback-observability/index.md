@@ -16,6 +16,7 @@ Return to the [manual test index](../../tests.md).
 | [Feature: Accounts no longer stuck on "Fetching account details…"](accounts-no-longer-stuck-on-fetching-account-details.md) |
 | [Feature: Account quota background refresh recovers from stale loading and inspection hangs](account-quota-background-refresh-recovers-from-stale-loading-and-inspection-hangs.md) |
 | [Feature: Account quota label uses primary snapshot when windowMinutes is missing](account-quota-label-uses-primary-snapshot-when-windowminutes-is-missing.md) |
+| [Account quota stale timestamp](account-quota-stale-timestamp.md) |
 | [Feature: Sentry error tracking and encrypted auth context](sentry-error-tracking-and-encrypted-auth-context.md) |
 | [API perf log bodyMB uses one decimal place](api-perf-log-bodymb-uses-one-decimal-place.md) |
 | [Browser runtime profiling with Playwright](browser-runtime-profiling-with-playwright.md) |

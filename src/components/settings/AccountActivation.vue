@@ -26,21 +26,25 @@
     <AppDialog :open="historyOpen" :title="t('激活记录')" panel-class="activation-history-dialog" @close="historyOpen = false">
       <p v-if="historyError" class="account-panel-error" role="alert">{{ t(historyError) }}</p>
       <p v-if="historyLoading" class="account-card-meta" role="status">{{ t('读取中…') }}</p>
-      <template v-else-if="history?.slots.length">
-        <div class="activation-history-heading"><h3>{{ historyTime(history.slots[history.page - 1]!.scheduledAt) }}</h3><span class="account-card-meta">{{ history.runs.length }} {{ t('个账号') }}</span></div>
+      <template v-else-if="historyGroups.length">
         <div class="activation-history-list">
-          <article v-for="run in history.runs" :key="run.key" class="activation-history-row">
-            <div><strong>{{ accountName(run.accountId) }}</strong><span class="activation-history-status" :data-status="run.status">{{ t(labels[run.status]) }}</span></div>
-            <p v-if="run.reason && run.status !== 'sent'">{{ t(run.reason) }}</p>
+          <article v-for="group in historyGroups" :key="`${group.slot.scheduledAt}:${group.slot.timezone}`" class="activation-history-group">
+            <div class="activation-history-heading"><h3>{{ historyTime(group.slot.scheduledAt) }}</h3><span class="account-card-meta">{{ group.runs.length }} {{ t('个账号') }}</span></div>
+            <div class="activation-history-rows">
+              <div v-for="run in group.runs" :key="run.key" class="activation-history-row">
+                <div><strong>{{ accountName(run.accountId) }}</strong><span class="activation-history-status" :data-status="run.status">{{ t(labels[run.status]) }}</span></div>
+                <p v-if="run.reason && run.status !== 'sent'">{{ t(run.reason) }}</p>
+              </div>
+            </div>
           </article>
         </div>
       </template>
       <p v-else-if="!historyError" class="account-card-meta">{{ t('暂无激活记录') }}</p>
-      <template v-if="history?.slots.length" #footer>
+      <template v-if="history?.pageCount" #footer>
         <div class="activation-history-pagination">
           <AppButton :disabled="historyLoading || history.page <= 1" @click="loadHistory(history.page - 1)">{{ t('上一页') }}</AppButton>
-          <AppSelect :model-value="String(history.page)" :options="historyOptions" :aria-label="t('选择激活时间')" :disabled="historyLoading" enable-search @update:model-value="loadHistory(Number($event))" />
-          <AppButton :disabled="historyLoading || history.page >= history.slots.length" @click="loadHistory(history.page + 1)">{{ t('下一页') }}</AppButton>
+          <span class="activation-history-page-label">{{ t('第') }} {{ history.page }} / {{ history.pageCount }} {{ t('页') }}</span>
+          <AppButton :disabled="historyLoading || history.page >= history.pageCount" @click="loadHistory(history.page + 1)">{{ t('下一页') }}</AppButton>
         </div>
       </template>
     </AppDialog>
@@ -55,10 +59,9 @@ import AppButton from '../common/AppButton.vue'
 import AppTimeInput from '../common/AppTimeInput.vue'
 import AppSwitch from '../common/AppSwitch.vue'
 import AppDialog from '../common/AppDialog.vue'
-import AppSelect from '../common/AppSelect.vue'
 import type { UiAccountEntry } from '../../types/codex'
 import { formatLocalDateTime, displayTimeZone } from '../../dateTime'
-import { validateActivationSettings, type ActivationSettings, type ActivationSnapshot, type ActivationHistoryPage } from '../../accountActivation'
+import { validateActivationSettings, activationRunTimezone, type ActivationSettings, type ActivationSnapshot, type ActivationHistoryPage } from '../../accountActivation'
 const props = defineProps<{ accounts: UiAccountEntry[] }>()
 const snapshot = ref<ActivationSnapshot | null>(null)
 const settings = ref<ActivationSettings>({ enabled: false, accountIds: [], times: [], timezone: displayTimeZone() })
@@ -68,7 +71,10 @@ const historyOpen = ref(false)
 const historyLoading = ref(false)
 const historyError = ref('')
 const history = ref<ActivationHistoryPage | null>(null)
-const historyOptions = computed(() => history.value?.slots.map((slot, index) => ({ value: String(index + 1), label: historyTime(slot.scheduledAt) })) || [])
+const historyGroups = computed(() => (history.value?.slots || []).map(slot => ({
+  slot,
+  runs: (history.value?.runs || []).filter(run => run.scheduledAt === slot.scheduledAt && activationRunTimezone(run) === slot.timezone),
+})))
 let historyRequest = 0
 const labels = { preparing: '准备中', sending: '激活中', sent: '已完成', skipped: '已跳过', unknown: '结果未确认' }
 let loaded = false

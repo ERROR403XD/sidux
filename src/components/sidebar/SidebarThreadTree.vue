@@ -196,7 +196,7 @@
       <template v-if="isProjectsSectionExpanded || isSearchActive">
       <p v-if="projectAutomationActionError" class="thread-tree-action-error">{{ t(projectAutomationActionError) }}</p>
 
-      <p v-if="(isSearchActive || isStatusFilterActive) && !filterLoading && searchState !== 'loading' && searchState !== 'error' && filteredGroups.length === 0 && globalThreads.length === 0 && pinnedThreads.length === 0" class="thread-tree-no-results">{{ t('No matching threads') }}</p>
+      <p v-if="(isSearchActive || isStatusFilterActive) && !filterLoading && !(statusFilter === 'interrupted' && filterIncomplete) && searchState !== 'loading' && searchState !== 'error' && filteredGroups.length === 0 && globalThreads.length === 0 && pinnedThreads.length === 0" class="thread-tree-no-results">{{ t('No matching threads') }}</p>
 
       <p v-else-if="isLoading && groups.length === 0" class="thread-tree-loading">{{ t('Loading threads...') }}</p>
 
@@ -974,6 +974,7 @@ const props = defineProps<{
   interruptionError?: string
   quotaInterrupted?: Record<string, boolean | null>
   filterLoading?: boolean
+  filterIncomplete?: boolean
   accounts?: { storageId: string; alias?: string; email: string | null; accountId: string }[]
   models?: string[]
   modelCapabilities?: ModelCapability[]

@@ -489,6 +489,7 @@ export function normalizeAccountEntry(
     resetCredits: normalizeResetCredits(record.resetCredits),
     protectionPercent: readNumber(record.protectionPercent) ?? 0,
     quotaUpdatedAtIso: readString(record.quotaUpdatedAtIso),
+    quotaFailedAtIso: readString(record.quotaFailedAtIso),
     quotaStatus,
     quotaError: readString(record.quotaError),
     unavailableReason: normalizeAccountUnavailableReason(record.unavailableReason)

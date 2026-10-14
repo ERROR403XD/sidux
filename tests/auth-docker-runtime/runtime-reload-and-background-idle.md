@@ -11,3 +11,15 @@
 7. 单测覆盖最多 200 个已加载线程、最多四路并发、存在性查询 limit=1；不支持该原生能力的旧 CLI 报 unsupported，不冒充已核对进程数为 0。
 
 清理：恢复配置原字节、停止仅本测试创建的后台命令；保留候选 home 与账号数据。确认 4173 仍可用，生产进程不变。不得为了通过空闲检查自动清空队列或批量停止进程。
+
+
+## 0.2.21-dev.2：回收中的 worker 不可借用
+
+前提：隔离测试运行时，不使用生产会话；运行 `src/server/accountResourcePool.test.ts` 的可控 dispose 场景。
+1. 容量 1，先分配 A；分配 B 触发异步回收 A，但先不完成 dispose。
+2. 同 key 请求 A，及读取可用 worker：必须返回可重试 worker_reclaiming，getAvailable/availableValues 不暴露 A。
+3. 让等待超过 disposeTimeoutMs：调用可结束，但原资源仍隔离、占容量，不创建 B；随后实际 dispose 完成，才允许新分配。
+4. 用测试模拟显式替换同 key 对象：旧 dispose 完成不能删除新对象或超额创建。
+5. 运行关联账号路由/自动化准备回归，确认等待 idle 检查时已有的复用保护不退化。
+
+预期：不存在回收对象被重新初始化后丢失池跟踪；错误可重试但不盲目创建资源。清理：测试自行释放 dispose promise；无生产操作。
