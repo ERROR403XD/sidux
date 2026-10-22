@@ -59,6 +59,8 @@ Sidux（原 CodexApp）是基于 Codex app-server 的自托管 Web 界面，让�
 
 0.2.22 将最后的 `0.2.22-dev.8` 基线提升为正式版，包含会话状态与通知、定时续跑标记、自定义连接及设置改进。该版本保留 dev.8 审核确认的 80 项未修复问题（含 6 项 P1），详见[发布说明与已知问题](docs/RELEASE-0.2.22.md)；修复工作转入 0.2.23。
 
+当前开发版本为 `0.2.23-dev.1`，首批修复范围见 [0.2.23 开发说明](docs/DEVELOPMENT-0.2.23.md)。
+
 ## 环境要求
 
 - 本次构建与 CLI 验证使用 Node.js 24、pnpm 11；`package.json` 声明 Node.js ≥18，但本次未覆盖所有最低版本组合。
@@ -83,7 +85,7 @@ node dist-cli/index.js --port 5900 --strict-port --no-open
 
 ### 使用本仓库 Release 安装包
 
-从 [v0.2.22](https://github.com/ERROR403XD/sidux/releases/tag/v0.2.22) 下载 `codexapp-0.2.22.tgz` 和 `SHA256SUMS`，在下载目录执行：
+从 [v0.2.22](https://github.com/ERROR403XD/sidux/releases/tag/v0.2.22) 下载 `codexapp-0.2.22.tgz`、`package-lock.json` 和 `SHA256SUMS`，在下载目录执行：
 
 ```bash
 sha256sum -c SHA256SUMS
