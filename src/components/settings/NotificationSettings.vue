@@ -7,7 +7,7 @@
       <div class="notification-message-field"><label>{{ t('JSON请求体') }}<textarea v-model="settings.body" class="app-input" rows="5" spellcheck="false" :disabled="busy" /></label><small v-text="t('用 {{message}} 插入通知正文。')"></small></div>
       <div class="notification-actions">
         <p v-if="error" class="account-panel-error" role="alert">{{ t(error) }}</p>
-        <AppButton :busy="busy" @click="save()">{{ t('保存POST设置') }}</AppButton>
+        <AppButton :variant="hasChanges ? 'primary' : 'default'" :busy="busy" @click="save()">{{ t('保存配置') }}</AppButton>
         <AppButton :disabled="busy || !settings.enabled" @click="test">{{ t('发送测试通知') }}</AppButton>
       </div>
       <div class="notification-quiet">
@@ -28,7 +28,7 @@ import AppTimeInput from '../common/AppTimeInput.vue'
 import AppSwitch from '../common/AppSwitch.vue'
 import { t } from '../../composables/useUiLanguage'
 
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AppButton from '../common/AppButton.vue'
 import { defaultNotificationSettings, validateNotificationSettings, type NotificationSettings } from '../../accountNotifications'
 import { displayTimeZone } from '../../dateTime'
@@ -37,10 +37,13 @@ const settings = ref<NotificationSettings>({ ...defaultNotificationSettings })
 const loaded = ref(false)
 const busy = ref(false)
 const error = ref('')
+const savedConfiguration = ref('')
+const hasChanges = computed(() => loaded.value && savedConfiguration.value !== JSON.stringify(settings.value))
 onMounted(async () => {
   try {
     const result = await apiProxyRequest<{ settings: NotificationSettings; lastResult: string | null }>('/notifications')
     settings.value = { ...result.settings, timezone: displayTimeZone() }
+    savedConfiguration.value = JSON.stringify(settings.value)
     loaded.value = true
   } catch { error.value = '读取通知设置失败。' }
 })
@@ -52,6 +55,8 @@ async function save(showNotice = true): Promise<boolean> {
   try {
     const value = validateNotificationSettings({ ...settings.value, timezone: displayTimeZone() })
     await apiProxyRequest('/notifications', { settings: value })
+    settings.value = value
+    savedConfiguration.value = JSON.stringify(value)
     if (showNotice) notifyOperation('已保存', 'success')
     return true
   } catch (cause) {

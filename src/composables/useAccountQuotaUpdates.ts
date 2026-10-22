@@ -1,16 +1,13 @@
-import { onBeforeUnmount, type Ref } from 'vue'
-import { normalizeAccountEntry, subscribeCodexNotifications } from '../api/codexGateway'
+import { normalizeAccountEntry } from '../api/accountGateway'
+import { subscribeRpcNotifications } from '../api/codexRpcClient'
 import type { UiAccountEntry } from '../types/codex'
 
-export function useAccountQuotaUpdates(accounts: Ref<UiAccountEntry[]>) {
-  const unsubscribe = subscribeCodexNotifications(notification => {
+export function subscribeAccountQuotaUpdates(onUpdated: (account: UiAccountEntry) => void): () => void {
+  return subscribeRpcNotifications(notification => {
     if (notification.method !== 'codexapp/accountQuota/updated') return
     const params = notification.params as { account?: unknown }
     const updated = normalizeAccountEntry(params?.account)
     if (!updated) return
-    accounts.value = accounts.value.map(account => account.storageId === updated.storageId
-      ? { ...updated, isActive: account.isActive, canSwitch: account.canSwitch, actionRequired: account.actionRequired }
-      : account)
+    onUpdated(updated)
   })
-  onBeforeUnmount(unsubscribe)
 }

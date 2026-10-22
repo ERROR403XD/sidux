@@ -2,6 +2,21 @@ import type { StoredQueuedMessage } from './threadQueue'
 
 export type DeliveryStatus = 'queued' | 'editing' | 'sending' | 'unknown' | 'failed'
 export type DeliveryMode = 'queue' | 'immediate' | 'steer'
+export type GoalResumeIdentity = { createdAt: number; objectiveHash: string }
+export type DeliveryAcceptance = { turnId: string; goalResume?: never } | { goalResume: GoalResumeIdentity; turnId?: never }
+
+export function isGoalResumeIdentity(value: unknown): value is GoalResumeIdentity {
+  const goal = value as GoalResumeIdentity | null | undefined
+  return !!goal && typeof goal === 'object' && Number.isSafeInteger(goal.createdAt) && goal.createdAt >= 0
+    && typeof goal.objectiveHash === 'string' && /^[a-f0-9]{64}$/.test(goal.objectiveHash)
+}
+
+export function isDeliveryAcceptance(value: unknown): value is DeliveryAcceptance {
+  const acceptance = value as DeliveryAcceptance | null | undefined
+  if (!acceptance || typeof acceptance !== 'object') return false
+  return typeof acceptance.turnId === 'string' && !!acceptance.turnId.trim() && acceptance.goalResume === undefined
+    || acceptance.turnId === undefined && isGoalResumeIdentity(acceptance.goalResume)
+}
 export type DeliveryView = {
   status: DeliveryStatus
   revision: number
@@ -26,6 +41,7 @@ export type DeliveryReceipt = {
   fingerprint: string
   status: 'accepted' | 'cancelled'
   turnId?: string
+  goalResume?: GoalResumeIdentity
   createdAt: number
   updatedAt: number
 }

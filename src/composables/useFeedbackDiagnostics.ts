@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 
-export const FEEDBACK_URL = 'https://github.com/ERROR403XD/sidux/issues'
+export const FEEDBACK_URL = 'https://github.com/ERROR403XD/codexapp/issues'
 const MAX_DIAGNOSTICS = 20
 export const feedbackReport = ref<string | null>(null)
 

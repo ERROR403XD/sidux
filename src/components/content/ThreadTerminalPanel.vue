@@ -50,10 +50,9 @@ import {
   getThreadTerminalQuickCommands,
   resizeThreadTerminal,
   sendThreadTerminalInput,
-  subscribeCodexNotifications,
-  type RpcNotification,
   type ThreadTerminalQuickCommand,
-} from '../../api/codexGateway'
+} from '../../api/terminalGateway'
+import { subscribeRpcNotifications, type RpcNotification } from '../../api/codexRpcClient'
 
 const props = defineProps<{
   threadId: string
@@ -127,7 +126,7 @@ const quickCommands = computed<QuickCommand[]>(() => {
 onMounted(() => {
   restoreSavedTabs()
   createTerminal()
-  unsubscribeNotifications = subscribeCodexNotifications(handleNotification)
+  unsubscribeNotifications = subscribeRpcNotifications(handleNotification)
   void refreshProjectQuickCommands()
   void attachToThread(false)
 })

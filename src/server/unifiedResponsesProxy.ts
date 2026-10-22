@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { request as httpRequest } from 'node:http'
 import { request as httpsRequest } from 'node:https'
+import { StringDecoder } from 'node:string_decoder'
 
 type ResponsesApiInput = {
   id?: string
@@ -348,6 +349,7 @@ function forwardStreamingTextResponse(
   })
 
   let buffer = ''
+  const decoder = new StringDecoder('utf8')
   const contentParts: string[] = []
   const reasoningParts: string[] = []
   let responseId = `resp_${Date.now()}`
@@ -357,7 +359,7 @@ function forwardStreamingTextResponse(
   res.write('data: {"type":"response.content_part.added","output_index":0,"content_index":0,"part":{"type":"output_text","text":""}}\n\n')
 
   upstreamRes.on('data', (chunk: Buffer) => {
-    buffer += chunk.toString()
+    buffer += decoder.write(chunk)
     const lines = buffer.split('\n')
     buffer = lines.pop() ?? ''
 
@@ -561,8 +563,9 @@ export function handleUnifiedResponsesProxyRequest(
         if (!useChatPayload && isStreaming && status < 400) {
           res.writeHead(status, copyProxyHeaders(upstreamRes.headers))
           let pending = ''
+          const decoder = new StringDecoder('utf8')
           upstreamRes.on('data', (chunk: Buffer) => {
-            pending += chunk.toString('utf8')
+            pending += decoder.write(chunk)
             let end: number
             while ((end = pending.indexOf('\n')) !== -1) {
               const line = pending.slice(0, end).trim()
@@ -581,8 +584,26 @@ export function handleUnifiedResponsesProxyRequest(
         }
 
         const chunks: Buffer[] = []
-        upstreamRes.on('data', (chunk: Buffer) => chunks.push(chunk))
+        let settled = false
+        const failResponse = () => {
+          if (settled) return
+          settled = true
+          chunks.length = 0
+          if (res.destroyed || res.writableEnded) return
+          if (res.headersSent) {
+            res.destroy()
+          } else {
+            res.writeHead(502, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: { message: 'Upstream response ended before completion' } }))
+          }
+        }
+        upstreamRes.once('aborted', failResponse)
+        upstreamRes.once('error', failResponse)
+        upstreamRes.once('close', () => { if (!upstreamRes.complete) failResponse() })
+        upstreamRes.on('data', (chunk: Buffer) => { if (!settled) chunks.push(chunk) })
         upstreamRes.on('end', () => {
+          if (settled) return
+          settled = true
           const rawResponseBody = Buffer.concat(chunks).toString()
           try { options.onPayload?.(JSON.parse(rawResponseBody)) } catch {}
           if (!useChatPayload) {
@@ -624,9 +645,12 @@ export function handleUnifiedResponsesProxyRequest(
       res.once('close', () => { if (!res.writableFinished) proxyReq.destroy() })
       proxyReq.setTimeout(30 * 60000, () => proxyReq.destroy())
       proxyReq.on('error', (error) => {
+        if (res.destroyed || res.writableEnded) return
         if (!res.headersSent) {
           res.writeHead(502, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: { message: `Proxy error: ${error.message}` } }))
+        } else {
+          res.destroy()
         }
       })
 

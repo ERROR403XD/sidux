@@ -68,7 +68,8 @@ import { goalResumeProblem, goalSavePatch, goalStatusHint, readThreadGoal } from
 import { compactionLabels } from '../../compaction'
 import { checkThreadCompaction, compactionRequests, isCompactionPending } from '../../api/threadCompaction'
 import { APP_COMMANDS, buildComposerCommands, type AppCommandName, type AppCommandRequest } from './composerCommands'
-import { getMethodCatalog, subscribeCodexNotifications } from '../../api/codexGateway'
+import { getMethodCatalog } from '../../api/runtimeGateway'
+import { subscribeRpcNotifications, type RpcNotification } from '../../api/codexRpcClient'
 import { compactThread, getThreadGoal, setThreadGoal, clearThreadGoal, validateGoalInput, formatGoalTokenBudget, goalStatusLabels, type ThreadGoal } from '../../api/threadCommands'
 const props = defineProps<{
   request: AppCommandRequest; threadId: string; threadName: string; cwd: string; model: string; effort: string; busy: boolean; contextSummary: string
@@ -207,7 +208,7 @@ async function execute() {
   })
 }
 onMounted(async () => {
-    if (props.request.name === 'goal') unsubscribe = subscribeCodexNotifications(notification => {
+    if (props.request.name === 'goal') unsubscribe = subscribeRpcNotifications(notification => {
       if (!threadId || !['thread/goal/updated', 'thread/goal/cleared'].includes(notification.method)) return
       const params = notification.params as { threadId?: string; goal?: ThreadGoal }
       if (params.threadId !== threadId || disposed) return

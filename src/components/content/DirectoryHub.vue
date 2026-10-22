@@ -139,7 +139,21 @@ import DirectorySectionToggle from './DirectorySectionToggle.vue'
 import { useUiLanguage } from '../../composables/useUiLanguage'
 import { formatDirectoryError, pluginManagementUrl, mcpRuntimeLabel } from '../../directory'
 import { subscribeTaskNotifications } from '../../subtasks'
-import { getMethodCatalog, listDirectoryPlugins, readDirectoryPlugin, installDirectoryPlugin, uninstallDirectoryPlugin, setDirectoryPluginEnabled, listDirectoryMcpServers, reloadDirectoryMcpServers, startDirectoryMcpLogin, type DirectoryPluginSummary, type DirectoryPluginDetail, type DirectoryPluginAppSummary, type DirectoryMcpServerStatus } from '../../api/codexGateway'
+import { getMethodCatalog } from '../../api/runtimeGateway'
+import {
+  listDirectoryPlugins,
+  readDirectoryPlugin,
+  installDirectoryPlugin,
+  uninstallDirectoryPlugin,
+  setDirectoryPluginEnabled,
+  listDirectoryMcpServers,
+  reloadDirectoryMcpServers,
+  startDirectoryMcpLogin,
+  type DirectoryPluginSummary,
+  type DirectoryPluginDetail,
+  type DirectoryPluginAppSummary,
+  type DirectoryMcpServerStatus,
+} from '../../api/directoryGateway'
 
 export type DirectoryTryItemPayload = { kind: 'plugin' | 'skill'; name: string; displayName: string; skillPath?: string; prompt?: string; attachedSkills?: Array<{ name: string; path: string }> }
 const props = defineProps<{ cwd?: string; threadId?: string; projects?: Array<{ value: string; label: string }>; tryInFlightKey?: string }>()

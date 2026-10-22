@@ -14,6 +14,12 @@ export class ThreadGoalReader {
     }
     if (notification.method === 'thread/goal/cleared') this.put(params.threadId, null)
   }
+  // Native updates invalidate statuses immediately; the TTL only schedules UI refreshes.
+  // Notification delivery must never wait on a goal/get RPC or reorder runtime events.
+  peekStatus(threadId: string): ThreadGoal['status'] | null | undefined {
+    const cached = this.cache.get(threadId)
+    return cached ? cached.goal?.status ?? null : undefined
+  }
   private put(id: string, goal: ThreadGoal | null) {
     this.cache.delete(id)
     this.cache.set(id, { goal, at: this.now() })
@@ -25,7 +31,8 @@ export class ThreadGoalReader {
       const result: Record<string, ThreadGoal | null> = {}
       const unique = [...new Set(ids)]
       for (let offset = 0; offset < unique.length; offset += 4) {
-        const reads = await Promise.allSettled(unique.slice(offset, offset + 4).map(async id => {
+        const batch = unique.slice(offset, offset + 4)
+        const reads = await Promise.allSettled(batch.map(async id => {
           const cached = this.cache.get(id)
           if (id !== refreshId && cached && this.now() - cached.at < 30000) { result[id] = cached.goal; return }
           const response = await this.rpc('thread/goal/get', { threadId: id }) as { goal: ThreadGoal | null }
@@ -33,8 +40,11 @@ export class ThreadGoalReader {
           if (this.cache.get(id) === cached) this.put(id, readThreadGoal(response.goal, id))
           result[id] = this.cache.get(id)!.goal
         }))
-        const failed = reads.find(result => result.status === 'rejected')
-        if (failed?.status === 'rejected') throw failed.reason
+        reads.forEach((read, index) => {
+          if (read.status !== 'rejected') return
+          const cached = this.cache.get(batch[index]!)
+          if (cached) result[batch[index]!] = cached.goal
+        })
       }
       return result
     }

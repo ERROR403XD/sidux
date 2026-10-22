@@ -1,4 +1,4 @@
-import type { DeliveryReceipt, DeliveryRecord } from '../delivery.js'
+import type { DeliveryAcceptance, DeliveryReceipt, DeliveryRecord } from '../delivery.js'
 import { DeliveryStore } from './deliveryStore.js'
 
 type Submission = Parameters<DeliveryStore['add']>[0]
@@ -10,6 +10,7 @@ const record = (value: unknown): Record<string, unknown> => value && typeof valu
 export class DeliveryService {
   private readonly active = new Map<string, Promise<void>>()
   private readonly checking = new Map<string, Promise<Result>>()
+  private readonly acceptanceNotices = new Set<string>()
   private disposed = false
 
   constructor(readonly store: DeliveryStore, private readonly dependencies: {
@@ -18,13 +19,23 @@ export class DeliveryService {
     context: () => Promise<string>
     canStart: (threadId: string) => Promise<boolean>
     prepare: (delivery: DeliveryRecord) => Promise<Record<string, unknown>>
-    start: (params: Record<string, unknown>) => Promise<{ turnId: string }>
+    start: (params: Record<string, unknown>) => Promise<DeliveryAcceptance>
     inspect: (delivery: DeliveryRecord) => Promise<{ turnId?: string }>
     changed: (threadId: string) => void
+    accepted?: (delivery: DeliveryRecord, receipt: DeliveryReceipt) => void
   }) {}
 
   private changed(threadId: string): void {
     try { this.dependencies.changed(threadId) } catch { /* Clients can also refresh persisted state. */ }
+  }
+
+  private async confirm(delivery: DeliveryRecord, acceptance: DeliveryAcceptance): Promise<void> {
+    const receipt = await this.store.confirm(delivery.message.id, acceptance)
+    if (receipt.status !== 'accepted' || !this.dependencies.accepted || this.acceptanceNotices.has(receipt.id)) return
+    this.acceptanceNotices.add(receipt.id)
+    if (this.acceptanceNotices.size > 1000) this.acceptanceNotices.delete(this.acceptanceNotices.values().next().value!)
+    // Notification failures never change a confirmed delivery or cause another submission.
+    try { this.dependencies.accepted(delivery, receipt) } catch { /* Channels own notification delivery. */ }
   }
 
   async result(id: string): Promise<Result> {
@@ -74,7 +85,7 @@ export class DeliveryService {
     this.changed(threadId)
     try {
       const result = await this.dependencies.start(sending.params!)
-      await this.store.confirm(row.message.id, result.turnId)
+      await this.confirm(sending, result)
     } catch (cause) {
       const receipt = await this.store.readReceipt(row.message.id)
       if (!receipt) {
@@ -100,7 +111,7 @@ export class DeliveryService {
     const check = (async () => {
       try {
         const evidence = await this.dependencies.inspect(current)
-        if (evidence.turnId) await this.store.confirm(id, evidence.turnId)
+        if (evidence.turnId) await this.confirm(current, { turnId: evidence.turnId })
       } catch {
         // A failed or bounded lookup is not evidence that the submission was rejected.
       }
@@ -118,7 +129,8 @@ export class DeliveryService {
     if (item.type !== 'userMessage' || typeof item.clientId !== 'string' || typeof params.turnId !== 'string') return
     const current = await this.result(item.clientId)
     if (!current || !('message' in current) || current.threadId !== params.threadId || !['sending', 'unknown'].includes(current.status)) return
-    await this.store.confirm(item.clientId, params.turnId)
+    if (current.params?.goalResume) return
+    await this.confirm(current, { turnId: params.turnId })
     this.changed(current.threadId)
   }
 

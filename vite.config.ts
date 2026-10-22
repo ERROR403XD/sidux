@@ -1,4 +1,5 @@
 import { ApiProxyGateway } from './src/server/apiProxy/gateway';
+import { bindConversationNotifications } from './src/server/conversationNotificationBinding';
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { createCodexBridgeMiddleware } from "./src/server/codexAppServerBridge";
@@ -133,6 +134,7 @@ export default defineConfig({
         process.env.CODEXUI_SERVER_PORT = String(server.config.server.port ?? 5173);
         const bridge = createCodexBridgeMiddleware();
         const apiProxy = new ApiProxyGateway();
+        const unbindConversationNotifications = bindConversationNotifications(bridge, apiProxy.notifications);
         server.middlewares.use((req, res, next) => {
           void getWebUiBrandingStore().asset(req, res, `${server.config.root}/public/icons`).then(handled => { if (!handled) next(); }).catch(next);
         });
@@ -149,7 +151,7 @@ export default defineConfig({
           next();
         });
         if (server.httpServer) apiProxy.attach(server.httpServer as import('node:http').Server);
-        server.httpServer?.once('close', () => { void apiProxy.close(); });
+        server.httpServer?.once('close', () => { void unbindConversationNotifications().then(() => apiProxy.close()); });
         const httpServer = server.httpServer;
         if (httpServer) {
           httpServer.once("listening", () => {

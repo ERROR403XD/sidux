@@ -30,3 +30,12 @@ Unread thread state uses a local cutoff timestamp so existing threads are not al
 - Remove any disposable test threads created for this validation.
 
 ---
+### 0.2.22 R6：已读确认失败重试
+
+前提：隔离候选，可让已读 POST 一次返回 503 或网络错误。
+
+操作：打开有完成标记的会话，首次确认失败后再次打开/确认；恢复网络并重复。确认等待期间切换账号或停止、恢复轮询。
+
+预期：失败不加入成功去重集合，下次用户操作可重试；成功后不重复发送。旧代次迟到响应不能清理当前未读标记或阻止新确认。
+
+清理：恢复网络，关闭故障注入和测试页面。

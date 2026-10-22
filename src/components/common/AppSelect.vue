@@ -4,7 +4,7 @@
       class="composer-dropdown-trigger"
       type="button"
       :title="selectedLabel || placeholder"
-      :aria-label="ariaLabel || selectedLabel || placeholder || 'Select option'"
+      :aria-label="ariaLabel || selectedLabel || placeholder || t('Select option')"
       aria-haspopup="listbox"
       :aria-expanded="isOpen"
       :disabled="disabled"
@@ -34,10 +34,10 @@
             data-popover-autofocus
             type="text"
             :placeholder="searchPlaceholder"
-            :aria-label="searchPlaceholder || 'Search options'"
+            :aria-label="searchPlaceholder || t('Search options')"
           />
         </div>
-        <ul ref="listRef" class="composer-dropdown-options" role="listbox" :aria-label="selectedLabel || placeholder || 'Options'">
+        <ul ref="listRef" class="composer-dropdown-options" role="listbox" :aria-label="selectedLabel || placeholder || t('Options')">
           <li v-for="(option, index) in filteredOptions" :key="option.value" role="presentation">
             <button
               class="composer-dropdown-option"
@@ -51,7 +51,7 @@
             </button>
           </li>
           <li v-if="!filteredOptions.length" class="composer-dropdown-empty" role="presentation">
-            {{ emptyLabel || 'No results' }}
+            {{ emptyLabel || t('No results') }}
           </li>
         </ul>
       </div>
@@ -61,6 +61,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
+import { t } from '../../composables/useUiLanguage'
 import IconTablerChevronDown from '../icons/IconTablerChevronDown.vue'
 import AppPopover from './AppPopover.vue'
 import type { AppSelectProps } from './selectTypes'

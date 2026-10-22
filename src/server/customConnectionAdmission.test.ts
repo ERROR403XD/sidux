@@ -7,7 +7,7 @@ import { createCodexBridgeMiddleware } from './codexAppServerBridge'
 import { getAccountAuthCoordinator } from './accountAuthCoordinator'
 import { getCustomConnectionStore } from './customConnectionStore'
 
-it('tests and adds a connection during an OpenAI quota refresh without changing either account selection', async () => {
+it.each([200, 429, 402])('tests and adds a connection during an OpenAI quota refresh without changing either account selection (HTTP %s)', async generationStatus => {
   const home = await mkdtemp(join(tmpdir(), 'custom-admission-'))
   vi.stubEnv('CODEX_HOME', home)
   vi.stubEnv('CODEXUI_CODEX_COMMAND', resolve('src/server/fixtures/account-app-server.cjs'))
@@ -23,9 +23,12 @@ it('tests and adds a connection during an OpenAI quota refresh without changing 
   const server = createServer((request, response) => {
     if (request.url?.startsWith('/fixture/')) {
       probes++
-      const data = request.url.endsWith('/models') ? { data: [{ id: 'sample' }] }
-        : request.url.endsWith('/responses') ? { output: [{ type: 'message' }], status: 'completed' }
-          : { choices: [{ message: { content: 'hi' } }] }
+      const catalog = request.url.endsWith('/models')
+      const data = catalog ? { data: [{ id: 'sample' }] }
+        : generationStatus !== 200 ? { error: { code: 'insufficient_quota', message: 'Insufficient quota for reasoning' } }
+          : request.url.endsWith('/responses') ? { output: [{ type: 'message' }], status: 'completed' }
+            : { choices: [{ message: { content: 'hi' } }] }
+      response.statusCode = catalog ? 200 : generationStatus
       response.setHeader('Content-Type', 'application/json')
       response.end(JSON.stringify(data))
       return
@@ -61,7 +64,7 @@ it('tests and adds a connection during an OpenAI quota refresh without changing 
     expect(saved.status).toBe(200)
     expect(saved.body.data.connections).toHaveLength(1)
     expect(saved.body.data.activeId).toBeNull()
-    expect(probes).toBe(3)
+    expect(probes).toBe(generationStatus === 200 ? 8 : 3)
     expect(coordinator.isAccountOperationInProgress()).toBe(true)
     expect((await coordinator.store.readState()).activeStorageId).toBe(primary.account.storageId)
     expect(await readFile(join(home, 'auth.json'), 'utf8')).toBe(before)

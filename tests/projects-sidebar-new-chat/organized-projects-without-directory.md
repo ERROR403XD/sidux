@@ -4,7 +4,7 @@
 
 | 功能 | 操作 | 预期 |
 | --- | --- | --- |
-| 创建 | 创建项目只填名称，目录留空；点击创建及 Enter 各一次；再创建同名项目 | 均创建成功，独立身份；仅 Sidux 元数据改变，未建立项目文件夹；不增加说明文字 |
+| 创建 | 创建项目只填名称，目录留空；点击创建及 Enter 各一次；再创建同名项目 | 均创建成功，独立身份；仅 CodexApp 元数据改变，未建立项目文件夹；不增加说明文字 |
 | 图标/名称 | 切换展开、收起，鼠标悬停；明暗主题 | 使用两种组织层级图标，不显示文件夹图标、内部 ID 或额外类型标签 |
 | 空项目折叠 | 空组织与空目录项目分别鼠标、Enter、空格收起，再刷新；展开后将会话移入，重复操作 | 收起只占标题行高度，不显示“没有会话”；刷新保持收起；展开空项目显示空行，有成员项目显示原会话，工作目录不变 |
 | 编辑 | 改名，包含中文、空格、斜杠、尖括号；刷新浏览器及重启进程 | 名称原样保留，身份/成员不变；目录仍空，不改 AGENTS.md |
@@ -21,6 +21,29 @@
 | 故障 | 写权限失败、损坏元数据、并发保存、排序同时读取、重启 | 原文件保留；失败不显示成功；不把过期缓存重新写回，不清空成员或扩大到账号故障 |
 
 自动化证据入口：`scripts/test-project-organization.cjs`（先构建）、`scripts/test-project-root-api.cjs`、`scripts/test-project-organization-ui.cjs`；Vitest 中的 `virtualProjects`、`projectOrganization`、`projectState`、`projectSetup`、`useDesktopState`、`projectDirectories`、`automationDispatchIntegration` 等。浏览器脚本使用受控 API 状态；真实文件和 IPC 行为由独立脚本/测试证明。
+
+### Feature: Virtual project file route boundary
+
+#### Feature/Change Name
+0.2.22 `022-03B` moves the virtual project file listing route behind a project route factory while preserving the no-store HTML response.
+
+#### Prerequisites
+- Unit test dependencies installed.
+- A virtual project with at least two workspace directories.
+
+#### Steps
+1. Run `pnpm exec vitest run src/server/routes/projectRoutes.test.ts`.
+2. Request `/codex-api/project-files?id=<virtual-project-id>` in an isolated local instance.
+
+#### Expected Results
+- The route returns HTML with `Cache-Control: no-store`.
+- Directory display names use the final path segment and links preserve the full workspace path.
+- Virtual project directory reads return `[]`; real project reads return the parsed AGENTS.md work-directory block, with relative paths and malformed blocks mapped to HTTP 400.
+- Project membership assignment preserves explicit unassignment and stores membership only through the virtual project mutation boundary.
+- Unknown routes remain unhandled; project lookup errors continue to use the bridge error boundary.
+
+#### Rollback/Cleanup
+- Revert the project route extraction commit; no state migration is required.
 
 清理：移除明确由本测试建立的项目元数据及 fixture 目录，确认监听进程退出；不得删除用户工作目录或生产状态。回退代码保留 `codexapp-projects.json`；旧版本仍可按真实 cwd 读取原会话，但不显示新组织关系。
 

@@ -12,3 +12,27 @@
 8. 在 1440×900、375×812、768×1024 浅深主题检查实际弹窗、长命令/路径/输出、确认区和按钮。没有横向越界、深色浅底或重复 live overlay。关闭窗口后草稿与焦点保持。
 
 清理/回退：仅停止本轮的限时测试进程、移除独立测试容器；保留认证/历史卷。候选回退先验证空闲，再使用已验收 0.2.6 镜像和原独立状态卷。生产 5900 和 5173 不在范围内。记录文件为独立 CODEX_HOME/codexapp-hook-observations.json，只保存已收到的有界摘要/输出；缺失的原生历史不能由本测试补造。
+
+## 0.2.22 进程活动完整操作服务
+
+前置：临时 HOME、合成原生响应、真实 ProcessActivityStore/ThreadHistory/BackgroundTerminalReader；运行 `pnpm exec vitest run src/server/routes/processActivityRoutes.test.ts src/server/processActivityStore.test.ts src/server/backgroundTerminalReader.test.ts src/server/commandToolOutput.test.ts src/server/threadHistory.test.ts`，不停止真实用户进程。
+
+1. 请求 Hooks 摘要与指定 runKey 的详情：摘要最多首条 entry/160 字符，详情保留完整有界记录；未知 runKey 返回 404。读取配置只调用一次当前 cwd 的 hooks/list。
+2. 分别准备已观察输出、仅历史输出、仅可关联结构化工具返回，以及不可关联输出。确认优先顺序为观察→最近 10 回合→会话尾部；已观察输出零 RPC，原生历史回退两次 RPC，不将恢复结果复制到观察缓存。
+3. 用独立会话的命令身份请求 terminate；itemId 不匹配只读取列表、不停止，供应方正在变更时拒绝；成功仅发出精确原生 processId 的 terminate，不使用 OS PID 或批量清理。
+4. 缺会话 ID 返回 400，未知进程操作返回 404；缺目录/命令项/进程参数保持既有错误。请求错误不触发多余 RPC。
+
+预期：route 只负责参数/响应，完整输出恢复由 processActivityService 拥有；原观察存储、history cache、后台终端 pending/stopping 仍由原 owner 持有。清理 flush 测试 store 后删除临时 HOME，可独立 revert；手工主题与面板流程继续按前述步骤验收。
+
+## dev.8 审核补充：关闭、运行时停止与损坏记录恢复
+
+前置：使用本轮独立合成夹具，浏览器验收需明确授权。离线证据运行`node docs/baseline/022/dev8-review-20261020/process-output-offline.cjs`；它只调用内存RPC，不能将其“停止”结果表述为真实进程已停止。
+
+1. 选中运行中命令的输出，关闭弹窗，模拟该命令完成并从后台列表消失，再打开弹窗并点击顶部刷新。预期所选正文和状态重新核对或清空，不能继续把旧快照显示为运行中；单独重新读取输出也应恢复终态。dev.8确认R53，前三步仍保留旧状态。
+2. 暂缓输出读取回执，在回执已捕获运行快照后发运行时停止事件，再释放回执。预期旧响应失效，已知停止的runtime不得再次显示为运行中。已加载快照收到停止事件应变为待确认。此边界同属R53。
+3. 只在新建任务记录文件中分别放空合法数组、JSON语法损坏、`version=1,runs=[null]`。构造store后、恢复完成前发送合法Hook事件。预期三种情形都保留本次事件，损坏文件原字节不变、错误可见；dev.8的null行在恢复窗口丢事件（R54）。恢复失败后另发事件可见为正常对照。
+4. 核对50条Hook事件合并刷新、不重复配置请求；40条输出delta无新请求且最多32k。详情失败后能重试，关闭/卸载后迟到响应不能发布；命令最终输出不被迟到delta覆盖。
+
+结果与边界：本轮离线32检查28通过/4失败，缺陷保持未修复。真实UI验收仍需按第8项浅深/三尺寸执行，离线脚本没有截图或浏览器刷新证据。
+
+清理：等待所有内存回执、关闭组件订阅和计时器、flush自有store后仅删除脚本创建的随机`process-output-*`目录；不修改真实观察记录、不停用户进程。4173按仓库约定保留。

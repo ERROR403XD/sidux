@@ -107,15 +107,24 @@ usage() {
   cat <<'EOF'
 Usage:
   codexapp-release-switch.sh prepare
-  codexapp-release-switch.sh check [release-directory|latest]
-  codexapp-release-switch.sh activate [release-directory|latest] --confirm-idle
+  codexapp-release-switch.sh check [release-directory]
+  codexapp-release-switch.sh activate [release-directory] --confirm-idle
   codexapp-release-switch.sh rollback --confirm-idle
   codexapp-release-switch.sh status
 
 Two-phase workflow:
-  1. Run prepare while the current Sidux remains online.
-  2. End the current Codex turn and close every Sidux browser tab.
-  3. From a separate host shell, run activate latest --confirm-idle.
+  1. Run prepare while the current CodexApp remains online.
+  2. prepare records its completed release in latest-prepared. With no release
+     argument, check and activate resolve that recorded directory. The fixed
+     commands are: check and activate --confirm-idle.
+  3. End the current Codex turn and close every CodexApp browser tab.
+  4. From a separate host shell, run check, then activate --confirm-idle.
+     Do not run another prepare between these commands; verify status still
+     shows the intended latest_prepared release. Pass an explicit directory
+     only when intentionally selecting a different prepared release.
+
+Production activation is intentionally not performed by prepare or check.
+Run activate only after the real idle check passes in the independent shell.
 
 The script never imports credentials from the test container. Production auth
 state is snapshotted only after the old service stops and must remain byte-for-
@@ -469,12 +478,13 @@ prepare_release() {
 check_release() {
   local release
   release="$(validate_release "${1:-latest}")"
+  log "Selected prepared release: $release"
   check_runtime_boundary
   systemctl is-active --quiet "$SERVICE_NAME" || die "$SERVICE_NAME is not active."
   curl -fsS "$PRODUCTION_URL/" >/dev/null || die "Production health check failed: $PRODUCTION_URL/"
   check_idle_runtime
   log "Release is ready: $release"
-  log "Runtime is idle according to Sidux. Direct host CLI activity must still be checked by the user."
+  log "Runtime is idle according to CodexApp. Direct host CLI activity must still be checked by the user."
 }
 
 activate_release() {
@@ -492,8 +502,9 @@ activate_release() {
       *) requested="$argument" ;;
     esac
   done
-  [[ "$confirmed" == "1" ]] || die "Refusing cutover without --confirm-idle. End the Codex turn and close all Sidux tabs first."
+  [[ "$confirmed" == "1" ]] || die "Refusing cutover without --confirm-idle. End the Codex turn and close all CodexApp tabs first."
   release="$(validate_release "$requested")"
+  log "Selected prepared release: $release"
   check_runtime_boundary
   systemctl is-active --quiet "$SERVICE_NAME" || die "$SERVICE_NAME must be active before cutover."
   drain_activation_for_cutover
@@ -549,7 +560,7 @@ rollback_release() {
   require_root
   require_cutover_commands
   shift
-  [[ "${1:-}" == "--confirm-idle" ]] || die "Refusing rollback without --confirm-idle. End active work and close all Sidux tabs first."
+  [[ "${1:-}" == "--confirm-idle" ]] || die "Refusing rollback without --confirm-idle. End active work and close all CodexApp tabs first."
   local active_transaction previous_transaction timestamp transaction
   active_transaction="$(read_first_line "$CURRENT_TRANSACTION_FILE" || true)"
   [[ -n "$active_transaction" && -d "$active_transaction" ]] || die "No active release-switch transaction is available to roll back."
@@ -598,7 +609,7 @@ rollback_release() {
 }
 
 show_status() {
-  local active_state sub_state main_pid current_transaction latest release_line="none" token
+  local active_state sub_state main_pid current_transaction latest release_line="none"
   active_state="$(systemctl show "$SERVICE_NAME" -p ActiveState --value 2>/dev/null || true)"
   sub_state="$(systemctl show "$SERVICE_NAME" -p SubState --value 2>/dev/null || true)"
   main_pid="$(systemctl show "$SERVICE_NAME" -p MainPID --value 2>/dev/null || true)"
@@ -606,14 +617,11 @@ show_status() {
   latest="$(read_first_line "$STATE_ROOT/latest-prepared" || true)"
   if [[ -f "$DROPIN_FILE" ]]; then
     release_line="custom-dropin"
-    while IFS= read -r token; do
-      case "$token" in
-        "$RELEASE_ROOT"/*/dist-cli/index.js)
-          release_line="$token"
-          break
-          ;;
-      esac
-    done < <(tr ' ' '\n' < "$DROPIN_FILE")
+    # The active release can live outside RELEASE_ROOT (for example, a
+    # preserved NAS release). Report the actual ExecStart target instead of
+    # hiding it behind custom-dropin.
+    release_line="$(sed -nE 's#^ExecStart=.* ([^[:space:]]+)/dist-cli/index\.js([[:space:]].*)?$#\1#p' "$DROPIN_FILE" | head -n 1)"
+    [[ -n "$release_line" ]] || release_line="custom-dropin"
   else
     release_line="base-unit"
   fi

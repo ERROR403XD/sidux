@@ -1,6 +1,6 @@
 <template>
   <div v-if="count > 0" class="account-reset-credits" :aria-label="t('可用重置机会')">
-    <AppButton v-for="(credit, index) in shown" :key="credit?.id || index" :disabled="disabled || !credit || busy" :title="t(credit ? expiry(credit) : '到期明细暂不可用，请刷新账号')" :aria-label="t(credit ? `使用重置机会，${expiry(credit)}` : '重置机会明细未知')" @click="choose(credit)">
+    <AppButton v-for="(credit, index) in shown" :key="credit?.id || index" :disabled="disabled || !credit || busy" :title="t(credit ? expiry(credit) : '到期明细暂不可用，请刷新账号')" :aria-label="credit ? t('使用重置机会，{v0}', { v0: expiry(credit) }) : t('重置机会明细未知')" @click="choose(credit)">
       <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10a8 8 0 1 1 1 7M4 4v6h6" /><path d="m13 7-4 6h4l-2 5 6-8h-4z" /></svg>
     </AppButton>
     <span v-if="count > 3">+{{ count - 3 }}{{ t('次重置') }}</span>

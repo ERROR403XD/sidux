@@ -4,6 +4,8 @@ import { once } from 'node:events'
 import { customConnectionModels, customConnectionEndpoints } from '../customConnections.js'
 import type { CustomConnectionStore } from './customConnectionStore.js'
 import { handleUnifiedResponsesProxyRequest } from './unifiedResponsesProxy.js'
+import { handleResponsesViaProtocolBridge, handleChatViaProtocolBridge } from './protocolBridgeTransport.js'
+import { sanitizeCustomConnectionRequest } from './customConnectionPayload.js'
 import { extractUsage } from './apiProxy/usage.js'
 import type { TokenUsage } from '../api/proxyUsageTypes.js'
 
@@ -19,11 +21,19 @@ export async function forwardCustomConnection(req: IncomingMessage, res: ServerR
     res.end(JSON.stringify({ object: 'list', data: customConnectionModels({ ...connection, hasApiKey: true }) }))
     return
   }
-  const payload: Record<string, unknown> = { ...input, model: input?.model || connection.model }
-  const model = connection.models.find(row => row.id === payload.model)
-  if (!model?.efforts?.length) { delete payload.reasoning; delete payload.reasoning_effort }
-  if (!model?.serviceTiers?.length) delete payload.service_tier
+  const payload = sanitizeCustomConnectionRequest(input || {}, connection)
   if (path === '/v1/responses') {
+    // Chat-only connections with the protocol bridge toggle speak Chat
+    // Completions upstream; native Responses connections keep the direct path.
+    if (connection.wireApi === 'chat') {
+      await handleResponsesViaProtocolBridge(
+        res,
+        { baseUrl: connection.baseUrl, apiKey: connection.apiKey, compatOptions: { unsupportedTools: 'omit' } },
+        payload,
+        { onUsage },
+      )
+      return
+    }
     const finished = Promise.race([once(res, 'finish'), once(res, 'close')]).catch(() => {})
     handleUnifiedResponsesProxyRequest(req, res, {
       bearerToken: connection.apiKey, wireApi: 'responses',
@@ -32,6 +42,12 @@ export async function forwardCustomConnection(req: IncomingMessage, res: ServerR
       requestBody: Buffer.from(JSON.stringify(payload)), onPayload: value => { const usage = extractUsage(value); if (usage) onUsage(usage) },
     })
     await finished
+    return
+  }
+  if (connection.wireApi === 'responses' && connection.protocolBridge) {
+    // Responses-only connection with the bridge toggle: convert the Chat
+    // request and serve it from the native Responses upstream.
+    await handleChatViaProtocolBridge(res, { baseUrl: connection.baseUrl, apiKey: connection.apiKey }, payload, { onUsage })
     return
   }
   const controller = new AbortController()

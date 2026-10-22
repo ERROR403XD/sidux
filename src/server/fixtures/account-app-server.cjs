@@ -76,6 +76,16 @@ createInterface({ input: process.stdin }).on('line', async line => {
     if (!loaded.has(p.threadId)) { send({ id, error: { message: 'thread not loaded: ' + p.threadId } }); return }
     result = { thread: threads.get(p.threadId) }
   }
+  if (method === 'thread/goal/get') result = { goal: threads.get(p.threadId)?.goal || null }
+  if (method === 'thread/goal/set') {
+    const thread = threads.get(p.threadId)
+    if (!thread) { send({ id, error: { message: 'wrong_runtime' } }); return }
+    const previous = thread.goal
+    thread.goal = { threadId: p.threadId, objective: p.objective || previous?.objective || 'Fixture GOAL', status: p.status || 'active', tokensUsed: previous?.tokensUsed || 0, timeUsedSeconds: previous?.timeUsedSeconds || 0, createdAt: previous?.createdAt || 1, updatedAt: 1 }
+    save(thread)
+    notify('thread/goal/updated', { threadId: p.threadId, goal: thread.goal })
+    result = { goal: thread.goal }
+  }
   if (method === 'turn/start') {
     const thread = threads.get(p.threadId)
     if (!thread) { send({ id, error: { message: 'wrong_runtime' } }); return }

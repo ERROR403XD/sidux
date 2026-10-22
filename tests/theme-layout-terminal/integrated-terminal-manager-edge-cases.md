@@ -8,7 +8,7 @@ Automated unit coverage for terminal manager edge cases that do not require a br
 
 #### Steps
 1. Run `pnpm run test:unit`
-2. Optionally run the focused test file with `pnpm run test:unit -- src/server/terminalManager.test.ts`
+2. Optionally run the focused tests with `pnpm exec vitest run src/server/terminalManager.test.ts src/server/routes/terminalRoutes.test.ts`
 
 #### Expected Results
 - Missing thread ids are rejected before spawning a PTY
@@ -18,6 +18,8 @@ Automated unit coverage for terminal manager edge cases that do not require a br
 - Output snapshots truncate to the last 16 KiB and set `truncated`
 - Existing session reattach emits init/attached events and safely syncs changed cwd
 - `New` adds a new tab without killing the previous session, and close/exit removes snapshots for the active session
+- Terminal HTTP routes preserve status, quick-command, attach, input, resize, close and snapshot status codes without starting a browser
+- Unavailable PTY mutations return 503, and missing `cwd`, `threadId`, or `sessionId` return 400
 
 #### Rollback/Cleanup
 - None

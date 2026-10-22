@@ -1,5 +1,5 @@
 import { onBeforeUnmount, ref, watch, type Ref } from 'vue'
-import { subscribeCodexNotifications } from '../api/codexGateway'
+import { subscribeRpcNotifications } from '../api/codexRpcClient'
 
 export function useIgnoredQuotaErrors(threadId: Ref<string>) {
   const ignored = ref<string[]>([])
@@ -47,7 +47,7 @@ export function useIgnoredQuotaErrors(threadId: Ref<string>) {
     }
   }
   watch(threadId, () => { ignored.value = []; error.value = ''; void refresh() }, { immediate: true })
-  const unsubscribe = subscribeCodexNotifications(notification => {
+  const unsubscribe = subscribeRpcNotifications(notification => {
     if (notification.method === 'ready' || (notification.method === 'thread/quotaErrorIgnored/changed' && (notification.params as { threadId?: string })?.threadId === threadId.value)) void refresh()
   })
   onBeforeUnmount(() => { disposed = true; revision++; controller?.abort(); unsubscribe() })

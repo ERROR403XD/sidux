@@ -19,3 +19,8 @@
 
 #### Rollback/Cleanup
 - Remove `~/.codex/telegram-bridge.json` to clear saved Telegram token.
+
+
+### 0.2.22-dev.8 审核边界
+
+上述手工步骤只适用于专门创建的独立CODEX_HOME。文中的全局配置路径在测试时必须替换为该测试home内路径；清理只处理本次创建的文件，不删除真实`~/.codex/telegram-bridge.json`。本轮新增离线证据见`tests/server-routes/telegramRoutes.md`，没有使用真实机器人或发送外部消息。

@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { createComposerPrompt, getComposerPrompts, removeComposerPrompt } from './codexGateway'
+import { createComposerPrompt, getComposerPrompts, removeComposerPrompt } from './composerPromptsGateway'
 afterEach(() => vi.unstubAllGlobals())
 const response = (data: unknown) => new Response(JSON.stringify({ data }), { headers: { 'Content-Type': 'application/json' } })
 

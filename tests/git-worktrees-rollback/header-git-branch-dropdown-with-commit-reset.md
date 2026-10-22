@@ -118,3 +118,14 @@ Thread header Git dropdown replaces the simple review action with a commits/bran
 - The review-summary path now uses one tracked `git diff --numstat` plus NUL-delimited `git ls-files --others --exclude-standard -z`; untracked line counts are streamed from disk instead of reading full files into memory.
 
 ---
+
+### 2026-10-20 dev.8 审核补充（未修复）
+
+- 前置：仅使用本轮独立4173与合成home；完整环境、精确命令及清理规则见`docs/baseline/022/dev8-review-20261020/README.md`。不得将脚本指向用户真实仓库。
+- 常规动作：执行`node docs/baseline/022/dev8-review-20261020/git-ui.cjs`，三尺寸浅深六组通过；核对Git磁盘分支、恢复ref、备份、index与刷新状态，不只看成功提示。
+- 缓存与迟到响应：执行`git-ui-boundaries.cjs`。预热历史开关两种列表后reset，再关闭历史；同时分别延迟checkout、unstaged snapshot响应后切会话或Staged。预期列表与当前仓库/范围一致，dev.8实际失败见R20/R22/R23。
+- 文件身份：同一提交创建` spaced.txt `、`spaced.txt`、`中文.txt`并点击普通路径。预期精确文件身份与正文一致；当前R21确认路径混淆。
+- 撤销范围：已暂存A文件，另改B文件，在Unstaged点击Revert all；预期只撤销工作区相对index的差异，A的index/工作区字节保持一致；当前R24失败。
+- 内容与编码：执行`git-file-content-ui.cjs`，分别检查尾随空格、CRLF、++/--正文和二进制单文件暂存；预期字节与计数准确，当前R25–R27失败。Stage all及刷新后的精确字节对照通过。
+- 错误主题：在三种尺寸深色Review中触发同一暂存失败，预期错误横幅使用深色表面；当前R28显示近白浅粉底，浅色对照正常。
+- 清理：脚本逐字节恢复指定合成会话、刷新fixture并删除自身临时仓库；容器脚本仅结束自身CLI。审核没有修复产品，失败退出码不能改写成通过。详情见`docs/plans/20261020-0003-Sidux-0.2.22-dev.8全量代码功能UI审核.md`。

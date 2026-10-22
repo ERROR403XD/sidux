@@ -7,13 +7,26 @@ import type { StoredAccountEntry } from './accountAuthStore.js'
 import { normalizeResetCredits } from '../accountResetCredits.js'
 import { quotaRefreshInterval } from '../quotaRefresh.js'
 import { privateJson } from './apiProxy/store.js'
+import type { ConversationNotificationContext } from '../conversationNotificationContext.js'
+import { conversationNoticeEnabled, conversationNoticeLabel, conversationNoticeReceipt, createConversationNoticeClassifier, defaultConversationNoticePreferences, validateConversationNoticePreferences, type ConversationNoticePreferences, type ConversationNoticeState } from '../conversationNotifications.js'
 
 type WindowState = { reset: number; used: number }
-type PendingNotice = { id: string; accountId: string; kind: 'fiveHour' | 'weekly' | 'resetExpiry' | 'resetIncrease'; message: string; createdAt: number; expiresAt?: number; creditId?: string; values?: Record<string, string> }
+type PendingNotice = { id: string; accountId: string; kind: 'fiveHour' | 'weekly' | 'resetExpiry' | 'resetIncrease' | 'conversation'; conversationState?: ConversationNoticeState; goalProgress?: boolean; message: string; createdAt: number; expiresAt?: number; creditId?: string; values?: Record<string, string> }
 type ResetCountState = { count: number; observedAt: number | null }
-type State = { resetCounts: Record<string, ResetCountState>; expiryNotices: Record<string, number>; version: 1; settings: NotificationSettings; accounts: Record<string, AccountNoticeRule>; windows: Record<string, WindowState>; pending: PendingNotice[]; lastResult: string | null }
+type State = { conversations: ConversationNoticePreferences; conversationReceipts: string[]; resetCounts: Record<string, ResetCountState>; expiryNotices: Record<string, number>; version: 1; settings: NotificationSettings; accounts: Record<string, AccountNoticeRule>; windows: Record<string, WindowState>; pending: PendingNotice[]; lastResult: string | null }
+function renderPostNoticeBody(template: string, values: Record<string, string>): string {
+  const message = values.message || ''
+  return renderNoticeBody(template, { ...values, message: message.startsWith('【Sidux】') ? message : `【Sidux】${message}` })
+}
+
+function pendingConversationEnabled(preferences: ConversationNoticePreferences, item: PendingNotice): boolean {
+  return item.kind !== 'conversation' || (preferences.postEnabled && !!item.conversationState && conversationNoticeEnabled(preferences, { state: item.conversationState, goalProgress: item.goalProgress }))
+}
 export class AccountNotificationService {
-  private state: State = { resetCounts: {}, expiryNotices: {}, version: 1, settings: { ...defaultNotificationSettings }, accounts: {}, windows: {}, pending: [], lastResult: null }
+  private state: State = { conversations: defaultConversationNoticePreferences(), conversationReceipts: [], resetCounts: {}, expiryNotices: {}, version: 1, settings: { ...defaultNotificationSettings }, accounts: {}, windows: {}, pending: [], lastResult: null }
+  private readonly classifyConversation = createConversationNoticeClassifier()
+  private readonly conversationInFlight = new Set<string>()
+  private conversationContextRead: Promise<unknown> = Promise.resolve()
   readonly ready: Promise<void>
   private serial: Promise<unknown> = Promise.resolve()
   private ticking: Promise<void> | null = null
@@ -30,8 +43,10 @@ export class AccountNotificationService {
         const data = JSON.parse(await readFile(statePath, 'utf8'))
         if (data.version !== 1) throw new Error('通知状态版本无效')
         this.state = { ...this.state, ...data, resetCounts: data.resetCounts || {}, settings: validateNotificationSettings(data.settings) }
+        this.state.conversations = data.conversations ? validateConversationNoticePreferences(data.conversations) : defaultConversationNoticePreferences()
+        this.state.conversationReceipts = Array.isArray(data.conversationReceipts) ? data.conversationReceipts.filter((key: unknown) => typeof key === 'string').slice(-256) : []
         this.state.accounts = Object.fromEntries(Object.entries(this.state.accounts).map(([id, rule]) => [id, normalizeNoticeRule(rule)]))
-        this.state.pending = this.state.pending.map(notice => ({ ...notice, message: mainQuotaWording(notice.message) }))
+        this.state.pending = this.state.pending.map(notice => notice.kind === 'conversation' ? notice : { ...notice, message: mainQuotaWording(notice.message) })
       } catch (cause) { if ((cause as NodeJS.ErrnoException).code !== 'ENOENT') throw cause }
     })()
     void this.ready.catch(() => undefined)
@@ -59,6 +74,49 @@ export class AccountNotificationService {
   async snapshot() {
     await this.ready
     return { settings: { ...this.state.settings }, accounts: structuredClone(this.state.accounts), pendingCount: this.state.pending.length, lastResult: this.state.lastResult }
+  }
+  async conversationPreferences(): Promise<ConversationNoticePreferences> {
+    await this.ready
+    return structuredClone(this.state.conversations)
+  }
+  async saveConversationPreferences(input: unknown): Promise<ConversationNoticePreferences> {
+    const value = validateConversationNoticePreferences(input)
+    await this.mutate(state => {
+      state.conversations = value
+      state.pending = state.pending.filter(item => pendingConversationEnabled(value, item))
+    })
+    return this.conversationPreferences()
+  }
+  async observeConversation(notification: { method: string; params: unknown }, readContext: (threadId: string) => Promise<ConversationNotificationContext>): Promise<void> {
+    if (this.stopped) return
+    const event = this.classifyConversation(notification)
+    if (!event) return
+    await this.ready
+    const { threadId, turnId, state: status } = event
+    const key = conversationNoticeReceipt(event)
+    const enabled = () => this.state.settings.enabled && this.state.conversations.postEnabled && conversationNoticeEnabled(this.state.conversations, event)
+    if (!enabled() || this.state.conversationReceipts.includes(key) || this.conversationInFlight.has(key)) return
+    // Bound metadata fanout even if a client replays a large stream of terminal events.
+    if (this.conversationInFlight.size >= 256) return
+    this.conversationInFlight.add(key)
+    try {
+      const contextRead = this.conversationContextRead.then(() => this.stopped ? undefined : readContext(threadId))
+      this.conversationContextRead = contextRead.catch(() => undefined)
+      const context = await contextRead.catch(() => undefined)
+      const title = context?.title || '未命名会话'
+      const projectName = context?.projectName || '无项目'
+      if (this.stopped) return
+      await this.mutate(state => {
+        if (!enabled() || state.conversationReceipts.includes(key)) return
+        state.conversationReceipts = [...state.conversationReceipts, key].slice(-256)
+        state.pending.push({ id: randomUUID(), accountId: '', kind: 'conversation', conversationState: status, ...(event.goalProgress ? { goalProgress: true } : {}),
+          message: `${conversationNoticeLabel(event)}：${projectName} · ${title}`, createdAt: Date.now(),
+          values: { thread_id: threadId, turn_id: turnId, title, project_name: projectName, status } })
+        state.pending = state.pending.slice(-256)
+      })
+    } finally {
+      this.conversationInFlight.delete(key)
+    }
   }
   async save(input: { settings?: NotificationSettings; accountId?: string; rule?: AccountNoticeRule; protectionPercent?: number; alias?: string }) {
     if (input.settings) validateNotificationSettings(input.settings)
@@ -99,7 +157,9 @@ export class AccountNotificationService {
       }
       if (input.settings) state.settings = { ...input.settings }
       if (input.accountId && input.rule) state.accounts[input.accountId] = normalizeNoticeRule(input.rule)
-      state.pending = state.pending.filter(item => state.settings.enabled && state.accounts[item.accountId]?.[item.kind])
+      state.pending = state.pending.filter(item => state.settings.enabled && (item.kind === 'conversation'
+        ? state.conversations.postEnabled && !!item.conversationState && state.conversations.states[item.conversationState]
+        : state.accounts[item.accountId]?.[item.kind]))
     })
     return { ...await this.snapshot(), protectionChanged }
   }
@@ -109,7 +169,7 @@ export class AccountNotificationService {
     if (!settings.enabled || !settings.url) throw new Error('请先启用并保存通知配置。')
     let result = '测试发送结果未确认'
     try {
-      const response = await this.fetchImpl(settings.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: renderNoticeBody(settings.body, { message: 'Sidux 通知测试：额度恢复通知渠道测试，此消息不代表真实额度重置。', account_id: '' }), redirect: 'error', signal: AbortSignal.timeout(10_000) })
+      const response = await this.fetchImpl(settings.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: renderPostNoticeBody(settings.body, { message: 'Sidux 通知测试：额度恢复通知渠道测试，此消息不代表真实额度重置。', account_id: '' }), redirect: 'error', signal: AbortSignal.timeout(10_000) })
       await response.body?.cancel()
       result = response.ok ? '测试通知已发送' : `测试通知失败：HTTP ${response.status}`
     } catch { /* Keep endpoint credentials and remote error payloads private. */ }
@@ -209,13 +269,14 @@ export class AccountNotificationService {
     // Remove durably before POST: an ambiguous delivery must not send duplicates after restart.
     const notices = await this.mutate(state => {
       if (!state.settings.enabled || inQuietHours(state.settings, now)) return []
-      state.pending = state.pending.filter(item => now - item.createdAt < 7 * 86400_000 && (!item.expiresAt || item.expiresAt > now))
+      state.pending = state.pending.filter(item => now - item.createdAt < 7 * 86400_000 && (!item.expiresAt || item.expiresAt > now) && pendingConversationEnabled(state.conversations, item))
       return state.pending.splice(0, 16).map(item => ({ ...item, settings: { ...state.settings } }))
     })
     for (const item of notices) {
+      if (!pendingConversationEnabled(this.state.conversations, item)) continue
       let result = '发送结果未确认，不自动重试'
       try {
-        const response = await this.fetchImpl(item.settings.url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CodexApp-Notification-Id': item.id }, body: renderNoticeBody(item.settings.body, { ...item.values, message: item.message, account_id: item.accountId }), redirect: 'error', signal: AbortSignal.timeout(10_000) })
+        const response = await this.fetchImpl(item.settings.url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CodexApp-Notification-Id': item.id }, body: renderPostNoticeBody(item.settings.body, { ...item.values, message: item.message, account_id: item.accountId }), redirect: 'error', signal: AbortSignal.timeout(10_000) })
         await response.body?.cancel()
         result = response.ok ? '通知已发送' : `通知失败：HTTP ${response.status}`
       } catch { /* Do not retain URL, body, credentials, or remote error text. */ }

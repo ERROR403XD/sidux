@@ -144,7 +144,7 @@ function projection(token, expired = new Date(Date.now() + 3600_000).toISOString
     pass(`${model} ${effort}: priority, image, schema, function/custom calls, phase and encrypted reasoning preserved`);
   }
   const ultra = await call('/v1/responses', { ...request, model: 'gpt-6-astra', reasoning: { effort: 'ultra' } });
-  assert.equal(ultra.status, 400); pass('pinned component rejects ultra explicitly; gateway catalog must omit it');
+  assert.equal(ultra.status, 200); assert.equal(records.at(-1).body.reasoning.effort, 'ultra'); pass('ultra accepted and preserved by the pinned component');
   const compact = await call('/v1/responses/compact', request);
   assert.equal(compact.status, 200, compact.text); assert(compact.text.includes('fixture-opaque')); pass('compact opaque content');
   projection('fixture-access-v2');
@@ -189,7 +189,7 @@ function projection(token, expired = new Date(Date.now() + 3600_000).toISOString
   const afterServerError = await call('/v1/responses', request);
   assert.equal(afterServerError.status, 200, afterServerError.text); pass('valid request recovers after upstream 500 with cooling owned by gateway');
   assert(!fs.existsSync(path.join(home, 'logs')) || fs.readdirSync(path.join(home, 'logs')).length === 0); pass('raw error logs disabled');
-  const report = { component: 'CLIProxyAPI v7.2.152 linux_amd64_no-plugin', assertions, requests: records.slice(0, 20).map(r => ({ transport: r.transport, path: r.path, inputCount: r.body?.input?.length, previousResponseId: r.body?.previous_response_id || null })), pending: ['real-account generation and refresh', 'actual Codex CLI tool/compact/resume', 'cross-key cache ownership', 'in-flight cancellation and hot reload under long-lived WS'] };
+  const report = { component: `CLIProxyAPI v${JSON.parse(fs.readFileSync('resources/api-proxy/manifest.json', 'utf8')).version} linux_amd64_no-plugin`, assertions, requests: records.slice(0, 20).map(r => ({ transport: r.transport, path: r.path, inputCount: r.body?.input?.length, previousResponseId: r.body?.previous_response_id || null })), pending: ['real-account generation and refresh', 'actual Codex CLI tool/compact/resume', 'cross-key cache ownership', 'in-flight cancellation and hot reload under long-lived WS'] };
   fs.mkdirSync('output/api-proxy-g0', { recursive: true });
   fs.writeFileSync('output/api-proxy-g0/component-probe.json', JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify(report, null, 2));

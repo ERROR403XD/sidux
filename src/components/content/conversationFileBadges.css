@@ -1,0 +1,22 @@
+/* Shared tool styles stay within the Conversation root, including child components. */
+@reference "tailwindcss";
+
+.conversation-root .file-change-badge {
+  @apply inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em];
+}
+
+.conversation-root .file-change-badge[data-operation='add'] {
+  @apply bg-emerald-50 text-emerald-700;
+}
+
+.conversation-root .file-change-badge[data-operation='update'] {
+  @apply bg-sky-50 text-sky-700;
+}
+
+.conversation-root .file-change-badge[data-operation='delete'] {
+  @apply bg-rose-50 text-rose-700;
+}
+
+.conversation-root .file-change-badge[data-operation='move'] {
+  @apply bg-amber-50 text-amber-700;
+}

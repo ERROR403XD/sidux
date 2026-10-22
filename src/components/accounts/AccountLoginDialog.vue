@@ -32,7 +32,14 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppSelect from '../common/AppSelect.vue'
 import AppButton from '../common/AppButton.vue'
-import { cancelCodexLogin, completeCodexLogin, getCodexLoginStatus, startCodexLogin, type AccountLoginCompleteResult, type AccountLoginStatus } from '../../api/codexGateway'
+import {
+  cancelCodexLogin,
+  completeCodexLogin,
+  getCodexLoginStatus,
+  startCodexLogin,
+  type AccountLoginCompleteResult,
+  type AccountLoginStatus,
+} from '../../api/accountGateway'
 import { copyTextToClipboard } from '../../utils/clipboard'
 import { formatLocalDateTime } from '../../dateTime'
 

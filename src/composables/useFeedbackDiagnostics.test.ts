@@ -32,7 +32,7 @@ describe('minimal feedback report', () => {
     openFeedbackReport(event)
     expect(event.preventDefault).toHaveBeenCalledOnce()
     expect(feedbackReport.value).toContain('Sidux')
-    expect(FEEDBACK_URL).toBe('https://github.com/ERROR403XD/sidux/issues')
+    expect(FEEDBACK_URL).toBe('https://github.com/ERROR403XD/codexapp/issues')
   })
   it('bounds reports and deduplicates identical latest entries', () => {
     const entry = { kind: 'visible-error' as const, message: 'failure' }

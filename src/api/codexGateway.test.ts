@@ -88,6 +88,29 @@ describe('startThreadTurn collaboration mode payloads', () => {
       },
     })
   })
+
+  it('keeps attachment-only turns non-empty so image-first threads stay listed', async () => {
+    const { requests } = mockRpcFetch()
+
+    await startThreadTurn('thread-1', '   ', ['http://localhost/codex-local-image?path=C:%5Ctemp%5Cpic.png'], undefined, undefined, undefined, [], undefined, undefined, 'immediate')
+    await startThreadTurn('thread-2', '', [], undefined, undefined, undefined, [{ label: 'notes.txt', path: 'C:\\temp\\notes.txt', fsPath: 'C:\\temp\\notes.txt' }], undefined, undefined, 'immediate')
+    await startThreadTurn('thread-3', '', ['https://example.com/pic.png'], undefined, undefined, undefined, [], undefined, undefined, 'immediate')
+
+    const submissions = requests.filter(row => row.method === 'delivery/submit')
+    expect(submissions).toHaveLength(3)
+    // Local images become file attachments, so the stored text keeps the
+    // existing files scaffold and ends with the placeholder request line.
+    const firstInput = submissions[0].params.input as Array<{ type: string; text?: string }>
+    expect(firstInput[0].text).toContain('# Files mentioned by the user:')
+    expect(firstInput[0].text).toContain('[Image]')
+    expect(firstInput.some(item => item.type === 'localImage')).toBe(true)
+    const secondInput = submissions[1].params.input as Array<{ type: string; text?: string }>
+    expect(secondInput[0].text).toContain('[Attachment]')
+    expect(secondInput[0].text).toContain('notes.txt')
+    // Remote images have no file scaffold: the placeholder is the whole text.
+    const thirdInput = submissions[2].params.input as Array<{ type: string; text?: string }>
+    expect(thirdInput[0].text).toBe('[Image]')
+  })
 })
 
 describe('dynamic execution settings', () => {

@@ -40,7 +40,7 @@
         </template>
       </section>
     </div>
-    <template #footer><AppButton :disabled="busy" @click="visible = false">{{ t('取消') }}</AppButton><AppButton :disabled="!loaded" :busy="busy" @click="save">{{ t('保存账号设置') }}</AppButton></template>
+    <template #footer><AppButton :disabled="busy" @click="visible = false">{{ t('取消') }}</AppButton><AppButton :variant="hasChanges ? 'primary' : 'default'" :disabled="!loaded" :busy="busy" @click="save">{{ t('保存配置') }}</AppButton></template>
   </AppDialog>
 </template>
 <script setup lang="ts">
@@ -65,6 +65,11 @@ const initialPercent = ref(0)
 const alias = ref('')
 const hasFiveHourQuota = computed(() => [props.account.quotaSnapshot?.primary, props.account.quotaSnapshot?.secondary].some(window => window?.windowMinutes === 300))
 const rule = ref<AccountNoticeRule>({ ...defaultNoticeRule })
+const savedConfiguration = ref('')
+const hasChanges = computed(() => loaded.value && savedConfiguration.value !== configurationSnapshot())
+function configurationSnapshot(): string {
+  return JSON.stringify({ alias: alias.value, percent: percent.value, rule: rule.value })
+}
 async function open(): Promise<void> {
   visible.value = true
   loaded.value = false
@@ -75,6 +80,7 @@ async function open(): Promise<void> {
   try {
     const result = await apiProxyRequest<{ accounts: Record<string, AccountNoticeRule> }>('/notifications')
     rule.value = { ...defaultNoticeRule, ...result.accounts[props.account.storageId] }
+    savedConfiguration.value = configurationSnapshot()
     loaded.value = true
   } catch { error.value = '读取账号设置失败。' }
 }

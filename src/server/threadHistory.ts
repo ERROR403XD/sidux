@@ -15,6 +15,9 @@ export const HISTORY_PAGE_SIZE = 10
 export const LEGACY_HISTORY_BYTE_LIMIT = 8 * 1024 * 1024
 const CACHE_BYTE_LIMIT = 32 * 1024 * 1024
 const CACHE_ENTRY_LIMIT = 10
+const TURN_STATE_SEARCH_LIMIT = 1000
+const TURN_STATE_CURSOR_LIMIT = 64
+type TurnStateSearch = { nextCursor: string; visited: Set<string> }
 
 function record(value: unknown): RecordValue {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as RecordValue : {}
@@ -35,8 +38,82 @@ export class ThreadHistory {
   private readonly revisions = new Map<string, number>()
   private readonly inFlight = new Map<string, Promise<RecordValue>>()
   private cacheBytes = 0
+  private readonly turnStateSearches = new Map<string, TurnStateSearch>()
+  private readonly turnStateRequests = new Map<string, Promise<RecordValue | null>>()
+  private turnStateRevision = 0
 
   constructor(private readonly rpc: Rpc, private readonly features: () => Promise<Features>) {}
+
+  async metadata(threadId: string): Promise<RecordValue> {
+    return record(await this.rpc('thread/read', { threadId, includeTurns: false }))
+  }
+
+  turnState(threadId: string, turnId: string): Promise<RecordValue | null> {
+    const key = JSON.stringify([threadId, turnId])
+    const pending = this.turnStateRequests.get(key)
+    if (pending) return pending
+    const revision = this.turnStateRevision
+    const request = this.readTurnState(threadId, turnId, key, revision).finally(() => {
+      if (this.turnStateRequests.get(key) === request) this.turnStateRequests.delete(key)
+    })
+    this.turnStateRequests.set(key, request)
+    return request
+  }
+
+  private async readTurnState(threadId: string, turnId: string, key: string, revision: number): Promise<RecordValue | null> {
+    const forgetSearch = () => {
+      if (revision === this.turnStateRevision) this.turnStateSearches.delete(key)
+    }
+    if ((await this.features()).historyPaging) {
+      try {
+        const response = record(await this.rpc('thread/turns/list', { threadId, limit: 10, sortDirection: 'desc', itemsView: 'notLoaded' }))
+        if (!Array.isArray(response.data)) throw new Error('回合状态分页返回无效数据。')
+        const recent = response.data.map(record).find(turn => turn.id === turnId)
+        if (recent) {
+          forgetSearch()
+          return recent
+        }
+        const firstCursor = cursor(response.nextCursor)
+        if (!firstCursor) {
+          forgetSearch()
+          return null
+        }
+        const search = revision === this.turnStateRevision ? this.turnStateSearches.get(key) : undefined
+        const nextCursor = search?.nextCursor ?? firstCursor
+        // One older metadata page per inspection; retain progress for the next tick.
+        const older = record(await this.rpc('thread/turns/list', { threadId, limit: 50, sortDirection: 'desc', itemsView: 'notLoaded', cursor: nextCursor }))
+        if (!Array.isArray(older.data)) throw new Error('回合状态分页返回无效数据。')
+        const found = older.data.map(record).find(turn => turn.id === turnId)
+        if (found) {
+          forgetSearch()
+          return found
+        }
+        const following = cursor(older.nextCursor)
+        if (!following) {
+          forgetSearch()
+          return null
+        }
+        const visited = new Set(search?.visited)
+        visited.add(nextCursor)
+        if (visited.has(following)) throw new Error('回合状态游标重复，请刷新后重试。')
+        if (visited.size > TURN_STATE_CURSOR_LIMIT) visited.delete(visited.values().next().value!)
+        if (revision === this.turnStateRevision) {
+          this.turnStateSearches.delete(key)
+          if (this.turnStateSearches.size >= TURN_STATE_SEARCH_LIMIT) this.turnStateSearches.delete(this.turnStateSearches.keys().next().value!)
+          this.turnStateSearches.set(key, { nextCursor: following, visited })
+        }
+        return null
+      } catch (cause) {
+        forgetSearch()
+        if (!isHistoryPagingUnsupported(cause)) throw cause
+      }
+    }
+    // Older CLI history has the existing file/cache byte limits.
+    const metadata = await this.metadata(threadId)
+    const value = await this.legacyRead(threadId, metadata)
+    const turns = record(value.thread).turns
+    return Array.isArray(turns) ? turns.map(record).find(turn => turn.id === turnId) ?? null : null
+  }
 
   invalidate(threadId: string): void {
     const entry = this.cache.get(threadId)
@@ -47,6 +124,9 @@ export class ThreadHistory {
   }
 
   clear(): void {
+    this.turnStateRevision++
+    this.turnStateSearches.clear()
+    this.turnStateRequests.clear()
     for (const id of this.inFlight.keys()) this.invalidate(id)
     this.cache.clear()
     this.cacheBytes = 0

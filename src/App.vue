@@ -111,10 +111,10 @@
               {{ option.label }}
             </button>
           </div>
-          <p v-if="!isSidebarCollapsed && sidebarFilter === 'interrupted' && sidebarFilterError" class="sidebar-filter-error" role="alert">
-            {{ t(sidebarFilterError) }} <button type="button" @click="refreshSidebarFilter">{{ t('重试') }}</button>
+          <p v-if="!isSidebarCollapsed && sidebarFilter === 'interrupted' && sidebarFilterIncomplete && !sidebarFilterLoading" class="sidebar-filter-status" role="status">
+            {{ t('部分会话状态未能确认，请重试') }} <AppButton @click="refreshSidebarFilter">{{ t('重试') }}</AppButton>
           </p>
-          <SidebarThreadTree :status-filter="sidebarFilter" :retained-thread-id="retainedThreadId" :active-retained-ids="sidebarActiveSession.retainedIds" :interruptions="sidebarProblems" :ignoring-problems="sidebarIgnoringProblems" :interruption-error="sidebarProblemError" @ignore-thread-problems="ignoreThreadProblems" :quota-interrupted="sidebarInterrupted" :filter-loading="sidebarFilterLoading" ref="sidebarThreadTreeRef" :groups="sidebarThreadGroups" :accounts="executionAccounts" :models="availableModelIds" :model-capabilities="availableModels" :goals="threadGoals" :quota-resume-marks="quotaResumeMarks" :quota-resume-error="quotaResumeError" @toggle-quota-resume="toggleQuotaResume" :project-display-name-by-id="projectDisplayNameById"
+          <SidebarThreadTree :status-filter="sidebarFilter" :retained-thread-id="retainedThreadId" :active-retained-ids="sidebarActiveSession.retainedIds" :interruptions="sidebarProblems" :ignoring-problems="sidebarIgnoringProblems" :interruption-error="sidebarProblemError" @ignore-thread-problems="ignoreThreadProblems" :quota-interrupted="sidebarInterrupted" :filter-loading="sidebarFilterLoading" :filter-incomplete="sidebarFilterIncomplete" ref="sidebarThreadTreeRef" :groups="sidebarThreadGroups" :accounts="executionAccounts" :models="availableModelIds" :model-capabilities="availableModels" :goals="threadGoals" :quota-resume-marks="quotaResumeMarks" :quota-resume-error="quotaResumeError" @toggle-quota-resume="toggleQuotaResume" :project-display-name-by-id="projectDisplayNameById"
             :project-git-repo-by-name="projectGitRepoByName"
             :project-cwd-by-name="projectCwdByName"
             v-if="!isSidebarCollapsed"
@@ -124,6 +124,11 @@
             :search-matched-thread-ids="serverMatchedThreadIds"
             :search-state="threadSearchState"
             @select="onSelectThread"
+            @mark-project-read="onMarkProjectRead"
+            @mark-thread-read="markThreadAsRead"
+            :scheduled-resume-marks="scheduledResumeMarks"
+            :scheduled-resume-error="scheduledResumeError"
+            :schedule-resume="scheduleThreadResume"
             @archive="onArchiveThread" @start-new-thread="onStartNewThread" @edit-project="onEditProject"
             @browse-thread-files="onBrowseThreadFiles"
             @save-thread-project="onSaveThreadProject"
@@ -158,7 +163,7 @@
           <AppPopover :open="isSettingsOpen" :anchor="settingsAreaRef" :width="400" direction="up" avoid-anchor-overlap panel-class="account-popover" @close="isSettingsOpen = false">
             <div class="account-popover-content">
               <div class="account-popover-scroll">
-                <AccountPanel :accounts="displayAccounts" :busy="isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
+                <AccountPanel :accounts="displayAccounts" :busy="isAccountPanelBusy" :error="accountActionError" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
                   @reload="loadAccountsState()" @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount" />
                 <CustomConnections @changed="onCustomConnectionsChanged" />
               </div>
@@ -269,122 +274,34 @@
             />
           </template>
           <template v-else-if="isApiProxyRoute"><ApiProxyPanel /></template>
-          <template v-else-if="isSettingsRoute"><SettingsPanel>
-<template #accounts><AccountPanel :accounts="displayAccounts" :busy="isSwitchingAccounts || isStartingCodexLogin" :error="accountActionError" :confirming-remove-id="confirmingRemoveAccountId" :disabled="isAccountActionDisabled" :status="formatAccountStatus"
-  @reload="loadAccountsState()" @refresh="onRefreshAccounts" @add="onStartCodexLogin('add')" @switch="onSwitchAccount" @quota="onRefreshAccountQuota" @reauth="onStartCodexLogin('reauth', $event)" @remove="onRemoveAccount" />
-<CustomConnections @changed="onCustomConnectionsChanged" />
-<AccountActivation :key="displayTimeZonePreference" :accounts="accounts" /></template>
-<template #general><div class="settings-form-grid"><ConversationDefaults :value="webDefaultChoice" :remember="webPreferenceState.remember" :models="availableModels" :provider="webDefaultsProvider" :has-account="!!activeAccount" :error="webPreferenceError" @save="configureWebDefaults" />              <div class="sidebar-settings-row sidebar-settings-row--select" :title="t('Choose the interface language for the app.')">
-                <span class="sidebar-settings-label">{{ t('UI language') }}</span>
-                <AppSelect
-                  class="sidebar-settings-provider-dropdown"
-                  :model-value="uiLanguage"
-                  :options="uiLanguageOptions"
-                  :placeholder="t('UI language')"
-                  menu-align="end"
-                  @update:model-value="setUiLanguage($event as 'en' | 'zh-CN')"
-                />
-              </div>
-              <div class="sidebar-settings-row sidebar-settings-timezone settings-field-roomy">
-                <span class="sidebar-settings-label">{{ t('Display timezone') }}</span>
-                <AppSelect
-                  :model-value="displayTimeZonePreference"
-                  :disabled="isSavingDisplayTimeZone"
-                  :options="displayTimeZoneOptions"
-                  :placeholder="t('Display timezone')"
-                  enable-search
-                  :search-placeholder="t('Search timezones')"
-                  menu-align="end"
-                  @update:model-value="onDisplayTimeZoneChange"
-                />
-              </div>
-              <p v-if="displayTimeZoneError" class="sidebar-timezone-error settings-field-wide" role="alert">{{ t(displayTimeZoneError) }}</p>
-</div></template>
-<template #appearance>
-<div class="settings-form-grid">
-  <div class="sidebar-settings-row sidebar-settings-row--select settings-field-short" :title="t(SETTINGS_HELP.appearance)">
-    <span class="sidebar-settings-label">{{ t('主题') }}</span>
-    <AppSelect
-      :model-value="darkMode"
-      :options="appearanceOptions"
-      :aria-label="t('主题')"
-      menu-align="end"
-      @update:model-value="onDarkModeChange"
-    />
-  </div>
-  <div class="sidebar-settings-row sidebar-settings-row--select settings-field-short" :title="t(SETTINGS_HELP.chatWidth)">
-    <span class="sidebar-settings-label">{{ t('Chat width') }}</span>
-    <AppSelect
-      :model-value="chatWidth"
-      :options="chatWidthOptions"
-      :aria-label="t('Chat width')"
-      menu-align="end"
-      @update:model-value="onChatWidthChange"
-    />
-  </div>
-  <WebUiBrandingSettings />
-</div>
-</template>
-<template #input>
-  <div class="settings-form-grid">
-    <AppSwitch class="settings-switch-row" :model-value="!sendWithEnter" :title="t(SETTINGS_HELP.sendWithEnter)" @change="toggleSendWithEnter">{{ t('Require ⌘ + enter to send') }}</AppSwitch>
-    <div class="sidebar-settings-row sidebar-settings-row--select" :title="t(SETTINGS_HELP.dictationLanguage)">
-      <span class="sidebar-settings-label">{{ t('Dictation language') }}</span>
-      <AppSelect
-        :model-value="dictationLanguage"
-        :options="dictationLanguageOptions"
-        :placeholder="t('Auto-detect')"
-        open-direction="up"
-        enable-search
-        :search-placeholder="t('Search language...')"
-        @update:model-value="onDictationLanguageChange"
-      />
-    </div>
-    <AppSwitch class="settings-switch-row" :model-value="dictationClickToToggle" :title="t(SETTINGS_HELP.dictationClickToToggle)" @change="toggleDictationClickToToggle">{{ t('Click to toggle dictation') }}</AppSwitch>
-    <AppSwitch class="settings-switch-row" :model-value="dictationAutoSend" :title="t(SETTINGS_HELP.dictationAutoSend)" @change="toggleDictationAutoSend">{{ t('Auto send dictation') }}</AppSwitch>
-  </div>
-</template>
-<template #integrations>
-  <div class="settings-integrations-grid">
-    <NotificationSettings :key="displayTimeZonePreference" />
-    <section class="notification-settings settings-integration-card">
-      <h3>Telegram</h3>
-      <AppSwitch v-model="telegramNotificationsEnabledDraft" :disabled="isTelegramSaving">{{ t('启用Telegram通知') }}</AppSwitch>
-      <label>{{ t('Bot token') }}<input v-model="telegramBotTokenDraft" class="app-input" type="password" placeholder="123456:ABCDEF" autocomplete="off" spellcheck="false" :disabled="isTelegramSaving" /></label>
-      <div class="notification-message-field"><label>{{ t('Allowed Telegram user IDs') }}<textarea v-model="telegramAllowedUserIdsDraft" class="app-input" rows="5" placeholder="123456789&#10;987654321&#10;*" spellcheck="false" :disabled="isTelegramSaving" /></label></div>
-      <div class="notification-actions">
-        <p v-if="telegramConfigError" class="account-panel-error" role="alert">{{ t(telegramConfigError) }}</p>
-        <AppButton :busy="isTelegramSaving" @click="saveTelegramConfig()">{{ t('保存Telegram设置') }}</AppButton>
-        <AppButton :disabled="isTelegramSaving || !telegramNotificationsEnabledDraft" @click="testTelegramNotification">{{ t('发送测试通知') }}</AppButton>
-      </div>
-      <div class="notification-quiet">
-        <AppSwitch v-model="telegramQuietDraft.quietEnabled" :disabled="isTelegramSaving" @change="saveTelegramQuietHours">{{ t('免打扰') }}</AppSwitch>
-        <div class="notification-hours">
-          <AppTimeInput v-model="telegramQuietDraft.quietStart" class="app-input" :aria-label="t('免打扰开始')" placeholder="22:00" :disabled="isTelegramSaving || !telegramQuietDraft.quietEnabled" @change="saveTelegramQuietHours" />
-          <span>{{ t('至') }}</span>
-          <AppTimeInput v-model="telegramQuietDraft.quietEnd" class="app-input" :aria-label="t('免打扰结束')" placeholder="08:00" :disabled="isTelegramSaving || !telegramQuietDraft.quietEnabled" @change="saveTelegramQuietHours" />
-        </div>
-      </div>
-    </section>
-  </div>
-</template>
-<template #about><div class="settings-about-versions"><div class="account-versions"><span>Codex {{ t(runtimeCapabilities?.cliVersion || '检测中…') }}</span><span>Sidux {{ runtimeCapabilities?.appVersion || appVersion }}</span></div>
-<p v-if="runtimeCapabilities && runtimeCapabilities.appVersion !== appVersion" role="alert">{{ t('前端版本') }} {{ appVersion }} {{ t('与服务端版本不同，请刷新页面。') }}</p></div>
-<details class="runtime-capabilities"><summary>{{ t('运行版本与能力') }}</summary>
-<template v-if="runtimeCapabilities"><p>{{ t('模型：动态目录 · 工具：轻量摘要') }}</p><p>{{ t('异步问题：已接入') }}</p><p>{{ t('原生历史分页：') }}{{ t(runtimeCapabilities.features?.historyPaging ? '可用' : 'CLI 未声明，使用兼容路径') }}</p><p>{{ t('协议') }} {{ t(runtimeCapabilities.experimental ? 'experimental' : '默认') }} · {{ runtimeCapabilities.schemaHash.slice(0,12) }}</p><p>{{ t('CLI 声明') }} {{ runtimeCapabilities.methods.length }} {{ t('个方法，声明数量不代表客户端支持率。') }}</p><p>{{ t('检测时间') }} {{ runtimeCapabilities.generatedAt }}</p></template>
-<p v-if="runtimeCapabilitiesError" role="alert">{{ t(runtimeCapabilitiesError) }}</p>
-<AppButton :busy="runtimeCapabilitiesLoading" @click="loadRuntimeCapabilities">{{ t('重新检测') }}</AppButton></details>              <a
-                v-if="hasVisibleFeedbackError"
-                class="sidebar-settings-row sidebar-settings-feedback-row"
-                :href="feedbackMailto"
-                @click="prepareFeedbackLink"
-              >
-                <span class="sidebar-settings-label">{{ t('Send feedback') }}</span>
-                <span class="sidebar-settings-value">{{ t('Issue detected') }}</span>
-              </a>
-
-</template>
-</SettingsPanel></template>
+          <template v-else-if="isSettingsRoute">
+            <SettingsRoute
+              :accounts="displayAccounts"
+              :active-account="activeAccount"
+              :is-account-panel-busy="isAccountPanelBusy"
+              :account-action-error="accountActionError"
+              :confirming-remove-account-id="confirmingRemoveAccountId"
+              :is-account-action-disabled="isAccountActionDisabled"
+              :format-account-status="formatAccountStatus"
+              :web-preference-state="webPreferenceState"
+              :web-default-choice="webDefaultChoice"
+              :available-models="availableModels"
+              :web-defaults-provider="webDefaultsProvider"
+              :web-preference-error="webPreferenceError"
+              :has-visible-feedback-error="hasVisibleFeedbackError"
+              :feedback-mailto="feedbackMailto"
+              :prepare-feedback-link="prepareFeedbackLink"
+              @reload-accounts="loadAccountsState()"
+              @refresh-accounts="onRefreshAccounts"
+              @add-account="onStartCodexLogin('add')"
+              @switch-account="onSwitchAccount"
+              @refresh-account-quota="onRefreshAccountQuota"
+              @reauth-account="onStartCodexLogin('reauth', $event)"
+              @remove-account="onRemoveAccount"
+              @custom-connections-changed="onCustomConnectionsChanged"
+              @save-web-defaults="configureWebDefaults"
+            />
+          </template>
           <template v-else-if="isHomeRoute">
             <div class="content-grid content-grid-home">
               <div class="new-thread-empty">
@@ -583,6 +500,9 @@
                   <span>{{ t(codexCliMissingError) }}</span>
                   <a class="visible-error-feedback" :href="feedbackMailto" @click="prepareFeedbackLink($event, codexCliMissingError)">{{ t('Send feedback') }}</a>
                 </div>
+                <div v-if="newThreadSendError" class="composer-runtime-error" role="alert">
+                  <span>{{ t(newThreadSendError) }}</span>
+                </div>
                 <ThreadTerminalPanel
                   v-if="homeTerminalOpen && composerCwd"
                   ref="homeTerminalPanelRef"
@@ -598,7 +518,7 @@
                   :collaboration-modes="availableCollaborationModes"
                   :selected-collaboration-mode="selectedCollaborationMode"
                   :models="availableModelIds" :model-capabilities="availableModels" :selected-model="composerSelectedModelId"
-                  :selected-reasoning-effort="selectedReasoningEffort" :model-catalog-error="modelCatalogError" :reported-model="reportedModel"
+                  :selected-reasoning-effort="selectedReasoningEffort" :model-catalog-error="webPreferenceError || modelCatalogError" :reported-model="reportedModel"
                   :selected-speed-mode="selectedSpeedMode"
                   :is-updating-speed-mode="isUpdatingSpeedMode"
                   :skills="installedSkills"
@@ -616,7 +536,7 @@
               </div>
             </div>
           </template>
-          <template v-else>
+          <template v-else-if="route.name === 'thread'">
             <div class="content-grid">
               <ReviewPane
                 v-if="isReviewPaneOpen && selectedThreadId && composerCwd"
@@ -630,7 +550,6 @@
 
               <template v-else>
                 <div class="content-thread">
-                  <p v-if="threadGoalsError" class="thread-goal-read-error" role="alert">{{ t(threadGoalsError) }} <AppButton @click="refreshThreadGoals">{{ t('重新读取') }}</AppButton></p>
                   <p v-if="pendingCompactionRequest" class="thread-compaction-pending" role="status">{{ t('压缩请求等待确认。') }}<AppButton @click="onComposerCommand({ name: 'compact', complete: () => {} })">{{ t('检查压缩') }}</AppButton></p>
                   <ThreadTasksPanel :thread-id="selectedThreadId" :identity="selectedThread?.task || null" @return-task="onReturnTask" @open-task="onOpenRelatedTask" @search-tasks="isTaskSearchOpen = true">
                     <template #tools><ThreadProcessPanel :key="`${selectedThreadId}:${composerCwd}:${directoryAccountRevision}`" :thread-id="selectedThreadId" :cwd="composerCwd" /></template>
@@ -639,6 +558,7 @@
                   <ThreadGoalCard v-if="selectedGoal" :goal="selectedGoal" @manage="onComposerCommand({ name: 'goal', complete: () => {} })" />
                   <ThreadConversation ref="threadConversationRef" :messages="filteredMessages" :is-loading="isLoadingMessages"
                     :active-thread-id="composerThreadContextId" :cwd="composerCwd"
+                    :account-revision="directoryAccountRevision"
                     :live-overlay="liveOverlay"
                     :pending-requests="selectedThreadServerRequests"
                     :has-more-persisted-above="hasMoreOlderMessages"
@@ -690,6 +610,7 @@
                     :key="`${request.threadId}:${request.id}`"
                     :request="request"
                     :busy="pendingReplyIds.has(request.id)"
+                    :error="pendingReplyErrors.get(request.id) || ''"
                     :request-count="selectedThreadServerRequests.length"
                     :has-queue-above="selectedThreadQueuedMessages.length > 0"
                     @respond-server-request="onRespondServerRequest"
@@ -703,15 +624,15 @@
                   <ThreadComposer
                     v-if="!selectedThreadPendingRequest || isAsyncUserInputRequest(selectedThreadPendingRequest)"
                     ref="threadComposerRef"
-                    :disabled="isSwitchingAccounts || selectedThread?.task?.canAcceptDirectInput === false"
+                    :disabled="isSwitchingAccounts || selectedThreadId !== routeThreadId || selectedThread?.task?.canAcceptDirectInput === false"
                     :active-thread-id="composerThreadContextId"
-                    :draft-key="editingQueuedMessageState?.draftKey"
+                    :draft-key="editingQueuedMessageState?.threadId === composerThreadContextId ? editingQueuedMessageState.draftKey : undefined"
                     :cwd="composerCwd"
                     :collaboration-modes="availableCollaborationModes"
                     :selected-collaboration-mode="selectedCollaborationMode"
                     :models="availableModelIds" :model-capabilities="availableModels"
                     :selected-model="composerSelectedModelId"
-                    :selected-reasoning-effort="selectedReasoningEffort" :model-catalog-error="modelCatalogError" :reported-model="reportedModel"
+                    :selected-reasoning-effort="selectedReasoningEffort" :model-catalog-error="webPreferenceError || modelCatalogError" :reported-model="reportedModel"
                     :selected-speed-mode="selectedSpeedMode"
                     :is-updating-speed-mode="isUpdatingSpeedMode"
                     :skills="installedSkills"
@@ -785,7 +706,7 @@
       </div>
     </div>
   </div>
-  <AccountLoginDialog :open="isCodexLoginModalOpen" :intent="loginIntent" :target-storage-id="loginTargetStorageId" :target-label="loginTargetAccount ? accountDisplayName(loginTargetAccount) : ''" @close="isCodexLoginModalOpen = false" @completed="onAccountLoginCompleted" @resume="resumeAccountLogin" />
+  <AccountLoginDialog :open="isCodexLoginModalOpen" :intent="loginIntent" :target-storage-id="loginTargetStorageId" :target-label="loginTargetAccount ? accountDisplayName(loginTargetAccount) : ''" @close="closeAccountLogin" @completed="onAccountLoginCompleted" @resume="resumeAccountLogin" />
   <AppDialog :open="isProjectSetupModalOpen" :title="t(projectEditingId ? '编辑项目' : t('Create or clone project'))" :busy="isProjectSetupSubmitting" @close="onCloseProjectSetupModal">
                       <div v-if="!projectEditingId" class="new-thread-project-mode-tabs" role="tablist" :aria-label="t('Project source')">
                         <button
@@ -848,7 +769,7 @@
                       </label>
                       <label v-if="projectSetupMode === 'create' && projectSetupBaseDir.trim()" class="new-thread-project-field">
                         <span class="new-thread-open-folder-label">{{ t('附加工作目录') }}</span>
-                        <textarea v-model="projectDirectoryDraft" class="new-thread-open-folder-path project-directories-input" rows="4" :disabled="isProjectSetupSubmitting || !projectDirectoriesLoaded" :placeholder="'/workspace/project1\n/workspace/project2'" />
+                        <textarea v-model="projectDirectoryDraft" class="new-thread-open-folder-path project-directories-input" rows="4" :disabled="isProjectSetupSubmitting || !projectDirectoriesLoaded" :placeholder="'/home/Code/project1\n/home/Code/project2'" />
                       </label>
                       <div v-if="projectSetupError" class="new-thread-open-folder-error visible-error-with-feedback">
                         <span>{{ t(projectSetupError) }}</span>
@@ -869,26 +790,24 @@
 </template>
 
 <script setup lang="ts">
-import CustomConnections from './components/accounts/CustomConnections.vue'
 import { useCustomConnections } from './composables/useCustomConnections'
 import { invalidateModelCatalog } from './api/modelCatalog'
 import AppSwitch from './components/common/AppSwitch.vue'
 import type { UiProjectGroup } from './types/codex'
 import { accountDisplayName } from './accountDisplay'
 import AppDialog from './components/common/AppDialog.vue'
-import NotificationSettings from './components/settings/NotificationSettings.vue'
-import AccountActivation from './components/settings/AccountActivation.vue'
-import WebUiBrandingSettings from './components/settings/WebUiBrandingSettings.vue'
+import { useRuntimeCapabilities } from './composables/useRuntimeCapabilities'
+import { useInputPreferences } from './composables/useInputPreferences'
+import { CHAT_WIDTH_PRESETS, useAppearancePreferences } from './composables/useAppearancePreferences'
+import { subscribeDisplayTimeZoneStorage } from './dateTime'
 import { useWebUiBranding } from './composables/useWebUiBranding'
 import { webUiDocumentTitle } from './webUiBranding'
-import ConversationDefaults from './components/settings/ConversationDefaults.vue'
-import SettingsPanel from './components/settings/SettingsPanel.vue'
 import IconTablerFilePencil from './components/icons/IconTablerFilePencil.vue'
 import AccountQuota from './components/accounts/AccountQuota.vue'
 import AccountPanel from './components/accounts/AccountPanel.vue'
+import CustomConnections from './components/accounts/CustomConnections.vue'
 import AppPopover from './components/common/AppPopover.vue'
 import AccountLoginDialog from './components/accounts/AccountLoginDialog.vue'
-import type { AccountLoginCompleteResult } from './api/codexGateway'
 import AppButton from './components/common/AppButton.vue'
 import DeliveryOutbox from './components/content/DeliveryOutbox.vue'
 import type { PendingWebDelivery } from './api/deliveryOutbox'
@@ -896,13 +815,12 @@ import { createDeliveryId } from './delivery'
 
 import { isAsyncUserInputRequest, pendingRequestPriority } from './userQuestions'
 import { isOverlayEventInside } from './composables/overlayEvents'
-import { availableDisplayTimeZones, browserTimeZone, displayTimeZone, displayTimeZonePreference, formatLocalDateTime, setDisplayTimeZone, subscribeDisplayTimeZoneStorage } from './dateTime'
+import { displayTimeZone, formatLocalDateTime } from './dateTime'
 import AppSelect from './components/common/AppSelect.vue'
-import AppTimeInput from './components/common/AppTimeInput.vue'
 import { vModalBackdrop } from './composables/modalBackdrop'
-import { getProjectDirectories } from './api/codexGateway'
+import { getProjectDirectories } from './api/projectGateway'
 import { isVirtualProjectId, type VirtualProject } from './projectOrganization'
-import { assignConversationProject, invalidateWorkspaceRootsStateCache } from './api/codexGateway'
+import { assignConversationProject, invalidateWorkspaceRootsStateCache } from './api/projectGateway'
 import { projectDisplayName, projectSetupInput } from './composables/projectSetup'
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -920,9 +838,10 @@ import ThreadProcessPanel from './components/content/ThreadProcessPanel.vue'
 import TaskSearchDialog from './components/content/TaskSearchDialog.vue'
 import { taskId } from './subtasks'
 import { compactionRequests } from './api/threadCompaction'
-import { useAccountQuotaUpdates } from './composables/useAccountQuotaUpdates'
+import { useAppAccountsController } from './composables/appAccountsController'
 import { useSidebarThreadFilter } from './composables/useSidebarThreadFilter'
 import { useQuotaResume } from './composables/useQuotaResume'
+import { useScheduledResume } from './composables/useScheduledResume'
 import { useThreadGoals } from './composables/useThreadGoals'
 import ThreadPendingRequestPanel from './components/content/ThreadPendingRequestPanel.vue'
 import QueuedMessages from './components/content/QueuedMessages.vue'
@@ -943,47 +862,47 @@ import { useMobile } from './composables/useMobile'
 import { nextLayoutViewportHeight } from './virtualKeyboardViewport'
 import { useUiLanguage } from './composables/useUiLanguage'
 import { useFeedbackDiagnostics } from './composables/useFeedbackDiagnostics'
+import { startThreadReview, getReviewSummary } from './api/reviewGateway'
 import {
-  startThread,
-  startThreadReview,
   checkoutGitBranch,
-  cloneGithubRepository,
-  configureTelegramBot,
   createPermanentWorktree,
   createWorktree,
-  createProjectlessThreadDirectory,
-  downloadProjectZip,
   getGitBranchState,
   getGitBranchCommits,
   getGitCommitFiles,
   getGitRepositoryStatus,
-  getReviewSummary,
   getWorktreeBranchOptions,
-  getAccounts,
+  resetGitBranchToCommit,
+} from './api/gitGateway'
+import { searchThreads } from './api/threadSearchGateway'
+import { startThread } from './api/threadCommandGateway'
+import {
+  cloneGithubRepository,
   createLocalDirectory,
+  createProjectlessThreadDirectory,
+  downloadProjectZip,
   getHomeDirectory,
-  getTelegramConfig,
   getProjectRootSuggestion,
-  getTelegramStatus,
-  getThreadTerminalQuickCommands,
-  getThreadTerminalStatus,
   getWorkspaceRootsState,
   importProjectZip,
   listLocalDirectories,
   openProjectRoot,
-  removeAccount,
-  refreshAccountsFromAuth,
-  refreshAccountQuota,
-  resetGitBranchToCommit,
-  searchThreads,
-  switchAccount,
-} from './api/codexGateway'
-import type { ReasoningEffort, SpeedMode, UiAccountEntry, UiRateLimitWindow, UiServerRequest, UiServerRequestReply, UiThreadAutomation, UiThreadTokenUsage } from './types/codex'
+} from './api/projectGateway'
+import { getThreadTerminalQuickCommands, getThreadTerminalStatus } from './api/terminalGateway'
+import type { ReasoningEffort, SpeedMode, UiServerRequest, UiServerRequestReply, UiThreadAutomation, UiThreadTokenUsage } from './types/codex'
 import type { ComposerDraftPayload, ThreadComposerExposed } from './components/content/ThreadComposer.vue'
-import type { GitCommitFileChange, GitCommitOption, LocalDirectoryEntry, TelegramStatus, ThreadTerminalQuickCommand, WorktreeBranchOption } from './api/codexGateway'
-import { getFreeModeStatus, setFreeMode, setFreeModeCustomKey, setCustomProvider } from './api/codexGateway'
+import type { GitCommitFileChange, GitCommitOption, WorktreeBranchOption } from './api/gitGateway'
+import type { LocalDirectoryEntry } from './api/projectGateway'
+import type { ThreadTerminalQuickCommand } from './api/terminalGateway'
+import {
+  getFreeModeStatus,
+  setFreeMode,
+  setFreeModeCustomKey,
+  setCustomProvider,
+} from './api/providerGateway'
 import { getPathLeafName, getPathParent, isProjectlessChatPath, normalizePathForUi } from './pathUtils.js'
 import { copyTextToClipboard } from './utils/clipboard'
+import { formatCompactTokenCount } from './utils/formatCounts'
 import { getLatestCompletedReply } from './api/threadCommands'
 import type { AppCommandName, AppCommandRequest } from './components/content/composerCommands'
 
@@ -994,65 +913,42 @@ const ReviewPane = defineAsyncComponent(() => import('./components/content/Revie
 const DirectoryHub = defineAsyncComponent(() => import('./components/content/DirectoryHub.vue'))
 const ApiProxyPanel = defineAsyncComponent(() => import('./components/api-proxy/ApiProxyPanel.vue'))
 const AutomationsPanel = defineAsyncComponent(() => import('./components/content/AutomationsPanel.vue'))
-const { t, uiLanguage, uiLanguageOptions, setUiLanguage } = useUiLanguage()
+const SettingsRoute = defineAsyncComponent(() => import('./components/settings/SettingsRoute.vue'))
+const { t } = useUiLanguage()
+const {
+  sendWithEnter,
+  dictationClickToToggle,
+  dictationAutoSend,
+  dictationLanguage,
+} = useInputPreferences()
+const {
+  darkMode,
+  chatWidth,
+  applyDarkMode,
+  cycleDarkMode,
+} = useAppearancePreferences()
 const { state: customConnections, active: activeCustomConnection, load: loadCustomConnections } = useCustomConnections()
 const displayAccounts = computed(() => activeCustomConnection.value ? accounts.value.map(account => ({ ...account, isActive: false })) : accounts.value)
-const executionAccounts = computed(() => [...accounts.value, ...customConnections.value.connections.filter(row => row.wireApi === 'responses').map(row => ({ storageId: row.storageId, alias: row.alias, email: null, accountId: row.baseUrl }))])
+const executionAccounts = computed(() => [...accounts.value, ...customConnections.value.connections.filter(row => row.wireApi === 'responses' || row.protocolBridge).map(row => ({ storageId: row.storageId, alias: row.alias, email: null, accountId: row.baseUrl }))])
 async function onCustomConnectionsChanged(changed = false): Promise<void> {
   invalidateModelCatalog()
   await loadCustomConnections()
-  await refreshAll({ accountChanged: changed, includeSelectedThreadMessages: changed, awaitAncillaryRefreshes: changed })
-}
-const displayTimeZoneError = ref('')
-const isSavingDisplayTimeZone = ref(false)
-const displayTimeZoneOptions = computed(() => [
-  { value: 'system', label: `${t('Follow system')} · ${browserTimeZone()}` },
-  ...availableDisplayTimeZones().map(zone => ({ value: zone, label: zone })),
-])
-let unsubscribeDisplayTimeZone: (() => void) | null = null
-let accountOverviewPollTimer: ReturnType<typeof setInterval> | null = null
-async function onDisplayTimeZoneChange(value: string): Promise<void> {
-  if (isSavingDisplayTimeZone.value || value === displayTimeZonePreference.value) return
-  isSavingDisplayTimeZone.value = true
-  displayTimeZoneError.value = ''
-  try {
-    const currentResponse = await fetch('/codex-api/api-proxy/activation')
-    const current = await currentResponse.json()
-    if (!currentResponse.ok) throw new Error(current.error?.message || '读取激活计划失败')
-    const response = await fetch('/codex-api/api-proxy/activation', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...current.data.settings, timezone: value === 'system' ? browserTimeZone() : value }),
-    })
-    if (!response.ok) throw new Error('同步激活计划时区失败，请重试。')
-    const telegramResponse = await fetch('/codex-api/telegram/notification-preferences', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ timezone: value === 'system' ? browserTimeZone() : value }),
-    })
-    if (!telegramResponse.ok) throw new Error('显示时区保存失败。')
-    setDisplayTimeZone(value)
-  } catch (cause) {
-    notifyOperation(cause instanceof Error ? cause.message : '显示时区保存失败。')
-  } finally {
-    isSavingDisplayTimeZone.value = false
+  if (!changed) {
+    // Editing or adding a connection does not change threads or the selected conversation.
+    // Refresh provider/model state silently so the settings page keeps its scroll and layout.
+    await refreshAll({ includeSelectedThreadMessages: false, includeThreads: false })
+    return
   }
+  await refreshAll({ accountChanged: true, includeSelectedThreadMessages: true, awaitAncillaryRefreshes: true })
 }
+let unsubscribeDisplayTimeZone: (() => void) | null = null
+
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'codex-web-local.sidebar-collapsed.v1'
 const ACCOUNTS_SECTION_COLLAPSED_STORAGE_KEY = 'codex-web-local.accounts-section-collapsed.v1'
 const TERMINAL_QUICK_COMMAND_STORAGE_KEY = 'codex-web-local.terminal-quick-commands.v1'
 const TOGGLE_TERMINAL_COMMAND_VALUE = '__toggle_terminal__'
 const appVersion = import.meta.env.VITE_APP_VERSION ?? 'unknown'
-const SETTINGS_HELP = {
-  sendWithEnter: t('When enabled, press Enter to send. When disabled, use Command+Enter to send.'),
-  appearance: t('Switch between system theme, light mode, and dark mode.'),
-  chatWidth: t('Choose how wide the conversation column and composer can grow on desktop screens.'),
-  dictationClickToToggle: t('Use click-to-start and click-to-stop dictation instead of hold-to-talk.'),
-  dictationAutoSend: t('Automatically send transcribed dictation when recording stops.'),
-  dictationLanguage: t('Choose transcription language or keep auto-detect.'),
-} as const
-
-type ChatWidthMode = 'standard' | 'wide' | 'extra-wide'
-
 type TerminalHeaderQuickCommand = {
   label: string
   value: string
@@ -1075,132 +971,6 @@ type DirectoryTryItemPayload = {
   attachedSkills?: Array<{ name: string; path: string }>
 }
 
-type ChatWidthPreset = {
-  label: string
-  columnMax: string
-  cardMax: string
-}
-
-const CHAT_WIDTH_PRESETS: Record<ChatWidthMode, ChatWidthPreset> = {
-  standard: {
-    label: 'Standard',
-    columnMax: '45rem',
-    cardMax: '76ch',
-  },
-  wide: {
-    label: 'Wide',
-    columnMax: '72rem',
-    cardMax: '88ch',
-  },
-  'extra-wide': {
-    label: 'Extra wide',
-    columnMax: '96rem',
-    cardMax: '96ch',
-  },
-}
-
-const WHISPER_LANGUAGES: Record<string, string> = {
-  en: 'english',
-  zh: 'chinese',
-  de: 'german',
-  es: 'spanish',
-  ru: 'russian',
-  ko: 'korean',
-  fr: 'french',
-  ja: 'japanese',
-  pt: 'portuguese',
-  tr: 'turkish',
-  pl: 'polish',
-  ca: 'catalan',
-  nl: 'dutch',
-  ar: 'arabic',
-  sv: 'swedish',
-  it: 'italian',
-  id: 'indonesian',
-  hi: 'hindi',
-  fi: 'finnish',
-  vi: 'vietnamese',
-  he: 'hebrew',
-  uk: 'ukrainian',
-  el: 'greek',
-  ms: 'malay',
-  cs: 'czech',
-  ro: 'romanian',
-  da: 'danish',
-  hu: 'hungarian',
-  ta: 'tamil',
-  no: 'norwegian',
-  th: 'thai',
-  ur: 'urdu',
-  hr: 'croatian',
-  bg: 'bulgarian',
-  lt: 'lithuanian',
-  la: 'latin',
-  mi: 'maori',
-  ml: 'malayalam',
-  cy: 'welsh',
-  sk: 'slovak',
-  te: 'telugu',
-  fa: 'persian',
-  lv: 'latvian',
-  bn: 'bengali',
-  sr: 'serbian',
-  az: 'azerbaijani',
-  sl: 'slovenian',
-  kn: 'kannada',
-  et: 'estonian',
-  mk: 'macedonian',
-  br: 'breton',
-  eu: 'basque',
-  is: 'icelandic',
-  hy: 'armenian',
-  ne: 'nepali',
-  mn: 'mongolian',
-  bs: 'bosnian',
-  kk: 'kazakh',
-  sq: 'albanian',
-  sw: 'swahili',
-  gl: 'galician',
-  mr: 'marathi',
-  pa: 'punjabi',
-  si: 'sinhala',
-  km: 'khmer',
-  sn: 'shona',
-  yo: 'yoruba',
-  so: 'somali',
-  af: 'afrikaans',
-  oc: 'occitan',
-  ka: 'georgian',
-  be: 'belarusian',
-  tg: 'tajik',
-  sd: 'sindhi',
-  gu: 'gujarati',
-  am: 'amharic',
-  yi: 'yiddish',
-  lo: 'lao',
-  uz: 'uzbek',
-  fo: 'faroese',
-  ht: 'haitian creole',
-  ps: 'pashto',
-  tk: 'turkmen',
-  nn: 'nynorsk',
-  mt: 'maltese',
-  sa: 'sanskrit',
-  lb: 'luxembourgish',
-  my: 'myanmar',
-  bo: 'tibetan',
-  tl: 'tagalog',
-  mg: 'malagasy',
-  as: 'assamese',
-  tt: 'tatar',
-  haw: 'hawaiian',
-  ln: 'lingala',
-  ha: 'hausa',
-  ba: 'bashkir',
-  jw: 'javanese',
-  su: 'sundanese',
-  yue: 'cantonese',
-}
 
 const {
   webPreferenceState, webPreferenceError, webDefaultChoice, configureWebDefaults, webDefaultsProvider, initializeWebConversation,
@@ -1210,6 +980,9 @@ const {
   selectedThreadTokenUsage,
   selectedThreadTerminalOpen,
   selectedThreadServerRequests,
+  pendingReplyIds,
+  pendingReplyErrors,
+  capturePendingReplyContext,
   selectedLiveOverlay,
   selectedThreadId,
   availableCollaborationModes,
@@ -1240,6 +1013,8 @@ const {
   refreshSkills,
   selectThread,
   markThreadAsRead,
+  markProjectAsRead,
+  readConversationChoice,
   ensureThreadMessagesLoaded,
   loadOlderMessages,
   setThreadTerminalOpen,
@@ -1250,6 +1025,8 @@ const {
   forkThreadFromTurn,
   sendMessageToSelectedThread,
   sendMessageToNewThread,
+  captureThreadSendContext,
+  captureThreadActionContext,
   interruptSelectedThreadTurn,
   selectedThreadQueuedMessages,
   queueStateError,
@@ -1330,6 +1107,7 @@ const queueDraftEdits = ref<Record<string, QueueDraftEdit>>(loadQueueDraftEdits(
 const editingQueuedMessageState = computed(() => queueDraftEdits.value[selectedThreadId.value] ?? null)
 const replaceQueueDraftId = ref('')
 const queueDraftError = ref('')
+const newThreadSendError = ref('')
 watch(queueDraftError, message => { if (message) notifyOperation(message, 'error', selectedThreadId.value || undefined) }, { flush: 'sync' })
 
 function loadQueueDraftEdits(): Record<string, QueueDraftEdit> {
@@ -1415,7 +1193,7 @@ const sidebarThreadGroups = computed(() => {
   return groups
 })
 
-const { filter: sidebarFilter, retainedThreadId, activeSession: sidebarActiveSession, problems: sidebarProblems, problemError: sidebarProblemError, ignoringProblems: sidebarIgnoringProblems, ignoreThreadProblems, interrupted: sidebarInterrupted, loading: sidebarFilterLoading, error: sidebarFilterError, refresh: refreshSidebarFilter, retainBeforeSelect } = useSidebarThreadFilter(sidebarThreadGroups, selectedThreadId)
+const { filter: sidebarFilter, retainedThreadId, activeSession: sidebarActiveSession, problems: sidebarProblems, problemError: sidebarProblemError, ignoringProblems: sidebarIgnoringProblems, ignoreThreadProblems, interrupted: sidebarInterrupted, loading: sidebarFilterLoading, incomplete: sidebarFilterIncomplete, refresh: refreshSidebarFilter, retainBeforeSelect } = useSidebarThreadFilter(sidebarThreadGroups, selectedThreadId)
 const sidebarFilterOptions = computed(() => [
   { value: 'active', label: t('活跃') },
   { value: 'unread', label: t('未读') },
@@ -1449,21 +1227,7 @@ let threadWorktreeSummaryRequestId = 0
 const defaultNewProjectName = ref('New Project (1)')
 const homeDirectory = ref('')
 const isSettingsOpen = ref(false)
-const runtimeCapabilities = ref<{ cliVersion: string; schemaHash: string; experimental: boolean; methods: string[]; appVersion: string; generatedAt: string; features?: { historyPaging: boolean } } | null>(null)
-const runtimeCapabilitiesError = ref('')
-const runtimeCapabilitiesLoading = ref(false)
-async function loadRuntimeCapabilities(): Promise<void> {
-  if (runtimeCapabilitiesLoading.value) return
-  runtimeCapabilitiesLoading.value = true
-  runtimeCapabilitiesError.value = ''
-  try {
-    const response = await fetch('/codex-api/meta/capabilities')
-    if (!response.ok) throw new Error('能力检测暂时不可用')
-    runtimeCapabilities.value = (await response.json()).data
-  } catch (error) {
-    runtimeCapabilitiesError.value = error instanceof Error ? error.message : '能力检测失败'
-  } finally { runtimeCapabilitiesLoading.value = false }
-}
+const { runtimeCapabilities, loadRuntimeCapabilities } = useRuntimeCapabilities()
 watch(isSettingsOpen, open => { if (open && !runtimeCapabilities.value) void loadRuntimeCapabilities() })
 const isAccountsSectionCollapsed = ref(loadAccountsSectionCollapsed())
 const isReviewPaneOpen = ref(false)
@@ -1492,45 +1256,32 @@ function toThreadBranchCommitsKey(branch: string, includeResetHistory: boolean):
 }
 
 const createFolderInputRef = ref<HTMLInputElement | null>(null)
-const accounts = ref<UiAccountEntry[]>([])
-const activeAccount = computed(() => accounts.value.find(account => account.isActive))
-const directoryAccountRevision = ref(0)
-let hasAccountSnapshot = false
-watch(accounts, (next, previous) => {
-  if (!hasAccountSnapshot) {
-    hasAccountSnapshot = true
-    return
-  }
-  const nextId = next.find(account => account.isActive)?.storageId || ''
-  const previousId = previous.find(account => account.isActive)?.storageId || ''
-  if (nextId !== previousId) directoryAccountRevision.value += 1
+const {
+  accounts, activeAccount, directoryAccountRevision, isSwitchingAccounts,
+  isCodexLoginModalOpen, loginIntent, loginTargetStorageId, loginTargetAccount,
+  confirmingRemoveAccountId, accountActionError, isAccountPanelBusy,
+  loadAccountsState, onRefreshAccounts, onRefreshAccountQuota, onSwitchAccount,
+  onStartCodexLogin, resumeAccountLogin, onAccountLoginCompleted, onRemoveAccount,
+  isAccountActionDisabled, formatAccountStatus, closeAccountLogin,
+  setExternalAuthAvailable, refreshExternalAuth,
+} = useAppAccountsController({
+  t,
+  notifyOperation,
+  getSelectedProvider: () => selectedProvider.value,
+  getRateLimitSnapshots: () => accountRateLimitSnapshots.value,
+  workspace: {
+    getSelectedThreadId: () => selectedThreadId.value,
+    loadConnections: loadCustomConnections,
+    invalidateModels: invalidateModelCatalog,
+    restartPolling: () => {
+      stopPolling()
+      startPolling()
+    },
+    refresh: refreshAll,
+  },
 })
-const isRefreshingAccounts = ref(false)
-const isSwitchingAccounts = ref(false)
-const isStartingCodexLogin = computed(() => isCodexLoginModalOpen.value)
-const isCodexLoginModalOpen = ref(false)
-const loginIntent = ref<'add' | 'reauth'>('add')
-const loginTargetStorageId = ref('')
-const refreshingAccountId = ref('')
-const removingAccountId = ref('')
-const confirmingRemoveAccountId = ref('')
-const hoveredAccountId = ref('')
-const accountActionError = ref('')
-const SEND_WITH_ENTER_KEY = 'codex-web-local.send-with-enter.v1'
-const DARK_MODE_KEY = 'codex-web-local.dark-mode.v1'
-const DICTATION_CLICK_TO_TOGGLE_KEY = 'codex-web-local.dictation-click-to-toggle.v1'
-const DICTATION_AUTO_SEND_KEY = 'codex-web-local.dictation-auto-send.v1'
-const DICTATION_LANGUAGE_KEY = 'codex-web-local.dictation-language.v1'
 
-const CHAT_WIDTH_KEY = 'codex-web-local.chat-width.v1'
 const MOBILE_RESUME_RELOAD_MIN_HIDDEN_MS = 400
-const sendWithEnter = ref(loadBoolPref(SEND_WITH_ENTER_KEY, true))
-const darkMode = ref<'system' | 'light' | 'dark'>(loadDarkModePref())
-const chatWidth = ref<ChatWidthMode>(loadChatWidthPref())
-const dictationClickToToggle = ref(loadBoolPref(DICTATION_CLICK_TO_TOGGLE_KEY, false))
-const dictationAutoSend = ref(loadBoolPref(DICTATION_AUTO_SEND_KEY, true))
-const dictationLanguage = ref(loadDictationLanguagePref())
-const dictationLanguageOptions = computed(() => buildDictationLanguageOptions())
 const projectZipProgressText = computed(() => {
   const { loaded, total } = projectZipExportStatus.value
   const loadedLabel = formatByteCount(loaded)
@@ -1564,12 +1315,6 @@ const customEndpointKey = ref('')
 const customEndpointWireApi = ref<'responses' | 'chat'>('responses')
 const openRouterWireApi = ref<'responses' | 'chat'>('responses')
 const opencodeZenKey = ref('')
-const telegramBotTokenDraft = ref('')
-const telegramNotificationsEnabledDraft = ref(false)
-const telegramQuietDraft = ref({ quietEnabled: false, quietStart: '22:00', quietEnd: '08:00' })
-const telegramAllowedUserIdsDraft = ref('')
-const telegramConfigError = ref('')
-const isTelegramSaving = ref(false)
 const isCreateFolderOpen = ref(false)
 const createFolderDraft = ref('')
 const createFolderError = ref('')
@@ -1637,21 +1382,11 @@ const visibleFeedbackErrors = [
   threadBranchCommitsError,
   accountActionError,
   providerError,
-  telegramConfigError,
   createFolderError,
   projectSetupError,
   existingFolderError,
 ]
 const hasVisibleFeedbackError = computed(() => visibleFeedbackErrors.some((entry) => entry.value.trim().length > 0))
-const telegramStatus = ref<TelegramStatus>({
-  configured: false,
-  active: false,
-  mappedChats: 0,
-  mappedThreads: 0,
-  allowedUsers: 0,
-  allowAllUsers: false,
-  lastError: '',
-})
 const mobileHiddenAtMs = ref<number | null>(null)
 const mobileResumeReloadTriggered = ref(false)
 const mobileResumeSyncInProgress = ref(false)
@@ -1659,10 +1394,7 @@ const visualViewportHeight = ref(typeof window !== 'undefined' ? window.visualVi
 const visualViewportOffsetTop = ref(typeof window !== 'undefined' ? window.visualViewport?.offsetTop ?? 0 : 0)
 const layoutViewportHeight = ref(typeof window !== 'undefined' ? window.innerHeight : 0)
 let layoutViewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0
-let accountStatePollTimer: number | null = null
-let isAccountStatePollInFlight = false
-let externalCodexAuthAvailable = false
-let externalAuthImportAttempted = false
+
 let existingFolderBrowseRequestId = 0
 
 const routeThreadId = computed(() => {
@@ -1695,8 +1427,8 @@ const contentTitle = computed(() => {
 })
 const browserHostName =
   typeof window !== 'undefined'
-    ? (window.location.hostname || window.location.host || 'sidux')
-    : 'sidux'
+    ? (window.location.hostname || window.location.host || 'codexui')
+    : 'codexui'
 const { branding } = useWebUiBranding()
 const pageTitle = computed(() => {
   const threadTitle = selectedThread.value?.title?.trim() ?? ''
@@ -1721,7 +1453,8 @@ const latestUserTurnId = computed(() => {
   return ''
 })
 const liveOverlay = computed(() => selectedLiveOverlay.value)
-const composerThreadContextId = computed(() => (isHomeRoute.value ? '__new-thread__' : selectedThreadId.value))
+// Draft ownership follows the visible URL even while an older history request is pending.
+const composerThreadContextId = computed(() => (isHomeRoute.value ? '__new-thread__' : routeThreadId.value))
 const composerSelectedModelId = computed(() => readModelIdForThread(composerThreadContextId.value))
 const selectedThreadPendingRequest = computed<UiServerRequest | null>(() => {
   return [...selectedThreadServerRequests.value].sort((a, b) => pendingRequestPriority(a) - pendingRequestPriority(b))[0] ?? null
@@ -1731,7 +1464,6 @@ const visiblePendingRequests = computed(() => {
   if (!first) return []
   return isAsyncUserInputRequest(first) ? selectedThreadServerRequests.value : [first]
 })
-const pendingReplyIds = ref(new Set<number>())
 const composerCwd = computed(() => {
   if (isHomeRoute.value) return isVirtualProjectId(newThreadCwd.value) ? '' : newThreadCwd.value.trim()
   return selectedThread.value?.cwd?.trim() ?? ''
@@ -1780,16 +1512,6 @@ function onDirectoryScopeChange(cwd: string): void {
 }
 const isSelectedThreadInProgress = computed(() => !isHomeRoute.value && selectedThread.value?.inProgress === true)
 const showThreadContextBadge = computed(() => !isHomeRoute.value && !isSkillsRoute.value && !isAutomationsRoute.value && !isApiProxyRoute.value && selectedThreadId.value.trim().length > 0)
-const activeAccountStorageId = computed(() => accounts.value.find((account) => account.isActive)?.storageId ?? null)
-const loginTargetAccount = computed(() => accounts.value.find((account) => account.storageId === loginTargetStorageId.value) ?? null)
-
-function formatCompactTokenCount(value: number): string {
-  if (!Number.isFinite(value)) return '0'
-  return new Intl.NumberFormat('en-US', {
-    notation: value >= 1000 ? 'compact' : 'standard',
-    maximumFractionDigits: value >= 100000 ? 0 : 1,
-  }).format(Math.max(0, Math.trunc(value)))
-}
 
 function buildThreadContextTooltip(usage: UiThreadTokenUsage | null): string {
   if (!usage) {
@@ -2027,15 +1749,6 @@ const existingFolderFilteredEntries = computed(() => {
   )
 })
 const darkModeMediaQuery = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)') : null
-const appearanceOptions = computed(() => [
-  { value: 'system', label: t('自动') },
-  { value: 'light', label: t('Light') },
-  { value: 'dark', label: t('Dark') },
-])
-const chatWidthOptions = computed(() => Object.entries(CHAT_WIDTH_PRESETS).map(([value, preset]) => ({
-  value,
-  label: t(preset.label),
-})))
 const terminalShortcutLabel = computed(() => {
   if (typeof navigator !== 'undefined' && /mac|iphone|ipad|ipod/i.test(navigator.platform)) {
     return '⌘J'
@@ -2079,24 +1792,9 @@ const contentStyle = computed(() => {
     '--virtual-keyboard-inset': `${keyboardInset}px`,
   }
 })
-const telegramStatusText = computed(() => {
-  if (!telegramStatus.value.configured) return t('Not configured')
-  const base = telegramStatus.value.active ? t('Online') : t('Configured (offline)')
-  const allowlist = telegramStatus.value.allowAllUsers
-    ? t('allow all users')
-    : `${telegramStatus.value.allowedUsers} ${t('allowed user(s)')}`
-  const mapped = `${telegramStatus.value.mappedChats} ${t('chat(s)')}, ${telegramStatus.value.mappedThreads} ${t('thread(s)')}, ${allowlist}`
-  const error = telegramStatus.value.lastError ? `, ${t('error')}: ${telegramStatus.value.lastError}` : ''
-  return `${base}, ${mapped}${error}`
-})
 
 onMounted(() => {
   unsubscribeDisplayTimeZone = subscribeDisplayTimeZoneStorage()
-  accountOverviewPollTimer = setInterval(() => {
-    if (document.hidden || isAccountStatePollInFlight || isRefreshingAccounts.value) return
-    isAccountStatePollInFlight = true
-    void loadAccountsState({ silent: true }).finally(() => { isAccountStatePollInFlight = false })
-  }, 60_000)
   document.addEventListener('pointerdown', onDocumentPointerDown)
   window.addEventListener('keydown', onWindowKeyDown)
   document.addEventListener('visibilitychange', onDocumentVisibilityChange)
@@ -2112,8 +1810,6 @@ onMounted(() => {
   void loadHomeDirectory()
   void loadWorkspaceRootOptionsState()
   void refreshDefaultProjectName()
-  void refreshTelegramConfig()
-  void refreshTelegramStatus()
   void loadCustomConnections().catch(() => {})
   void loadFreeModeStatus({ refreshModels: false })
   void refreshThreadTerminalStatus()
@@ -2132,7 +1828,6 @@ watch(visibleFeedbackErrors, (values, oldValues) => {
 
 onUnmounted(() => {
   unsubscribeDisplayTimeZone?.()
-  if (accountOverviewPollTimer !== null) clearInterval(accountOverviewPollTimer)
   document.removeEventListener('pointerdown', onDocumentPointerDown)
   window.removeEventListener('keydown', onWindowKeyDown)
   document.removeEventListener('visibilitychange', onDocumentVisibilityChange)
@@ -2142,10 +1837,6 @@ onUnmounted(() => {
   window.visualViewport?.removeEventListener('resize', updateVisualViewportState)
   window.visualViewport?.removeEventListener('scroll', updateVisualViewportState)
   darkModeMediaQuery?.removeEventListener('change', applyDarkMode)
-  if (accountStatePollTimer !== null) {
-    window.clearInterval(accountStatePollTimer)
-    accountStatePollTimer = null
-  }
   if (threadSearchTimer) {
     clearTimeout(threadSearchTimer)
     threadSearchTimer = null
@@ -2220,168 +1911,8 @@ watch(isVirtualKeyboardOpen, (open) => {
   isTerminalKeyboardFocusFallbackActive.value = false
 })
 
-watch(accounts, () => {
-  if (typeof window === 'undefined') return
-  const shouldPoll = accounts.value.some((account) => account.quotaStatus === 'loading')
-  if (!shouldPoll) {
-    if (accountStatePollTimer !== null) {
-      window.clearInterval(accountStatePollTimer)
-      accountStatePollTimer = null
-    }
-    return
-  }
-  if (accountStatePollTimer !== null) return
-  accountStatePollTimer = window.setInterval(() => {
-    if (isAccountStatePollInFlight) return
-    isAccountStatePollInFlight = true
-    void loadAccountsState({ silent: true }).finally(() => {
-      isAccountStatePollInFlight = false
-    })
-  }, 1500)
-}, { deep: true })
-
-watch(accountRateLimitSnapshots, () => {
-  void maybeImportExternalCodexAuthAccount().then((imported) => {
-    if (!imported) return
-    void refreshAll({
-      includeSelectedThreadMessages: false,
-      providerChanged: true,
-      awaitAncillaryRefreshes: true,
-    })
-  })
-}, { deep: true })
-
-async function maybeImportExternalCodexAuthAccount(): Promise<boolean> {
-  if (!externalCodexAuthAvailable) return false
-  if (externalAuthImportAttempted) return false
-  if (selectedProvider.value !== 'codex') return false
-  if (accounts.value.length > 0) return false
-  if (accountRateLimitSnapshots.value.length === 0) return false
-  externalAuthImportAttempted = true
-  const previousAccountsJson = JSON.stringify(accounts.value.map((account) => account.accountId).sort())
-  try {
-    const result = await refreshAccountsFromAuth()
-    applyAccountsSnapshot(result.accounts)
-  } catch {
-    await loadAccountsState({ silent: true })
-  }
-  const nextAccountsJson = JSON.stringify(accounts.value.map((account) => account.accountId).sort())
-  return previousAccountsJson !== nextAccountsJson
-}
-
 function onSkillsChanged(): void {
   void refreshSkills({ force: true })
-}
-
-async function refreshTelegramStatus(): Promise<void> {
-  try {
-    telegramStatus.value = await getTelegramStatus()
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to load Telegram status'
-    telegramStatus.value = {
-      configured: false,
-      active: false,
-      mappedChats: 0,
-      mappedThreads: 0,
-      allowedUsers: 0,
-      allowAllUsers: false,
-      lastError: message,
-    }
-  }
-}
-
-async function refreshTelegramConfig(): Promise<void> {
-  try {
-    const config = await getTelegramConfig()
-    telegramBotTokenDraft.value = config.botToken
-    telegramNotificationsEnabledDraft.value = config.notificationsEnabled
-    telegramQuietDraft.value = { quietEnabled: config.quietEnabled, quietStart: config.quietStart, quietEnd: config.quietEnd }
-    telegramAllowedUserIdsDraft.value = config.allowedUserIds.map((value) => String(value)).join('\n')
-    telegramConfigError.value = ''
-  } catch (error) {
-    telegramConfigError.value = error instanceof Error ? error.message : 'Failed to load Telegram configuration'
-  }
-}
-
-function parseTelegramAllowedUserIdsInput(value: string): Array<number | '*'> {
-  const rawEntries = value
-    .split(/[\n,]/)
-    .map((entry) => entry.trim().replace(/^(telegram|tg):/i, '').trim())
-    .filter(Boolean)
-  const allowAllUsers = rawEntries.includes('*')
-  const normalizedUserIds = Array.from(new Set(rawEntries
-    .filter((entry) => /^-?\d+$/.test(entry))
-    .map((entry) => Number.parseInt(entry, 10))))
-  return allowAllUsers ? ['*', ...normalizedUserIds] : normalizedUserIds
-}
-
-async function saveTelegramConfig(showNotice = true): Promise<boolean> {
-  if (isTelegramSaving.value) return false
-  const botToken = telegramBotTokenDraft.value.trim()
-  const allowedUserIds = parseTelegramAllowedUserIdsInput(telegramAllowedUserIdsDraft.value)
-  if (!botToken) {
-    telegramConfigError.value = t('Telegram bot token is required.')
-    return false
-  }
-  if (allowedUserIds.length === 0) {
-    telegramConfigError.value = t('At least one allowed Telegram user ID or * is required.')
-    return false
-  }
-
-  isTelegramSaving.value = true
-  telegramConfigError.value = ''
-
-  try {
-    await configureTelegramBot(botToken, allowedUserIds, telegramNotificationsEnabledDraft.value, { ...telegramQuietDraft.value, timezone: displayTimeZone() })
-    telegramAllowedUserIdsDraft.value = allowedUserIds.map((value) => String(value)).join('\n')
-    await Promise.all([
-      refreshTelegramConfig(),
-      refreshTelegramStatus(),
-    ])
-    if (showNotice) notifyOperation('已保存', 'success')
-    return true
-  } catch (error) {
-    notifyOperation(error instanceof Error ? error.message : t('Failed to connect Telegram bot'))
-    void refreshTelegramStatus()
-    return false
-  } finally {
-    isTelegramSaving.value = false
-  }
-}
-
-async function saveTelegramQuietHours(): Promise<void> {
-  if (isTelegramSaving.value) return
-  isTelegramSaving.value = true
-  telegramConfigError.value = ''
-  try {
-    const response = await fetch('/codex-api/telegram/notification-preferences', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...telegramQuietDraft.value, timezone: displayTimeZone() }),
-    })
-    const payload = await response.json()
-    if (!response.ok) throw new Error(payload.error || '保存失败')
-  } catch (error) {
-    notifyOperation(error instanceof Error ? error.message : '保存失败')
-  } finally {
-    isTelegramSaving.value = false
-  }
-}
-
-async function testTelegramNotification(): Promise<void> {
-  if (!telegramNotificationsEnabledDraft.value || !await saveTelegramConfig(false)) return
-  isTelegramSaving.value = true
-  telegramConfigError.value = ''
-
-  try {
-    const response = await fetch('/codex-api/telegram/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: uiLanguage.value }) })
-    const payload = await response.json()
-    if (!response.ok) throw new Error(payload.error || '测试通知发送失败。')
-    notifyOperation('通知已发送', 'success')
-  } catch (error) {
-    notifyOperation(error instanceof Error ? error.message : '测试通知发送失败。')
-  } finally {
-    isTelegramSaving.value = false
-  }
 }
 
 function toggleSidebarSearch(): void {
@@ -2465,6 +1996,15 @@ function onSelectThread(threadId: string): void {
   if (isMobile.value) setSidebarCollapsed(true)
 }
 
+async function onMarkProjectRead(projectName: string): Promise<void> {
+  try {
+    await markProjectAsRead(projectName)
+    notifyOperation('项目已标为已读', 'success')
+  } catch (cause) {
+    notifyOperation(cause instanceof Error ? cause.message : '项目已读状态保存失败，请重试。', 'error')
+  }
+}
+
 function onSelectAutomationInPanel(automationId: string): void {
   if (route.name !== 'automations') return
   if (routeAutomationId.value === automationId) return
@@ -2492,323 +2032,29 @@ function onAutomationsChanged(): void {
   void automationsPanelRef.value?.loadAutomations()
 }
 
-
-function shortAccountId(accountId: string): string {
-  return accountId.length > 8 ? accountId.slice(-8) : accountId
-}
-
-function formatAccountMeta(account: UiAccountEntry): string {
-  const segments = [account.planType || t('unknown')]
-  if (account.authMode) {
-    segments.unshift(account.authMode)
-  }
-  return segments.join(' · ')
-}
-
-function isPaymentRequiredErrorMessage(value: string | null): boolean {
-  if (!value) return false
-  const normalized = value.toLowerCase()
-  return normalized.includes('payment required') || /\b402\b/.test(normalized)
-}
-
-function isAccountUnavailable(account: UiAccountEntry): boolean {
-  return account.authStatus === 'reauth_required'
-    || account.authStatus === 'payment_required'
-    || account.authStatus === 'materialization_dirty'
-    || account.unavailableReason !== null
-    || isPaymentRequiredErrorMessage(account.quotaError)
-}
-
-function isAccountActionDisabled(_account: UiAccountEntry): boolean {
-  return isSwitchingAccounts.value || isStartingCodexLogin.value
-}
-
-function formatAccountStatus(account: UiAccountEntry): string {
-  if (account.authStatus === 'reauth_required') return t('Sign-in required')
-  if (account.authStatus === 'payment_required') return t('Payment required')
-  if (account.authStatus === 'refreshing') return t('Refreshing…')
-  if (account.authStatus === 'switching') return t('Switching…')
-  if (account.authStatus === 'stale') return t('Verification stale')
-  if (account.authStatus === 'transient_error') return t('Temporary error')
-  if (account.authStatus === 'materialization_dirty') return t('Recovery required')
-  return t('Ready')
-}
-
-function isRemoveConfirmationActive(account: UiAccountEntry): boolean {
-  return confirmingRemoveAccountId.value === account.storageId
-}
-
-function isRemoveVisible(account: UiAccountEntry): boolean {
-  return hoveredAccountId.value === account.storageId || isRemoveConfirmationActive(account)
-}
-
-function getAccountSwitchLabel(account: UiAccountEntry): string {
-  if (isAccountUnavailable(account)) return t('Unavailable')
-  if (account.isActive) return t('Active')
-  if (isSwitchingAccounts.value) return t('Switching…')
-  return t('Switch')
-}
-
-function getAccountRemoveLabel(account: UiAccountEntry): string {
-  if (removingAccountId.value === account.storageId) return t('Removing…')
-  if (isRemoveConfirmationActive(account)) return t('Click again to remove')
-  return t('Remove')
-}
-
-function onAccountCardPointerEnter(accountId: string): void {
-  hoveredAccountId.value = accountId
-}
-
-function onAccountCardPointerLeave(accountId: string): void {
-  if (hoveredAccountId.value === accountId) {
-    hoveredAccountId.value = ''
-  }
-  if (removingAccountId.value === accountId) return
-  if (confirmingRemoveAccountId.value === accountId) {
-    confirmingRemoveAccountId.value = ''
-  }
-}
-
-function pickWeeklyQuotaWindow(account: UiAccountEntry) {
-  const quota = account.quotaSnapshot
-  if (!quota) return null
-  const windows = [quota?.primary, quota?.secondary].filter((quotaWindow): quotaWindow is UiRateLimitWindow => quotaWindow !== null)
-  const exactWeekly = windows.find((quotaWindow) => quotaWindow.windowMinutes === 7 * 24 * 60)
-  if (exactWeekly) {
-    return exactWeekly
-  }
-  const longerWindow = windows
-    .filter((quotaWindow) => typeof quotaWindow.windowMinutes === 'number' && quotaWindow.windowMinutes >= 7 * 24 * 60)
-    .sort((first, second) => (first.windowMinutes ?? 0) - (second.windowMinutes ?? 0))[0] ?? null
-  if (longerWindow) {
-    return longerWindow
-  }
-  return quota.secondary ?? null
-}
-
-function formatResetDateCompact(resetsAt: number | null): string {
-  if (typeof resetsAt !== 'number' || !Number.isFinite(resetsAt)) return ''
-  return formatLocalDateTime(resetsAt * 1000, { year: undefined, month: 'numeric', day: 'numeric', hour: undefined, minute: undefined }, 'zh-CN')
-}
-
-function formatAccountQuota(account: UiAccountEntry): string {
-  if (isAccountUnavailable(account)) {
-    if (account.quotaError) return account.quotaError
-    if (account.authStatus === 'payment_required' || account.unavailableReason === 'payment_required') {
-      return t('402 Payment Required')
-    }
-    if (account.authStatus === 'reauth_required' || account.unavailableReason === 'reauth_required') {
-      return t('Sign-in required')
-    }
-    return t('Recovery required')
-  }
-  const quota = account.quotaSnapshot
-  const window = pickWeeklyQuotaWindow(account)
-  const fallbackWindow = quota?.primary ?? quota?.secondary ?? null
-  const displayWindow = window ?? fallbackWindow
-  if (displayWindow) {
-    const remainingPercent = Math.max(0, Math.min(100, 100 - Math.round(displayWindow.usedPercent)))
-    const refreshDate = formatResetDateCompact(displayWindow.resetsAt)
-    return refreshDate
-      ? `${remainingPercent}% ${t('primary remaining')} · ${refreshDate}`
-      : `${remainingPercent}% ${t('primary remaining')}`
-  }
-  if (quota?.credits?.unlimited) {
-    return t('Unlimited credits')
-  }
-  if (quota?.credits?.hasCredits && quota.credits.balance) {
-    return `${quota.credits.balance} ${t('credits')}`
-  }
-  if (account.quotaStatus === 'loading') {
-    return t('Loading quota…')
-  }
-  if (account.quotaStatus === 'error') {
-    return account.quotaError || t('Quota unavailable')
-  }
-  if (account.quotaStatus === 'ready' || account.quotaStatus === 'idle') {
-    return t('Quota unavailable')
-  }
-  return t('Fetching account details…')
-}
-
-function buildAccountTitle(account: UiAccountEntry): string {
-  return [
-    accountDisplayName(account),
-    formatAccountMeta(account),
-    isAccountUnavailable(account) ? t('Unavailable account') : null,
-    formatAccountQuota(account),
-    `${t('Workspace')} ${account.accountId}`,
-  ].filter(Boolean).join('\n')
-}
-
-const removedAccountIds = new Set<string>()
-function applyAccountsSnapshot(next: UiAccountEntry[]): void {
-  const current = new Map(accounts.value.map(account => [account.storageId, account]))
-  accounts.value = next.filter(account => !removedAccountIds.has(account.storageId)).map(account => {
-    const previous = current.get(account.storageId)
-    if (!previous || !Number.isFinite(Date.parse(previous.quotaUpdatedAtIso || '')) || Date.parse(previous.quotaUpdatedAtIso || '') <= Date.parse(account.quotaUpdatedAtIso || '')) return account
-    return { ...account, quotaSnapshot: previous.quotaSnapshot, quotaUpdatedAtIso: previous.quotaUpdatedAtIso, quotaStatus: previous.quotaStatus, quotaError: previous.quotaError, resetCredits: previous.resetCredits, planType: previous.planType }
-  })
-}
-
-async function loadAccountsState(options: { silent?: boolean } = {}): Promise<void> {
-  try {
-    const result = await getAccounts()
-    applyAccountsSnapshot(result.accounts)
-    if (!result.accounts.some((account) => account.storageId === hoveredAccountId.value)) {
-      hoveredAccountId.value = ''
-    }
-    if (!result.accounts.some((account) => account.storageId === confirmingRemoveAccountId.value)) {
-      confirmingRemoveAccountId.value = ''
-    }
-  } catch (error) {
-    if (options.silent === true) return
-    accountActionError.value = error instanceof Error ? error.message : t('Failed to load accounts')
-  }
-}
-
-async function onRefreshAccounts(): Promise<void> {
-  if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value) return
-  accountActionError.value = ''
-
-  hoveredAccountId.value = ''
-  confirmingRemoveAccountId.value = ''
-  isRefreshingAccounts.value = true
-  try {
-    const result = await getAccounts()
-    applyAccountsSnapshot(result.accounts)
-    for (const account of result.accounts) {
-      const refreshed = await refreshAccountQuota(account.storageId)
-      applyAccountsSnapshot(refreshed.accounts)
-    }
-
-  } catch (error) {
-    notifyOperation(error instanceof Error ? error.message : t('Failed to refresh accounts'))
-  } finally {
-    isRefreshingAccounts.value = false
-  }
-}
-
-async function onRefreshAccountQuota(storageId: string): Promise<void> {
-  if (isRefreshingAccounts.value || isSwitchingAccounts.value || isStartingCodexLogin.value || refreshingAccountId.value) return
-  accountActionError.value = ''
-
-  refreshingAccountId.value = storageId
-  try {
-    const result = await refreshAccountQuota(storageId)
-    applyAccountsSnapshot(result.accounts)
-  } catch (error) {
-    notifyOperation(error instanceof Error ? error.message : t('Failed to refresh account quota'))
-  } finally {
-    refreshingAccountId.value = ''
-  }
-}
-
-async function onSwitchAccount(storageId: string): Promise<void> {
-  if (isSwitchingAccounts.value || isStartingCodexLogin.value) return
-  accountActionError.value = ''
-
-  hoveredAccountId.value = ''
-  confirmingRemoveAccountId.value = ''
-  isSwitchingAccounts.value = true
-  try {
-    const switched = await switchAccount(storageId, activeAccountStorageId.value, selectedThreadId.value || undefined)
-    await loadCustomConnections()
-    invalidateModelCatalog()
-    const nextActiveAccount = switched.account
-    accounts.value = accounts.value.map((account) => (
-      account.storageId === storageId
-        ? nextActiveAccount
-        : { ...account, isActive: false }
-    ))
-    stopPolling()
-    startPolling()
-    await refreshAll({
-      accountChanged: true,
-      includeSelectedThreadMessages: true,
-      awaitAncillaryRefreshes: true,
-    })
-    await loadAccountsState({ silent: true })
-    notifyOperation('账号已切换', 'success')
-  } catch (error) {
-    notifyOperation(error instanceof Error ? error.message : t('Failed to switch account'))
-  } finally {
-    isSwitchingAccounts.value = false
-  }
-}
-
-function onStartCodexLogin(intent: 'add' | 'reauth', targetStorageId = ''): void {
-  if (isSwitchingAccounts.value) return
-  accountActionError.value = ''
-
-  loginIntent.value = intent
-  loginTargetStorageId.value = targetStorageId
-  isCodexLoginModalOpen.value = true
-}
-
-function resumeAccountLogin(intent: 'add' | 'reauth', targetStorageId: string): void {
-  loginIntent.value = intent
-  loginTargetStorageId.value = targetStorageId
-  isCodexLoginModalOpen.value = true
-}
-
-function onAccountLoginCompleted(result: AccountLoginCompleteResult): void {
-  removedAccountIds.delete(result.account.storageId)
-  applyAccountsSnapshot(result.accounts)
-  isCodexLoginModalOpen.value = false
-  loginTargetStorageId.value = ''
-  stopPolling()
-  startPolling()
-  notifyOperation(result.outcome === 'added' ? t('Account added.') : t('Account sign-in refreshed.'), 'success')
-}
-
-async function onRemoveAccount(storageId: string): Promise<void> {
-  if (removingAccountId.value === storageId) return
-  const targetAccount = accounts.value.find((account) => account.storageId === storageId) ?? null
-  if (!targetAccount) return
-  if (confirmingRemoveAccountId.value !== storageId) {
-    confirmingRemoveAccountId.value = storageId
-    return
-  }
-  const removedWasActive = targetAccount.isActive
-  accountActionError.value = ''
-  confirmingRemoveAccountId.value = ''
-  removingAccountId.value = storageId
-  try {
-    const result = await removeAccount(storageId)
-    removedAccountIds.add(storageId)
-    notifyOperation('账号已移除', 'success')
-    applyAccountsSnapshot(result.accounts)
-    stopPolling()
-    startPolling()
-    if (removedWasActive) {
-      void refreshAll({
-        includeSelectedThreadMessages: true,
-      })
-    }
-    void loadAccountsState({ silent: true })
-  } catch (error) {
-    notifyOperation(error instanceof Error ? error.message : t('Failed to remove account'))
-  } finally {
-    removingAccountId.value = ''
-  }
-}
-
 function onArchiveThread(threadId: string): void {
   void archiveThreadById(threadId)
 }
 
 async function onForkThread(threadId: string): Promise<void> {
+  const isCurrent = captureThreadActionContext()
+  if (!isCurrent()) return
+  const originRoute = route.fullPath
+  const originSelectedThreadId = selectedThreadId.value
   const nextThreadId = await forkThreadById(threadId)
+  if (!isCurrent() || route.fullPath !== originRoute) return
   if (!nextThreadId) {
+    if (selectedThreadId.value !== originSelectedThreadId) return
     notifyOperation(desktopError.value || '无法创建分支。', 'error', threadId)
     return
   }
+  if (selectedThreadId.value !== nextThreadId) return
   if (!isHomeRoute.value) {
     await router.push({ name: 'thread', params: { threadId: nextThreadId } })
   } else {
     await router.replace({ name: 'thread', params: { threadId: nextThreadId } })
   }
+  if (!isCurrent() || routeThreadId.value !== nextThreadId || selectedThreadId.value !== nextThreadId) return
   notifyOperation('分支已创建', 'success', nextThreadId)
   if (isMobile.value) setSidebarCollapsed(true)
 }
@@ -3153,18 +2399,11 @@ function onRespondServerRequest(payload: UiServerRequestReply): void {
 
 async function handleServerRequestResponse(payload: UiServerRequestReply): Promise<void> {
   if (pendingReplyIds.value.has(payload.id)) return
+  const isCurrent = capturePendingReplyContext()
   const requestThreadId = selectedThreadServerRequests.value.find(request => request.id === payload.id)?.threadId
-  pendingReplyIds.value = new Set([...pendingReplyIds.value, payload.id])
-  let responded = false
-  try {
-    responded = await respondToPendingServerRequest(payload)
-  } finally {
-    const next = new Set(pendingReplyIds.value)
-    next.delete(payload.id)
-    pendingReplyIds.value = next
-  }
+  const responded = await respondToPendingServerRequest(payload)
   const followUpMessageText = payload.followUpMessageText?.trim() ?? ''
-  if (!responded || !followUpMessageText || isHomeRoute.value || selectedThreadId.value !== requestThreadId) return
+  if (!isCurrent() || !responded || !followUpMessageText || isHomeRoute.value || selectedThreadId.value !== requestThreadId) return
 
   try {
     await sendMessageToSelectedThread(followUpMessageText, [], [], 'steer', [])
@@ -3174,16 +2413,19 @@ async function handleServerRequestResponse(payload: UiServerRequestReply): Promi
 }
 
 async function onForkThreadFromMessage(payload: { threadId: string; turnId: string }): Promise<void> {
+  const isCurrent = captureThreadActionContext()
+  if (!isCurrent()) return
+  const originRoute = route.fullPath
   threadHistoryActionError.value = ''
   const forkedThreadId = await forkThreadFromTurn(payload.threadId, payload.turnId)
+  if (!isCurrent() || route.fullPath !== originRoute) return
   if (!forkedThreadId) {
     if (selectedThreadId.value === payload.threadId) threadHistoryActionError.value = desktopError.value || '无法创建历史分支。'
     return
   }
+  if (selectedThreadId.value !== forkedThreadId) return
   await router.push({ name: 'thread', params: { threadId: forkedThreadId } })
-  if (selectedThreadId.value !== forkedThreadId) {
-    await selectThread(forkedThreadId)
-  }
+  if (!isCurrent() || routeThreadId.value !== forkedThreadId || selectedThreadId.value !== forkedThreadId) return
   notifyOperation('分支已创建', 'success', forkedThreadId)
   if (isMobile.value) setSidebarCollapsed(true)
 }
@@ -3515,12 +2757,24 @@ async function syncAfterMobileResume(): Promise<void> {
   }
 }
 
-useAccountQuotaUpdates(accounts)
 const { marks: quotaResumeMarks, error: quotaResumeError, toggle: toggleQuotaResume } = useQuotaResume()
+const { marks: scheduledResumeMarks, error: scheduledResumeError, set: setScheduledResume } = useScheduledResume()
+async function scheduleThreadResume(threadId: string, at: number | null): Promise<boolean> {
+  try {
+    const saved = await setScheduledResume(threadId, at, at === null ? undefined : readConversationChoice(threadId))
+    if (saved) notifyOperation(at === null ? '已取消定时续跑' : '已设置定时续跑', 'success', threadId)
+    else notifyOperation(scheduledResumeError.value, 'error', threadId)
+    return saved
+  } catch (cause) {
+    scheduledResumeError.value = cause instanceof Error ? cause.message : '定时续跑状态读取或保存失败'
+    notifyOperation(scheduledResumeError.value, 'error', threadId)
+    return false
+  }
+}
 const goalThreadIds = computed(() => projectGroups.value.flatMap(group => group.threads.map(thread => thread.id)))
 const goalSelectedThreadId = computed(() => isHomeRoute.value ? '' : selectedThreadId.value || '')
 const pendingCompactionRequest = computed(() => ['requested', 'unknown'].includes(compactionRequests.value[goalSelectedThreadId.value]?.status ?? ''))
-const { goals: threadGoals, selectedGoal, error: threadGoalsError, update: updateThreadGoal, refresh: refreshThreadGoals } = useThreadGoals(goalThreadIds, goalSelectedThreadId)
+const { goals: threadGoals, selectedGoal, update: updateThreadGoal, refresh: refreshThreadGoals } = useThreadGoals(goalThreadIds, goalSelectedThreadId)
 const isTaskSearchOpen = ref(false)
 const taskReturnId = computed(() => {
   const id = taskId(route.query.fromTask)
@@ -3614,28 +2868,40 @@ async function runAppCommand(name: AppCommandName, value?: string): Promise<void
 }
 
 async function onDeliveryAcknowledged(submission: PendingWebDelivery): Promise<void> {
-  if (submission.body.threadId === selectedThreadId.value && !editingQueuedMessageState.value) {
-    threadComposerRef.value?.acknowledgeDraft(submission.body.message)
+  if (submission.body.threadId === composerThreadContextId.value && submission.body.threadId === selectedThreadId.value && !editingQueuedMessageState.value) {
+    threadComposerRef.value?.acknowledgeDraft(submission.body.message, submission.createdAt)
   }
   await refreshQueueState().catch(() => {})
 }
 
 function onSubmitThreadMessage(payload: { text: string; imageUrls: string[]; fileAttachments: Array<{ label: string; path: string; fsPath: string }>; skills: Array<{ name: string; path: string }>; mode: 'steer' | 'queue'; complete?: (saved: boolean) => void }): void {
+  const isContextCurrent = captureThreadSendContext()
   scheduleMobileConversationJumpToLatest()
   const editing = editingQueuedMessageState.value
   if (isHomeRoute.value) {
     void submitFirstMessageForNewThread(payload.text, payload.imageUrls, payload.skills, payload.fileAttachments)
-      .then(saved => payload.complete?.(saved))
+      .then(saved => payload.complete?.(isContextCurrent() && saved))
+      .catch(() => payload.complete?.(false))
     return
   }
   queueDraftError.value = ''
+  const submittedThreadId = selectedThreadId.value
+  const isCurrent = () => isContextCurrent() && composerThreadContextId.value === submittedThreadId && selectedThreadId.value === submittedThreadId
   const saving = editing
     ? updateQueuedMessage(editing.threadId, editing.messageId, editing.revision, editing.editToken, payload)
     : sendMessageToSelectedThread(payload.text, payload.imageUrls, payload.skills, payload.mode, payload.fileAttachments)
   void saving.then(() => {
+    if (!isContextCurrent()) {
+      payload.complete?.(false)
+      return
+    }
     if (editing) saveQueueDraftEdit(editing.threadId, null)
     payload.complete?.(true)
   }).catch(cause => {
+    if (!isCurrent()) {
+      payload.complete?.(false)
+      return
+    }
     queueDraftError.value = cause instanceof Error ? cause.message : '保存失败，请重试'
     payload.complete?.(false)
   })
@@ -3657,11 +2923,11 @@ async function hydrateQueuedMessage(messageId: string): Promise<void> {
   if (!message?.delivery?.editToken) return
   const edit = { threadId, messageId, revision: message.delivery.revision, editToken: message.delivery.editToken, draftKey: `${threadId}:queue-edit:${createDeliveryId()}` }
   try {
-    if (selectedThreadId.value === threadId) threadComposerRef.value?.hydrateDraft({ text: '', imageUrls: [], fileAttachments: [], skills: [] })
+    if (selectedThreadId.value === threadId && composerThreadContextId.value === threadId) threadComposerRef.value?.hydrateDraft({ text: '', imageUrls: [], fileAttachments: [], skills: [] })
     await nextTick()
     saveQueueDraftEdit(threadId, edit)
     await nextTick()
-    if (selectedThreadId.value !== threadId) return
+    if (selectedThreadId.value !== threadId || composerThreadContextId.value !== threadId) return
     const payload: ComposerDraftPayload = {
       text: message.text, imageUrls: [...message.imageUrls],
       fileAttachments: message.fileAttachments.map(row => ({ ...row })),
@@ -3680,7 +2946,7 @@ async function resumeQueuedMessage(messageId: string): Promise<void> {
   if (row?.delivery?.status === 'editing') return
   if (queueDraftEdits.value[threadId]?.messageId === messageId) {
     saveQueueDraftEdit(threadId, null)
-    if (selectedThreadId.value === threadId) threadComposerRef.value?.hydrateDraft({ text: '', imageUrls: [], skills: [], fileAttachments: [] })
+    if (selectedThreadId.value === threadId && composerThreadContextId.value === threadId) threadComposerRef.value?.hydrateDraft({ text: '', imageUrls: [], skills: [], fileAttachments: [] })
   }
 }
 
@@ -4405,6 +3671,8 @@ function onInterruptTurn(): void {
 }
 
 async function onRollback(payload: { turnId: string }): Promise<void> {
+  const isCurrent = captureThreadActionContext()
+  if (!isCurrent()) return
   const threadId = selectedThreadId.value
   threadHistoryActionError.value = ''
   const targetTurnId = payload.turnId.trim()
@@ -4420,6 +3688,7 @@ async function onRollback(payload: { turnId: string }): Promise<void> {
     draft = rollbackUserMessage?.text ?? ''
   }
   const rolledBack = await rollbackSelectedThread(payload.turnId)
+  if (!isCurrent()) return
   if (!rolledBack && selectedThreadId.value === threadId) {
     threadHistoryActionError.value = desktopError.value || '无法撤回历史。'
   }
@@ -4434,8 +3703,6 @@ function onImplementPlan(payload: { turnId: string }): void {
   scheduleMobileConversationJumpToLatest()
   void sendMessageToSelectedThread('Implement', [], [], 'steer', [], undefined, 'default')
 }
-
-
 
 function buildThreadMarkdown(): string {
   const lines: string[] = []
@@ -4497,63 +3764,6 @@ function buildThreadMarkdown(): string {
 function escapeMarkdownText(value: string): string {
   return value.replace(/([\\`*_{}\[\]()#+\-.!])/g, '\\$1')
 }
-
-function loadBoolPref(key: string, fallback: boolean): boolean {
-  if (typeof window === 'undefined') return fallback
-  const v = window.localStorage.getItem(key)
-  if (v === null) return fallback
-  return v === '1'
-}
-
-function loadDarkModePref(): 'system' | 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'system'
-  const v = window.localStorage.getItem(DARK_MODE_KEY)
-  if (v === 'light' || v === 'dark') return v
-  return 'system'
-}
-
-
-function loadChatWidthPref(): ChatWidthMode {
-  if (typeof window === 'undefined') return 'standard'
-  const value = window.localStorage.getItem(CHAT_WIDTH_KEY)
-  return value === 'standard' || value === 'wide' || value === 'extra-wide' ? value : 'standard'
-}
-
-function toggleSendWithEnter(): void {
-  sendWithEnter.value = !sendWithEnter.value
-  window.localStorage.setItem(SEND_WITH_ENTER_KEY, sendWithEnter.value ? '1' : '0')
-}
-
-
-function cycleDarkMode(): void {
-  const order: Array<'system' | 'light' | 'dark'> = ['dark', 'light', 'system']
-  const idx = order.indexOf(darkMode.value)
-  onDarkModeChange(order[(idx + 1) % order.length])
-}
-
-function onDarkModeChange(value: string): void {
-  if (value !== 'system' && value !== 'light' && value !== 'dark') return
-  darkMode.value = value
-  window.localStorage.setItem(DARK_MODE_KEY, darkMode.value)
-  applyDarkMode()
-}
-
-function onChatWidthChange(value: string): void {
-  if (value !== 'standard' && value !== 'wide' && value !== 'extra-wide') return
-  chatWidth.value = value
-  window.localStorage.setItem(CHAT_WIDTH_KEY, chatWidth.value)
-}
-
-function toggleDictationClickToToggle(): void {
-  dictationClickToToggle.value = !dictationClickToToggle.value
-  window.localStorage.setItem(DICTATION_CLICK_TO_TOGGLE_KEY, dictationClickToToggle.value ? '1' : '0')
-}
-
-function toggleDictationAutoSend(): void {
-  dictationAutoSend.value = !dictationAutoSend.value
-  window.localStorage.setItem(DICTATION_AUTO_SEND_KEY, dictationAutoSend.value ? '1' : '0')
-}
-
 
 async function onProviderChange(provider: string): Promise<void> {
   if (freeModeLoading.value) return
@@ -4709,10 +3919,7 @@ async function loadFreeModeStatus(options: { refreshModels?: boolean } = {}): Pr
     } else {
       selectedProvider.value = 'codex'
     }
-    externalCodexAuthAvailable = status.hasCodexAuth === true
-    if (!externalCodexAuthAvailable) {
-      externalAuthImportAttempted = false
-    }
+    setExternalAuthAvailable(status.hasCodexAuth === true)
     const providerChanged = selectedProvider.value !== previousProvider
     if (providerChanged && options.refreshModels !== false) {
       await refreshAll({
@@ -4721,90 +3928,9 @@ async function loadFreeModeStatus(options: { refreshModels?: boolean } = {}): Pr
         awaitAncillaryRefreshes: true,
       })
     }
-    const importedExternalAuth = await maybeImportExternalCodexAuthAccount()
-    if (importedExternalAuth) {
-      await refreshAll({
-        includeSelectedThreadMessages: false,
-        providerChanged: providerChanged || importedExternalAuth,
-        awaitAncillaryRefreshes: true,
-      })
-    }
+    await refreshExternalAuth()
   } catch {
     // Ignore — free mode status unknown
-  }
-}
-
-function onDictationLanguageChange(nextValue: string): void {
-  const normalized = normalizeToWhisperLanguage(nextValue.trim())
-  const value = normalized || 'auto'
-  dictationLanguage.value = value
-  window.localStorage.setItem(DICTATION_LANGUAGE_KEY, value)
-}
-
-function loadDictationLanguagePref(): string {
-  if (typeof window === 'undefined') return 'auto'
-  const value = window.localStorage.getItem(DICTATION_LANGUAGE_KEY)?.trim() || 'auto'
-  const normalized = normalizeToWhisperLanguage(value)
-  return normalized || 'auto'
-}
-
-function buildDictationLanguageOptions(): Array<{ value: string; label: string }> {
-  const options: Array<{ value: string; label: string }> = [{ value: 'auto', label: t('Auto-detect') }]
-  const seen = new Set<string>(['auto'])
-  function formatLanguageLabel(value: string): string {
-    const languageName = WHISPER_LANGUAGES[value] || value
-    const title = languageName.charAt(0).toUpperCase() + languageName.slice(1)
-    return `${title} (${value})`
-  }
-
-  for (const raw of typeof navigator !== 'undefined' ? (navigator.languages ?? []) : []) {
-    const value = normalizeToWhisperLanguage(raw)
-    if (!value || seen.has(value)) continue
-    seen.add(value)
-    options.push({
-      value,
-      label: `Preferred: ${formatLanguageLabel(value)}`,
-    })
-  }
-
-  for (const value of Object.keys(WHISPER_LANGUAGES)) {
-    if (seen.has(value)) continue
-    seen.add(value)
-    options.push({
-      value,
-      label: formatLanguageLabel(value),
-    })
-  }
-
-  const current = dictationLanguage.value.trim()
-  if (current && !seen.has(current)) {
-    options.push({
-      value: current,
-      label: formatLanguageLabel(current),
-    })
-  }
-
-  return options
-}
-
-function normalizeToWhisperLanguage(raw: string): string {
-  const value = raw.trim().toLowerCase()
-  if (!value || value === 'auto') return ''
-  if (value in WHISPER_LANGUAGES) return value
-  const base = value.split('-')[0] ?? value
-  if (base in WHISPER_LANGUAGES) return base
-  return ''
-}
-
-function applyDarkMode(): void {
-  const root = document.documentElement
-  if (darkMode.value === 'dark') {
-    root.classList.add('dark')
-  } else if (darkMode.value === 'light') {
-    root.classList.remove('dark')
-  } else {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    root.classList.toggle('dark', prefersDark)
   }
 }
 
@@ -5091,12 +4217,67 @@ watch(isMobile, (mobile) => {
   setSidebarCollapsed(mobile ? true : desktopSidebarCollapsed, false)
 }, { immediate: true })
 
+const NEW_THREAD_WATCHDOG_MS = 120_000
+const NEW_THREAD_UNAVAILABLE_MESSAGE = '当前会话运行资源正在回收或暂时不可用，请稍后重试。'
+const NEW_THREAD_POOL_FULL_MESSAGE = '会话运行资源已满，空闲会话正在回收，请稍后重试。'
+
+function newThreadFailureMessage(cause: unknown): string {
+  if (cause instanceof Error && cause.message === NEW_THREAD_UNAVAILABLE_MESSAGE) return NEW_THREAD_UNAVAILABLE_MESSAGE
+  const code = (cause as { workerPoolCode?: string })?.workerPoolCode
+  if (code === 'pool_full') return NEW_THREAD_POOL_FULL_MESSAGE
+  if (cause instanceof Error && /会话运行资源已满/.test(cause.message)) return NEW_THREAD_POOL_FULL_MESSAGE
+  if (code) return NEW_THREAD_UNAVAILABLE_MESSAGE
+  return cause instanceof Error ? cause.message : '发送失败，请重试'
+}
+
+function withNewThreadWatchdog(work: Promise<boolean>): Promise<boolean> {
+  let watchdogTimer: ReturnType<typeof setTimeout> | undefined
+  const watchdog = new Promise<never>((_, reject) => {
+    watchdogTimer = setTimeout(() => reject(new Error(NEW_THREAD_UNAVAILABLE_MESSAGE)), NEW_THREAD_WATCHDOG_MS)
+  })
+  return Promise.race([work, watchdog]).finally(() => { if (watchdogTimer) clearTimeout(watchdogTimer) })
+}
+
 async function submitFirstMessageForNewThread(
   text: string,
   imageUrls: string[] = [],
   skills: Array<{ name: string; path: string }> = [],
   fileAttachments: Array<{ label: string; path: string; fsPath: string }> = [],
 ): Promise<boolean> {
+  const isCurrent = captureThreadSendContext()
+  if (!isCurrent()) return false
+  newThreadSendError.value = ''
+  try {
+    // A server-side allocation wedge must never leave the composer pending:
+    // the watchdog turns an indefinitely pending thread/start into a visible,
+    // retryable failure while keeping the draft intact.
+    return await withNewThreadWatchdog(runNewThreadSubmission(text, imageUrls, skills, fileAttachments))
+  } catch (cause) {
+    if (!isCurrent()) return false
+    const message = newThreadFailureMessage(cause)
+    newThreadSendError.value = message
+    notifyOperation(t(message), 'error')
+    const createdThreadId = (cause as { createdThreadId?: string })?.createdThreadId
+    if (createdThreadId && isHomeRoute.value) {
+      await router.replace({ name: 'thread', params: { threadId: createdThreadId } })
+      await nextTick()
+      if (!isCurrent()) return false
+      if (selectedThreadId.value === createdThreadId) threadComposerRef.value?.hydrateDraft({ text, imageUrls, skills, fileAttachments })
+    }
+    return false
+  }
+}
+
+async function runNewThreadSubmission(
+  text: string,
+  imageUrls: string[],
+  skills: Array<{ name: string; path: string }>,
+  fileAttachments: Array<{ label: string; path: string; fsPath: string }>,
+): Promise<boolean> {
+  const isCurrent = captureThreadSendContext()
+  if (!isCurrent()) return false
+  const wasHomeRoute = isHomeRoute.value
+  const canContinue = () => isCurrent() && (!wasHomeRoute || isHomeRoute.value)
   try {
     worktreeInitStatus.value = { phase: 'idle', title: '', message: '' }
     let targetCwd = newThreadCwd.value
@@ -5109,10 +4290,12 @@ async function submitFirstMessageForNewThread(
       }
       try {
         const created = await createWorktree(newThreadCwd.value, newWorktreeBaseBranch.value)
+        if (!canContinue()) return false
         targetCwd = created.cwd
         newThreadCwd.value = created.cwd
         worktreeInitStatus.value = { phase: 'idle', title: '', message: '' }
       } catch {
+        if (!canContinue()) return false
         worktreeInitStatus.value = {
           phase: 'error',
           title: t('Worktree setup failed'),
@@ -5123,6 +4306,7 @@ async function submitFirstMessageForNewThread(
     } else if (!targetCwd.trim() || isVirtualProjectId(targetCwd)) {
       const projectId = isVirtualProjectId(targetCwd) ? targetCwd : undefined
       const directory = await createProjectlessThreadDirectory(text, projectId)
+      if (!canContinue()) return false
       if (projectId) {
         confirmedProjectId = projectId
         invalidateWorkspaceRootsStateCache()
@@ -5130,18 +4314,22 @@ async function submitFirstMessageForNewThread(
       targetCwd = directory.cwd
     }
     const threadId = await sendMessageToNewThread(text, targetCwd, imageUrls, skills, fileAttachments, confirmedProjectId)
-    if (!threadId) return false
+    if (!isCurrent() || !threadId) return false
+    if (!canContinue()) return true
     await router.replace({ name: 'thread', params: { threadId } })
+    if (!isCurrent()) return false
     scheduleMobileConversationJumpToLatest()
     return true
   } catch (cause) {
+    if (!canContinue()) return false
     const createdThreadId = (cause as { createdThreadId?: string })?.createdThreadId
     if (createdThreadId && isHomeRoute.value) {
       await router.replace({ name: 'thread', params: { threadId: createdThreadId } })
       await nextTick()
+      if (!isCurrent()) return false
       if (selectedThreadId.value === createdThreadId) threadComposerRef.value?.hydrateDraft({ text, imageUrls, skills, fileAttachments })
     }
-    return false
+    throw cause
   }
 }
 

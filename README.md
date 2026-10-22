@@ -2,10 +2,10 @@
 
 **中文** | [English](README.en.md)
 
-[![Release](https://img.shields.io/github/v/release/ERROR403XD/sidux)](https://github.com/ERROR403XD/sidux/releases)
+[![Release](https://img.shields.io/github/v/release/ERROR403XD/codexapp)](https://github.com/ERROR403XD/sidux/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Sidux 是基于 Codex app-server 的自托管 Web 界面，让你在桌面、平板和手机浏览器中管理项目、会话、账号与自动化任务。当前公开发布基线为 **0.2.19**；从 **0.2.20** 起，项目统一使用 Sidux 名称和图标。这是社区维护的独立项目，与 OpenAI 官方产品没有隶属关系。
+Sidux（原 CodexApp）是基于 Codex app-server 的自托管 Web 界面，让你在桌面、平板和手机浏览器中管理项目、会话、账号与自动化任务。当前发布基线为 **0.2.22**。这是社区维护的独立项目，与 OpenAI 官方产品没有隶属关系。
 
 ## 使用边界与政策遵循
 
@@ -30,7 +30,7 @@ Sidux 是基于 Codex app-server 的自托管 Web 界面，让你在桌面、平
 
 因此，本项目从 GitHub 源码版本接续开发，不以被报告投毒的 npm 发布包为开发基线；此处“未投毒的 GitHub 版本”指未包含该报告所述发布包注入代码的源码基线，不代表对所有历史代码和依赖作出绝对安全保证。本分支保留上游来源，并以审核后的源码快照发布，发行包从本仓库源码构建。事件细节以所链接的公开报告为准，不将其扩展为未经独立核实的结论。
 
-**请使用本仓库的源码或 [GitHub Releases](https://github.com/ERROR403XD/sidux/releases)。** 0.2.20 起首选命令为 `sidux`；`codexapp` 和 `codexui` 保留为兼容别名。0.2.19 及更早历史发行包仍保留 `codexapp-<版本>.tgz` 文件名和原启动方式；本次 GitHub 发布不代表 npm 同名包由本仓库控制。
+**请使用本仓库的源码或 [GitHub Releases](https://github.com/ERROR403XD/sidux/releases)。** 新命令为 `sidux`；`codexapp` 和 `codexui` 继续作为兼容别名。现有仓库地址、数据目录、环境变量和服务名暂不迁移，以免破坏升级与回滚。
 
 ## 功能概览
 
@@ -55,7 +55,9 @@ Sidux 是基于 Codex app-server 的自托管 Web 界面，让你在桌面、平
 | 双语与界面 | 设置、账号、API 代理、自动化和项目窗口等中文/英文切换，语言偏好持久化；不翻译用户内容。 |
 | 部署维护 | 移除内置隧道与启动时强制登录，增加严格端口绑定、两阶段发布切换和缓存恢复。 |
 
-0.2.19 包含 0.2.18 与 0.2.19 的改进：仅名称的项目组织、每日多个调度时刻、引导消息恢复与去重、会话筛选和错误状态改进、自动化保存与历史恢复修复，以及 UI 优化。详见 [发布说明](https://github.com/ERROR403XD/sidux/releases/tag/v0.2.19)。
+插件页刷新按钮加宽并靠右对齐；筛选器按内容宽度显示，搜索框填满剩余空间，控件间距统一。
+
+0.2.22 将最后的 `0.2.22-dev.8` 基线提升为正式版，包含会话状态与通知、定时续跑标记、自定义连接及设置改进。该版本保留 dev.8 审核确认的 80 项未修复问题（含 6 项 P1），详见[发布说明与已知问题](docs/RELEASE-0.2.22.md)；修复工作转入 0.2.23。
 
 ## 环境要求
 
@@ -70,10 +72,10 @@ Sidux 是基于 Codex app-server 的自托管 Web 界面，让你在桌面、平
 ### 从本仓库源码构建
 
 ```bash
-git clone --branch v0.2.19 https://github.com/ERROR403XD/sidux.git
+git clone --branch v0.2.22 https://github.com/ERROR403XD/sidux.git
 cd sidux
-pnpm install --frozen-lockfile
-pnpm run build
+npm ci
+npm run build
 node dist-cli/index.js --port 5900 --strict-port --no-open
 ```
 
@@ -81,11 +83,11 @@ node dist-cli/index.js --port 5900 --strict-port --no-open
 
 ### 使用本仓库 Release 安装包
 
-从 [v0.2.19](https://github.com/ERROR403XD/sidux/releases/tag/v0.2.19) 下载历史包 `codexapp-0.2.19.tgz` 和 `SHA256SUMS`，在下载目录执行：
+从 [v0.2.22](https://github.com/ERROR403XD/sidux/releases/tag/v0.2.22) 下载 `codexapp-0.2.22.tgz` 和 `SHA256SUMS`，在下载目录执行：
 
 ```bash
 sha256sum -c SHA256SUMS
-npm install -g ./codexapp-0.2.19.tgz
+npm install -g ./codexapp-0.2.22.tgz
 codexapp --port 5900 --strict-port --no-open
 ```
 
@@ -102,9 +104,20 @@ codexapp --port 5900 --strict-port --no-open
 | `--no-password` | 关闭 Web 密码，仅适合有其他访问控制的可信环境。 |
 | `CODEX_HOME` | 指定独立认证、会话与应用状态目录；未设置时使用 Codex 默认目录。 |
 
-完整参数运行 `node dist-cli/index.js --help`、安装后的 `sidux --help` 或兼容命令 `codexapp --help`。权限和审批策略应按实际任务设置；这些设置仅控制本地执行，不解除供应方的安全措施或使用限制。
+完整参数运行 `node dist-cli/index.js --help` 或安装后的 `codexapp --help`。权限和审批策略应按实际任务设置；这些设置仅控制本地执行，不解除供应方的安全措施或使用限制。
 
 服务监听 `0.0.0.0`，可通过主机局域网地址访问。请按网络环境配置防火墙、访问密码或自行管理的私有网络/反向代理。麦克风、语音等浏览器能力可能需要 HTTPS 安全上下文。项目文件和工具实际在服务所在主机执行。
+
+### 本机用户测试入口：59001
+
+开发轮次的用户测试统一使用 `59001`，生产服务继续使用 `5900`。在权威源码树中构建并更新测试容器：
+
+```bash
+cd /mnt/NAS02-Code/Sidux
+CODEXAPP_REPLACE_DEV=1 ./scripts/run-multi-account-dev.sh
+```
+
+测试页面为 `http://127.0.0.1:59001/`；需要局域网设备测试时使用本机局域网地址的 `59001`。替换容器会复用 `codexapp-multi-account-dev-home`（`CODEX_HOME=/codex-home`）和 `codexapp-0190-test-workspace`，因此 59001 上已配置的账号认证、设置、会话、历史和测试工作区会跨开发轮次保留。这里不从 5900 复制认证或设置；需要空白环境时另建临时卷，不能清空标准测试卷。
 
 ### 可选 API 代理（Linux x64，源码安装）
 
@@ -126,8 +139,6 @@ CODEXAPP_API_PROXY_BINARY="$PWD/output/api-proxy-component/cli-proxy-api" \
 
 升级前结束运行中的任务并备份数据，下载新版本并校验、重新构建或安装后再启动。回退可使用先前源码标签或发行包，同时保留数据备份。源码中的 `scripts/codexapp-release-switch.sh` 是本项目宿主环境的两阶段部署脚本，使用前阅读脚本配置；GitHub Release 发布不等同于自动切换你的运行服务。
 
-0.2.19 使用可恢复的分段自动化历史。回退到更早版本前，先停止对应实例并保留完整备份，再用 **0.2.19 程序**执行 `node dist-cli/index.js automation-history --home /path/to/codex-home --export-legacy`，确认成功后才启动旧程序；不能通过删除调度锁或历史来绕过失败。固定直接运行依赖后，实际部署仍应保留安装生成的 package-lock.json，以便使用 npm ci 复装相同解析结果。
-
 ## 开发与验证
 
 ```bash
@@ -137,9 +148,9 @@ pnpm run build
 pnpm run test:unit
 ```
 
-前端使用 Vue 3 / TypeScript / Vite；Node.js / Express 通过 WebSocket 与 RPC 对接 Codex app-server，终端使用 xterm.js / node-pty。开发入口为 `src/`、`scripts/`，测试索引为 [tests.md](tests.md)，公开验收说明见 [docs/RELEASE-0.2.19.md](docs/RELEASE-0.2.19.md)。
+前端使用 Vue 3 / TypeScript / Vite；Node.js / Express 通过 WebSocket 与 RPC 对接 Codex app-server，终端使用 xterm.js / node-pty。开发入口为 `src/`、`scripts/`，测试索引为 [tests.md](tests.md)，公开验收说明见 [docs/RELEASE-0.2.22.md](docs/RELEASE-0.2.22.md)。
 
-发布验证范围与限制见 [0.2.19 发布说明](docs/RELEASE-0.2.19.md)。私人环境的会话、路径、截图及验收原始记录不随仓库分发。
+发布验证范围与限制见 [0.2.22 发布说明](docs/RELEASE-0.2.22.md)。私人环境的会话、路径、截图及验收原始记录不随仓库分发。
 
 ## 常见问题
 

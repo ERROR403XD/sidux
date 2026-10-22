@@ -29,6 +29,10 @@ Return to the [manual test index](../../tests.md).
 | [共用弹窗、浮层、单选和按钮组件](shared-ui-components.md) |
 | [PWA 首页缓存故障恢复](pwa-shell-network-recovery.md) |
 | [跨版本 HTTP 缓存与白屏恢复](release-cache-refresh.md) |
+| [设置保存静默刷新且页面不位移](settings-save-silent-refresh.md) |
+| [0.2.22 设置页装配拆分回归](settings-surface-0225.md) |
+| [0.2.22 侧边栏与会话拆分回归](sidebar-conversation-0226.md) |
+| [后台返回白屏与冷启动首屏外壳](background-resume-white-screen-and-boot-shell.md) |
 
 - [Hooks 观察与 Codex 后台终端](hooks-and-background-processes.md)：只读 Hooks、观察恢复、单项停止与输出。
 
@@ -37,6 +41,8 @@ Return to the [manual test index](../../tests.md).
 - [0.2.11 消息与侧栏状态一致性](chat-state-0211.md)
 
 - [0.2.11 设置与账号 UI](settings-0211.md)
+
+- [0.2.13 模型强度整合及503恢复](settings-0213.md)
 
 - [0.2.12 设置、API Key 与账号界面](settings-0212.md)
 

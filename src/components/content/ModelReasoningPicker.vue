@@ -81,6 +81,7 @@ function selectEffort(event: Event): void {
 }
 const shortModelLabel = computed(() => {
   const label = modelLabel.value
+  if (label.includes('/')) return label
   const family = label.match(/\b(astra|sol|terra|luna)\b/i)?.[1]
   return family ? family[0].toUpperCase() + family.slice(1).toLowerCase() : label.replace(/^gpt-/i, 'GPT ')
 })

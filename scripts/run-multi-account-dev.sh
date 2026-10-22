@@ -97,7 +97,7 @@ fi
 docker run -d \
   --name "$CONTAINER_NAME" --restart unless-stopped \
   -p "0.0.0.0:${HOST_PORT}:59001" -e CODEX_HOME=/codex-home -e TZ=Asia/Shanghai \
-  -v "$CODEX_HOME_VOLUME:/codex-home" -v /workspace:/workspace \
+  -v "$CODEX_HOME_VOLUME:/codex-home" -v /home/Code:/home/Code \
   -v "$TEST_WORKSPACE_VOLUME:/test-workspace/automation-0190" \
   "$IMAGE_NAME" >/dev/null
 

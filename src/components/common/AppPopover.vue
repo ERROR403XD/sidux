@@ -23,6 +23,7 @@ import { positionPopover } from './popoverPosition'
 const props = withDefaults(defineProps<{
   open: boolean
   anchor: HTMLElement | null
+  anchorPoint?: { x: number; y: number } | null
   width?: number
   matchAnchorWidth?: boolean
   avoidAnchorOverlap?: boolean
@@ -48,6 +49,7 @@ function updatePosition(): void {
   const anchorBounds = props.anchor.getBoundingClientRect()
   position.value = positionPopover({
     anchor: anchorBounds,
+    point: props.anchorPoint,
     height: panel.value.offsetHeight,
     width: props.matchAnchorWidth ? anchorBounds.width : props.width,
     viewportWidth: window.innerWidth,
@@ -120,7 +122,7 @@ watch(() => props.open, async (open, _previous, onCleanup) => {
   }
 }, { immediate: true })
 
-watch(() => [props.width, props.matchAnchorWidth, props.direction, props.align, props.avoidAnchorOverlap, props.anchor], () => {
+watch(() => [props.width, props.matchAnchorWidth, props.direction, props.align, props.avoidAnchorOverlap, props.anchor, props.anchorPoint], () => {
   if (props.open) schedulePosition()
 })
 onBeforeUnmount(detach)

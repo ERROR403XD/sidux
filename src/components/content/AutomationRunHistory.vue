@@ -9,7 +9,7 @@
     <p v-if="!runs.length" class="automation-history-muted">{{ t(loading ? '读取中…' : '尚无执行记录。') }}</p>
     <AutomationRunList :runs="runs" :target="target" :disabled="runDisabled" @retry="runNow" />
     <AppButton class="automation-history-all" type="button" @click="openHistory">{{ t('查看全部') }}</AppButton>
-    <AppDialog ref="historyDialog" :open="allOpen" :title="t(`${automation.name} · 全部执行记录`)" @close="closeHistory">
+    <AppDialog ref="historyDialog" :open="allOpen" :title="t('{v0} · 全部执行记录', { v0: automation.name })" @close="closeHistory">
       <section class="automation-history automation-history-full" :aria-busy="pageLoading">
         <p v-if="pageError" class="automation-history-error" role="alert">{{ t(pageError) }}</p>
         <p v-if="pageLoading" class="automation-history-muted">{{ t('读取中…') }}</p>

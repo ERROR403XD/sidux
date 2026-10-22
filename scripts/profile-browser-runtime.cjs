@@ -7,7 +7,9 @@ const route = process.env.PROFILE_ROUTE || '/'
 const waitMs = Number.parseInt(process.env.PROFILE_WAIT_MS || '7000', 10)
 const threadLoadTimeoutMs = Number.parseInt(process.env.PROFILE_THREAD_LOAD_TIMEOUT_MS || '15000', 10)
 const headless = process.env.PROFILE_HEADLESS !== 'false'
-const outputDir = resolve(process.cwd(), 'output/playwright')
+const outputDir = process.env.PROFILE_OUTPUT_DIR
+  ? resolve(process.env.PROFILE_OUTPUT_DIR)
+  : resolve(process.cwd(), 'output/playwright')
 const runStamp = new Date().toISOString().replace(/[:.]/g, '-')
 const THREAD_LOADING_TEXT = 'Loading threads...'
 
@@ -134,6 +136,12 @@ async function main() {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
   const page = await context.newPage()
   const apiRows = []
+  const pageErrors = []
+  const loadFailures = []
+  page.on('pageerror', error => pageErrors.push(error.message))
+  page.on('requestfailed', request => {
+    loadFailures.push({ path: new URL(request.url()).pathname, error: request.failure()?.errorText || '' })
+  })
 
   page.on('request', (request) => {
     const url = request.url()
@@ -207,6 +215,9 @@ async function main() {
   const title = await page.title()
   const bodyText = await page.locator('body').innerText({ timeout: 5000 }).catch(() => '')
   const stillLoadingThreads = threadLoadingTimedOut || hasThreadLoadingText(bodyText)
+  const appMounted = await page.locator('.desktop-layout').count() > 0
+  const interfaceRecoveryVisible = await page.locator('#app-load-recovery').isVisible()
+  const apiTrafficPresent = apiRows.length > 0
   const performanceData = await collectPerformance(page)
   const screenshotPath = resolve(outputDir, `${artifactPrefix}.png`)
   await page.screenshot({ path: screenshotPath, fullPage: true })
@@ -262,7 +273,12 @@ async function main() {
       threadLoadingText: THREAD_LOADING_TEXT,
       threadLoadTimeoutMs: resolvedThreadLoadTimeoutMs,
       stillLoadingThreads,
+      appMounted,
+      interfaceRecoveryVisible,
+      apiTrafficPresent,
     },
+    pageErrors,
+    loadFailures,
     bodyTextHead: bodyText.slice(0, 1000),
     performance: performanceData,
     apiSummary,
@@ -289,8 +305,8 @@ async function main() {
     slowestApiRows: report.slowestApiRows.slice(0, 10),
   }, null, 2))
 
-  if (stillLoadingThreads) {
-    console.error(`Profile failed: page still contains "${THREAD_LOADING_TEXT}" after ${resolvedThreadLoadTimeoutMs}ms. Report: ${reportPath}`)
+  if (stillLoadingThreads || !appMounted || interfaceRecoveryVisible || !apiTrafficPresent || pageErrors.length > 0) {
+    console.error(`Profile failed: application readiness or runtime errors invalidate this sample. Report: ${reportPath}`)
     process.exitCode = 2
   }
 }

@@ -42,3 +42,12 @@ Docker provider/auth checklist execution and live error overlay de-duplication.
 认证故障显示使用真实上游和合成无效认证，应用投递台账、原生 Codex、失败回合和浏览器均使用真实实现；检查刷新后仍有持久错误，重复 live overlay 为零，1440×1000 浅深主题截图。该用例不证明真实云端可成功消费、自然额度恢复或免费模型可用。初次测试容器缺少主机 CA，原生请求以 UnknownIssuer 重试，该结果未计入通过。最终测试容器只读挂载主机已有公共 CA；原生终态为 auth refresh request failed: code=-32001，作为认证刷新失败验证，不宣称直接观测到 401。
 
 脚本只处理自己创建的三个容器和临时目录，不读取生产认证，结束后删除测试容器。脚本日志与截图位于 `output/0219-final/packaged-provider-matrix.*` 和 `output/playwright/0219-packaged-invalid-auth-{light,dark}.png`。
+### 0.2.22 审核修复后的打包矩阵
+
+前提：构建并打包当前源码，以 packed tarball 安装的镜像和独立临时 home 测试；4195–4197 空闲。设置 `CODEXAPP_TEST_IMAGE` 和镜像实际 `CODEXAPP_TEST_CONTAINER_PORT`。
+
+操作：运行 `scripts/test-packaged-provider-matrix.cjs`。不要预置全局状态 `{}`；noauth 下连续切换供应方两次，其他 case 检查 malformed fallback 和 invalid 原生错误刷新。
+
+预期：报告的 native 版本来自容器实际 `codex --version`，每个 case 一致；连续两次切换均成功；invalid 错误刷新后保留，重复 live overlay 为 0。报告不宣称真实云端成功。
+
+清理：脚本只移除本轮生成的唯一容器名和临时 home；核对三个监听消失，保留包/镜像供复查，不删除标准测试卷。

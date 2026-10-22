@@ -13,7 +13,7 @@ Return to the [manual test index](../../tests.md).
 | [Feature: Codex.app Thread Provider Filter Patch (fix-codex-thread-filter.sh)](codex-app-thread-provider-filter-patch-fix-codex-thread-filter-sh.md) |
 | [Feature: Provider dropdown in settings (replaces free mode toggle)](provider-dropdown-in-settings-replaces-free-mode-toggle.md) |
 | [Codex CLI + OpenCode Zen Big Pickle Model](codex-cli-opencode-zen-big-pickle-model.md) |
-| [OpenCode Zen Provider & Wire API Selector in Sidux](opencode-zen-provider-and-wire-api-selector-in-sidux.md) |
+| [OpenCode Zen Provider & Wire API Selector in codexui](opencode-zen-provider-and-wire-api-selector-in-codexui.md) |
 | [Provider Switch Model List Isolation](provider-switch-model-list-isolation.md) |
 | [Zen Proxy Port Resolution When Vite Auto-Increments](zen-proxy-port-resolution-when-vite-auto-increments.md) |
 | [Model List Search / Filter](model-list-search-filter.md) |
@@ -34,6 +34,9 @@ Return to the [manual test index](../../tests.md).
 | [Thread-locked providers across Zen, Codex, and OpenRouter](thread-locked-providers-across-zen-codex-and-openrouter.md) |
 | [Selected thread loads do not refetch provider models](selected-thread-loads-do-not-refetch-provider-models.md) |
 | [Provider-backed scheduled refreshes keep model menus populated](provider-backed-scheduled-refreshes-keep-model-menus-populated.md) |
+| [Pending new conversation rebinds to the active connection](pending-conversation-rebinds-to-active-connection.md) |
+| [Existing conversation follows the live connection after the source changes elsewhere](conversation-follows-live-connection.md) |
+| [0.2.22 Q03 模型配置、偏好与重试生命周期](model-preference-lifecycle.md) |
 
 - [0.2.0 动态模型能力与兼容验证](dynamic-model-capabilities-0200.md)
 - [0.2.17 自定义连接与端点能力](custom-connections-0217.md)

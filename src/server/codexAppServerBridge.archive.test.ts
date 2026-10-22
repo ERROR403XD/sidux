@@ -1,21 +1,134 @@
-import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises'
+import type { ServerResponse } from 'node:http'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { writeFreeModeStateFile } from './freeModeStateFile'
 import {
   buildProjectlessFolderName,
   callRpcWithArchiveRecovery,
   canonicalizeThreadListResponseForRead,
   canonicalizeWorkspaceRootsStateForRead,
   ensureDefaultFreeModeStateForMissingAuthSync,
+  failBridgeRequest,
   hasUsableCodexAuth,
   isEmptyThreadReadError,
   isThreadMaterializationPendingError,
   isThreadNotFoundError,
   isUnauthenticatedRateLimitError,
-  writeFreeModeStateFile,
+  mergeImportedThreadsIntoThreadListResult,
+  registerImportedSessionsInStateDb,
   writeWorkspaceRootsState,
 } from './codexAppServerBridge'
+
+describe('failBridgeRequest', () => {
+  it('returns JSON before headers and destroys instead of double-responding after headers', () => {
+    function response(headersSent = false) {
+      const headers: Record<string, string> = {}
+      let endedWith = ''
+      let destroyedWith: unknown = null
+      return {
+        headersSent,
+        statusCode: 200,
+        get headers() { return headers },
+        get endedWith() { return endedWith },
+        get destroyedWith() { return destroyedWith },
+        setHeader(name: string, value: string) { headers[name] = value },
+        end(value: string) { endedWith = value },
+        destroy(error: unknown) { destroyedWith = error },
+      } as unknown as ServerResponse & {
+        headers: Record<string, string | undefined>
+        endedWith: string
+        destroyedWith: unknown
+      }
+    }
+
+    const fresh = response()
+    failBridgeRequest(fresh, new Error('before headers'))
+    expect(fresh.statusCode).toBe(502)
+    expect(JSON.parse(fresh.endedWith)).toEqual({ error: 'before headers' })
+
+    const sent = response(true)
+    const failure = new Error('after headers')
+    failBridgeRequest(sent, failure)
+    expect(sent.destroyedWith).toBe(failure)
+    expect(sent.endedWith).toBe('')
+  })
+})
+
+describe('imported thread state database', () => {
+  it('registers and merges imported sessions without blocking the event loop', async () => {
+    const codexHome = await mkdtemp(join(tmpdir(), 'codex-home-state-db-'))
+    const binDir = join(codexHome, 'bin')
+    const sqlitePath = join(binDir, 'sqlite3')
+    const originalPath = process.env.PATH
+    process.env.CODEX_HOME = codexHome
+    try {
+      await mkdir(binDir, { recursive: true })
+      await writeFile(join(codexHome, 'state_5.sqlite'), '')
+      await writeFile(sqlitePath, `#!/bin/sh
+case "$2" in
+  'PRAGMA table_info(threads);')
+    printf '%s\\n' \
+      '0|id|TEXT|0||1' \
+      '1|rollout_path|TEXT|0||0' \
+      '2|created_at|INTEGER|0||0' \
+      '3|updated_at|INTEGER|0||0' \
+      '4|source|TEXT|0||0' \
+      '5|model|TEXT|0||0' \
+      '6|model_provider|TEXT|0||0' \
+      '7|cwd|TEXT|0||0' \
+      '8|title|TEXT|0||0' \
+      '9|sandbox_policy|TEXT|0||0' \
+      '10|approval_mode|TEXT|0||0' \
+      '11|tokens_used|INTEGER|0||0' \
+      '12|has_user_event|INTEGER|0||0' \
+      '13|archived|INTEGER|0||0' \
+      '14|archived_at|INTEGER|0||0' \
+      '15|git_sha|TEXT|0||0' \
+      '16|git_branch|TEXT|0||0' \
+      '17|git_origin_url|TEXT|0||0' \
+      '18|cli_version|TEXT|0||0' \
+      '19|first_user_message|TEXT|0||0' \
+      '20|created_at_ms|INTEGER|0||0' \
+      '21|updated_at_ms|INTEGER|0||0' \
+      '22|thread_source|TEXT|0||0' \
+      '23|preview|TEXT|0||0'
+    ;;
+  -json)
+    printf '%s\\n' '[{"id":"imported-thread","rollout_path":"/sessions/imported-thread.jsonl","created_at":1,"updated_at":2,"source":"cli","model_provider":"openai","cwd":"/tmp/imported-project","title":"Imported title","cli_version":"fixture-cli","first_user_message":"first user message","archived":0}]'
+    ;;
+esac
+`)
+      await chmod(sqlitePath, 0o755)
+      process.env.PATH = `${binDir}:${process.env.PATH}`
+      await registerImportedSessionsInStateDb([{
+        id: 'imported-thread',
+        path: join(codexHome, 'sessions/imported/imported-thread.jsonl'),
+        cwd: '/tmp/imported-project',
+        title: 'Imported title',
+        createdAtMs: 1_000,
+        updatedAtMs: 2_000,
+        model: 'fixture-model',
+        modelProvider: 'openai',
+        cliVersion: 'fixture-cli',
+        firstUserMessage: 'first user message',
+      }])
+
+      const result = await mergeImportedThreadsIntoThreadListResult({ data: [] }, { archived: false }) as { data: Array<Record<string, unknown>> }
+      expect(result.data).toHaveLength(1)
+      expect(result.data[0]).toMatchObject({
+        id: 'imported-thread',
+        preview: 'Imported title',
+        cwd: '/tmp/imported-project',
+        source: 'cli',
+      })
+    } finally {
+      process.env.PATH = originalPath
+      await rm(codexHome, { recursive: true, force: true })
+    }
+  })
+})
 
 const originalCodexHome = process.env.CODEX_HOME
 

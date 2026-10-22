@@ -8,9 +8,10 @@ import {
   mergeSessionSkillInputsIntoTurns,
   readCachedSessionSkillInputsByTurn,
   parseAutomationToml,
-  sanitizeThreadTurnsInlinePayloads,
   toAutomationApiRecord,
 } from './codexAppServerBridge'
+import { sanitizeThreadTurnsInlinePayloads } from './inlinePayloadSanitizer'
+import { createBackendQueueRuntimeFixture } from './backendQueueRuntime'
 
 const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII='
 const pngDataUrl = `data:image/png;base64,${pngBase64}`
@@ -360,9 +361,8 @@ describe('thread session skill recovery', () => {
 describe('backend queue scheduling', () => {
   it('reschedules a pending drain when a run-now request needs an earlier drain', async () => {
     vi.useFakeTimers()
-    const processor = new BackendQueueProcessor({
-      onNotification: () => () => undefined,
-    } as never, { startRecovery: false })
+    const { runtime } = createBackendQueueRuntimeFixture()
+    const processor = new BackendQueueProcessor(runtime, { startRecovery: false })
     const processThreadQueue = vi
       .spyOn(processor as unknown as { processThreadQueue: (threadId: string) => Promise<void> }, 'processThreadQueue')
       .mockResolvedValue(undefined)

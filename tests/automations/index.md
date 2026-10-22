@@ -8,12 +8,14 @@ Return to the [manual test index](../../tests.md).
 
 | Section |
 | --- |
+| [0.2.22：侧栏项目与自动化完整控制器](../projects-sidebar-new-chat/sidebar-project-automation-controller.md) |
 | [0.1.90：持久调度与执行记录](durable-scheduler-and-execution-history.md) |
 | [Feature: Thread heartbeat automations](thread-heartbeat-automations.md) |
 | [Feature: Project automations and `/automations` panel](project-automations-and-automations-panel.md) |
 | [Automation editor scrolls on small viewports](automation-editor-scrolls-on-small-viewports.md) |
 | [Automation panel dark action row specificity fix](automation-panel-dark-action-row-specificity-fix.md) |
 | [自动化页面最小外侧间距](responsive-panel-margins.md) |
+| [0.2.21-dev.1 自动化任务唯一 id 与对外执行端点](external-execute-endpoint.md) |
 
 - [自动化账号选择与额度恢复续跑](account-routing-quota-resume.md)
 

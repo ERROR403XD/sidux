@@ -2,6 +2,7 @@ import { isVirtualProjectId } from '../projectOrganization.js'
 import { DEFAULT_TIME_ZONE } from '../timeZoneConstants.js'
 import { buildAutomationMessage } from '../automationMessage.js'
 import { AutomationHistory } from './automationHistory.js'
+import { AutomationRequestError } from './automationRequestError.js'
 import { AutomationPreparation } from './automationPreparation.js'
 import type { AutomationModelSettings } from '../automationOptions.js'
 import { automationTimeContext, formatAutomationTime } from './automationTime.js'
@@ -125,7 +126,9 @@ export class AutomationEngine {
     // only the records just archived; a captured hot list would erase new runs.
     this.state.runs = this.state.runs.filter(run => !archived.has(run))
     await this.store.write(this.state)
-    for (const listener of this.listeners) listener()
+    for (const listener of this.listeners) {
+      try { listener() } catch { /* A notification failure cannot undo a durable write. */ }
+    }
   }
   snapshot() {
     return {
@@ -177,7 +180,7 @@ export class AutomationEngine {
         signature = `${info.mtimeMs}:${info.size}:${this.timezone}`
         seen.add(id)
         if (this.definitions.get(id)?.signature === signature) continue
-        const record = parseAutomationToml(await readFile(file, 'utf8'))
+        const record = parseAutomationToml(await readFile(file, 'utf8'), id)
         if (!record || record.id !== id) throw new Error('automation.toml 无效或 ID 与目录不符')
         if (record.kind === 'heartbeat' ? !record.targetThreadId : !record.cwds.length || record.cwds.some((cwd) => !isAbsolute(cwd) && !isVirtualProjectId(cwd))) throw new Error('缺少有效的执行目标')
         const previous = this.state.definitions[id]
@@ -251,29 +254,76 @@ export class AutomationEngine {
       await this.persist()
     })
   }
-  private assertReady() { if (!this.ready || this.stopped || this.error) throw new Error(this.error ?? '调度器尚未就绪') }
+  private assertReady() {
+    if (!this.ready || this.stopped || this.error) {
+      throw new AutomationRequestError('not_ready', this.error ?? '调度器尚未就绪', 503)
+    }
+  }
   drain(value = true) {
     return this.serial(async () => { this.assertReady(); this.drained = value; await this.persist(); return this.snapshot() })
   }
   manual(id: string, target: string, requestId: string, retryOf?: string): Promise<AutomationRun> {
     return this.serial(async () => {
       this.assertReady()
-      if (this.drained) throw new Error('调度器正在交接，暂不接受新运行')
-      if (!requestId || requestId.length > 128) throw new Error('需要有效的 requestId')
+      if (this.drained) throw new AutomationRequestError('draining', '调度器正在交接，暂不接受新运行', 503)
+      if (!requestId || requestId.length > 128) throw new AutomationRequestError('invalid_request', '需要有效的 requestId', 400)
       await this.scan()
       const record = this.definitions.get(id)?.record
-      if (!record || !(record.kind === 'heartbeat' ? record.targetThreadId === target : record.cwds.includes(target))) throw new Error('找不到有效任务或执行目标')
-      const key = `manual:${id}:${target}:${requestId}`
-      const existing = this.state.runs.find((run) => run.key === key) ?? await this.history.findByKey(key)
-      if (existing) return { ...existing }
-      const previous = retryOf ? this.state.runs.find((run) => run.runId === retryOf && run.automationId === id) ?? await this.history.findById(id, retryOf) : undefined
-      if (retryOf && (!previous || previous.target !== target || isPendingAutomationRun(previous))) throw new Error('原运行不存在或仍未结束')
-      if (this.state.runs.some((run) => run.automationId === id && run.target === target && run.status === 'queued')) throw new Error('此目标已有待执行任务，请等待队列')
-      const run = this.enqueue(record, target, this.now(), key, previous ? 'retry' : 'manual')
-      if (previous) { run.retryOf = previous.runId; run.attempt = previous.attempt + 1 }
-      await this.persist()
-      return { ...run }
+      if (!record || !(record.kind === 'heartbeat' ? record.targetThreadId === target : record.cwds.includes(target))) throw new AutomationRequestError('not_found', '找不到有效任务或执行目标', 404)
+      return this.enqueueManual(record, id, target, requestId, retryOf)
     })
+  }
+  // External trigger entry (POST /automation/execute): accepts any task regardless of
+  // ACTIVE/PAUSED. The caller only supplies the id; the execution target comes from the
+  // definition (heartbeat targetThreadId, otherwise the first cwd) and each call gets a
+  // fresh generated requestId so repeats enqueue new runs behind the queued guard.
+  execute(id: string): Promise<AutomationRun> {
+    return this.serial(async () => {
+      await this.readyPromise
+      this.assertReady()
+      if (this.drained) throw new AutomationRequestError('draining', '调度器正在交接，暂不接受新运行', 503)
+      await this.scan()
+      const record = this.definitions.get(id)?.record
+      if (!record) throw new AutomationRequestError('not_found', `找不到自动化任务：${id}`, 404)
+      const targets = record.kind === 'heartbeat' ? [record.targetThreadId ?? ''] : record.cwds
+      const target = targets[0] ?? ''
+      if (!target) throw new AutomationRequestError('invalid_target', '任务缺少有效执行目标', 400)
+      return this.enqueueManual(record, id, target, `external-${randomUUID()}`)
+    })
+  }
+  private async enqueueManual(record: ThreadAutomationRecord, id: string, target: string, requestId: string, retryOf?: string): Promise<AutomationRun> {
+    const key = `manual:${id}:${target}:${requestId}`
+    const existing = this.state.runs.find((run) => run.key === key) ?? await this.history.findByKey(key)
+    if (existing) return { ...existing }
+    const previous = retryOf ? this.state.runs.find((run) => run.runId === retryOf && run.automationId === id) ?? await this.history.findById(id, retryOf) : undefined
+    if (retryOf && (!previous || previous.target !== target || isPendingAutomationRun(previous))) throw new AutomationRequestError('invalid_request', '原运行不存在或仍未结束', 400)
+    if (this.state.runs.some((run) => run.automationId === id && run.target === target && run.status === 'queued')) throw new AutomationRequestError('queued_conflict', '此目标已有待执行任务，请等待队列', 409)
+    const run = this.enqueue(record, target, this.now(), key, previous ? 'retry' : 'manual')
+    if (previous) { run.retryOf = previous.runId; run.attempt = previous.attempt + 1 }
+    try {
+      await this.persist()
+    } catch {
+      // Stop admission/dispatch before checking an ambiguous atomic-write result.
+      // Existing dispatch saves share the saving chain; read only after they settle.
+      this.ready = false
+      this.error = '自动化受理保存失败，调度已暂停；请检查存储并重启服务核对'
+      let saved: AutomationRun | undefined
+      try {
+        await this.saving
+        await this.store.assertOwnership()
+        saved = (await this.store.read()).runs.find(row => row.runId === run.runId && row.key === run.key)
+      } catch {
+        throw new AutomationRequestError('admission_unknown', '受理结果未确认，调度已暂停；请按 runId 核对，勿重新触发', 503, run.runId)
+      }
+      if (saved) {
+        // The write committed: acknowledge the original run, never enqueue another.
+        // Keep the scheduler paused until storage health is explicitly recovered.
+        return { ...saved }
+      }
+      this.state.runs = this.state.runs.filter(row => row !== run)
+      throw new AutomationRequestError('storage_failed', '自动化受理保存失败，任务未入队，调度已暂停', 500)
+    }
+    return { ...run }
   }
   private enqueue(record: ThreadAutomationRecord, target: string, at: number, key: string, trigger: AutomationRun['trigger']): AutomationRun {
     const meta = this.state.definitions[record.id]!

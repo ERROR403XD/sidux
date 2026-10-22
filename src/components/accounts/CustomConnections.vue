@@ -5,8 +5,8 @@
     <div class="account-panel-list">
       <article v-for="connection in state.connections" :key="connection.storageId" class="account-card" :class="{ 'is-active': state.activeId === connection.storageId }" :data-connection-id="connection.storageId">
         <div class="account-card-heading"><strong>{{ connection.alias }}</strong><span class="account-plan-badge">{{ connection.provider }}</span></div>
-        <ConnectionEndpoints :endpoints="customConnectionEndpoints(connection)" />
-        <footer class="account-card-actions"><AppButton @click="open(connection)">{{ t('账号设置') }}</AppButton><AppButton :disabled="busy || connection.wireApi !== 'responses' || state.activeId === connection.storageId" @click="select(connection.storageId)">{{ t(state.activeId === connection.storageId ? '当前使用' : '切换至此账号') }}</AppButton></footer>
+        <ConnectionEndpoints :endpoints="customConnectionEndpoints(connection)" :bridged="customConnectionBridgedEndpoints(connection)" :manual="customConnectionManualEndpoints(connection)" />
+        <footer class="account-card-actions"><AppButton @click="open(connection)">{{ t('账号设置') }}</AppButton><AppButton :disabled="busy || (connection.wireApi === 'chat' && !connection.protocolBridge) || state.activeId === connection.storageId" :title="connection.wireApi === 'chat' && !connection.protocolBridge ? t('该连接仅支持 Chat Completions，可在账号设置中开启协议转换') : undefined" @click="select(connection.storageId)">{{ t(state.activeId === connection.storageId ? '当前使用' : '切换至此账号') }}</AppButton></footer>
       </article>
     </div>
     <AppDialog :open="dialog" :title="t(draft.storageId ? '账号设置' : '添加账号')" :busy="busy" panel-class="custom-connection-dialog" @close="dialog = false">
@@ -16,16 +16,34 @@
         <label>{{ t('提供方') }}<AppSelect :model-value="draft.provider" :options="customProviderPresets.map(row => ({ value: row.value, label: t(row.label) }))" :disabled="busy" @update:model-value="setProvider" /></label>
         <label class="custom-connection-wide">Base URL<input v-model="draft.baseUrl" class="app-input" type="url" placeholder="https://api.example.com/v1" :disabled="busy" /></label>
         <label class="custom-connection-wide">API key<input v-model="draft.apiKey" class="app-input" type="password" autocomplete="off" :placeholder="t(draft.storageId ? '留空保留现有密钥' : '输入 API key')" :disabled="busy" /></label>
-        <label>{{ t('模型') }}<input v-model="draft.model" class="app-input" :placeholder="t('自动读取，或输入模型名')" :disabled="busy" /></label>
-        <ConnectionEndpoints v-if="testedEndpoints.length" class="custom-connection-wide" :endpoints="testedEndpoints" />
+        <div class="custom-connection-wide custom-connection-model-row" :class="{ 'is-single': !bridgeToggleAvailable }">
+          <label>{{ t('模型') }}<input v-model="draft.model" class="app-input" :placeholder="t('自动读取，或输入模型名')" :disabled="busy" /></label>
+          <div v-if="bridgeToggleAvailable" class="custom-connection-bridge">
+            <AppSwitch v-model="draft.protocolBridge" :disabled="busy">{{ t('协议转换') }}</AppSwitch>
+          </div>
+        </div>
+        <div class="custom-connection-wide custom-connection-fast">
+          <AppSwitch v-model="draft.allowFast" :disabled="busy">{{ t('允许 Fast 参数') }}</AppSwitch>
+        </div>
+        <div class="custom-connection-wide custom-connection-manual-models">
+          <div class="custom-connection-manual-heading"><span>{{ t('手动模型列表') }}</span><small>{{ t('models 端点不可用时提供本地目录') }}</small></div>
+          <ul v-if="draft.manualModels?.length">
+            <li v-for="(model, index) in draft.manualModels" :key="model"><code>{{ model }}</code><AppButton :disabled="busy" @click="removeManualModel(index)">{{ t('移除') }}</AppButton></li>
+          </ul>
+          <div class="custom-connection-manual-editor">
+            <input v-model="manualModelInput" class="app-input" :placeholder="t('输入模型 ID')" :disabled="busy" @keydown.enter.prevent="addManualModel" />
+            <AppButton :disabled="busy" @click="addManualModel">{{ t('添加') }}</AppButton>
+          </div>
+        </div>
+        <ConnectionEndpoints v-if="testedEndpoints.length" class="custom-connection-wide" :endpoints="testedEndpoints" :bridged="testedBridgeEndpoints" :manual="testedManualEndpoints" />
         <p v-if="testToken" class="custom-connection-wide account-panel-notice" role="status">{{ t('连接成功') }}</p>
       </div>
       <template #footer>
         <AppButton class="custom-connection-test" :busy="busy" @click="test">{{ t('测试连接') }}</AppButton>
         <div class="custom-connection-footer-actions">
-          <AppButton v-if="draft.storageId" variant="danger" :disabled="busy" @click="remove">{{ t(confirmRemove ? '确认移除' : '移除') }}</AppButton>
+          <AppButton v-if="draft.storageId" variant="danger" :disabled="busy" @click="remove">{{ t(confirmRemove ? '确认移除连接' : '移除') }}</AppButton>
           <AppButton v-else :disabled="busy" @click="dialog = false">{{ t('取消') }}</AppButton>
-          <AppButton :disabled="busy || !testToken" @click="save">{{ t('确定') }}</AppButton>
+          <AppButton :variant="hasChanges ? 'primary' : 'default'" :disabled="busy || !canSave" @click="save">{{ t('保存配置') }}</AppButton>
         </div>
       </template>
     </AppDialog>
@@ -33,13 +51,14 @@
 </template>
 <script setup lang="ts">
 import { notifyOperation } from '../../composables/useOperationToast'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { t } from '../../composables/useUiLanguage'
 import { useCustomConnections, customConnectionRequest } from '../../composables/useCustomConnections'
-import { customConnectionEndpoints, type CustomEndpoint, customProviderPresets, type CustomConnection, type CustomConnectionDraft, type CustomConnectionSnapshot } from '../../customConnections'
+import { customConnectionBridgedEndpoints, customConnectionEndpoints, customConnectionManualEndpoints, customConnectionNativeEndpoints, normalizeManualModels, type CustomEndpoint, customProviderPresets, type CustomConnection, type CustomConnectionDraft, type CustomConnectionSnapshot } from '../../customConnections'
 import AppButton from '../common/AppButton.vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppSelect from '../common/AppSelect.vue'
+import AppSwitch from '../common/AppSwitch.vue'
 import ConnectionEndpoints from './ConnectionEndpoints.vue'
 const emit = defineEmits<{ changed: [accountChanged: boolean] }>()
 const { state, load } = useCustomConnections()
@@ -47,15 +66,43 @@ const dialog = ref(false)
 const busy = ref(false)
 const error = ref('')
 const testToken = ref('')
+const manualModelInput = ref('')
 const testedEndpoints = ref<CustomEndpoint[]>([])
 const confirmRemove = ref(false)
-const draft = ref<CustomConnectionDraft>({ alias: '', provider: 'openrouter', baseUrl: customProviderPresets[0]!.baseUrl, apiKey: '', model: '', wireApi: 'responses' })
-watch(draft, () => { testToken.value = ''; testedEndpoints.value = []; confirmRemove.value = false }, { deep: true, flush: 'sync' })
+const draft = ref<CustomConnectionDraft>({ alias: '', provider: 'openrouter', baseUrl: customProviderPresets[0]!.baseUrl, apiKey: '', model: '', wireApi: 'responses', protocolBridge: false })
+const savedConfiguration = ref('')
+const savedProofSignature = ref('')
+const hasChanges = computed(() => savedConfiguration.value !== JSON.stringify(draft.value))
+// Only proof-relevant fields invalidate the test; the protocol bridge toggle
+// must be savable without re-probing the provider. The sync flush keeps the
+// clear-before-refill order when test() writes the resolved model back.
+const proofSignature = computed(() => JSON.stringify([draft.value.storageId ?? '', draft.value.alias, draft.value.provider, draft.value.baseUrl, draft.value.apiKey, draft.value.model]))
+const proofRelevantChanges = computed(() => savedProofSignature.value !== proofSignature.value)
+const canSave = computed(() => !!testToken.value || (!!draft.value.storageId && !proofRelevantChanges.value))
+watch(proofSignature, () => { testToken.value = ''; testedEndpoints.value = []; confirmRemove.value = false }, { flush: 'sync' })
+const nativeEndpoints = computed<CustomEndpoint[]>(() => {
+  if (testedEndpoints.value.length) return testedEndpoints.value
+  return draft.value.storageId ? state.value.connections.find(row => row.storageId === draft.value.storageId)?.supportedEndpoints ?? [] : []
+})
+const bridgeToggleAvailable = computed(() => {
+  const native = nativeEndpoints.value
+  return native.length > 0 && (!native.includes('/v1/responses') || !native.includes('/v1/chat/completions'))
+})
+const testedBridgeEndpoints = computed(() => {
+  if (!bridgeToggleAvailable.value || !draft.value.protocolBridge) return []
+  return customConnectionBridgedEndpoints({ wireApi: draft.value.wireApi, protocolBridge: true, supportedEndpoints: nativeEndpoints.value })
+})
+const testedManualEndpoints = computed(() => customConnectionManualEndpoints({ ...draft.value, supportedEndpoints: nativeEndpoints.value }))
 function open(connection?: CustomConnection): void {
-  draft.value = connection ? { storageId: connection.storageId, alias: connection.alias, provider: connection.provider, baseUrl: connection.baseUrl, apiKey: '', model: connection.model, wireApi: connection.wireApi } : { alias: '', provider: 'openrouter', baseUrl: customProviderPresets[0]!.baseUrl, apiKey: '', model: '', wireApi: 'responses' }
-  testedEndpoints.value = connection ? customConnectionEndpoints(connection) : []
+  draft.value = connection
+      ? { storageId: connection.storageId, alias: connection.alias, provider: connection.provider, baseUrl: connection.baseUrl, apiKey: '', model: connection.model, wireApi: connection.wireApi, protocolBridge: connection.protocolBridge, allowFast: connection.allowFast === true, manualModels: normalizeManualModels(connection.manualModels) }
+      : { alias: '', provider: 'openrouter', baseUrl: customProviderPresets[0]!.baseUrl, apiKey: '', model: '', wireApi: 'responses', protocolBridge: false, allowFast: false, manualModels: [] }
+  savedConfiguration.value = JSON.stringify(draft.value)
+  savedProofSignature.value = proofSignature.value
+  testedEndpoints.value = connection ? customConnectionNativeEndpoints(connection) : []
   error.value = ''
   testToken.value = ''
+  manualModelInput.value = ''
   confirmRemove.value = false
   dialog.value = true
 }
@@ -63,6 +110,18 @@ function setProvider(value: string): void {
   draft.value.provider = value
   draft.value.baseUrl = customProviderPresets.find(row => row.value === value)?.baseUrl || ''
   draft.value.model = ''
+  draft.value.manualModels = []
+}
+function addManualModel(): void {
+  const model = manualModelInput.value.trim().slice(0, 200)
+  if (!model || /[\r\n]/.test(model)) return
+  const models = normalizeManualModels([...draft.value.manualModels ?? [], model])
+  if (models.length >= 200) return
+  draft.value.manualModels = models
+  manualModelInput.value = ''
+}
+function removeManualModel(index: number): void {
+  draft.value.manualModels = [...draft.value.manualModels ?? []].filter((_, position) => position !== index)
 }
 async function run(action: () => Promise<void>): Promise<void> {
   if (busy.value) return

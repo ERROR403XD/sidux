@@ -1,29 +1,18 @@
 import { ref } from 'vue'
-import { capabilityValue, type ModelCapability } from './modelCapabilities'
-export type ConversationChoice = { model: string; provider: string; effort: string; tier: string }
+import { type ModelCapability } from './modelCapabilities'
+import { normalizeConversationPreferences, type ConversationChoice, type ConversationPreferences, type ConversationPreferencePatch } from './conversationPreferences'
+export type { ConversationChoice } from './conversationPreferences'
 export const WEB_CONVERSATION_PREFERENCES_KEY = 'codexapp.web-conversation-preferences.v1'
-type Preferences = { defaults: ConversationChoice | null; remember: boolean; threads: Record<string, { source: 'web'; saved: ConversationChoice }> }
-function choice(value: unknown): ConversationChoice | null {
-  if (!value || typeof value !== 'object') return null
-  const row = value as Record<string, unknown>
-  if (!capabilityValue(row.model)) return null
-  return { model: capabilityValue(row.model), provider: capabilityValue(row.provider), effort: capabilityValue(row.effort), tier: capabilityValue(row.tier) }
-}
-export function useWebConversationPreferences(storage?: Pick<Storage, 'getItem' | 'setItem'>) {
-  let initial: Preferences = { defaults: null, remember: true, threads: {} }
+export function useWebConversationPreferences(storage?: Pick<Storage, 'getItem' | 'setItem'>, onSave?: (patch: ConversationPreferencePatch) => void) {
+  let initial: ConversationPreferences = { defaults: null, remember: true, threads: {} }
   try {
     const raw = JSON.parse(storage?.getItem(WEB_CONVERSATION_PREFERENCES_KEY) || '{}')
-    initial = { defaults: choice(raw.defaults), remember: raw.remember !== false,
-      threads: Object.fromEntries(Object.entries(raw.threads || {}).flatMap(([id, value]) => {
-        const row = value as { source?: unknown; saved?: unknown }
-        const saved = choice(row?.saved)
-        return row?.source === 'web' && saved ? [[id, { source: 'web' as const, saved }]] : []
-      })) }
+    initial = normalizeConversationPreferences(raw)
   } catch { /* Keep previous application defaults if no valid preferences exist. */ }
   const state = ref(initial)
   const sessions = ref<Record<string, ConversationChoice>>({})
   const error = ref('')
-  function persist(next: Preferences): void {
+  function persist(next: ConversationPreferences, patch: ConversationPreferencePatch): void {
     try {
       storage?.setItem(WEB_CONVERSATION_PREFERENCES_KEY, JSON.stringify(next))
       state.value = next
@@ -32,6 +21,7 @@ export function useWebConversationPreferences(storage?: Pick<Storage, 'getItem' 
       error.value = '设置保存失败，请检查浏览器存储后重试。'
       throw new Error(error.value)
     }
+    onSave?.(patch)
   }
   function enter(id: string, fallback: ConversationChoice): ConversationChoice | null {
     const known = state.value.threads[id]
@@ -41,21 +31,43 @@ export function useWebConversationPreferences(storage?: Pick<Storage, 'getItem' 
     return sessions.value[id]
   }
   function register(id: string, value: ConversationChoice): void {
-    persist({ ...state.value, threads: { ...state.value.threads, [id]: { source: 'web', saved: { ...value } } } })
+    const threads = { [id]: { source: 'web' as const, saved: { ...value } } }
+    persist({ ...state.value, threads: { ...state.value.threads, ...threads } }, { threads })
     sessions.value = { ...sessions.value, [id]: { ...value } }
   }
   function select(id: string, value: ConversationChoice): void {
     if (id && !state.value.threads[id]) return
-    if (id && state.value.remember) persist({ ...state.value, threads: { ...state.value.threads, [id]: { source: 'web', saved: { ...value } } } })
+    if (id && state.value.remember) {
+      const threads = { [id]: { source: 'web' as const, saved: { ...value } } }
+      persist({ ...state.value, threads: { ...state.value.threads, ...threads } }, { threads })
+    }
     sessions.value = { ...sessions.value, [id]: { ...value } }
   }
-  return { state, sessions, error, enter, register, select,
-    configure(defaults: ConversationChoice, remember: boolean): void { persist({ ...state.value, defaults, remember }) },
+  // The running app-server serves one source at a time, so a conversation the runtime binds to the
+  // active connection has to keep using it even when the saved choice names another source. Only the
+  // effective session moves; the saved choice stays untouched as the user's own intent.
+  function bindSource(id: string, provider: string): void {
+    const current = sessions.value[id]
+    if (!current || !provider || current.provider === provider) return
+    sessions.value = { ...sessions.value, [id]: { ...current, provider } }
+  }
+  return { state, sessions, error, enter, register, select, bindSource,
+    cacheRemote(next: ConversationPreferences): void {
+      // A read updates the offline cache without creating a write-back loop.
+      try {
+        storage?.setItem(WEB_CONVERSATION_PREFERENCES_KEY, JSON.stringify(next))
+        error.value = ''
+      } catch {
+        error.value = '会话设置已同步，但浏览器缓存保存失败。'
+      }
+      state.value = next
+    },
+    configure(defaults: ConversationChoice, remember: boolean): void { persist({ ...state.value, defaults, remember }, { defaults, remember }) },
   }
 }
 
 // Saved intent is immutable during catalog changes. Only the effective choice falls back.
-export function effectiveConversationChoice(saved: ConversationChoice, models: ModelCapability[]): ConversationChoice {
+export function effectiveConversationChoice(saved: ConversationChoice, models: readonly ModelCapability[]): ConversationChoice {
   if (!models.length) return { ...saved }
   const order = ['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5']
   const index = order.indexOf(saved.model)

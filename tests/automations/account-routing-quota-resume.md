@@ -6,7 +6,7 @@
 2. 当前会话运行或有后台终端时触发不同账号自动化，运行列表应显示“等待账号额度或当前任务到达可切换边界”。界面立即返回已排队。空闲后绑定所选账号执行，原全局activeStorageId和auth.json不变；执行结束恢复普通会话运行时。普通消息在自动化租用执行账号期间排队。
 3. 非保护自动化在保护线外等待；受保护自动化可以使用预留。运行中触及保护线，普通任务被中断，受保护任务不因此中断。子任务也遵守同一执行账号策略。账号不存在或认证错误不得偷偷改用其他账号。
 4. 线程右键选择“额度恢复后继续”，应出现循环播放图标，并可与持续目标图标共存。刷新页面标记仍在；右键取消只移除续跑标记，不影响目标。
-5. 有标记的线程因额度/保护中断后进入等待。激活账号同时满足各窗口有可用额度且高于保护线时，最多提交一次继续消息；无须两个窗口同时重置。无额度、保护线内、线程运行中或待人工输入时不继续。
+5. 有标记的线程因额度/保护中断后进入等待。激活账号同时满足各窗口有可用额度且高于保护线时，最多提交一次续跑；普通会话发送继续消息，GOAL 会话调用原生“继续目标”；无须两个窗口同时重置。无额度、保护线内、线程运行中或待人工输入时不继续。
 6. 上次工作已由用户完成则不再重复续跑；消息发送结果未知时不自动重发。取消标记会移除尚未发送的续跑消息，已经开始的任务需另行中止。
 7. 浅深主题与375/768/1440宽度检查真实编辑弹窗、图标共存、账号下拉菜单和确认按钮；嵌套弹层应位于父层上方，点击不会关闭父层导致操作丢失。
 
@@ -40,7 +40,73 @@
 
 前置：独立 59001、可用账号额度、临时测试目录；不使用真实重置机会。
 1. 发起两阶段文件任务：先写 stage 文件，再等待 45 秒，最后写结果文件。明确续跑时跳过等待。
-2. 在等待期间手动停止该测试回合，再启用“额度恢复后继续”。应从 waiting 进入 submitted，发送一次“继续之前的工作”，完成剩余结果文件。
+2. 使用合成 quota exceeded 中断回合，再启用“额度恢复后继续”。应从 waiting 进入 submitted，发送一次“继续之前的工作”。0.2.21-dev.2 起手动停止不属于额度中断，只进入 armed，不能自动恢复。
 3. 核对结果文件、最后回合输出和投递凭证；再等待一次 30 秒轮询，回合总数仍为 2，标记回到 armed。
 4. 运行 `pnpm exec vitest run src/server/deliveryBridge.test.ts src/server/threadQuotaResume.test.ts`：必须通过真实持久队列验证续跑 ID，不能只 mock submit；普通 UUID 应被队列拒绝，使用共享 `createDeliveryId` 后提交成功且去重。
 5. 清理：关闭测试会话的续跑标记；保留输出作为验收证据，不改生产任务和账号配置。
+
+
+### 0.2.21-dev.2：仅额度失败触发续跑
+
+前提：隔离运行时；额度恢复服务单测/投递集成测试，避免消耗真实额度。
+1. 对手动中断（无错误）、模型错误、网络错误的会话启用续跑；即使额度可用，连续 tick 不提交，状态为 armed。
+2. 同一会话之后出现真正 quota/usage limit 错误：开始等待并只提交一次。
+3. 已 waiting 时用户手动继续并结束/中断了新回合，或原回合错误已非额度：派发前复查应回到 armed，不发送旧继续指令。
+4. 原额度回合仍失败且可用额度恢复：保留原正常续跑、投递 ID 防重和 uncertain 结果核对逻辑。
+预期：`threadQuotaResume.test.ts` 与 `deliveryBridge.test.ts` 均通过；开关表示为额度失败启用恢复策略，不再隐含立即恢复普通中断。
+清理：测试关闭服务并删除临时 HOME；真实测试关闭该开关，不修改生产任务。
+
+### 0.2.21-dev.3：续跑状态保存失败与恢复
+
+前提：临时 HOME、合成额度失败回合与 mock submit；执行 `pnpm exec vitest run src/server/threadQuotaResume.test.ts src/server/deliveryBridge.test.ts`，禁止对真实状态文件注入故障。
+
+1. 令启用、关闭标记或发送前状态保存失败；恢复存储后再次 tick。预期明确报告状态未确认并暂停续跑，不发布未经确认的内存状态、不发送任何继续消息。
+2. 发送前保存尚未提交时失败，重建测试服务；预期恢复磁盘 waiting 状态，正常提交一次，不卡在 submitted。
+3. 模拟 rename 已提交但保存函数随后报错；重建服务后先通过投递账本 reconcile 核对，不直接重新发送。
+4. 模拟某个 armed 会话状态转换保存失败；同轮其他 waiting 会话也不得继续派发。模拟 changed 通知抛错，已落盘状态仍有效，正常提交且不重复。
+5. 清理：关闭测试服务、删除其临时 HOME。真实保存故障应先核对持久文件与投递账本，再重启恢复；不要为“修复”清空标准测试卷或真实续跑记录。
+
+性能：沿用每轮最多 8 项核对、1 次提交；每次状态变化仍只保存一次，内存替换为最多 1000 个标记的浅复制，不增加 RPC 或重试发送。
+
+### 0.2.22 G6：续跑标记读取与保存协调
+
+前提：独立 `threads-201` fixture 与当前源码 4173 验证服务；网络故障、WebSocket 握手拦截和迟到响应仅在独立浏览器/合成 home 注入。记录测试会话原始开关，不读生产状态。
+
+1. 正常打开首页，订阅 ready 后约 150ms 读取标记。Network 中启动 GET 只有 1 次；启用续跑，实际行图标和菜单改为已启用，刷新页面保持；取消后图标消失。
+2. 阻止通知握手。500ms 后仍通过 REST 读取已保存标记；恢复 ready 后重新读取，校准连接缺口。不要直接跳过首次 ready 或重连 ready。
+3. 将 GET 延迟，期间发送 changed/ready 通知。旧 GET 完成后补读一次，最终显示新快照；连续通知只保留一个 debounce，不并发扇出 GET。
+4. 旧 GET 延迟期间切换开关，释放旧成功或旧失败。已保存标记及错误不被旧读取覆盖。连续点击同一开关按顺序提交，第二次 enabled 从第一次实际成功结果推导；不同会话保存也按顺序完成。
+5. 保存中发送通知，保存完成后补读；保存失败保留最后已知标记，并显示服务端恢复说明。卸载后释放旧 GET/POST 成功或错误，不能修改 marks/error 或重建 timer；十次挂载/卸载后订阅和 timer 回到基线。
+6. 浅色中文/深色英文，在 1440×1000、768×1024、375×812 实际行检查图标、菜单、刷新持久化及取消；手机先展开侧栏。执行 `node scripts/verify-022-quota-resume.cjs`，每个用例最后恢复关闭。
+
+预期：初始等待有上限，读写不覆盖用户新意图，断线校准保持；不增加自动发送或发送重试。独立 Vue owner/原生服务端组合执行 `pnpm exec vitest run src/composables/useQuotaResume.test.ts src/server/threadQuotaResume.test.ts src/server/threadQuotaResumeRuntime.test.ts src/server/deliveryBridge.test.ts`。
+
+清理：取消合成会话续跑标记、关闭拦截页面；保留可复用 4173。只回退源码独立提交，不清空候选标准卷或持久续跑意图。
+
+### 0.2.22 额度续跑运行时与投递账本组合
+
+前置：独立 HOME 与合成 RPC，运行 `pnpm exec vitest run src/server/threadQuotaResumeRuntime.test.ts src/server/threadQuotaResume.test.ts src/server/deliveryBridge.test.ts`；不消耗真实额度。
+
+1. 额度失败会话启用续跑；提供新鲜、有余量的当前账号额度，执行一次 tick 后核对真实 DeliveryStore accepted 回执，再核对完成回合并重复 tick。
+2. 分别提供过期额度、满额窗口、保护线拒绝和账号任务占用，确认 available 返回 false、不提交新消息。
+3. 到投递前才使原生会话 busy，生成 queued 续跑；分别保留 queued、进入 editing、设为发送前 failed，再取消额度续跑。标记和对应行均移除，旧行不能 resume，空闲后零新投递；取消已有 accepted 的续跑，核对凭证仍保留。若取消期间编辑改变 revision，应提示冲突并保留标记，再次取消成功。sending/unknown 不主动删除或重发。
+4. 对近期无账本记录的尝试恢复 waiting；对旧/无时间戳尝试或线程不匹配的凭证保留 unknown，不自动重发。
+5. 发出相同/增加/降低用量的额度更新，核对仅首次观察和降低时唤醒；解除订阅后更新不再唤醒服务。
+6. 延迟旧额度续跑 owner 的 inspect，在它设置 A 的途中发起关闭和替换；新 service 接收旧 close 的 promise，并立即请求设置 B。释放旧检查后，A/B 都必须留在新快照与持久文件中；ready 在旧写入前不能完成。关闭后新 set/blocked 必须拒绝，迟到通知不得改写文件；已接受的旧设置仍完成保存。重启隔离服务核对 A/B，最后取消合成标记。
+7. 在同一会话启用定时续跑，“额度重置后继续”应置灰；取消定时计划后可启用额度续跑，并使“定时续跑…”置灰。刷新后保持互斥，取消额度续跑后恢复可选；详细跨页面、并发、浅深主题用例见 `tests/thread-loading-state/scheduled-resume-022.md` 第 11 项。服务端 HTTP 组合回归运行 `pnpm exec vitest run src/server/threadResumeControlService.test.ts`。
+
+预期：bridge 仅装配窄运行时，续跑解释集中到 `threadQuotaResumeRuntime`；历史检查仍只请求最后 1 个回合，每次只提交一个继续消息，关闭释放订阅。清理关闭测试服务并删除独立 HOME；不清空标准卷、真实凭证或续跑标记。
+
+### 0.2.22-dev.6：GOAL 额度恢复续跑
+
+前置：独立 HOME、合成额度快照及原生 GOAL 状态；运行 `pnpm exec vitest run src/server/goalContinuation.integration.test.ts src/server/threadQuotaResumeRuntime.test.ts src/server/threadQuotaResume.test.ts src/server/deliveryStore.test.ts`。真实候选用 `http://127.0.0.1:59001/`，不借用生产凭据或消耗真实额度重置机会。
+
+1. 给 `usageLimited` GOAL 启用“额度恢复后继续”，提供新鲜、有余量且通过保护线检查的额度，执行 tick。预期调用 `thread/goal/set {status:'active', origin:'user'}`，不调用 `turn/start`，不发送“继续之前的工作”。保留原 objective、tokenBudget、tokensUsed、timeUsedSeconds。即使上一阶段是无 quota 错误的 completed 回合，也能识别原生 usageLimited。
+2. 分别设为 active、paused、blocked、budgetLimited、complete，再保留旧额度失败回合并重复 tick。预期 active 不重复恢复，其他状态不因旧错误恢复；GOAL 自身预算耗尽时不能借额度恢复重置预算。
+3. GOAL 状态读取失败时保留意图，不发送普通继续；恢复连接后才重新核对。没有 GOAL 或旧原生运行时明确不支持该方法的普通会话仍按原路径发送一次继续消息。
+4. 成功恢复后重启独立服务并重复核对；投递凭证包含目标创建时间与 objective 的哈希，不伪造回合 ID，不二次恢复。模拟原生已接受但响应丢失：保持 unknown，重启、队列 drain、消息历史核对均不得自动重发。
+5. 取消尚未发送的续跑应保留取消凭证，空闲后不启动目标；已接受的续跑保留凭证，不将取消标记解释成中止原生目标。账号切换、待处理审批和既有续跑互斥继续生效。
+
+性能：空闲会话的 quota 状态检查新增一次轻量 `goal/get`，活动会话不增加该读取；派发 GOAL 前两次读取用于选择和再次核对，随后一次 `goal/set`。沿用原批次上限和每轮最多一个新续跑，无新增 timer，不读取目标消息正文。
+
+清理/回滚：关闭合成服务并删除它的临时 HOME。首次创建新续跑投递意图后账本升级为 v3（普通无续跑账本保持 v2）；v2/v3 均可由新版本读取，旧版本会拒绝 v3。已有 v3 或 GOAL 回执时不能直接换回旧二进制，也不能删除账本来绕过；须使用兼容读取器或先完成单独审查的数据迁移。保留标准候选卷，生产 prepare/activate 另行执行。

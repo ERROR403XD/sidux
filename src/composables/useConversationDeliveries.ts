@@ -71,7 +71,7 @@ export function useConversationDeliveries() {
     if (row && !rows.value.some(candidate => candidate.id === id)) update({ ...row, id, message: { ...row.message, id } }, false)
   }
 
-  function observe(threadId: string, messages: UiMessage[]): void {
+  function observe(threadId: string, messages: readonly UiMessage[]): void {
     const candidates = rows.value.filter(row => row.threadId === threadId)
     if (!candidates.length) return
     const matches = nativeDeliveryMatcher(messages)

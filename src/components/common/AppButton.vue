@@ -1,7 +1,7 @@
 <template>
   <button
     class="app-button"
-    :class="{ 'is-danger': variant === 'danger' }"
+    :class="{ 'is-primary': variant === 'primary', 'is-danger': variant === 'danger' }"
     :type="type"
     :disabled="disabled || busy"
     :aria-busy="busy || undefined"
@@ -12,7 +12,7 @@
 
 <script setup lang="ts">
 withDefaults(defineProps<{
-  variant?: 'default' | 'danger'
+  variant?: 'default' | 'primary' | 'danger'
   type?: 'button' | 'submit' | 'reset'
   disabled?: boolean
   busy?: boolean

@@ -192,7 +192,7 @@ import { useUiLanguage } from '../../composables/useUiLanguage'
 const { t } = useUiLanguage()
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import type { GitCommitFileChange, GitCommitOption, WorktreeBranchOption } from '../../api/codexGateway'
+import type { GitCommitFileChange, GitCommitOption, WorktreeBranchOption } from '../../api/gitGateway'
 import IconTablerChevronDown from '../icons/IconTablerChevronDown.vue'
 import IconTablerFilePencil from '../icons/IconTablerFilePencil.vue'
 import IconTablerGitFork from '../icons/IconTablerGitFork.vue'

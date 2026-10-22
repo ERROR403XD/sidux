@@ -23,11 +23,12 @@ Return to the [manual test index](../../tests.md).
 | [Feature: Restore composer drag-and-drop file attach on input field](restore-composer-drag-and-drop-file-attach-on-input-field.md) |
 | [Feature: Restore clipboard image paste attachments in composer](restore-clipboard-image-paste-attachments-in-composer.md) |
 | [Feature: Show user file attachments as visible chips in chat](show-user-file-attachments-as-visible-chips-in-chat.md) |
-| [Feature: Approval request uses legacy in-conversation request card only](approval-request-uses-legacy-in-conversation-request-card-only.md) |
+| [审批唯一展示、IME与错误重试](approval-request-uses-legacy-in-conversation-request-card-only.md) |
 | [Feature: Thread RPC strips inline image/file payloads into links](thread-rpc-strips-inline-image-file-payloads-into-links.md) |
 | [Feature: Inline thread image payloads are rewritten to renderable local file URLs](inline-thread-image-payloads-are-rewritten-to-renderable-local-file-urls.md) |
 | [Feature: Markdown file links with spaces and parentheses in path](markdown-file-links-with-spaces-and-parentheses-in-path.md) |
 | [Feature: Markdown link with backticked label renders as file link](markdown-link-with-backticked-label-renders-as-file-link.md) |
+| [Attachment-only new threads get a title and stay listed](attachment-only-new-thread-title-and-sidebar-visibility.md) |
 | [Feature: Backticked bare filenames render as file links](backticked-bare-filenames-render-as-file-links.md) |
 | [Feature: Lazy message rendering (windowed conversation)](lazy-message-rendering-windowed-conversation.md) |
 | [Assistant generated image rendering](assistant-generated-image-rendering.md) |
@@ -47,3 +48,7 @@ Return to the [manual test index](../../tests.md).
 | [0.2.3 可靠发送与结果核对](reliable-message-delivery.md) |
 | [0.2.4 持续目标与压缩恢复](goal-and-compaction-recovery.md) |
 | [0.2.5 子任务导航和任务摘录](subtask-navigation-and-excerpts.md) |
+| [队列操作与回执的账号、停止生命周期](queue-operation-lifecycle.md) |
+| [会话 Markdown、渲染缓存与高亮生命周期](markdown-rendering-lifecycle.md) |
+| [会话消息展示、复制和命令结果生命周期](message-display-lifecycle.md) |
+| [发送回执与审批输入法生命周期](input-acknowledgement-lifecycle.md) |

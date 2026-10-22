@@ -1,10 +1,14 @@
 import { getCustomConnectionStore } from '../customConnectionStore.js'
 import { forwardCustomConnection } from '../customConnectionProxy.js'
-import { customConnectionModels, customConnectionEndpoints } from '../../customConnections.js'
-import { AccountResourcePool } from '../accountResourcePool.js'
-import { AccountExecutionError, resolveAccountSelection } from '../accountExecution.js'
+import { customConnectionModels, customConnectionEndpoints, customConnectionBridgedEndpoints, customConnectionManualEndpoints } from '../../customConnections.js'
+import { AccountResourcePool, WorkerPoolAllocationError, workerPoolAllocationUserMessage } from '../accountResourcePool.js'
+import { AccountExecutionError, resolveAccountSelection, type AccountExecutionLease } from '../accountExecution.js'
 import { AccountNotificationService } from '../accountNotificationService.js'
+import { ConversationCreationError, type ConversationCreationResult } from '../conversationCreationService.js'
 import { assertQuotaAvailable } from './quotaProtection.js'
+import { accountQuotaHeaders } from './quotaHeaders.js'
+import { cachedAccountUsage, percentAccountUsage } from './usageResponse.js'
+import type { StoredAccountEntry, StoredAccountsState } from '../accountAuthStore.js'
 import { createAccountActivationRuntime } from '../accountActivationRuntime.js'
 import type { AccountActivationScheduler } from '../accountActivationScheduler.js'
 import { randomUUID } from 'node:crypto'
@@ -22,6 +26,12 @@ import type { TokenUsage, UsageOutcome } from '../../api/proxyUsageTypes.js'
 
 const configuredBodyMB = Number(process.env.CODEXAPP_API_PROXY_MAX_BODY_MB || 64)
 const MAX_BODY = (Number.isInteger(configuredBodyMB) && configuredBodyMB >= 1 && configuredBodyMB <= 128 ? configuredBodyMB : 64) * 1024 * 1024
+const configuredBodyTimeoutSeconds = Number(process.env.CODEXAPP_API_PROXY_BODY_TIMEOUT_SECONDS || 300)
+const BODY_TIMEOUT_MS = (Number.isFinite(configuredBodyTimeoutSeconds) && configuredBodyTimeoutSeconds >= 10 && configuredBodyTimeoutSeconds <= 1800 ? configuredBodyTimeoutSeconds : 300) * 1000
+const configuredBodyIdleSeconds = Number(process.env.CODEXAPP_API_PROXY_BODY_IDLE_SECONDS || 60)
+const BODY_IDLE_MS = (Number.isFinite(configuredBodyIdleSeconds) && configuredBodyIdleSeconds >= 5 && configuredBodyIdleSeconds <= 600 ? configuredBodyIdleSeconds : 60) * 1000
+const configuredWsFirstFrameSeconds = Number(process.env.CODEXAPP_API_PROXY_WS_FIRST_FRAME_TIMEOUT_SECONDS || 30)
+const WS_FIRST_FRAME_TIMEOUT_MS = (Number.isFinite(configuredWsFirstFrameSeconds) && configuredWsFirstFrameSeconds >= 5 && configuredWsFirstFrameSeconds <= 600 ? configuredWsFirstFrameSeconds : 30) * 1000
 const allowedRoutes = new Set(['GET /v1/models', 'POST /v1/responses', 'POST /v1/responses/compact', 'POST /v1/chat/completions'])
 const clientHeaders = ['user-agent', 'originator', 'version', 'openai-beta', 'x-codex-beta-features', 'x-codex-turn-metadata',
   'x-openai-internal-codex-responses-lite', 'x-codex-turn-state', 'x-client-request-id', 'x-openai-subagent']
@@ -38,16 +48,62 @@ function errorResponse(res: ServerResponse, error: unknown): void {
   const status = error instanceof ProxyError ? error.status : error instanceof AccountCoordinatorError || error instanceof AccountExecutionError ? error.statusCode : 503
   if (status === 503 && !res.headersSent) res.setHeader('Retry-After', '3')
   json(res, status, { error: { type: status === 401 ? 'authentication_error' : 'api_error', code,
-    message: known ? error.message : 'API 出口暂时不可用，请在管理页面检查账号和组件状态。' } })
+    message: known ? error.message : 'API 出口暂时不可用，请在管理页面检查账号和组件状态。',
+    ...(error instanceof ConversationCreationError ? { threadId: error.threadId, messageId: error.messageId } : {}) } })
 }
 async function body(req: IncomingMessage, limit = MAX_BODY): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = []
   let size = 0
-  for await (const chunk of req) {
-    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
-    size += bytes.length
-    if (size > limit) throw new ProxyError('payload_too_large', '请求内容超过大小限制。', 413)
-    chunks.push(bytes)
+  let failure: ProxyError | undefined
+  let ended = false
+  let totalTimer: ReturnType<typeof setTimeout> | undefined
+  let idleTimer: ReturnType<typeof setTimeout> | undefined
+  const resetIdle = () => {
+    if (idleTimer) clearTimeout(idleTimer)
+    idleTimer = setTimeout(() => {
+      failure = new ProxyError('request_body_timeout', '请求体读取超时，请重试。', 408)
+      req.destroy()
+    }, BODY_IDLE_MS)
+    idleTimer.unref()
+  }
+  const onAbort = () => {
+    if (!ended && !failure) failure = new ProxyError('request_aborted', '客户端在请求体读取完成前断开连接。', 499)
+  }
+  const onError = () => {
+    if (!ended && !failure) failure = new ProxyError('request_aborted', '请求体读取失败，请重试。', 499)
+  }
+  totalTimer = setTimeout(() => {
+    failure = new ProxyError('request_body_timeout', '请求体读取超时，请重试。', 408)
+    req.destroy()
+  }, BODY_TIMEOUT_MS)
+  totalTimer.unref()
+  resetIdle()
+  req.once('aborted', onAbort)
+  req.once('error', onError)
+  try {
+    for await (const chunk of req) {
+      resetIdle()
+      const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+      size += bytes.length
+      if (size > limit) {
+        failure = new ProxyError('payload_too_large', '请求内容超过大小限制。', 413)
+        req.destroy()
+        throw failure
+      }
+      chunks.push(bytes)
+    }
+    ended = true
+    if (failure) throw failure
+  } catch (error) {
+    if (failure) throw failure
+    if (error instanceof ProxyError) throw error
+    throw new ProxyError('request_aborted', '请求体读取失败，请重试。', 499)
+  } finally {
+    ended = true
+    if (totalTimer) clearTimeout(totalTimer)
+    if (idleTimer) clearTimeout(idleTimer)
+    req.off('aborted', onAbort)
+    req.off('error', onError)
   }
   try {
     const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')
@@ -68,25 +124,101 @@ export class ApiProxyGateway {
     this.accountComponents.clear()
   }
   private owner(generation: ComponentGeneration): ProxyComponent { return this.generationComponents.get(generation) || this.component }
-  private async resolveAccount(keyId?: string): Promise<string> {
+  private async resolveAccount(keyId?: string, routeId?: string | null): Promise<string> {
     const connections = getCustomConnectionStore(this.coordinator.store.codexHome)
     await connections.ready
-    const explicit = (keyId ? this.store.findKey(keyId)?.accountStorageId : null) || this.store.settings.accountStorageId
+    const keyAccount = keyId ? this.store.findKey(keyId)?.accountStorageId : null
+    // routeId 显式给出时以它为准（聚合路由按模型选账号），否则沿用 key 自己的账号选择。
+    const selected = routeId !== undefined ? routeId : keyAccount
+    const explicit = selected || this.store.settings.accountStorageId
     const custom = explicit ? connections.get(explicit) : connections.active()
     if (custom) return custom.storageId
     const state = await this.coordinator.store.readState()
-    return resolveAccountSelection(state, { accountStorageId: keyId ? this.store.findKey(keyId)?.accountStorageId : null, defaultStorageId: this.store.settings.accountStorageId }).storageId
+    return resolveAccountSelection(state, { accountStorageId: selected, defaultStorageId: this.store.settings.accountStorageId }).storageId
   }
-  private async checkProtection(id: string, keyId?: string): Promise<void> {
+  /** 调用方传入的模型优先；只有开启强制路由才改写模型，聚合路由再按模型挑账号。 */
+  private keyRoute(keyId: string, requestedModel: string | null): { account: string | null; model: string | null } {
+    const key = this.store.findKey(keyId)
+    const model = (key?.forceRoute?.enabled ? key.forceRoute.model : '') || requestedModel
+    const entries = key?.aggregateRoute?.enabled ? key.aggregateRoute.entries : null
+    if (!entries) return { account: key?.accountStorageId ?? null, model }
+    // 清单外的模型透传给 key 自己的账号，由上游决定是否支持。
+    const matched = model ? entries.find(entry => entry.model === model) : undefined
+    return { account: matched ? matched.accountStorageId : key?.accountStorageId ?? null, model }
+  }
+  private needsRequestModel(keyId: string): boolean {
+    const key = this.store.findKey(keyId)
+    return !!key?.aggregateRoute?.enabled && !key.forceRoute?.enabled
+  }
+  private routingSnapshot(keyId: string): string {
+    const key = this.store.findKey(keyId)
+    return JSON.stringify({ accountStorageId: key?.accountStorageId ?? null, forceRoute: key?.forceRoute, aggregateRoute: key?.aggregateRoute })
+  }
+  private routeFollowsPrimary(keyId: string, model: string | null): boolean {
+    if (this.store.settings.accountStorageId) return false
+    const key = this.store.findKey(keyId)
+    if (!key) return true
+    if (!key.aggregateRoute?.enabled) return !key.accountStorageId
+    const effectiveModel = key.forceRoute?.enabled ? key.forceRoute.model : model
+    const matched = effectiveModel ? key.aggregateRoute.entries.find(entry => entry.model === effectiveModel) : undefined
+    return matched ? matched.accountStorageId === null : !key.accountStorageId
+  }
+  private assertAccountAvailable(keyId: string, accountId: string, model: string | null): void {
+    if (this.coordinator.blocksApiAccount(accountId) || (this.routeFollowsPrimary(keyId, model) && this.coordinator.blocksApiAccount(null))) {
+      throw new ProxyError('account_busy', '所选账号正在变更，请稍后重试。', 503)
+    }
+  }
+  private routeMayUseAccount(keyId: string, model: string | null, storageId: string, removedPrimaryFallback = false): boolean {
+    const key = this.store.findKey(keyId)
+    if (!key) return false
+    if (key.accountStorageId === storageId) return true
+    const defaultId = this.store.settings.accountStorageId || (removedPrimaryFallback ? storageId : null)
+    if (!key.aggregateRoute?.enabled) return !key.accountStorageId && defaultId === storageId
+    const effectiveModel = key.forceRoute?.enabled ? key.forceRoute.model : model
+    const matched = effectiveModel ? key.aggregateRoute.entries.find(entry => entry.model === effectiveModel) : undefined
+    if (matched) return matched.accountStorageId === storageId || (matched.accountStorageId === null && defaultId === storageId)
+    if (!effectiveModel) {
+      return key.aggregateRoute.entries.some(entry => entry.accountStorageId === storageId || (entry.accountStorageId === null && defaultId === storageId))
+        || (!key.accountStorageId && defaultId === storageId)
+    }
+    return !key.accountStorageId && defaultId === storageId
+  }
+  private assertDispatchContext(keyId: string, snapshot: string, outletEpoch: number, accountId: string, model: string | null = null, entry?: Activity): void {
+    if (!this.store.settings.enabled) throw new ProxyError('proxy_disabled', 'API 出口未启用。', 503)
+    if (outletEpoch !== this.outletEpoch) throw new ProxyError('route_changed', 'API 出口账号设置已变化，请重试。', 409)
+    if (!this.store.isKeyUsable(keyId) || this.routingSnapshot(keyId) !== snapshot) throw new ProxyError('key_changed', 'Key路由设置已变化，请重试。', 409)
+    this.assertPrimarySelection(entry, keyId, model, accountId)
+    if (this.coordinator.blocksApiAccount(accountId) || (this.routeFollowsPrimary(keyId, model) && this.coordinator.blocksApiAccount(null))) {
+      throw new ProxyError('account_busy', '所选账号正在变更，请稍后重试。', 503)
+    }
+  }
+  private assertPrimarySelection(entry: Activity | undefined, keyId: string, model: string | null, accountId: string): void {
+    const original = entry ? this.activityPrimaryStorage.get(entry) : undefined
+    if (original !== undefined && this.routeFollowsPrimary(keyId, model) && original !== accountId) {
+      throw new ProxyError('route_changed', '主账号已切换，请重试。', 409)
+    }
+  }
+  private async capturePrimaryStorage(entry: Activity): Promise<StoredAccountsState> {
+    const state = await this.coordinator.store.readState()
+    this.activityPrimaryStorage.set(entry, state.activeStorageId)
+    return state
+  }
+  /** 聚合 key 的模型目录就是清单并集；普通 key 不接管目录。 */
+  private aggregateCatalog(keyId: string): string[] | null {
+    const route = this.store.findKey(keyId)?.aggregateRoute
+    return route?.enabled ? route.entries.map(entry => entry.model) : null
+  }
+  private async checkProtection(id: string, keyId?: string): Promise<StoredAccountEntry | undefined> {
     await this.store.ready
     if (getCustomConnectionStore(this.coordinator.store.codexHome).get(id)) return
     const state = await this.coordinator.store.readState()
-    const percent = state.accounts.find(account => account.storageId === id)?.protectionPercent || 0
-    if (!percent || (keyId && this.store.findKey(keyId)?.protected && this.store.isKeyUsable(keyId))) return
     let account = state.accounts.find(account => account.storageId === id)
+    const percent = account?.protectionPercent || 0
+    if (!percent || (keyId && this.store.findKey(keyId)?.protected && this.store.isKeyUsable(keyId))) return account
     if (!account) throw new ProxyError('account_not_found', '账号不存在。', 503)
     if (!account.quotaUpdatedAtIso || !Number.isFinite(Date.parse(account.quotaUpdatedAtIso)) || Date.now() - Date.parse(account.quotaUpdatedAtIso) > 30_000) account = await this.coordinator.refreshAccount(id)
     assertQuotaAvailable(account, percent, false)
+    return account
   }
   private async enforceObservedProtection(account: import('../accountAuthStore.js').StoredAccountEntry): Promise<void> {
     try { assertQuotaAvailable(account, account.protectionPercent || 0, false) }
@@ -97,12 +229,21 @@ export class ApiProxyGateway {
       await this.coordinator.interruptProtectedUsage(account.storageId).catch(() => undefined)
     }
   }
-  private async prepareAccount(id: string, catalog = false, background = false): Promise<ComponentGeneration> {
-    const component = await this.accountComponents.getOrCreate(id, () => this.accountComponents.size === 0 && !this.component.status().selectedStorageId
-      ? this.component
-      : new ProxyComponent(join(this.store.directory, 'accounts', id), this.coordinator), !background)
+  private async prepareAccount(id: string, catalog = false, background = false, signal?: AbortSignal): Promise<ComponentGeneration> {
+    signal?.throwIfAborted()
+    let component: ProxyComponent | null
+    try {
+      component = await this.accountComponents.getOrCreate(id, () => this.accountComponents.size === 0 && !this.component.status().selectedStorageId
+        ? this.component
+        : new ProxyComponent(join(this.store.directory, 'accounts', id), this.coordinator), !background)
+    } catch (error) {
+      if (error instanceof WorkerPoolAllocationError) throw new ProxyError('account_capacity', workerPoolAllocationUserMessage(error.code), 503)
+      throw error
+    }
     if (!component) throw new ProxyError('account_capacity', '并行账号数已达8个，请等待连接结束。', 503)
+    signal?.throwIfAborted()
     const generation = await component.prepare(id, { catalog })
+    signal?.throwIfAborted()
     this.generationComponents.set(generation, component)
     return generation
   }
@@ -121,20 +262,23 @@ export class ApiProxyGateway {
       release,
     }
   }
-  private invalidateKeys(matches: (keyId: string) => boolean): void {
+  private invalidateKeys(matches: (keyId: string) => boolean, ownerMatches?: (owner: { keyId: string; storageId?: string; model?: string | null; epoch: string; at: number }) => boolean): void {
     for (const key of this.store.listKeys()) {
       if (matches(key.id)) this.activity.abortKey(key.id)
     }
     for (const [id, owner] of this.responseOwners) {
-      if (matches(owner.keyId)) this.responseOwners.delete(id)
+      if (matches(owner.keyId) && (!ownerMatches || ownerMatches(owner))) this.responseOwners.delete(id)
     }
+  }
+  private invalidateResponseOwners(matches: (owner: { keyId: string; storageId?: string; model?: string | null; epoch: string; at: number }) => boolean): void {
+    for (const [id, owner] of this.responseOwners) if (matches(owner)) this.responseOwners.delete(id)
   }
   readonly notifications: AccountNotificationService
   readonly activation: AccountActivationScheduler
   private readonly accountEpochs = new Map<string, number>()
   accountActivityEpoch(id: string): number { return this.accountEpochs.get(id) || 0 }
   accountHasConnections(id: string): boolean {
-    return [...this.activity.entries.values()].some(entry => entry.storageId === id || (!entry.storageId && (this.store.settings.accountStorageId === id || this.component.status().selectedStorageId === id)))
+    return [...this.activity.entries.values()].some(entry => entry.storageId === id)
   }
   private recordAccountActivity(id: string): void {
     if (id) this.accountEpochs.set(id, this.accountActivityEpoch(id) + 1)
@@ -145,10 +289,19 @@ export class ApiProxyGateway {
   readonly usage: ProxyUsageStore
   private readonly unregisterLifecycle?: () => void
   private mutation = false
+  private outletEpoch = 0
+  private readonly activityPrimaryStorage = new WeakMap<Activity, string | null>()
   private epoch = randomUUID()
-  private readonly responseOwners = new Map<string, { keyId: string; epoch: string; at: number }>()
+  private readonly responseOwners = new Map<string, { keyId: string; storageId?: string; model?: string | null; epoch: string; at: number }>()
   private readonly sockets = new WebSocketServer({ noServer: true, maxPayload: MAX_BODY, perMessageDeflate: false })
-  constructor(private coordinator: AccountAuthCoordinator = getAccountAuthCoordinator()) {
+  private readonly upgradeQuotaHeaders = new WeakMap<IncomingMessage, Record<string, string>>()
+  constructor(
+    private coordinator: AccountAuthCoordinator = getAccountAuthCoordinator(),
+    private readonly createConversation?: (input: unknown, assertActive: () => void) => Promise<ConversationCreationResult>,
+  ) {
+    this.sockets.on('headers', (headers, req) => {
+      for (const [name, value] of Object.entries(this.upgradeQuotaHeaders.get(req) || {})) headers.push(`${name}: ${value}`)
+    })
     this.store = new ProxyStore(join(coordinator.store.codexHome, 'api-proxy'))
     this.usage = new ProxyUsageStore(this.store.directory)
     this.component = new ProxyComponent(this.store.directory, coordinator)
@@ -175,15 +328,16 @@ export class ApiProxyGateway {
       beforeMutation: async (kind, storageId) => {
         await this.store.ready
         if (kind !== 'remove' && this.mutation) throw new ProxyError('proxy_busy', 'API 出口设置正在变更。', 409)
-        const affectedKey = (keyId: string) => {
-          const fixed = this.store.findKey(keyId)?.accountStorageId || this.store.settings.accountStorageId
-          return kind === 'switch' ? !fixed : fixed === storageId
-        }
+        const state = await this.coordinator.store.readState()
         if (kind === 'switch') {
-          this.invalidateKeys(affectedKey)
+          for (const entry of this.activity.entries.values()) {
+            const waitingForModel = !entry.model && this.needsRequestModel(entry.keyId)
+            if (!waitingForModel && this.routeFollowsPrimary(entry.keyId, entry.model)) entry.abort()
+          }
+          this.invalidateResponseOwners(owner => this.routeFollowsPrimary(owner.keyId, owner.model ?? null))
         } else {
           for (const entry of this.activity.entries.values()) {
-            if (entry.storageId === storageId || affectedKey(entry.keyId)) entry.abort()
+            if (entry.storageId === storageId || (!entry.storageId && storageId && this.routeMayUseAccount(entry.keyId, entry.model, storageId, state.activeStorageId === storageId))) entry.abort()
           }
           if (storageId) {
             const component = this.accountComponents.get(storageId)
@@ -191,7 +345,7 @@ export class ApiProxyGateway {
             else if (this.store.settings.accountStorageId === storageId) await this.component.stop()
             this.accountComponents.delete(storageId)
           }
-          this.invalidateKeys(affectedKey)
+          this.invalidateResponseOwners(owner => owner.storageId === storageId || (!owner.storageId && !!storageId && this.routeMayUseAccount(owner.keyId, owner.model ?? null, storageId, state.activeStorageId === storageId)))
         }
         return () => undefined
       },
@@ -203,7 +357,6 @@ export class ApiProxyGateway {
     const key = this.store.authenticate(raw)
     if (!key) throw new ProxyError('invalid_api_key', '缺少有效的 API key。', 401)
     if (!this.store.settings.enabled) throw new ProxyError('proxy_disabled', 'API 出口未启用。', 503)
-    if (this.coordinator.blocksApiAccount(key.accountStorageId || this.store.settings.accountStorageId || null)) throw new ProxyError('account_busy', '所选账号正在变更，请稍后重试。', 503)
     return key.id
   }
   private namespace(keyId: string, value: string): string {
@@ -222,45 +375,140 @@ export class ApiProxyGateway {
     }
     return result
   }
-  private adapt(input: Record<string, unknown>, keyId: string, websocket = false): Record<string, unknown> {
+  private adapt(input: Record<string, unknown>, keyId: string, websocket = false, model?: string | null, storageId?: string): Record<string, unknown> {
     if (!input || typeof input !== 'object' || Array.isArray(input)) throw new ProxyError('invalid_json', '请求必须是 JSON 对象。')
     if (input.previous_response_id) {
       if (!websocket) throw new ProxyError('unsupported_previous_response_id', 'HTTP 续接请发送完整 input；增量续接使用 WebSocket。')
       const owner = this.responseOwners.get(String(input.previous_response_id))
-      if (!owner || owner.keyId !== keyId || owner.epoch !== this.epoch || Date.now() - owner.at > 3600_000) {
+      if (!owner || owner.keyId !== keyId || owner.epoch !== this.epoch || (storageId && owner.storageId && owner.storageId !== storageId) || Date.now() - owner.at > 3600_000) {
         throw new ProxyError('previous_response_not_found', '前一响应上下文不可用，请重连并发送完整上下文。')
       }
     }
     for (const field of ['prompt_cache_retention', 'safety_identifier']) {
       if (input[field] !== undefined) throw new ProxyError('unsupported_parameter', `当前 Codex 上游不支持 ${field}。`)
     }
-    return { ...input, prompt_cache_key: this.namespace(keyId, String(input.prompt_cache_key || 'default')) }
+    return { ...input, ...(model ? { model } : {}), prompt_cache_key: this.namespace(keyId, String(input.prompt_cache_key || 'default')) }
   }
-  private observe(event: Record<string, any>, keyId: string): void {
+  private observe(event: Record<string, any>, keyId: string, storageId?: string, model?: string | null): void {
     const id = event.response?.id ?? (event.object === 'response' ? event.id : undefined)
     if (typeof id === 'string') {
-      this.responseOwners.set(id, { keyId, epoch: this.epoch, at: Date.now() })
+      this.responseOwners.set(id, { keyId, storageId, model, epoch: this.epoch, at: Date.now() })
       while (this.responseOwners.size > 10_000) this.responseOwners.delete(this.responseOwners.keys().next().value!)
     }
+  }
+  private async handleUsage(keyId: string, res: ServerResponse, percent = false): Promise<void> {
+    const snapshot = this.routingSnapshot(keyId)
+    const epoch = this.outletEpoch
+    const key = this.store.findKey(keyId)
+    let account: StoredAccountEntry | undefined
+    if (key?.accountStorageId && !key.aggregateRoute?.enabled) {
+      const connections = getCustomConnectionStore(this.coordinator.store.codexHome)
+      await connections.ready
+      if (!connections.get(key.accountStorageId)) {
+        // readState reads local persisted quota only; listAccounts could schedule a cloud refresh.
+        const state = await this.coordinator.store.readState()
+        account = state.accounts.find(row => row.storageId === key.accountStorageId)
+      }
+    }
+    if (!this.store.isKeyUsable(keyId)) throw new ProxyError('invalid_api_key', '缺少有效的 API key。', 401)
+    if (!this.store.settings.enabled) throw new ProxyError('proxy_disabled', 'API 出口未启用。', 503)
+    if (this.routingSnapshot(keyId) !== snapshot || this.outletEpoch !== epoch) throw new ProxyError('key_changed', 'Key路由设置已变化，请重试。', 409)
+    const usage = cachedAccountUsage(key, account)
+    json(res, 200, percent ? percentAccountUsage(usage) : usage)
   }
   async handleApi(req: IncomingMessage, res: ServerResponse): Promise<void> {
     let entry: Activity | undefined
     let release: (() => void) | undefined
+    let releaseLease: (() => void) | undefined
     let settle: ReturnType<ProxyUsageStore['begin']> | undefined
+    let dispatchStarted = false
     try {
       const keyId = await this.authorize(req)
-      await this.usage.ready
       const url = new URL(req.url || '/', 'http://localhost')
+      if (url.pathname === '/v1/conversations') {
+        await this.handleConversationCreation(req, res, keyId)
+        return
+      }
+      if (url.pathname === '/v1/usage' || url.pathname === '/v1/usage/percent') {
+        if (req.method !== 'GET') throw new ProxyError('method_not_allowed', '用量查询仅支持 GET。', 405)
+        await this.handleUsage(keyId, res, url.pathname === '/v1/usage/percent')
+        return
+      }
+      await this.usage.ready
       settle = this.usage.begin(keyId, url.pathname === '/v1/models')
       if (!allowedRoutes.has(`${req.method} ${url.pathname}`)) throw new ProxyError('unsupported_endpoint', '此 API 路径未开放。', 404)
-      const accountId = await this.resolveAccount(keyId)
+      if (!this.store.settings.enabled) throw new ProxyError('proxy_disabled', 'API 出口未启用。', 503)
+      const needsModel = req.method === 'POST' && this.needsRequestModel(keyId)
+      const snapshot = this.routingSnapshot(keyId)
+      const outletEpoch = this.outletEpoch
+      const staticRoute = needsModel ? { account: null, model: null } : this.keyRoute(keyId, null)
+      entry = this.activity.admit(keyId, 'http', this.store.settings, 'reading')
+      const record = entry
+      const requestAbort = new AbortController()
+      record.abort = () => { requestAbort.abort(); req.destroy(); res.destroy() }
+      res.once('close', () => { if (!res.writableFinished) requestAbort.abort() })
+      const initialAccounts = await this.capturePrimaryStorage(record)
+      const catalog = req.method === 'GET' ? this.aggregateCatalog(keyId) : null
+      if (catalog) {
+        // 聚合 key 的模型目录就是清单并集，不向上游取目录。
+        record.phase = 'closing'
+        json(res, 200, { object: 'list', data: catalog.map(id => ({ id, object: 'model', created: 0, owned_by: 'sidux' })) })
+        settle('completed')
+        this.activity.finish(record.id, 'completed')
+        return
+      }
+      let accountId: string | undefined
+      if (!needsModel) {
+        record.phase = 'routing'
+        accountId = await this.resolveAccount(keyId, staticRoute.account)
+        this.assertAccountAvailable(keyId, accountId, staticRoute.model)
+        record.storageId = accountId
+        this.recordAccountActivity(accountId)
+        if (req.method === 'POST') await this.checkProtection(accountId, keyId)
+      }
+      // 只有动态聚合 key 需要先读体才能决定账号；其他 key 保持原有的静态账号解析顺序。
+      const payload = req.method === 'POST' ? await body(req) : undefined
+      record.phase = 'routing'
+      if (this.outletEpoch !== outletEpoch || !this.store.settings.enabled) {
+        throw new ProxyError(this.store.settings.enabled ? 'route_changed' : 'proxy_disabled', this.store.settings.enabled ? 'API 出口账号设置已变化，请重试。' : 'API 出口未启用。', this.store.settings.enabled ? 409 : 503)
+      }
+      if (this.routingSnapshot(keyId) !== snapshot) throw new ProxyError('key_changed', 'Key路由设置已变化，请重试。', 409)
+      const route = this.keyRoute(keyId, typeof payload?.model === 'string' ? payload.model : null)
+      record.model = route.model
+      if (needsModel) {
+        accountId = await this.resolveAccount(keyId, route.account)
+        this.assertAccountAvailable(keyId, accountId, route.model)
+        record.storageId = accountId
+        this.recordAccountActivity(accountId)
+        if (req.method === 'POST') await this.checkProtection(accountId, keyId)
+      }
+      if (!accountId) throw new ProxyError('account_not_found', '请先登录并选择账号。', 503)
+      this.assertDispatchContext(keyId, snapshot, outletEpoch, accountId, route.model, record)
+      // 强制路由只改写模型，聚合路由按模型挑账号；两者都不改变其他字段。
+      const routed = payload && route.model && payload.model !== route.model ? { ...payload, model: route.model } : payload
+      record.phase = 'preparing'
       const custom = getCustomConnectionStore(this.coordinator.store.codexHome).get(accountId)
+      if (req.method === 'GET' && !custom) {
+        const models = await this.coordinator.readAccountModels(accountId)
+        requestAbort.signal.throwIfAborted()
+        this.assertDispatchContext(keyId, snapshot, outletEpoch, accountId, route.model, record)
+        record.phase = 'closing'
+        const data = models.flatMap(value => {
+          if (!value || typeof value !== 'object') return []
+          const row = value as { id?: string; model?: string; hidden?: boolean }
+          const id = row.id || row.model
+          return id && !row.hidden ? [{ ...row, id, object: 'model', owned_by: 'openai' }] : []
+        })
+        const quotaHeaders = accountQuotaHeaders(this.store.findKey(keyId), initialAccounts.accounts.find(account => account.storageId === accountId))
+        for (const [name, value] of Object.entries(quotaHeaders)) res.setHeader(name, value)
+        json(res, 200, { object: 'list', data })
+        settle('completed')
+        this.activity.finish(record.id, 'completed')
+        return
+      }
       if (custom) {
-        entry = this.activity.admit(keyId, 'http', this.store.settings)
-        entry.storageId = accountId
-        const record = entry
-        record.abort = () => res.destroy()
         const lease = this.coordinator.executions.register({ storageId: accountId, kind: 'api', ownerId: keyId, disconnect: record.abort })
+        releaseLease = () => lease.release()
         let usage: TokenUsage | null = null
         let finished = false
         const finish = () => {
@@ -269,53 +517,81 @@ export class ApiProxyGateway {
           const outcome = res.destroyed && !res.writableFinished ? 'interrupted' : res.statusCode >= 400 ? 'failed' : 'completed'
           settle?.(outcome, usage)
           this.activity.finish(record.id, outcome)
-          lease.release()
+          releaseLease?.()
         }
         res.once('finish', finish)
         res.once('close', finish)
-        const input = req.method === 'POST' ? await body(req) : undefined
+        const input = routed
         entry.model = typeof input?.model === 'string' ? input.model : custom.model
-        if (!this.store.isKeyUsable(keyId) || await this.resolveAccount(keyId) !== accountId) throw new ProxyError('key_changed', 'Key账号设置已变化，请重试。', 409)
+        dispatchStarted = true
+        this.assertDispatchContext(keyId, snapshot, outletEpoch, accountId, route.model, record)
         lease.assertCurrent()
         this.store.touch(keyId)
+        record.phase = 'running'
         await forwardCustomConnection(req, res, custom, url.pathname, input, value => { usage = value })
         return
       }
-      if (req.method === 'POST') await this.checkProtection(accountId, keyId)
-      entry = this.activity.admit(keyId, 'http', this.store.settings)
-      entry.storageId = accountId
-      this.recordAccountActivity(accountId)
-      entry.abort = () => res.destroy()
-      const record = entry
       const lease = this.coordinator.executions.register({ storageId: accountId, kind: 'api', ownerId: keyId, protected: this.store.findKey(keyId)?.protected, disconnect: () => record.abort() })
+      releaseLease = () => lease.release()
       res.once('close', () => lease.release())
       res.once('finish', () => lease.release())
-      const input = req.method === 'POST' ? this.adapt(await body(req), keyId) : undefined
+      const input = req.method === 'POST' ? this.adapt(routed!, keyId, false, route.model) : undefined
       if (res.destroyed) { settle('interrupted'); this.activity.finish(entry.id, 'interrupted'); return }
       entry.model = typeof input?.model === 'string' ? input.model : null
-      const generation = await this.prepareAccount(accountId, req.method === 'GET')
+      dispatchStarted = true
+      const generation = await this.prepareAccount(accountId, req.method === 'GET', false, requestAbort.signal)
       if (res.destroyed) { settle('interrupted'); this.activity.finish(entry.id, 'interrupted'); return }
-      if (!this.store.isKeyUsable(keyId) || await this.resolveAccount(keyId) !== accountId) throw new ProxyError('key_changed', 'Key账号设置已变化，请重试。', 409)
-      if (req.method === 'POST') await this.checkProtection(accountId, keyId)
+      this.assertDispatchContext(keyId, snapshot, outletEpoch, accountId, route.model, record)
+      const account = await this.checkProtection(accountId, keyId)
+      const quotaHeaders = accountQuotaHeaders(this.store.findKey(keyId), account)
       release = this.owner(generation).hold(generation)
       const headers = this.headers(req, generation, keyId)
       this.store.touch(keyId)
       if (url.pathname === '/v1/responses/compact') {
-        await this.compact(req, res, input!, generation, headers, entry, settle)
+        record.phase = 'running'
+        await this.compact(req, res, input!, generation, headers, entry, settle, quotaHeaders)
         release()
         this.activity.finish(entry.id, res.statusCode < 400 ? 'completed' : 'failed')
         return
       }
-      this.forwardHttp(req, res, url, input, headers, generation, entry, release, settle)
+      record.phase = 'running'
+      this.forwardHttp(req, res, url, input, headers, generation, entry, release, settle, quotaHeaders)
     } catch (error) {
-      settle?.(res.destroyed ? 'interrupted' : entry ? 'failed' : 'rejected')
+      const outcome: UsageOutcome = res.destroyed ? 'interrupted' : dispatchStarted ? 'failed' : 'rejected'
+      settle?.(outcome)
       release?.()
-      if (entry) this.activity.finish(entry.id, 'failed')
-      errorResponse(res, error)
+      releaseLease?.()
+      if (entry) this.activity.finish(entry.id, outcome)
+      if (!res.destroyed) errorResponse(res, error)
+    }
+  }
+  private async handleConversationCreation(req: IncomingMessage, res: ServerResponse, keyId: string): Promise<void> {
+    if (req.method !== 'POST') throw new ProxyError('method_not_allowed', '创建会话仅支持 POST。', 405)
+    if (!this.createConversation) throw new ProxyError('conversation_unavailable', '会话创建服务不可用。', 503)
+    const entry = this.activity.admit(keyId, 'http', this.store.settings, 'reading')
+    const epoch = this.outletEpoch
+    let completed = false
+    let aborted = false
+    entry.abort = () => { aborted = true; req.destroy(); res.destroy() }
+    const assertActive = () => {
+      if (aborted || res.destroyed) throw new ProxyError('request_aborted', '请求已取消。', 499)
+      if (!this.store.isKeyUsable(keyId)) throw new ProxyError('invalid_api_key', 'API key 已失效。', 401)
+      if (!this.store.settings.enabled || epoch !== this.outletEpoch) throw new ProxyError('route_changed', 'API 出口设置已变化，请重试。', 409)
+    }
+    try {
+      const input = await body(req, 64 * 1024)
+      assertActive()
+      entry.phase = 'preparing'
+      const result = await this.createConversation(input, assertActive)
+      this.store.touch(keyId)
+      json(res, 201, result)
+      completed = true
+    } finally {
+      this.activity.finish(entry.id, completed ? 'completed' : 'failed')
     }
   }
   private async compact(req: IncomingMessage, res: ServerResponse, input: Record<string, unknown>, generation: ComponentGeneration,
-    headers: Record<string, string>, entry: Activity, settle: ReturnType<ProxyUsageStore['begin']>): Promise<void> {
+    headers: Record<string, string>, entry: Activity, settle: ReturnType<ProxyUsageStore['begin']>, quotaHeaders: Record<string, string>): Promise<void> {
     if (input.stream === true) throw new ProxyError('streaming_compact_unsupported', 'compact 不支持流式返回。')
     if (!Array.isArray(input.input)) throw new ProxyError('invalid_input', 'compact 的 input 必须为数组。')
     const abort = new AbortController()
@@ -341,12 +617,13 @@ export class ApiProxyGateway {
       // Preserve caller-owned user messages; the opaque item is generated by Codex, never a fabricated summary.
       const retained = input.input.filter((item: any) => item && item.role === 'user' && (!item.type || item.type === 'message'))
       settle(res.destroyed ? 'interrupted' : 'completed', extractUsage(parsed))
+      for (const [name, value] of Object.entries(quotaHeaders)) res.setHeader(name, value)
       json(res, 200, { id: parsed.id, object: 'response.compaction', created_at: parsed.created_at, output: [...retained, ...output], usage: parsed.usage })
     } finally { res.off('close', onClose) }
   }
   private forwardHttp(req: IncomingMessage, res: ServerResponse, url: URL, input: Record<string, unknown> | undefined,
     headers: Record<string, string>, generation: ComponentGeneration, entry: Activity, release: () => void,
-    settle: ReturnType<ProxyUsageStore['begin']>): void {
+    settle: ReturnType<ProxyUsageStore['begin']>, quotaHeaders: Record<string, string>): void {
     const target = new URL(url.pathname + url.search, generation.url)
     let finalized = false
     let completed = false
@@ -366,7 +643,11 @@ export class ApiProxyGateway {
     res.once('close', () => { if (upstreamFinishedStatus) finalize(upstreamFinishedStatus) })
     const upstream = httpRequest(target, { method: req.method, headers }, response => {
       upstreamResponse = response
+      entry.phase = 'running'
       res.statusCode = response.statusCode || 502
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        for (const [name, value] of Object.entries(quotaHeaders)) res.setHeader(name, value)
+      }
       if (res.statusCode >= 400) this.owner(generation).recordResult(generation, res.statusCode, String(response.headers['retry-after'] || ''))
       for (const name of ['content-type', 'retry-after', 'x-request-id', 'x-codex-turn-state', 'openai-processing-ms']) {
         const value = response.headers[name]
@@ -377,16 +658,8 @@ export class ApiProxyGateway {
       if (streaming) entry.transport = 'sse'
       let pending = ''
       let inspected = 0
-      const catalog = url.pathname === '/v1/models' && res.statusCode === 200
-      const catalogChunks: Buffer[] = []
       const inspect = new Transform({ transform: (chunk, _encoding, callback) => {
         inspected += chunk.length
-        if (catalog) {
-          if (inspected > 4 * 1024 * 1024) { callback(new ProxyError('catalog_too_large', '模型目录过大。', 502)); return }
-          catalogChunks.push(Buffer.from(chunk))
-          callback()
-          return
-        }
         if (streaming) {
           pending += chunk.toString('utf8')
           let newline = pending.indexOf('\n')
@@ -396,7 +669,7 @@ export class ApiProxyGateway {
             if (line.startsWith('data: ') && line.length < MAX_BODY) {
               try {
                 const event = JSON.parse(line.slice(6))
-                this.observe(event, entry.keyId)
+                this.observe(event, entry.keyId, entry.storageId, entry.model)
                 if (extractUsage(event)) usage = extractUsage(event)
                 if (event.type === 'response.completed') completed = true
                 if (['response.failed', 'response.incomplete', 'error'].includes(event.type)) {
@@ -410,29 +683,13 @@ export class ApiProxyGateway {
           if (pending.length > MAX_BODY) { callback(new ProxyError('upstream_frame_too_large', '上游事件过大。', 502)); return }
         } else if (inspected <= MAX_BODY) pending += chunk.toString('utf8')
         callback(null, chunk)
-      }, flush: callback => {
-        if (!catalog) { callback(); return }
-        try {
-          const payload = JSON.parse(Buffer.concat(catalogChunks).toString('utf8'))
-          // Pinned 7.2.152 advertises ultra in its Codex catalog but rejects it in
-          // the executor. Never advertise an effort that this outlet cannot send.
-          for (const rows of [payload.models, payload.data]) {
-            if (!Array.isArray(rows)) continue
-            for (const model of rows) {
-              if (Array.isArray(model.supported_reasoning_levels)) {
-                model.supported_reasoning_levels = model.supported_reasoning_levels.filter((level: { effort?: string }) => level.effort !== 'ultra')
-              }
-            }
-          }
-          callback(null, JSON.stringify(payload))
-        } catch { callback(new ProxyError('invalid_catalog', '组件模型目录格式无效。', 502)) }
       } })
       inspect.on('error', () => { upstream.destroy(); response.destroy(); res.destroy() })
       response.once('end', () => {
         if (!streaming) {
           try {
             const parsed = JSON.parse(pending)
-            this.observe(parsed, entry.keyId)
+            this.observe(parsed, entry.keyId, entry.storageId, entry.model)
             usage = extractUsage(parsed)
             if (parsed.error || ['failed', 'incomplete'].includes(parsed.status)) entry.status = 'failed'
           } catch { /* Forwarding remains independent of optional usage. */ }
@@ -465,112 +722,214 @@ export class ApiProxyGateway {
   private async upgrade(req: IncomingMessage, socket: Duplex, head: Buffer): Promise<void> {
     let entry: Activity | undefined
     let upstream: WebSocket | undefined
-    let release: (() => void) | undefined
     try {
       const keyId = await this.authorize(req)
       await this.usage.ready
       const url = new URL(req.url || '/', 'http://localhost')
       if (url.pathname !== '/v1/responses') throw new ProxyError('unsupported_endpoint', '此 WebSocket 路径未开放。', 404)
-      const accountId = await this.resolveAccount(keyId)
-      if (getCustomConnectionStore(this.coordinator.store.codexHome).get(accountId)) throw new ProxyError('unsupported_transport', '自定义连接请使用 HTTP 或 SSE。', 400)
-      await this.checkProtection(accountId, keyId)
-      entry = this.activity.admit(keyId, 'ws', this.store.settings)
-      entry.storageId = accountId
-      this.recordAccountActivity(accountId)
-      entry.abort = () => socket.destroy()
-      const admitted = entry
-      const accountLease = this.coordinator.executions.register({ storageId: accountId, kind: 'api', ownerId: keyId, protected: this.store.findKey(keyId)?.protected, disconnect: () => admitted.abort() })
-      socket.once('close', () => accountLease.release())
-      const generation = await this.prepareAccount(accountId)
-      if (socket.destroyed) { this.activity.finish(entry.id, 'interrupted'); return }
-      release = this.owner(generation).hold(generation)
-      upstream = new WebSocket(generation.url.replace('http:', 'ws:') + url.pathname + url.search, {
-        headers: this.headers(req, generation, keyId), maxPayload: MAX_BODY, perMessageDeflate: false, handshakeTimeout: 15_000,
-      })
-      const upstreamSocket = upstream
-      await new Promise<void>((resolve, reject) => { upstreamSocket.once('open', resolve); upstreamSocket.once('error', reject) })
-      if (socket.destroyed) { upstream.terminate(); release(); this.activity.finish(entry.id, 'interrupted'); return }
-      const record = entry
-      const releaseGeneration = release
+      if (!this.store.settings.enabled) throw new ProxyError('proxy_disabled', 'API 出口未启用。', 503)
+      // 只有模型未确定的聚合 key 延迟建连；聚合与强制路由同时开启时模型已知，可以沿用握手前建连。
+      const lazy = this.needsRequestModel(keyId)
+      const snapshot = this.routingSnapshot(keyId)
+      const outletEpoch = this.outletEpoch
+      if (lazy) {
+        entry = this.activity.admit(keyId, 'ws', this.store.settings, 'waiting-first-frame', false)
+        entry.status = 'waiting-first-frame'
+        entry.abort = () => { socket.destroy(); upstream?.terminate() }
+        await this.capturePrimaryStorage(entry)
+      }
+      type Connection = { upstream: WebSocket; generation: ComponentGeneration; accountId: string; accountLease: AccountExecutionLease; entry: Activity; release: () => void; model: string | null; quotaHeaders: Record<string, string> }
+      const establish = async (model: string | null, existing?: Activity): Promise<Connection | null> => {
+        const route = this.keyRoute(keyId, model)
+        const establishPrimaryStorage = existing ? this.activityPrimaryStorage.get(existing) : (await this.coordinator.store.readState()).activeStorageId
+        if (!this.store.settings.enabled) throw new ProxyError('proxy_disabled', 'API 出口未启用。', 503)
+        if (this.outletEpoch !== outletEpoch || this.routingSnapshot(keyId) !== snapshot) throw new ProxyError('route_changed', 'API 出口路由已变化，请重新连接。', 409)
+        const accountId = await this.resolveAccount(keyId, route.account)
+        this.assertAccountAvailable(keyId, accountId, route.model)
+        if (establishPrimaryStorage !== undefined && this.routeFollowsPrimary(keyId, route.model) && establishPrimaryStorage !== accountId) {
+          throw new ProxyError('route_changed', '主账号已切换，请重试。', 409)
+        }
+        if (getCustomConnectionStore(this.coordinator.store.codexHome).get(accountId)) throw new ProxyError('unsupported_transport', '自定义连接请使用 HTTP 或 SSE。', 400)
+        const account = await this.checkProtection(accountId, keyId)
+        if (establishPrimaryStorage !== undefined && this.routeFollowsPrimary(keyId, route.model) && establishPrimaryStorage !== accountId) {
+          throw new ProxyError('route_changed', '主账号已切换，请重试。', 409)
+        }
+        const admitted = existing || this.activity.admit(keyId, 'ws', this.store.settings, 'connecting')
+        entry = admitted
+        if (!existing) this.activityPrimaryStorage.set(admitted, establishPrimaryStorage ?? null)
+        if (existing && !admitted.busy) this.activity.begin(admitted, this.store.settings)
+        admitted.storageId = accountId
+        admitted.model = route.model
+        admitted.phase = 'connecting'
+        this.recordAccountActivity(accountId)
+        const preparationAbort = new AbortController()
+        admitted.abort = () => { preparationAbort.abort(); socket.destroy(); upstream?.terminate() }
+        const accountLease = this.coordinator.executions.register({ storageId: accountId, kind: 'api', ownerId: keyId, protected: this.store.findKey(keyId)?.protected, disconnect: () => admitted.abort() })
+        socket.once('close', () => accountLease.release())
+        let generationRelease: (() => void) | undefined
+        let opened: Connection | null = null
+        try {
+          const generation = await this.prepareAccount(accountId, false, false, preparationAbort.signal)
+          if (socket.destroyed) { this.activity.finish(admitted.id, 'interrupted'); return null }
+          generationRelease = this.owner(generation).hold(generation)
+          const connection = new WebSocket(generation.url.replace('http:', 'ws:') + url.pathname + url.search, {
+            headers: this.headers(req, generation, keyId), maxPayload: MAX_BODY, perMessageDeflate: false, handshakeTimeout: 15_000,
+          })
+          upstream = connection
+          await new Promise<void>((resolve, reject) => { connection.once('open', resolve); connection.once('error', reject) })
+          if (socket.destroyed) { connection.terminate(); return null }
+          opened = { upstream: connection, generation, accountId, accountLease, entry: admitted, release: generationRelease, model: route.model, quotaHeaders: accountQuotaHeaders(this.store.findKey(keyId), account) }
+          return opened
+        } catch (error) {
+          upstream?.terminate()
+          throw error
+        } finally {
+          if (!opened) {
+            generationRelease?.()
+            accountLease.release()
+            this.activity.finish(admitted.id, socket.destroyed ? 'interrupted' : 'failed')
+          }
+        }
+      }
+      let connection: Connection | null = lazy ? null : await establish(null)
+      if (!lazy && (!connection || socket.destroyed)) {
+        upstream?.terminate()
+        connection?.release()
+        if (entry) this.activity.finish(entry.id, 'interrupted')
+        return
+      }
+      if (socket.destroyed) {
+        if (entry) this.activity.finish(entry.id, 'interrupted')
+        return
+      }
+      if (connection) this.upgradeQuotaHeaders.set(req, connection.quotaHeaders)
       this.sockets.handleUpgrade(req, socket, head, downstream => {
         let closed = false
         let processing = false
+        let connecting: Promise<Connection | null> | null = null
+        let firstFrameTimer: ReturnType<typeof setTimeout> | undefined
         let settle: ReturnType<ProxyUsageStore['begin']> | null = null
         const cleanup = () => {
           if (closed) return
           closed = true
+          if (firstFrameTimer) clearTimeout(firstFrameTimer)
           settle?.('interrupted')
           settle = null
           downstream.terminate()
-          upstreamSocket.terminate()
-          // ws 'close' is emitted after the underlying transport is closed.
+          connection?.upstream.terminate()
+          upstream?.terminate()
+          if (!connection && entry) this.activity.finish(entry.id, 'interrupted')
+          // An in-flight establish observes socket.destroyed and releases its own resources.
         }
-        upstreamSocket.once('close', () => {
-          cleanup()
-          this.activity.finish(record.id, record.busy ? 'interrupted' : 'closed')
-          releaseGeneration()
-        })
-        downstream.once('close', cleanup)
-        downstream.once('error', cleanup)
-        upstreamSocket.on('error', cleanup)
-        record.abort = () => {
-          if (record.busy) { cleanup(); return }
-          downstream.close(1001, 'API route changed')
-          const timer = setTimeout(cleanup, 1500)
-          timer.unref()
-        }
-        record.busy = false
-        record.status = 'idle'
         const send = (destination: WebSocket, source: WebSocket, data: string | Buffer) => {
           if (destination.readyState !== WebSocket.OPEN) { cleanup(); return }
           if (destination.bufferedAmount > 512 * 1024) source.pause()
           if (destination.bufferedAmount > MAX_BODY) { cleanup(); return }
           destination.send(data, { binary: false }, error => { if (error) cleanup(); else if (!closed) source.resume() })
         }
-        upstreamSocket.on('message', (bytes, binary) => {
-          if (binary) { cleanup(); return }
-          try {
-            const event = JSON.parse(bytes.toString())
-            this.observe(event, keyId)
-            if (['response.completed', 'response.failed', 'response.incomplete', 'error'].includes(event.type)) {
-              settle?.(event.type === 'response.completed' ? 'completed' : 'failed', extractUsage(event))
-              settle = null
-              this.owner(generation).recordResult(generation, event.type === 'response.completed' ? 200 : typeof event.status === 'number' ? event.status : 502)
-              record.busy = false
-              accountLease.setBusy(false)
-              record.status = event.type === 'response.completed' ? 'idle' : 'failed'
-              processing = false
-            }
-          } catch { cleanup(); return }
-          send(downstream, upstreamSocket, bytes as Buffer)
-        })
+        const attach = (next: Connection) => {
+          next.upstream.once('close', () => {
+            cleanup()
+            this.activity.finish(next.entry.id, next.entry.busy ? 'interrupted' : 'closed')
+            next.release()
+            next.accountLease.release()
+          })
+          next.upstream.on('error', cleanup)
+          next.upstream.on('message', (bytes, binary) => {
+            if (binary) { cleanup(); return }
+            try {
+              const event = JSON.parse(bytes.toString())
+              this.observe(event, keyId, next.accountId, next.entry.model)
+              if (['response.completed', 'response.failed', 'response.incomplete', 'error'].includes(event.type)) {
+                settle?.(event.type === 'response.completed' ? 'completed' : 'failed', extractUsage(event))
+                settle = null
+                this.owner(next.generation).recordResult(next.generation, event.type === 'response.completed' ? 200 : typeof event.status === 'number' ? event.status : 502)
+                next.entry.busy = false
+                next.accountLease.setBusy(false)
+                next.entry.phase = 'idle'
+                next.entry.status = event.type === 'response.completed' ? 'idle' : 'failed'
+                processing = false
+              }
+            } catch { cleanup(); return }
+            send(downstream, next.upstream, bytes as Buffer)
+          })
+          next.entry.abort = () => {
+            if (next.entry.busy) { cleanup(); return }
+            downstream.close(1001, 'API route changed')
+            const timer = setTimeout(cleanup, 1500)
+            timer.unref()
+          }
+          if (!processing) {
+            next.entry.busy = false
+            next.accountLease.setBusy(false)
+            next.entry.phase = 'idle'
+            next.entry.status = 'idle'
+          }
+        }
+        downstream.once('close', cleanup)
+        downstream.once('error', cleanup)
+        if (connection) attach(connection)
+        if (entry && lazy) {
+          firstFrameTimer = setTimeout(() => {
+            if (closed || connection) return
+            entry!.phase = 'closing'
+            entry!.status = 'closing'
+            entry!.abort()
+            cleanup()
+          }, WS_FIRST_FRAME_TIMEOUT_MS)
+          firstFrameTimer.unref()
+        }
         downstream.on('message', async (bytes, binary) => {
           let pending: ReturnType<ProxyUsageStore['begin']> | undefined
           try {
             if (binary) throw new ProxyError('invalid_frame', '只接受 JSON 文本帧。')
             if (!this.store.isKeyUsable(keyId)) throw new ProxyError('invalid_api_key', 'API key 已停用、撤销或到期。', 401)
             pending = this.usage.begin(keyId)
-            if (processing || record.busy) throw new ProxyError('response_in_progress', '当前响应尚未结束。', 409)
-            if (this.coordinator.blocksApiAccount(this.store.findKey(keyId)?.accountStorageId || this.store.settings.accountStorageId || null)) throw new ProxyError('account_busy', '所选账号正在变更，请稍后重试。', 503)
+            if (processing || connecting || connection?.entry.busy) throw new ProxyError('response_in_progress', '当前响应尚未结束。', 409)
             const input = JSON.parse(bytes.toString())
             if (!['response.create', 'response.append'].includes(input.type)) throw new ProxyError('unsupported_frame', '不支持此 WebSocket 事件。')
-            const adapted = this.adapt(input, keyId, true)
-            accountLease.assertCurrent()
-            this.activity.begin(record, this.store.settings)
-            accountLease.setBusy(true)
+            const route = this.keyRoute(keyId, typeof input.model === 'string' ? input.model : null)
+            if (!connection) {
+              if (!entry) throw new ProxyError('disconnected', '连接已关闭。', 503)
+              // 聚合 key 的账号由第一帧的模型决定；连接建立后不再切换账号。
+              if (firstFrameTimer) clearTimeout(firstFrameTimer)
+              this.activity.begin(entry, this.store.settings)
+              entry.phase = 'connecting'
+              entry.status = 'connecting'
+              processing = true
+              settle = pending
+              connecting = establish(route.model, entry)
+              const opened = await connecting
+              connecting = null
+              if (!opened) throw new ProxyError('disconnected', '连接已关闭。', 503)
+              connection = opened
+              attach(opened)
+            }
+            const active = connection
+            if (!active) throw new ProxyError('disconnected', '连接已关闭。', 503)
+            active.accountLease.assertCurrent()
+            this.assertAccountAvailable(keyId, active.accountId, route.model)
+            if (!this.store.settings.enabled) throw new ProxyError('proxy_disabled', 'API 出口未启用。', 503)
+            if (this.routingSnapshot(keyId) !== snapshot) throw new ProxyError('route_changed', 'API key路由已变化，请重新连接。', 409)
+            if (await this.resolveAccount(keyId, route.account) !== active.accountId) throw new ProxyError('account_changed', '账号选择已变化，请重新连接。', 409)
+            if (!active.entry.busy) this.activity.begin(active.entry, this.store.settings)
+            active.accountLease.setBusy(true)
             settle = pending
             processing = true
-            if (await this.resolveAccount(keyId) !== accountId) throw new ProxyError('account_changed', '账号选择已变化，请重新连接。', 409)
-            await this.checkProtection(accountId, keyId)
+            await this.checkProtection(active.accountId, keyId)
+            // Resolve the first-frame account before validating continuation ownership.
+            // A response context produced by account A must never be sent to account B.
+            const adapted = this.adapt(input, keyId, true, route.model, active.accountId)
             // The authenticated upstream socket owns incremental response context.
             // Credential rotation prepares new connections; it must not replace a
             // healthy existing socket between turns. Explicit account/key changes
             // are still enforced by the lease and account selection above.
             if (closed) return
-            record.model = typeof input.model === 'string' ? input.model : record.model
+            active.entry.model = route.model || active.entry.model
             this.store.touch(keyId)
-            send(upstreamSocket, downstream, JSON.stringify(adapted))
+            send(active.upstream, downstream, JSON.stringify(adapted))
           } catch (error) {
+            connecting = null
             pending?.(settle === pending ? 'failed' : 'rejected')
             const known = error instanceof ProxyError ? error : new ProxyError('invalid_frame', '请求帧无效。')
             // Close after a protocol error so an error for a second request cannot terminate the first response ambiguously.
@@ -581,17 +940,21 @@ export class ApiProxyGateway {
       })
     } catch (error) {
       upstream?.terminate()
-      release?.()
       if (entry) this.activity.finish(entry.id, 'failed')
       const status = error instanceof ProxyError ? error.status : 503
       if (!socket.destroyed) socket.end(`HTTP/1.1 ${status} Rejected\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`)
     }
   }
+
   async handleManagement(req: IncomingMessage, res: ServerResponse): Promise<void> {
     try {
       await this.store.ready
       const url = new URL(req.url || '/', 'http://localhost')
       const path = url.pathname.slice('/codex-api/api-proxy'.length)
+      if (req.method === 'GET' && path === '/notifications/conversations') {
+        json(res, 200, { data: await this.notifications.conversationPreferences() })
+        return
+      }
       if (req.method === 'GET' && path === '/notifications') {
         json(res, 200, { data: await this.notifications.snapshot() })
         return
@@ -616,7 +979,7 @@ export class ApiProxyGateway {
         await connections.ready
         const custom = connections.get(selectedId)
         const accounts = await this.coordinator.listAccounts({ scheduleRefresh: false })
-        accounts.accounts.push(...connections.snapshot().connections.map(row => ({ storageId: row.storageId, alias: row.alias, email: null, accountId: row.baseUrl, authStatus: 'ready', kind: 'custom', supportedEndpoints: customConnectionEndpoints(row) } as any)))
+        accounts.accounts.push(...connections.snapshot().connections.map(row => ({ storageId: row.storageId, alias: row.alias, email: null, accountId: row.baseUrl, authStatus: 'ready', kind: 'custom', supportedEndpoints: customConnectionEndpoints(row), bridgedEndpoints: customConnectionBridgedEndpoints(row), manualEndpoints: customConnectionManualEndpoints(row) } as any)))
         if (connections.active()) accounts.activeStorageId = connections.active()!.storageId
         json(res, 200, { data: { settings: this.store.settings, ...(selectedComponent || this.component).status(), selectedStorageId: selectedId, installed: !!custom || await this.component.available(), ...(custom ? { ready: true, lastError: null } : {}),
           usage: this.usage.summary(url.searchParams.get('timeZone') || 'UTC'),
@@ -625,20 +988,28 @@ export class ApiProxyGateway {
         return
       }
       if (req.method === 'GET' && path === '/models') {
-        if (!this.store.settings.enabled) throw new ProxyError('proxy_disabled', '请先启用出口。', 503)
         const keyId = url.searchParams.get('keyId') || undefined
         if (keyId && !this.store.findKey(keyId)) throw new ProxyError('key_not_found', 'Key不存在。', 404)
-        const selectedId = url.searchParams.get('accountStorageId') || await this.resolveAccount(keyId)
+        // 管理界面按账号预览模型目录用于 key 路由配置，不依赖出口是否已启用；经 key 取目录仍要求启用。
+        const previewId = url.searchParams.get('accountStorageId') || undefined
+        if (!this.store.settings.enabled && !previewId) throw new ProxyError('proxy_disabled', '请先启用出口。', 503)
+        const selectedId = previewId || await this.resolveAccount(keyId)
         const custom = getCustomConnectionStore(this.coordinator.store.codexHome).get(selectedId)
         if (custom) { json(res, 200, { data: customConnectionModels({ ...custom, hasApiKey: true }) }); return }
-        const generation = await this.prepareAccount(selectedId, true)
-        const response = await fetch(`${generation.url}/v1/models`, { headers: { Authorization: `Bearer ${generation.key}` }, signal: AbortSignal.timeout(5000) })
-        json(res, response.status, await response.json())
+        json(res, 200, { data: await this.coordinator.readAccountModels(selectedId), source: 'codex' })
         return
       }
       if (req.method !== 'POST') throw new ProxyError('unsupported_endpoint', '管理接口不存在。', 404)
       if (req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) throw new ProxyError('cross_origin', '不接受跨站管理操作。', 403)
       const input = await body(req, 64 * 1024)
+      if (path === '/notifications/conversations') {
+        try {
+          json(res, 200, { data: await this.notifications.saveConversationPreferences(input) })
+        } catch {
+          throw new ProxyError('invalid_notifications', '会话通知设置格式错误。')
+        }
+        return
+      }
       if (path === '/notifications/test') {
         json(res, 200, { data: await this.notifications.test() })
         return
@@ -666,9 +1037,17 @@ export class ApiProxyGateway {
       }
       if (path === '/keys' || path.startsWith('/keys/')) {
         this.store.validateKeyPolicy(input)
-        if (input.accountStorageId) {
+        // 聚合路由的每一项都指向一个账号；除“全局账号”（null）外都必须仍然存在。
+        const routeEntries = input.aggregateRoute && typeof input.aggregateRoute === 'object' && !Array.isArray(input.aggregateRoute)
+          ? (input.aggregateRoute as { entries?: unknown }).entries : undefined
+        const targets = [input.accountStorageId, ...(Array.isArray(routeEntries) ? routeEntries.map(entry => (entry as { accountStorageId?: unknown })?.accountStorageId) : [])]
+        if (targets.some(target => typeof target === 'string' && target)) {
           const state = await this.coordinator.store.readState()
-          if (!getCustomConnectionStore(this.coordinator.store.codexHome).get(String(input.accountStorageId)) && !state.accounts.some(account => account.storageId === input.accountStorageId)) throw new ProxyError('account_not_found', '所选账号不存在。')
+          const connections = getCustomConnectionStore(this.coordinator.store.codexHome)
+          for (const target of targets) {
+            if (typeof target !== 'string' || !target) continue
+            if (!connections.get(target) && !state.accounts.some(account => account.storageId === target)) throw new ProxyError('account_not_found', '所选账号不存在。')
+          }
         }
       }
       if (path === '/keys') {
@@ -678,7 +1057,11 @@ export class ApiProxyGateway {
       if (path.startsWith('/keys/')) {
         const id = path.slice('/keys/'.length)
         await this.store.updateKey(id, input as Parameters<ProxyStore['updateKey']>[1])
-        if (input.interrupt === true || input.accountStorageId !== undefined || input.protected !== undefined) this.activity.abortKey(id)
+        if (input.interrupt === true || input.accountStorageId !== undefined || input.protected !== undefined
+          || input.forceRoute !== undefined || input.aggregateRoute !== undefined) {
+          this.activity.abortKey(id)
+          this.invalidateResponseOwners(owner => owner.keyId === id)
+        }
         json(res, 200, { ok: true })
         return
       }
@@ -718,6 +1101,7 @@ export class ApiProxyGateway {
           // Save the route even when the old account is exhausted or logged out.
           // Credentials and component readiness are checked on actual requests.
           await this.store.saveSettings(settings)
+          if (previous.enabled !== settings.enabled || previous.accountStorageId !== settings.accountStorageId) this.outletEpoch++
           if (drained) {
             await this.stopComponents()
             this.epoch = randomUUID()

@@ -97,6 +97,66 @@ describe('durable delivery records', () => {
     expect(await reopened.add(input())).toMatchObject({ status: 'accepted', turnId: 'native-turn' })
   })
 
+  it('recovers a GOAL receipt after a crash without inventing a native turn ID', async () => {
+    const { store, dir } = await fixture()
+    const submission = { ...input(), message: { ...input().message, continuation: true as const } }
+    const row = await store.add(submission) as DeliveryRecord
+    const goalResume = { createdAt: 100, objectiveHash: 'a'.repeat(64) }
+    await store.sending(row.message.id, row.revision, { goalResume }, row.contextId)
+    const beforeReceipt = await readFile(join(dir, 'pending.json'))
+    expect(await store.confirm(row.message.id, { goalResume })).toMatchObject({ status: 'accepted', goalResume })
+    await store.dispose()
+    await writeFile(join(dir, 'pending.json'), beforeReceipt)
+    const reopened = new DeliveryStore(dir, { now: () => now })
+    stores.push(reopened)
+    expect(await reopened.records()).toEqual([])
+    const receipt = await reopened.add(submission)
+    expect(receipt).toMatchObject({ status: 'accepted', goalResume })
+    expect(receipt).not.toHaveProperty('turnId')
+    await expect(reopened.add({ ...submission, message: { ...submission.message, continuation: undefined } })).rejects.toThrow('内容已变化')
+  })
+
+  it('keeps old ordinary ledgers compatible and upgrades the contract before accepting a continuation', async () => {
+    const { store, dir } = await fixture()
+    const ordinary = await store.add(input()) as DeliveryRecord
+    expect(JSON.parse(await readFile(join(dir, 'pending.json'), 'utf8')).version).toBe(2)
+    await store.remove(ordinary.message.id, ordinary.revision)
+    const continuation = await store.add({ ...input(2), message: { ...input(2).message, continuation: true } }) as DeliveryRecord
+    expect(JSON.parse(await readFile(join(dir, 'pending.json'), 'utf8')).version).toBe(3)
+    await store.remove(continuation.message.id, continuation.revision)
+    expect(JSON.parse(await readFile(join(dir, 'pending.json'), 'utf8'))).toMatchObject({ version: 3, records: [] })
+    await store.dispose()
+    const reopened = new DeliveryStore(dir, { now: () => now })
+    stores.push(reopened)
+    expect(await reopened.records()).toEqual([])
+  })
+
+  it.each([
+    {}, { turnId: '' }, { goalResume: { createdAt: -1, objectiveHash: 'a'.repeat(64) } },
+    { goalResume: { createdAt: 1, objectiveHash: 'invalid' } },
+    { turnId: 'turn', goalResume: { createdAt: 1, objectiveHash: 'a'.repeat(64) } },
+  ])('rejects malformed or ambiguous acceptance evidence %j', async evidence => {
+    const { store, dir } = await fixture()
+    const row = await store.add(input()) as DeliveryRecord
+    await store.sending(row.message.id, row.revision, {}, row.contextId)
+    await expect(store.confirm(row.message.id, evidence as never)).rejects.toThrow('缺少回合或目标确认')
+    const malformed = { id: row.message.id, threadId: row.threadId, fingerprint: row.fingerprint, status: 'accepted', createdAt: now, updatedAt: now, ...evidence }
+    await mkdir(join(dir, 'receipts'), { recursive: true })
+    await writeFile(join(dir, 'receipts', row.message.id + '.json'), JSON.stringify(malformed))
+    await expect(store.readReceipt(row.message.id)).rejects.toThrow('发送确认记录损坏')
+  })
+
+  it('rejects GOAL receipts for a different goal or an ordinary message', async () => {
+    const { store } = await fixture()
+    const row = await store.add(input()) as DeliveryRecord
+    const goalResume = { createdAt: 100, objectiveHash: 'a'.repeat(64) }
+    await store.sending(row.message.id, row.revision, { goalResume }, row.contextId)
+    await expect(store.confirm(row.message.id, { goalResume })).rejects.toThrow('目标确认与续跑记录不匹配')
+    const continuation = await store.add({ ...input(2), message: { ...input(2).message, continuation: true } }) as DeliveryRecord
+    await store.sending(continuation.message.id, continuation.revision, { goalResume }, continuation.contextId)
+    await expect(store.confirm(continuation.message.id, { goalResume: { ...goalResume, createdAt: 200 } })).rejects.toThrow('目标确认与续跑记录不匹配')
+  })
+
   it('holds edited messages across reload and preserves captured model settings', async () => {
     const { store, dir } = await fixture()
     const row = await store.add(input()) as DeliveryRecord

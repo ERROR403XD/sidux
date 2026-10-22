@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { BackendQueueProcessor } from './codexAppServerBridge'
+import { BackendQueueProcessor, createBackendQueueRuntimeFixture } from './backendQueueRuntime'
 import { createDeliveryId } from '../delivery'
 import { readPendingWebDeliveries, rememberWebDelivery, submitRememberedDelivery } from '../api/deliveryOutbox'
 
@@ -17,9 +17,8 @@ async function fixture() {
     if (method === 'turn/start') return { turn: { id: 'native-turn' } }
     return {}
   })
-  const processor = new BackendQueueProcessor({
-    rpc, taskAccountBusy: () => false, onNotification: () => () => {}, notifyQueueChanged: () => {}, listPendingServerRequests: () => [],
-  } as never, { directory, startRecovery: false, context: async () => 'fixture-account' })
+  const { runtime } = createBackendQueueRuntimeFixture({ rpc })
+  const processor = new BackendQueueProcessor(runtime, { directory, startRecovery: false, context: async () => 'fixture-account' })
   cleanups.push(async () => { await processor.dispose(); await rm(directory, { recursive: true, force: true }) })
   const message = { id: createDeliveryId(), text: 'fixture', imageUrls: [], skills: [], fileAttachments: [], collaborationMode: 'default' as const, model: 'saved-model', effort: 'ultra' }
   return { processor, rpc, message, busy: (value: boolean) => { status = value ? 'active' : 'idle' }, unload: () => { status = 'notLoaded' } }
@@ -151,14 +150,35 @@ describe('durable bridge delivery', () => {
 
   it('blocks submissions while provider mutation owns the gate', async () => {
     const { processor, message } = await fixture()
-    const release = processor.beginProviderChange()
+    let release!: () => void
+    const change = processor.runProviderChange(() => new Promise<void>(resolve => { release = resolve }))
     await expect(processor.mutate({ protocol: 2, expectedContextId: 'fixture-account', type: 'add', threadId: 'fixture', message })).rejects.toThrow('账号操作')
     release()
+    await change
     expect(await processor.readState()).toEqual({})
+  })
+
+  it('treats dropping an already-delivered queued row as idempotent and returns its receipt', async () => {
+    const { processor, message, rpc, busy } = await fixture()
+    busy(true)
+    await processor.mutate({ protocol: 2, expectedContextId: 'fixture-account', type: 'add', threadId: 'fixture', message })
+    busy(false)
+    // 回合结束后队列自动发送：行从待发清单结算成 accepted 回执（页面重进时若错过推送就会留下残影）。
+    await processor.processThreadQueue('fixture')
+    expect(await processor.deliveries.result(message.id)).toMatchObject({ status: 'accepted', turnId: 'native-turn' })
+    rpc.mockClear()
+    const dropped = await processor.mutate({ protocol: 2, type: 'remove', threadId: 'fixture', messageId: message.id })
+    expect(dropped.state).toEqual({})
+    expect(dropped.delivered).toMatchObject({ id: message.id, turnId: 'native-turn' })
+    // 幂等：重复丢弃同一行不再报错，也不触发任何投递。
+    const again = await processor.mutate({ protocol: 2, type: 'remove', threadId: 'fixture', messageId: message.id })
+    expect(again.delivered).toMatchObject({ id: message.id })
+    expect(rpc).not.toHaveBeenCalled()
+    await expect(processor.mutate({ protocol: 2, type: 'move', threadId: 'fixture', messageId: message.id, revision: 1, targetId: message.id })).rejects.toThrow('已发送或已移除')
   })
 })
 
-it('delivers an interrupted thread continuation through the durable queue exactly once', async () => {
+it('delivers a quota-interrupted thread continuation through the durable queue exactly once', async () => {
   const { ThreadQuotaResume } = await import('./threadQuotaResume')
   const { processor, rpc, message } = await fixture()
   const home = await mkdtemp(join(tmpdir(), 'resume-delivery-'))
@@ -168,7 +188,7 @@ it('delivers an interrupted thread continuation through the durable queue exactl
     const response = await processor.submit({ protocol: 2, threadId, message: continuation, params, expectedContextId: 'fixture-account' })
     expect(response.status).toBe('accepted')
   })
-  const runtime = { inspect: vi.fn(async () => ({ active: false, turnId: 'interrupted-turn', status: 'interrupted', error: '' })), available: async () => true, submit, cancel: async () => {}, changed: () => {} }
+  const runtime = { inspect: vi.fn(async () => ({ active: false, turnId: 'interrupted-turn', status: 'interrupted', error: 'quota exceeded' })), available: async () => true, submit, cancel: async () => {}, changed: () => {} }
   const service = new ThreadQuotaResume(home, runtime, false)
   cleanups.unshift(async () => { await service.close(); await rm(home, { recursive: true, force: true }) })
   await service.set('fixture', true)

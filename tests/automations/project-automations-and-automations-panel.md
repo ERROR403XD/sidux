@@ -114,3 +114,15 @@
 - 操作：普通项目菜单选择移除，确认框明确包含项目及自动化；取消/Esc 后项目、任务均保留，无 DELETE。确认后沿用原来的移除流程，只提交一次删除请求。
 - 预期：删除回执成功但列表刷新失败时，成功通知保留，刷新问题单独显示；仅名称项目移除继续保留任务和会话，不触发普通项目的联动删除。
 - 清理：仅使用隔离请求桩或测试项目；不移除实际工作项目。
+
+### 0.2.22 自动化定义服务与存储边界
+
+前置：独立 HOME、合成执行 runtime、真实 AutomationEngine/定义文件；运行 `pnpm exec vitest run src/server/automationDefinitionService.test.ts`，不使用真实运行任务。
+
+1. 通过 thread-automation PUT 创建两个同名心跳，确认 ID 不同、列表按既有创建时间排序；按 ID 查询单条，不传 ID 返回数组。
+2. 在合成定义中保留未知 TOML 字段和 memory.md 内容，更新 prompt/模型/账号设置；预期未知字段、创建时间、memory 和未指定的执行设置保留，API 不返回 extraTomlLines。
+3. 给一个项目 cron 定义两个 cwd，删除其中一个项目关联；定义与另一 cwd、memory 保留。移除最后一个关联才删除目录。
+4. 使用无效参数、相对项目路径、无效调度规则和未就绪 scheduler；确认原响应分类保留，失败前不写入定义文件。
+5. 同时创建两个独立 HOME/engine，各保存同 ID 任务；查询、更新、删除只影响对应 home，不从全局 bridge 读取其他 scheduler。
+
+预期：route 仅解析 HTTP 和基础输入，service 完整协调 schedule→文件写入→engine.refresh，store 只拥有定义文件操作；未新增后台执行或缓存。清理关闭测试 engine/HTTP server 并删除独立 HOME。此迁移无 schema 变化，可按提交回滚，标准测试卷和生产状态保留。

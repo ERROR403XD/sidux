@@ -1,5 +1,18 @@
 # 开发重启与后台终端空闲检查（0.2.9）
 
+## dev.8 审核：旧终态不能清除新回合活动记录
+
+前提：仅在network=none、无端口映射的独立容器运行 `docs/baseline/022/dev8-review-20261020/stale-runtime-activity-container.cjs`，精确命令见同目录run-commands。使用已安装dev.8、合成IPC与新建home；不对宿主服务发送事件，不执行候选替换、账号切换或生产activate。
+
+1. 同会话old完成后，通过真实delivery端点启动保持inProgress的new。确认活动接口、列表、直接读取与空闲检查均认为当前忙碌。
+2. 分别重放old的completed（嵌套turn.id）、cancelled（顶层turnId）。底层new不改变，预期活动接口仍包含会话、列表active、`checkIdle().idle=false`。
+3. 把old cancelled放在new started通知之后、turn/start回执之前；等待回执期间pending必须可见，放行accepted回执后仍不能清掉new的活动标记。
+4. 以不重放、另一会话终态作对照；直接thread/read与合成持久文件须一直指向相同new/inProgress。最终只完成new，所有组才允许返回idle。
+
+当前dev.8证据：5组31检查22通过/9失败，三组旧终态分别破坏活动、列表与空闲检查，记R62 P1；保持正确断言及exit1。事件为受控合成IPC重放，不证明原生自然出现频率，也没有执行切换来制造实际会话损失。
+
+清理：释放本轮暂停回执，先关自有SSE，再停止自有容器CLI；核对自有子进程已退出，删除本轮随机home和容器，保留宿主4173/5173/59001/5900。
+
 前置：确认 4173 的 PID/cwd 属于当前源码和独立测试 home，队列为空；59001 使用已验收候选。不要对 5173、5900 或全局 Codex 任务触发本测试。
 
 1. 记录 4173 的队列、调度器状态和 WebSocket 通知。修改并恢复 Vite 配置中的无行为注释，触发三次真实配置重启；每次等待日志明确出现 server restarted。
@@ -11,3 +24,15 @@
 7. 单测覆盖最多 200 个已加载线程、最多四路并发、存在性查询 limit=1；不支持该原生能力的旧 CLI 报 unsupported，不冒充已核对进程数为 0。
 
 清理：恢复配置原字节、停止仅本测试创建的后台命令；保留候选 home 与账号数据。确认 4173 仍可用，生产进程不变。不得为了通过空闲检查自动清空队列或批量停止进程。
+
+
+## 0.2.21-dev.2：回收中的 worker 不可借用
+
+前提：隔离测试运行时，不使用生产会话；运行 `src/server/accountResourcePool.test.ts` 的可控 dispose 场景。
+1. 容量 1，先分配 A；分配 B 触发异步回收 A，但先不完成 dispose。
+2. 同 key 请求 A，及读取可用 worker：必须返回可重试 worker_reclaiming，getAvailable/availableValues 不暴露 A。
+3. 让等待超过 disposeTimeoutMs：调用可结束，但原资源仍隔离、占容量，不创建 B；随后实际 dispose 完成，才允许新分配。
+4. 用测试模拟显式替换同 key 对象：旧 dispose 完成不能删除新对象或超额创建。
+5. 运行关联账号路由/自动化准备回归，确认等待 idle 检查时已有的复用保护不退化。
+
+预期：不存在回收对象被重新初始化后丢失池跟踪；错误可重试但不盲目创建资源。清理：测试自行释放 dispose promise；无生产操作。

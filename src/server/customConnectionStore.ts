@@ -4,24 +4,43 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { privateJson } from './apiProxy/store.js'
 import { normalizeModelCapability } from '../modelCapabilities.js'
-import { type CustomEndpoint, type CustomConnection, type CustomConnectionDraft, type CustomConnectionSnapshot } from '../customConnections.js'
+import { type CustomEndpoint, type CustomConnection, type CustomConnectionDraft, type CustomConnectionSnapshot, applyProbedEfforts, customReasoningEffortLevels, normalizeManualModels, normalizeReasoningEfforts } from '../customConnections.js'
 
 type StoredConnection = Omit<CustomConnection, 'hasApiKey'> & { apiKey: string; runtimeToken: string }
 type State = { explicitSelection?: boolean; version: 1; activeId: string | null; connections: StoredConnection[] }
+
+async function readProbeResponse(response: Response) {
+  const text = await response.text().catch(() => '')
+  let parsed: any = null
+  try { parsed = JSON.parse(text) } catch {}
+  const error = parsed?.error ?? (response.ok ? null : parsed)
+  const message = typeof error === 'string' ? error
+    : error && typeof error === 'object'
+      ? [error.code, error.type, error.message, error.detail].filter(value => typeof value === 'string').join(' ')
+      : response.ok ? '' : parsed == null ? text : ''
+  const accessDenied = /\b(?:invalid[ _-](?:api[ _-])?key|authentication[ _-](?:error|required)|permission[ _-]denied|insufficient[ _-](?:permissions?|scope)|unauthorized|forbidden|access[ _-]denied)\b/i.test(message)
+  const quotaLimited = [402, 429].includes(response.status) || (!accessDenied && ![401, 404, 405, 501].includes(response.status) && (
+    /\b(?:rate[ _-]?limit(?:ed|[ _-]?(?:exceeded|reached|error))?|too[ _-]many[ _-]requests|resource[ _-]exhausted|billing[ _-]hard[ _-]limit[ _-]reached)\b/i.test(message)
+    || /(?:quota|credits?|balance|funds|usage[ _-]limit|spending[ _-]limit|budget).{0,48}(?:insufficient|exceed|exhaust|deplet|reached|too[ _-]low|not[ _-]enough)/i.test(message)
+    || /(?:insufficient|exceed|exhaust|deplet|not[ _-]enough).{0,48}(?:quota|credits?|balance|funds|usage[ _-]limit|budget)/i.test(message)
+    || /(?:额度|配额|余额|积分).{0,20}(?:不足|耗尽|用尽|超限|超出|已达|达到)|限流|请求过多|速率.{0,8}(?:限制|超限)/u.test(message)
+  ))
+  return { parsed, text, quotaLimited }
+}
+
 export class CustomConnectionStore {
   readonly ready: Promise<void>
   private state: State = { version: 1, activeId: null, connections: [] }
   private writes: Promise<unknown> = Promise.resolve()
-  private proofs = new Map<string, { digest: string; models: CustomConnection['models']; supportedEndpoints: CustomEndpoint[]; wireApi: 'responses' | 'chat'; testedAt: string; expires: number }>()
+  private proofs = new Map<string, { digest: string; models: CustomConnection['models']; supportedEndpoints: CustomEndpoint[]; wireApi: 'responses' | 'chat'; reasoningEfforts: string[]; testedAt: string; expires: number }>()
+  private catalogRefreshes = new Map<string, { until: number; promise: Promise<void> }>()
   constructor(readonly home: string, private fetcher: typeof fetch = (...args) => fetch(...args)) { this.ready = this.restore() }
   private async restore(): Promise<void> {
     try {
       const value = JSON.parse(await readFile(join(this.home, 'custom-connections.json'), 'utf8')) as State
       if (value.version !== 1 || !Array.isArray(value.connections) || value.connections.some(row => !/^[a-f0-9]{64}$/.test(row.storageId) || typeof row.apiKey !== 'string' || !Array.isArray(row.models))) throw new Error('自定义连接配置损坏')
-      if (value.connections.find(row => row.storageId === value.activeId)?.wireApi === 'chat') {
-        value.activeId = null
-        value.explicitSelection = true
-      }
+      // Connections saved before the protocol bridge toggle existed default to off.
+      value.connections = value.connections.map(row => ({ ...row, protocolBridge: row.protocolBridge === true, manualModels: normalizeManualModels(row.manualModels), reasoningEfforts: normalizeReasoningEfforts(row.reasoningEfforts) }))
       this.state = value
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
@@ -38,18 +57,64 @@ export class CustomConnectionStore {
     const row: StoredConnection = {
       storageId: randomBytes(32).toString('hex'), alias: legacy.provider === 'custom' ? 'Custom API' : legacy.provider === 'opencode-zen' ? 'OpenCode' : 'OpenRouter',
       provider: legacy.provider === 'opencode-zen' ? 'opencode' : legacy.provider || 'custom', baseUrl, apiKey: legacy.apiKey, model: legacy.model,
-      wireApi: legacy.wireApi === 'chat' ? 'chat' : 'responses', revision: 1, runtimeToken: randomBytes(24).toString('hex'),
+      wireApi: legacy.wireApi === 'chat' ? 'chat' : 'responses', protocolBridge: false, revision: 1, runtimeToken: randomBytes(24).toString('hex'),
       models: [{ ...normalizeModelCapability(legacy.model, 'custom')!, efforts: [], serviceTiers: [] }],
     }
-    const state: State = { version: 1, activeId: legacy.enabled && row.wireApi === 'responses' ? row.storageId : null, explicitSelection: legacy.enabled && row.wireApi === 'chat', connections: [row] }
+    const state: State = { version: 1, activeId: legacy.enabled ? row.storageId : null, explicitSelection: !!legacy.enabled, connections: [row] }
     await privateJson(join(this.home, 'custom-connections.json'), state)
     this.state = state
   }
-  get(id: string | null | undefined): StoredConnection | undefined { return this.state.connections.find(row => row.storageId === id) }
+  // Old files collapsed absent capabilities to []; only the probed model may inherit them.
+  private materialize(row: StoredConnection): StoredConnection {
+    const models = row.capabilitiesVersion === 2 ? row.models : row.models.map(model => (
+      !model.efforts?.length ? { ...model, efforts: null } : model
+    ))
+    return { ...row, models: applyProbedEfforts(models, normalizeReasoningEfforts(row.reasoningEfforts), row.model) }
+  }
+  /** Upgrade legacy capability caches with one metadata GET, never generation or credential changes. */
+  async refreshModels(id: string): Promise<void> {
+    await this.ready
+    const row = this.state.connections.find(item => item.storageId === id)
+    if (!row || row.capabilitiesVersion === 2) return
+    const key = `${id}:${row.revision}`
+    const cached = this.catalogRefreshes.get(key)
+    if (cached && cached.until > Date.now()) return cached.promise
+    const entry = { until: Infinity, promise: Promise.resolve() }
+    entry.promise = (async () => {
+      try {
+        const response = await this.fetcher(`${row.baseUrl}/models`, { headers: { Authorization: `Bearer ${row.apiKey}` }, signal: AbortSignal.timeout(4000) })
+        if (!response.ok) return
+        const payload = await response.json()
+        if (!Array.isArray(payload?.data)) return
+        const models = payload.data.slice(0, 2000).flatMap((value: unknown) => {
+          const model = normalizeModelCapability(value, 'custom')
+          return model ? [model] : []
+        })
+        if (!models.length) return
+        await this.mutate(() => ({ ...this.state, connections: this.state.connections.map(current => (
+          current.storageId === id && current.revision === row.revision
+            ? { ...current, models, capabilitiesVersion: 2 } : current
+        )) }))
+      } catch { /* Retain the last usable catalog; retry at most once a minute. */ }
+    })().finally(() => { entry.until = Date.now() + 60_000 })
+    if (this.catalogRefreshes.size >= 32) this.catalogRefreshes.delete(this.catalogRefreshes.keys().next().value!)
+    this.catalogRefreshes.set(key, entry)
+    return entry.promise
+  }
+  get(id: string | null | undefined): StoredConnection | undefined {
+    const row = this.state.connections.find(item => item.storageId === id)
+    return row ? this.materialize(row) : undefined
+  }
   explicitSelection(): boolean { return this.state.explicitSelection === true }
   active(): StoredConnection | undefined { return this.get(this.state.activeId) }
   snapshot(): CustomConnectionSnapshot {
-    return { activeId: this.state.activeId, connections: this.state.connections.map(({ apiKey, runtimeToken: _token, ...row }) => ({ ...structuredClone(row), hasApiKey: !!apiKey })) }
+    return {
+      activeId: this.state.activeId,
+      connections: this.state.connections.map(row => {
+        const { apiKey, runtimeToken: _token, ...rest } = this.materialize(row)
+        return { ...structuredClone(rest), hasApiKey: !!apiKey }
+      }),
+    }
   }
   private mutate(update: () => State): Promise<void> {
     const write = this.writes.then(async () => {
@@ -73,64 +138,118 @@ export class CustomConnectionStore {
     try { url = new URL(input.baseUrl) } catch { throw new Error('请输入有效的 Base URL') }
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error('请输入有效的 Base URL')
     if (!alias || alias.length > 80 || !apiKey || apiKey.length > 8192 || /[\r\n]/.test(apiKey) || model.length > 200) throw new Error('请填写别名、API key 和有效模型')
-    return { storageId: input.storageId, alias, provider: String(input.provider || 'custom').slice(0, 50), baseUrl: url.href.replace(/\/+$/, ''), model, apiKey, wireApi: input.wireApi === 'chat' ? 'chat' : 'responses' }
+    const manualModels = normalizeManualModels(input.manualModels)
+    const allowFast = typeof input.allowFast === 'boolean' ? input.allowFast : previous?.allowFast === true
+    return { storageId: input.storageId, alias, provider: String(input.provider || 'custom').slice(0, 50), baseUrl: url.href.replace(/\/+$/, ''), model, apiKey, wireApi: input.wireApi === 'chat' ? 'chat' : 'responses', protocolBridge: input.protocolBridge === true, allowFast, manualModels }
   }
-  private digest(input: CustomConnectionDraft): string { return createHash('sha256').update(JSON.stringify({ ...input, wireApi: undefined })).digest('hex') }
-  async test(input: CustomConnectionDraft): Promise<{ token: string; models: CustomConnection['models']; model: string; supportedEndpoints: CustomEndpoint[]; wireApi: 'responses' | 'chat' }> {
+  // wireApi comes from the endpoint probe; protocolBridge and allowFast are local
+  // toggles — none changes what a test proves, so they stay out of the
+  // digest. Reasoning efforts are probe-derived and never part of the draft.
+  private digest(input: CustomConnectionDraft): string { return createHash('sha256').update(JSON.stringify({ ...input, wireApi: undefined, protocolBridge: undefined, manualModels: undefined, allowFast: undefined })).digest('hex') }
+  async test(input: CustomConnectionDraft): Promise<{ token: string; models: CustomConnection['models']; model: string; supportedEndpoints: CustomEndpoint[]; wireApi: 'responses' | 'chat'; reasoningEfforts: string[] }> {
     await this.ready
     const draft = this.draft(input)
     let rows: unknown[] = []
     const supportedEndpoints: CustomEndpoint[] = []
     try {
       const response = await this.fetcher(`${draft.baseUrl}/models`, { headers: { Authorization: `Bearer ${draft.apiKey}` }, signal: AbortSignal.timeout(10000) })
-      if (response.ok) {
-        const data = await response.json() as { data?: unknown[] }
-        if (Array.isArray(data.data)) { rows = data.data.slice(0, 2000); supportedEndpoints.push('/v1/models') }
+      const { parsed, quotaLimited } = await readProbeResponse(response)
+      if (response.ok && Array.isArray(parsed?.data)) {
+        rows = parsed.data.slice(0, 2000)
+        supportedEndpoints.push('/v1/models')
+      } else if (quotaLimited) {
+        supportedEndpoints.push('/v1/models')
       }
     } catch (error) {
       if (!draft.model) throw new Error('模型目录不可用，请填写模型名')
     }
-    const models = rows.map(row => normalizeModelCapability(row, 'custom')).filter((row): row is NonNullable<typeof row> => !!row).map(row => ({ ...row, efforts: row.efforts || [], serviceTiers: row.serviceTiers || [] }))
+    const models = rows.map(row => normalizeModelCapability(row, 'custom')).filter((row): row is NonNullable<typeof row> => !!row)
     if (!draft.model) draft.model = models[0]?.id || ''
     if (!draft.model) throw new Error('模型目录不可用，请填写模型名')
-    if (!models.some(row => row.id === draft.model)) models.unshift({ ...normalizeModelCapability(draft.model, 'custom')!, efforts: [], serviceTiers: [] })
+    if (!models.some(row => row.id === draft.model)) models.unshift(normalizeModelCapability(draft.model, 'custom')!)
     const protocols = ['responses', 'chat'] as const
-    const probes = await Promise.allSettled(protocols.map(async protocol => {
+    const probeBodies = {
+      responses: { model: draft.model, input: 'hi', stream: false, max_output_tokens: 16 },
+      chat: { model: draft.model, messages: [{ role: 'user', content: 'hi' }], stream: false, max_tokens: 16 },
+    } satisfies Record<(typeof protocols)[number], Record<string, unknown>>
+    const probeOnce = async (protocol: (typeof protocols)[number], body: Record<string, unknown>) => {
       const response = await this.fetcher(`${draft.baseUrl}/${protocol === 'chat' ? 'chat/completions' : 'responses'}`, {
         method: 'POST', headers: { Authorization: `Bearer ${draft.apiKey}`, 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(30000),
-        body: JSON.stringify(protocol === 'chat' ? { model: draft.model, messages: [{ role: 'user', content: 'hi' }], stream: false, max_tokens: 16 } : { model: draft.model, input: 'hi', stream: false, max_output_tokens: 16 }),
+        body: JSON.stringify(body),
       })
-      const body = await response.json().catch(() => null) as any
-      return response.ok && (protocol === 'chat' ? Array.isArray(body?.choices) && body.choices.length > 0 : Array.isArray(body?.output) && body.status !== 'failed')
-    }))
+      const { parsed, text, quotaLimited } = await readProbeResponse(response)
+      const served = quotaLimited || (response.ok && (protocol === 'chat' ? Array.isArray(parsed?.choices) && parsed.choices.length > 0 : Array.isArray(parsed?.output) && parsed.status !== 'failed'))
+      return { served, text, quotaLimited }
+    }
+    const probes = await Promise.allSettled(protocols.map(protocol => probeOnce(protocol, probeBodies[protocol])))
     probes.forEach((result, index) => {
-      if (result.status === 'fulfilled' && result.value) supportedEndpoints.push(protocols[index] === 'responses' ? '/v1/responses' : '/v1/chat/completions')
+      if (result.status === 'fulfilled' && result.value.served) supportedEndpoints.push(protocols[index] === 'responses' ? '/v1/responses' : '/v1/chat/completions')
     })
     if (!supportedEndpoints.some(endpoint => endpoint !== '/v1/models')) throw new Error('连接测试失败，请检查地址、模型和凭据')
     const wireApi = supportedEndpoints.includes('/v1/responses') ? 'responses' : 'chat'
+    const selectedProbe = probes[protocols.indexOf(wireApi)]!
+    const quotaLimited = selectedProbe.status === 'fulfilled' && selectedProbe.value.quotaLimited
+    // The runtime only speaks the resolved wire, so effort probing targets it.
+    // Every level starts as supported; a level is dropped only when the
+    // upstream rejects it with an error naming the reasoning parameter —
+    // silent ignores and unrelated failures cannot prove anything.
+    const declaredEfforts = models.find(model => model.id === draft.model)?.efforts
+    const levelProbes = await Promise.all((declaredEfforts == null ? customReasoningEffortLevels : []).map(async level => {
+      if (quotaLimited) return { level, rejected: false }
+      try {
+        const body = wireApi === 'chat' ? { ...probeBodies.chat, reasoning_effort: level } : { ...probeBodies.responses, reasoning: { effort: level } }
+        const outcome = await probeOnce(wireApi, body)
+        return { level, rejected: !outcome.served && /reasoning/i.test(outcome.text) }
+      } catch {
+        // A probe that could not run is no evidence of rejection; keep the level.
+        return { level, rejected: false }
+      }
+    }))
+    const reasoningEfforts = declaredEfforts?.map(row => row.value) ?? levelProbes.filter(row => !row.rejected).map(row => row.level)
     const token = randomBytes(24).toString('hex')
     for (const [key, proof] of this.proofs) if (proof.expires < Date.now()) this.proofs.delete(key)
     if (this.proofs.size >= 32) this.proofs.delete(this.proofs.keys().next().value!)
-    this.proofs.set(token, { digest: this.digest(draft), models, supportedEndpoints, wireApi, testedAt: new Date().toISOString(), expires: Date.now() + 10 * 60000 })
-    return { token, models, model: draft.model, supportedEndpoints, wireApi }
+    this.proofs.set(token, { digest: this.digest(draft), models, supportedEndpoints, wireApi, reasoningEfforts, testedAt: new Date().toISOString(), expires: Date.now() + 10 * 60000 })
+    return { token, models, model: draft.model, supportedEndpoints, wireApi, reasoningEfforts }
   }
   async save(input: CustomConnectionDraft, token: string): Promise<void> {
     await this.ready
     const draft = this.draft(input)
+    // Save must diff and extend the raw stored row; the public get() returns
+    // the materialized view with declared efforts merged in.
+    const previous = draft.storageId ? this.state.connections.find(row => row.storageId === draft.storageId) : undefined
     const proof = this.proofs.get(token)
-    if (!proof || proof.expires < Date.now() || proof.digest !== this.digest(draft)) throw new Error('请先测试连接')
+    const proofValid = !!proof && proof.expires >= Date.now() && proof.digest === this.digest(draft)
+    // Local-only fields (protocol bridge, Fast opt-in and manual model catalog)
+    // do not touch what a test proves, so they may be saved without a probe. Any credential
+    // change, or a fresh probe result, always goes through the proof path.
+    const onlyLocalChanges = !proofValid && !!previous
+      && previous.alias === draft.alias && previous.provider === draft.provider
+      && previous.baseUrl === draft.baseUrl && previous.model === draft.model
+      && previous.apiKey === draft.apiKey
+    if (!proofValid && !onlyLocalChanges) throw new Error('请先测试连接')
+    if (!previous && this.state.connections.length >= 32) throw new Error('自定义连接数量已达上限')
+    // Probed reasoning efforts come from a fresh proof; a no-probe save keeps
+    // the previous verdicts untouched — only 重新测试连接 refreshes them.
     await this.mutate(() => {
-      const previous = this.get(draft.storageId)
-      if (!previous && this.state.connections.length >= 32) throw new Error('自定义连接数量已达上限')
-      const row: StoredConnection = { ...draft, wireApi: proof.wireApi, supportedEndpoints: proof.supportedEndpoints, testedAt: proof.testedAt, storageId: previous?.storageId || randomBytes(32).toString('hex'), revision: (previous?.revision || 0) + 1, models: proof.models, runtimeToken: randomBytes(24).toString('hex') }
-      return { ...this.state, ...(this.state.activeId === row.storageId && row.wireApi !== 'responses' ? { activeId: null, explicitSelection: true } : {}), connections: [...this.state.connections.filter(item => item.storageId !== row.storageId), row] }
+      const row: StoredConnection = proofValid && proof
+        ? { ...draft, capabilitiesVersion: 2, reasoningEfforts: proof.reasoningEfforts, wireApi: proof.wireApi, protocolBridge: draft.protocolBridge === true, supportedEndpoints: proof.supportedEndpoints, testedAt: proof.testedAt, storageId: previous?.storageId || randomBytes(32).toString('hex'), revision: (previous?.revision || 0) + 1, models: proof.models, runtimeToken: randomBytes(24).toString('hex') }
+        : { ...previous!, ...draft, protocolBridge: draft.protocolBridge === true, wireApi: previous!.wireApi, supportedEndpoints: previous!.supportedEndpoints, testedAt: previous!.testedAt, models: previous!.models, storageId: previous!.storageId, revision: previous!.revision + 1, runtimeToken: randomBytes(24).toString('hex') }
+      // Editing an existing connection keeps its position so the settings list does not reorder under the pointer.
+      const connections = previous
+        ? this.state.connections.map(item => (item.storageId === row.storageId ? row : item))
+        : [...this.state.connections, row]
+      // An active connection that can no longer serve Codex (chat without the
+      // bridge) is deselected, matching the pre-bridge save semantics.
+      const unusableActive = this.state.activeId === row.storageId && row.wireApi !== 'responses' && !row.protocolBridge
+      return { ...this.state, ...(unusableActive ? { activeId: null, explicitSelection: true } : {}), connections }
     })
-    this.proofs.delete(token)
+    if (proofValid && proof) this.proofs.delete(token)
   }
   async select(id: string | null): Promise<void> {
     await this.mutate(() => {
       if (id && !this.get(id)) throw new Error('自定义连接已移除')
-      if (id && this.get(id)?.wireApi !== 'responses') throw new Error('仅支持 Chat Completions，可用作 API key 出口')
+      if (id && this.get(id)!.wireApi === 'chat' && !this.get(id)!.protocolBridge) throw new Error('该连接仅支持 Chat Completions，可在账号设置中开启协议转换')
       return { ...this.state, activeId: id, explicitSelection: true }
     })
   }
@@ -147,7 +266,9 @@ export function getCustomConnectionStore(home = process.env.CODEX_HOME?.trim() |
   return store
 }
 export function customRuntimeConfig(connection: NonNullable<ReturnType<CustomConnectionStore['get']>>, port: number) {
-  if (connection.wireApi !== 'responses') throw new Error('Codex 需要 Responses API')
+  // Codex always speaks Responses to the local runtime route; chat-only
+  // connections need the protocol bridge toggle to serve it.
+  if (connection.wireApi !== 'responses' && !connection.protocolBridge) throw new Error('Codex 需要 Responses API，可在账号设置中开启协议转换')
   const provider = `custom_${connection.storageId}`
   return { args: ['-c', `model_provider=${JSON.stringify(provider)}`, '-c', `model=${JSON.stringify(connection.model)}`,
     '-c', `model_providers.${provider}.name="Custom connection"`, '-c', `model_providers.${provider}.base_url="http://127.0.0.1:${port}/codex-api/custom-connections/runtime/${connection.storageId}/${connection.revision}/v1"`,

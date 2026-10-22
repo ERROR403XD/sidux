@@ -30,4 +30,14 @@ describe('shared popover viewport positioning', () => {
       .toMatchObject({ top: '8px', maxHeight: '484px' })
   })
 
+  it('places a context menu at the pointer instead of the row action anchor', () => {
+    expect(positionPopover({ ...base, point: { x: 32, y: 240 } }))
+      .toMatchObject({ left: '32px', top: '248px' })
+  })
+
+  it('keeps a context menu inside the viewport at the lower right edge', () => {
+    expect(positionPopover({ ...base, point: { x: 370, y: 800 }, viewportWidth: 375, viewportHeight: 812 }))
+      .toMatchObject({ left: '143px', top: '624px' })
+  })
+
 })

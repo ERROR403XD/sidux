@@ -295,7 +295,7 @@ async function startServer(options: {
     '',
     'Sidux is running!',
     `  Version:  ${version}`,
-    '  GitHub:   https://github.com/ERROR403XD/sidux',
+    '  GitHub:   https://github.com/friuns2/codexui',
     '',
     `  Bind:     http://0.0.0.0:${String(port)}`,
     `  Codex sandbox: ${runtimeConfig.sandboxMode}`,

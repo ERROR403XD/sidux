@@ -54,6 +54,13 @@ Rollback/cleanup:
 
 自动回归：先 `pnpm run build`，再 `node scripts/test-project-root-api.cjs`。脚本创建独立临时 CODEX_HOME、启动构建产物，通过真实 HTTP 检查指定目录、原文件保留、同路径去重、label 落盘、文件路径失败以及独立子文件夹创建；结束后删除自身临时目录。Linux 容器内加 `CODEXAPP_TEST_UNPRIVILEGED=1`，并指定 `CODEXAPP_TEST_CLI` 为已安装的 CLI，以 nobody 验证 EACCES；不要让 nobody 读取宿主机 `/root` 下的依赖。
 
+022-03B route 抽离补充：`src/server/routes/projectRootRoutes.test.ts` 直接覆盖虚拟创建/删除、物理目录创建、AGENTS 工作目录保存、label 持久化调用合同与 400/404；`scripts/test-project-root-api.cjs` 在当前开发环境仍启动后挂起，未作为通过证据。
+`src/server/routes/localDirectoryRoutes.test.ts` 覆盖空路径 400、已有目录复用、普通文件 400 与缺失目录递归创建；该端点仍由同一真实 HTTP 脚本的 local-directory 部分承载打包入口回归，当前脚本挂起未作为通过证据。
+`src/server/routes/githubCloneRoutes.test.ts` 只验证请求字段 trim、成功路径与既有错误消息/400 fallback，不发起真实网络请求；真实 clone 仍由 `CODEXAPP_TEST_GITHUB_CLONE=1` 的隔离脚本在显式允许网络时验证，本轮未运行。
+`src/server/routes/projectConversationRoutes.test.ts` 覆盖 projectless/project 会话目录创建分流、prompt 归一化与 500 错误边界；真实目录命名与落盘仍由 `test-project-organization.cjs` 及文件系统用例承载，当前该真实 HTTP 脚本挂起未作为通过证据。
+`src/server/routes/projectArchiveRoutes.test.ts` 覆盖虚拟多根导出、HEAD 不收集聊天条目、导出路径校验错误映射、导入 parent/body 校验与成功后搜索失效时机。真实 ZIP 字节、跨目录归档和导入落盘仍由既有项目归档测试/脚本承载；本轮未生成或导入真实 ZIP。
+`src/server/routes/projectDiscoveryRoutes.test.ts` 覆盖默认项目名的首个可用候选、basePath 400/404、composer 文件搜索排序/limit 夹取与 cwd/rg 错误边界；真实 ripgrep 扫描性能仍待浏览器性能采样，本批不新增扫描次数。
+
 提交中保护补充：在自动化保存/运行、目录创建/打开进行时按 Esc 或点击背景，弹窗应保持打开；完成后正常关闭。自动化取消按钮与遮罩/键盘使用相同禁止关闭条件。
 
 Clone 自动回归：在隔离测试容器中加 `CODEXAPP_TEST_GITHUB_CLONE=1` 并允许网络，脚本克隆公开的 `octocat/Hello-World` 到已存在的测试父目录，验证实际路径是 `父目录/Hello-World`，并验证非 GitHub URL 被拒绝；测试结束清理自身克隆。
@@ -83,4 +90,14 @@ Clone 自动回归：在隔离测试容器中加 `CODEXAPP_TEST_GITHUB_CLONE=1` 
 
 清理：移除测试项目列表项，恢复测试 AGENTS.md，删除自己创建的临时目录。保留候选账号状态；不操作生产 5900。
 
-文案补充：字段标签为“附加工作目录”，空输入框以两行占位提示 `/workspace/project1` 和 `/workspace/project2` 表示每行一条绝对路径；示例不能成为默认值或被提交。项目菜单入口统一显示“编辑项目”。
+文案补充：字段标签为“附加工作目录”，空输入框以两行占位提示 `/home/Code/project1` 和 `/home/Code/project2` 表示每行一条绝对路径；示例不能成为默认值或被提交。项目菜单入口统一显示“编辑项目”。
+
+### 0.2.22 R1/Q07：项目写入与全局状态事务
+
+前提：隔离候选和专用临时目录；仅使用该候选自身的账号/会话，备份测试 home 的 `.codex-global-state.json`。
+
+操作：创建项目并保存名称、项目顺序；随后修改会话标题、置顶状态和首次启动卡片偏好。刷新核对保存结果；在测试 home 含旧队列时启动，再重复保存。
+
+预期：项目创建及后续保存均结束，不持续等待；刷新后项目、标题、置顶和偏好均保留。旧队列迁移只清理自己的字段，不覆盖其他状态；失败事务不阻塞下一次保存。
+
+清理：恢复测试状态备份，移除本轮创建的项目和临时目录；回退时只回退代码，不导入生产状态。

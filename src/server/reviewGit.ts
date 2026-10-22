@@ -4,6 +4,7 @@ import { mkdir, rm, stat, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
+import { asRecord, getErrorMessage, setJson, type RouteRequestContext } from './httpUtils.js'
 
 type ReviewScope = 'workspace' | 'baseBranch' | 'commit'
 type ReviewWorkspaceView = 'unstaged' | 'staged'
@@ -66,9 +67,7 @@ type ReviewSnapshot = {
 
 type ReviewSummary = ReviewSnapshot['summary']
 
-type ReviewRouteContext = {
-  readJsonBody: (req: IncomingMessage) => Promise<unknown>
-}
+type ReviewRouteContext = RouteRequestContext
 
 type CommandResult = {
   code: number
@@ -91,38 +90,8 @@ function normalizeBaseBranchDisplayName(value: string): string {
   return trimmed.startsWith('origin/') ? trimmed.slice('origin/'.length) : trimmed
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null
-}
-
 function readString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
-}
-
-function getErrorMessage(payload: unknown, fallback: string): string {
-  if (payload instanceof Error && payload.message.trim().length > 0) {
-    return payload.message
-  }
-
-  const record = asRecord(payload)
-  if (!record) return fallback
-
-  const direct = readString(record.error)
-  if (direct) return direct
-
-  const nested = asRecord(record.error)
-  const nestedMessage = readString(nested?.message)
-  if (nestedMessage) return nestedMessage
-
-  return fallback
-}
-
-function setJson(res: ServerResponse, statusCode: number, payload: unknown): void {
-  res.statusCode = statusCode
-  res.setHeader('Content-Type', 'application/json; charset=utf-8')
-  res.end(JSON.stringify(payload))
 }
 
 async function runCommandResult(
