@@ -6,11 +6,11 @@ Playwright browser runtime profiler captures route timing, Codex API network cou
 #### Prerequisites/Setup
 1. Dev server running at `http://localhost:5173`
 2. Dependencies installed (`pnpm install`)
-3. Target route available, such as `#/thread/<thread-id>`
+3. Target route available, such as `#/thread/019da7c0-4e12-7a91-837c-f7c11cc8ab6c`
 
 #### Steps
 1. Run `pnpm run profile:browser`
-2. Run `PROFILE_ROUTE='#/thread/<thread-id>' pnpm run profile:browser`
+2. Run `PROFILE_ROUTE='#/thread/019da7c0-4e12-7a91-837c-f7c11cc8ab6c' pnpm run profile:browser`
 3. Inspect console output for duplicate counts and slowest API rows
 4. Open the generated `output/playwright/browser-runtime-profile-*.json`
 5. Open the generated `output/playwright/browser-runtime-profile-*-trace.zip` with `npx playwright show-trace`

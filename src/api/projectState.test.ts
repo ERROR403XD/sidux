@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { getWorkspaceRootsState, invalidateWorkspaceRootsStateCache, setWorkspaceRootsState } from './codexGateway'
+import { getWorkspaceRootsState, invalidateWorkspaceRootsStateCache, setWorkspaceRootsState } from './projectGateway'
 
 afterEach(() => { vi.unstubAllGlobals(); invalidateWorkspaceRootsStateCache() })
 const project = { id: 'virtual:11111111-1111-4111-8111-111111111111', label: 'Organization', cwds: ['/fixture/Documents/Codex/2026-09-13/session'] }

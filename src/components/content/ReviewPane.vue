@@ -332,13 +332,8 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import {
-  applyReviewAction,
-  getReviewSnapshot,
-  initializeReviewGit,
-  subscribeCodexNotifications,
-  type RpcNotification,
-} from '../../api/codexGateway'
+import { applyReviewAction, getReviewSnapshot, initializeReviewGit } from '../../api/reviewGateway'
+import { subscribeRpcNotifications, type RpcNotification } from '../../api/codexRpcClient'
 import { useMobile } from '../../composables/useMobile'
 import { useUiLanguage } from '../../composables/useUiLanguage'
 import type {
@@ -913,7 +908,7 @@ watch(selectedFile, (file) => {
 })
 
 onMounted(() => {
-  stopNotifications = subscribeCodexNotifications(handleNotification)
+  stopNotifications = subscribeRpcNotifications(handleNotification)
 })
 
 onBeforeUnmount(() => {

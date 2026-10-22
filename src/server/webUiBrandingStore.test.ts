@@ -4,7 +4,17 @@ import { tmpdir } from 'node:os'
 import { createServer } from 'node:http'
 import { expect, it } from 'vitest'
 import { WebUiBrandingStore } from './webUiBrandingStore'
-import { webUiDocumentTitle, webUiIconSizes } from '../webUiBranding'
+import { defaultWebUiBranding, webUiDocumentTitle, webUiIconSizes } from '../webUiBranding'
+
+it('defaults new profiles to the fixed Sidux brand', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'webui-branding-default-'))
+  try {
+    expect(await new WebUiBrandingStore(home).snapshot()).toEqual(defaultWebUiBranding)
+    expect(defaultWebUiBranding).toEqual({ title: 'Sidux', titleMode: 'fixed', logoVersion: '' })
+  } finally {
+    await rm(home, { recursive: true, force: true })
+  }
+})
 
 it('persists branding, escapes HTML, publishes sized icons/ICO/manifest and restores defaults', async () => {
   const home = await mkdtemp(join(tmpdir(), 'webui-branding-'))
@@ -28,7 +38,7 @@ it('persists branding, escapes HTML, publishes sized icons/ICO/manifest and rest
     const saved = await store.save({ title: 'My <script> $& "UI"', titleMode: 'prefix', icons })
     expect(saved.logoVersion).toHaveLength(16)
     expect(saved).not.toHaveProperty('icons')
-    const html = await store.decorateHtml('<head><meta name="apple-mobile-web-app-title" content="Sidux"><title>Sidux</title></head>')
+    const html = await store.decorateHtml('<head><meta name="apple-mobile-web-app-title" content="Codex Web"><title>Codex Web</title></head>')
     expect(html).toContain('My &lt;script&gt; $&amp; &quot;UI&quot;')
     expect(html).toContain('\\u003cscript>')
     expect(html).not.toContain('<script> $&')

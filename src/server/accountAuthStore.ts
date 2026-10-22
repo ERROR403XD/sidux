@@ -58,6 +58,7 @@ export type StoredAccountEntry = {
   lastResetUsedAtIso?: string | null
   quotaSnapshot: StoredRateLimitSnapshot | null
   quotaUpdatedAtIso: string | null
+  quotaFailedAtIso: string | null
   quotaStatus: AccountQuotaStatus
   quotaError: string | null
   unavailableReason: AccountUnavailableReason | null
@@ -281,6 +282,7 @@ function normalizeEntry(value: unknown): StoredAccountEntry | null {
     lastResetUsedAtIso: typeof record?.lastResetUsedAtIso === 'string' ? record.lastResetUsedAtIso : null,
     protectionPercent: Math.max(0, Math.min(100, readNumber(record?.protectionPercent) ?? 0)),
     quotaUpdatedAtIso: readString(record?.quotaUpdatedAtIso),
+    quotaFailedAtIso: readString(record?.quotaFailedAtIso),
     quotaStatus,
     quotaError: readString(record?.quotaError),
     unavailableReason,
@@ -416,6 +418,10 @@ export class AccountAuthStore {
   }
 
   async readState(): Promise<StoredAccountsState> {
+    return this.queueStateMutation(() => this.loadState())
+  }
+
+  private async loadState(): Promise<StoredAccountsState> {
     let parsed: Record<string, unknown> | null = null
     try {
       parsed = asRecord(JSON.parse(await readFile(this.statePath, 'utf8')))
@@ -466,6 +472,7 @@ export class AccountAuthStore {
           lastResetUsedAtIso: existing?.lastResetUsedAtIso ?? null,
           protectionPercent: existing?.protectionPercent ?? 0,
           quotaUpdatedAtIso: existing?.quotaUpdatedAtIso ?? null,
+          quotaFailedAtIso: existing?.quotaFailedAtIso ?? null,
           quotaStatus: existing?.quotaStatus ?? 'idle',
           quotaError: existing?.quotaError ?? null,
           unavailableReason: existing?.unavailableReason ?? null,
@@ -496,6 +503,7 @@ export class AccountAuthStore {
           lastActivatedAtIso: now,
           quotaSnapshot: null,
           quotaUpdatedAtIso: null,
+          quotaFailedAtIso: null,
           quotaStatus: 'idle',
           quotaError: null,
           unavailableReason: null,
@@ -544,6 +552,12 @@ export class AccountAuthStore {
     return state
   }
 
+  private queueStateMutation<T>(write: () => Promise<T>): Promise<T> {
+    const run = this.mutationChain.then(write)
+    this.mutationChain = run.catch(() => undefined)
+    return run
+  }
+
   async writeState(state: StoredAccountsState): Promise<void> {
     await this.ensureRoot()
     const active = state.activeStorageId
@@ -560,14 +574,12 @@ export class AccountAuthStore {
   }
 
   async updateState<T>(update: (state: StoredAccountsState) => Promise<{ state: StoredAccountsState; result: T }> | { state: StoredAccountsState; result: T }): Promise<T> {
-    const run = this.mutationChain.then(async () => {
-      const current = await this.readState()
+    return this.queueStateMutation(async () => {
+      const current = await this.loadState()
       const next = await update(current)
       await this.writeState(next.state)
       return next.result
     })
-    this.mutationChain = run.catch(() => undefined)
-    return run
   }
 
   async upsertCredential(raw: string, options: {
@@ -606,6 +618,7 @@ export class AccountAuthStore {
         lastResetUsedAtIso: existing?.lastResetUsedAtIso ?? null,
         protectionPercent: existing?.protectionPercent ?? 0,
         quotaUpdatedAtIso: existing?.quotaUpdatedAtIso ?? null,
+        quotaFailedAtIso: null,
         quotaStatus: existing?.quotaStatus ?? 'idle',
         quotaError: null,
         unavailableReason: null,

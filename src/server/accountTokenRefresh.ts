@@ -46,6 +46,21 @@ export function accessTokenExpiresAt(token: string): number {
   return typeof payload?.exp === 'number' ? payload.exp * 1000 : 0
 }
 
+const TERMINAL_OAUTH_ERRORS = new Set(['invalid_grant', 'token_revoked', 'access_denied'])
+
+export class ChatgptTokenRefreshError extends Error {
+  readonly httpStatus: number | null
+  readonly oauthError: string | null
+
+  constructor(message: string, options: { httpStatus?: number | null; oauthError?: string | null } = {}) {
+    super(message)
+    this.name = 'ChatgptTokenRefreshError'
+    this.httpStatus = options.httpStatus ?? null
+    this.oauthError = options.oauthError ?? null
+    Object.setPrototypeOf(this, ChatgptTokenRefreshError.prototype)
+  }
+}
+
 function errorMessage(payload: Record<string, unknown> | null, fallback: string): string {
   const nested = asRecord(payload?.error)
   return readString(payload?.message)
@@ -56,10 +71,45 @@ function errorMessage(payload: Record<string, unknown> | null, fallback: string)
     ?? fallback
 }
 
+function readOauthError(payload: Record<string, unknown> | null): string | null {
+  const nested = asRecord(payload?.error)
+  return (
+    readString(payload?.error)
+    ?? readString(nested?.code)
+    ?? readString(nested?.type)
+    ?? readString(payload?.error_code)
+  )?.toLowerCase() ?? null
+}
+
+export function isTerminalAccountAuthError(error: unknown): boolean {
+  if (error instanceof ChatgptTokenRefreshError) {
+    return error.oauthError !== null && TERMINAL_OAUTH_ERRORS.has(error.oauthError)
+  }
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+  return message.includes('token_revoked') || message.includes('invalid_grant')
+}
+
 export function classifyAccountAuthError(error: unknown): {
   authStatus: 'reauth_required' | 'payment_required' | 'transient_error'
   unavailableReason: 'reauth_required' | 'payment_required' | null
 } {
+  if (error instanceof ChatgptTokenRefreshError) {
+    // Prefer the structured OAuth payload: a bare HTTP 401 or a message that merely
+    // mentions the refresh token is ambiguous and must stay retryable.
+    if (error.oauthError !== null && TERMINAL_OAUTH_ERRORS.has(error.oauthError)) {
+      return { authStatus: 'reauth_required', unavailableReason: 'reauth_required' }
+    }
+    if (error.httpStatus === 402 || error.oauthError === 'payment_required') {
+      return { authStatus: 'payment_required', unavailableReason: 'payment_required' }
+    }
+    if (error.httpStatus === 401) {
+      // A bare 401 without a structured OAuth code is ambiguous: keep the account
+      // blocked from being used with a rejected token, but let the coordinator retry
+      // after a short window instead of demanding a new sign-in forever.
+      return { authStatus: 'reauth_required', unavailableReason: 'reauth_required' }
+    }
+    return { authStatus: 'transient_error', unavailableReason: null }
+  }
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
   if (message.includes('token_revoked') || message.includes('invalid_grant') || message.includes('refresh token') || /\b401\b/.test(message)) {
     return { authStatus: 'reauth_required', unavailableReason: 'reauth_required' }
@@ -102,7 +152,10 @@ export async function refreshChatgptAccountCredential(
     payload = null
   }
   if (!response.ok) {
-    throw new Error(errorMessage(payload, `ChatGPT token refresh failed with HTTP ${String(response.status)}`))
+    throw new ChatgptTokenRefreshError(
+      errorMessage(payload, `ChatGPT token refresh failed with HTTP ${String(response.status)}`),
+      { httpStatus: response.status, oauthError: readOauthError(payload) },
+    )
   }
 
   const accessToken = readString(payload?.access_token ?? payload?.accessToken)

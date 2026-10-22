@@ -1,6 +1,7 @@
 import { AccountExecutionRegistry } from '../accountExecution.js'
 import { createServer, type Server } from 'node:http'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { connect } from 'node:net'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { once } from 'node:events'
@@ -14,6 +15,10 @@ import { ProxyComponent, type ComponentGeneration } from './component.js'
 
 const cleanups: (() => Promise<void>)[] = []
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+const conversationResult = {
+  object: 'conversation' as const, threadId: 'created', messageId: 'external-fixture', project: '/tmp', cwd: '/tmp',
+  model: 'fixture', reasoningEffort: 'high', status: 'accepted', turnId: 'turn', url: '/#/thread/created',
+}
 afterEach(async () => { while (cleanups.length) await cleanups.pop()!(); vi.restoreAllMocks() })
 async function home() {
   const directory = await mkdtemp(join(tmpdir(), 'codexapp-api-test-'))
@@ -27,7 +32,7 @@ async function listen(server: Server) {
   cleanups.push(async () => { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())) })
   return `http://127.0.0.1:${port}`
 }
-async function fixture() {
+async function fixture(createConversation?: ConstructorParameters<typeof ApiProxyGateway>[1]) {
   const directory = await home()
   const requests: { path: string; headers: Record<string, unknown>; body: any }[] = []
   let upstreamClosed = false
@@ -35,6 +40,11 @@ async function fixture() {
     let raw = ''; for await (const chunk of req) raw += chunk
     const input = raw ? JSON.parse(raw) : {}
     requests.push({ path: req.url!, headers: req.headers, body: input })
+    if (input.model === 'quota-upstream-error') {
+      res.writeHead(429, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: { message: 'fixture rate limit' } }))
+      return
+    }
     if (input.model === 'slow') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream' })
       res.write('data: {"type":"response.created","response":{"id":"slow-response"}}\n\n')
@@ -57,10 +67,12 @@ async function fixture() {
   let lifecycle: any
   let guard: ((isChatGPT?: () => Promise<boolean>, policy?: { storageId?: string; protected?: boolean }) => Promise<void>) | null = null
   let accountState: any = { activeStorageId: 'account', accounts: [{ storageId: 'account' }, { storageId: 'fixed' }] }
+  const readState = vi.fn(async () => accountState)
+  const refreshAccount = vi.fn()
   const executions = new AccountExecutionRegistry()
-  const coordinator = { executions, store: { codexHome: directory, readState: async () => accountState }, setSubmissionGuard: (value: any) => { guard = value }, setQuotaObserver: vi.fn(), blocksApiAccount: (id: string | null) => AccountAuthCoordinator.prototype.blocksApiAccount.call({ operation, executions, removals: new Map() } as any, id), isAccountOperationInProgress: () => !!operation,
+  const coordinator = { refreshAccount, readAccountModels: vi.fn(async () => [{ id: 'fixture', supported_reasoning_levels: [{ effort: 'max' }, { effort: 'ultra' }] }]), executions, store: { codexHome: directory, readState }, setSubmissionGuard: (value: any) => { guard = value }, setQuotaObserver: vi.fn(), blocksApiAccount: (id: string | null) => AccountAuthCoordinator.prototype.blocksApiAccount.call({ operation, executions, removals: new Map() } as any, id), isAccountOperationInProgress: () => !!operation,
     setApiLifecycle: (value: any) => { lifecycle = value }, listAccounts: async () => ({ activeStorageId: 'account', accounts: [{ storageId: 'account' }] }) } as unknown as AccountAuthCoordinator
-  const gateway = new ApiProxyGateway(coordinator)
+  const gateway = new ApiProxyGateway(coordinator, createConversation)
   await gateway.store.ready
   await gateway.store.saveSettings({ ...gateway.store.settings, enabled: true, drainTimeoutSeconds: 1 })
   const generation = { id: 'fixture-generation', url, key: 'internal-fixture-key', storageId: 'account', revision: 1 } as ComponentGeneration
@@ -81,8 +93,250 @@ async function fixture() {
   async function post(path: string, input: unknown, secret = first.secret) {
     return await fetch(base + path, { method: 'POST', headers: headers(secret), body: JSON.stringify(input) })
   }
-  return { setOperation: (value: any) => { operation = value }, gateway, base, first, second, headers, post, requests, stop, setAccountState: (value: any) => { accountState = value }, guard: (policy?: { storageId?: string; protected?: boolean }) => guard!(undefined, policy), lifecycle: () => lifecycle, upstreamClosed: () => upstreamClosed }
+  return { readState, refreshAccount, setOperation: (value: any) => { operation = value }, gateway, base, first, second, headers, post, requests, stop, setAccountState: (value: any) => { accountState = value }, guard: (policy?: { storageId?: string; protected?: boolean }) => guard!(undefined, policy), lifecycle: () => lifecycle, upstreamClosed: () => upstreamClosed }
 }
+
+describe('authenticated conversation creation', () => {
+  it('requires a usable existing key and an enabled outlet before invoking conversation creation', async () => {
+    const create = vi.fn(async () => conversationResult)
+    const test = await fixture(create)
+    expect((await test.post('/v1/conversations', {}, 'invalid')).status).toBe(401)
+    await test.gateway.store.updateKey(test.first.key.id, { enabled: false })
+    expect((await test.post('/v1/conversations', {})).status).toBe(401)
+    await test.gateway.store.updateKey(test.first.key.id, { enabled: true })
+    await test.gateway.store.saveSettings({ ...test.gateway.store.settings, enabled: false })
+    expect((await test.post('/v1/conversations', {})).status).toBe(503)
+    await test.gateway.store.saveSettings({ ...test.gateway.store.settings, enabled: true })
+    await test.gateway.store.updateKey(test.first.key.id, { revoke: true })
+    expect((await test.post('/v1/conversations', {})).status).toBe(401)
+    await test.gateway.store.updateKey(test.second.key.id, { expiresAt: new Date(Date.now() - 1).toISOString() })
+    expect((await test.post('/v1/conversations', {}, test.second.secret)).status).toBe(401)
+    expect(create).not.toHaveBeenCalled()
+    expect(test.gateway.activity.entries.size).toBe(0)
+  })
+
+  it('returns creation metadata without invoking the model proxy or billing an API model request', async () => {
+    const create = vi.fn(async (_input: unknown, assertActive: () => void) => { assertActive(); return conversationResult })
+    const test = await fixture(create)
+    const input = { project: '/tmp', command: 'run', model: 'fixture', reasoningEffort: 'high' }
+    const response = await test.post('/v1/conversations', input)
+    expect(response.status).toBe(201)
+    expect(await response.json()).toEqual(conversationResult)
+    expect(create).toHaveBeenCalledExactlyOnceWith(input, expect.any(Function))
+    expect(test.gateway.activity.entries.size).toBe(0)
+    expect(test.requests).toHaveLength(0)
+    expect(test.gateway.usage.summary().keys).toEqual({})
+  })
+
+  it('rejects unsupported methods, invalid JSON and draining before creating conversations', async () => {
+    const create = vi.fn(async () => conversationResult)
+    const test = await fixture(create)
+    expect((await fetch(test.base + '/v1/conversations', { headers: test.headers() })).status).toBe(405)
+    const invalid = await fetch(test.base + '/v1/conversations', { method: 'POST', headers: test.headers(), body: '{invalid' })
+    expect(invalid.status).toBe(400)
+    test.gateway.activity.draining = true
+    expect((await test.post('/v1/conversations', {})).status).toBe(503)
+    test.gateway.activity.draining = false
+    expect(create).not.toHaveBeenCalled()
+    expect(test.gateway.activity.entries.size).toBe(0)
+  })
+
+  it('counts in-flight creation against existing key limits and rechecks revocation after asynchronous work', async () => {
+    let release!: () => void
+    const ready = new Promise<void>(resolve => { release = resolve })
+    const create = vi.fn(async (_input: unknown, assertActive: () => void) => {
+      await ready
+      assertActive()
+      return conversationResult
+    })
+    const test = await fixture(create)
+    await test.gateway.store.saveSettings({ ...test.gateway.store.settings, keyConcurrency: 1 })
+    const first = test.post('/v1/conversations', {})
+    try {
+      await vi.waitFor(() => expect(create).toHaveBeenCalledOnce())
+      expect(test.gateway.activity.snapshot().activeRequests).toBe(1)
+      expect((await test.post('/v1/conversations', {})).status).toBe(429)
+      await test.gateway.store.updateKey(test.first.key.id, { enabled: false })
+    } finally {
+      release()
+    }
+    expect((await first).status).toBe(401)
+    expect(test.gateway.activity.entries.size).toBe(0)
+  })
+})
+
+describe('API account quota response metadata', () => {
+  async function quotaFixture() {
+    const test = await fixture()
+    const id = 'a'.repeat(64)
+    const other = 'b'.repeat(64)
+    const row = (storageId: string, usedPercent: number) => ({ storageId, quotaStatus: 'ready', quotaUpdatedAtIso: new Date().toISOString(),
+      quotaSnapshot: { primary: { usedPercent, windowMinutes: 300, resetsAt: Math.floor(Date.now() / 1000) + 3600 }, secondary: null } })
+    test.setAccountState({ activeStorageId: id, accounts: [row(id, 12.5), row(other, 67)] })
+    await test.gateway.store.updateKey(test.first.key.id, { accountStorageId: id })
+    await test.gateway.store.updateKey(test.second.key.id, { accountStorageId: other, forceRoute: { enabled: true, model: 'fixture' } })
+    test.readState.mockClear()
+    return { ...test, id, other }
+  }
+  it('adds isolated metadata to JSON, forced chat, compact and models without extra account reads or refreshes', async () => {
+    const test = await quotaFixture()
+    for (const [path, secret, percent] of [
+      ['/v1/responses', test.first.secret, '12.5'], ['/v1/chat/completions', test.second.secret, '67'],
+      ['/v1/responses/compact', test.first.secret, '12.5'], ['/v1/models', test.first.secret, '12.5'],
+    ]) {
+      test.readState.mockClear()
+      const response = path === '/v1/models' ? await fetch(test.base + path, { headers: test.headers(secret) })
+        : await test.post(path!, { model: 'fixture', input: [], messages: [], stream: false }, secret)
+      expect(response.status).toBe(200)
+      expect(response.headers.get('x-codex-primary-used-percent')).toBe(percent)
+      expect(response.headers.get('x-codex-primary-window-minutes')).toBe('300')
+      expect(response.headers.get('x-codex-primary-reset-at')).toMatch(/^\d+$/)
+      const result = await response.json() as any
+      expect(result.object).toBe(path === '/v1/models' ? 'list' : path!.endsWith('compact') ? 'response.compaction' : 'response')
+      expect(test.readState).toHaveBeenCalledTimes(path === '/v1/models' ? 2 : 4)
+    }
+    expect(test.refreshAccount).not.toHaveBeenCalled()
+    expect(test.requests).toHaveLength(3)
+  })
+  it('serves key-isolated usage from local cache without cloud, component, execution or billable request work', async () => {
+    const test = await quotaFixture()
+    const prepare = vi.spyOn(ProxyComponent.prototype, 'prepare')
+    prepare.mockClear()
+    for (const [secret, percent] of [[test.first.secret, 12.5], [test.second.secret, 67]] as const) {
+      test.readState.mockClear()
+      const response = await fetch(test.base + '/v1/usage', { headers: { Authorization: `Bearer ${secret}` } })
+      expect(response.status).toBe(200)
+      expect(response.headers.get('cache-control')).toBe('no-store')
+      const result = await response.json() as any
+      expect(result.unit).toBe('percent')
+      expect(result.rate_limits).toEqual([{ window: '5h', limit: 100, used: percent, remaining: 100 - percent, reset_at: expect.stringMatching(/Z$/) }])
+      expect(result).not.toHaveProperty('remaining')
+      expect(JSON.stringify(result)).not.toContain(test.id)
+      expect(JSON.stringify(result)).not.toContain(secret)
+      expect(test.readState).toHaveBeenCalledTimes(1)
+    }
+    expect(test.refreshAccount).not.toHaveBeenCalled()
+    expect(prepare).not.toHaveBeenCalled()
+    expect(test.requests).toHaveLength(0)
+    expect(test.gateway.activity.entries.size).toBe(0)
+    expect(test.gateway.usage.summary().keys).toEqual({})
+  })
+  it('serves named percentage fields through the same authenticated cached usage path', async () => {
+    const test = await quotaFixture()
+    for (const [secret, used] of [[test.first.secret, 12.5], [test.second.secret, 67]] as const) {
+      test.readState.mockClear()
+      const response = await fetch(test.base + '/v1/usage/percent', { headers: test.headers(secret) })
+      expect(response.status).toBe(200)
+      expect(response.headers.get('cache-control')).toBe('no-store')
+      const body = await response.json() as any
+      expect(body.unit).toBe('percent')
+      expect(body.periods).toEqual({ five_hour: { used_percent: used, remaining_percent: 100 - used, reset_at: body.rate_limits[0].reset_at } })
+      expect(body).not.toHaveProperty('remaining')
+      expect(test.readState).toHaveBeenCalledTimes(1)
+    }
+    expect((await fetch(test.base + '/v1/usage/percent')).status).toBe(401)
+    expect((await test.post('/v1/usage/percent', {})).status).toBe(405)
+    expect(test.refreshAccount).not.toHaveBeenCalled()
+    expect(test.requests).toHaveLength(0)
+    expect(test.gateway.usage.summary().keys).toEqual({})
+  })
+  it('rejects missing, invalid, revoked and expired usage credentials with 401', async () => {
+    const test = await quotaFixture()
+    for (const headers of [{}, { Authorization: 'Bearer invalid' }] as Record<string, string>[]) {
+      const response = await fetch(test.base + '/v1/usage', { headers })
+      expect(response.status).toBe(401)
+    }
+    await test.gateway.store.updateKey(test.first.key.id, { enabled: false })
+    expect((await fetch(test.base + '/v1/usage', { headers: test.headers() })).status).toBe(401)
+    await test.gateway.store.updateKey(test.first.key.id, { revoke: true })
+    await test.gateway.store.updateKey(test.second.key.id, { expiresAt: new Date(Date.now() - 1).toISOString() })
+    for (const secret of [test.first.secret, test.second.secret]) {
+      const response = await fetch(test.base + '/v1/usage', { headers: test.headers(secret) })
+      expect(response.status).toBe(401)
+    }
+    expect(test.readState).not.toHaveBeenCalled()
+  })
+  it('returns no inferred usage for unbound or aggregate keys, and restricts the endpoint to GET', async () => {
+    const test = await quotaFixture()
+    for (const policy of [
+      { accountStorageId: null },
+      { accountStorageId: test.id, aggregateRoute: { enabled: true, entries: [{ model: 'fixture', accountStorageId: test.id }] } },
+    ]) {
+      await test.gateway.store.updateKey(test.first.key.id, policy)
+      const response = await fetch(test.base + '/v1/usage', { headers: test.headers() })
+      expect(response.status).toBe(200)
+      expect(await response.json()).toEqual({ rate_limits: [], unit: 'percent' })
+    }
+    expect(test.readState).not.toHaveBeenCalled()
+    expect((await test.post('/v1/usage', {})).status).toBe(405)
+    expect(test.gateway.usage.summary().keys).toEqual({})
+  })
+  it('rejects a key route change while the local usage snapshot is being read', async () => {
+    const test = await quotaFixture()
+    let resume!: (value: any) => void
+    const state = await test.readState()
+    test.readState.mockImplementationOnce(() => new Promise(resolve => { resume = resolve }))
+    const pending = fetch(test.base + '/v1/usage', { headers: test.headers() })
+    await vi.waitFor(() => expect(resume).toBeTypeOf('function'))
+    await test.gateway.store.updateKey(test.first.key.id, { accountStorageId: test.other })
+    resume(state)
+    const response = await pending
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ error: { code: 'key_changed' } })
+  })
+  it('delivers SSE headers immediately and keeps the first event bytes intact', async () => {
+    const test = await quotaFixture()
+    const abort = new AbortController()
+    try {
+      const response = await fetch(test.base + '/v1/responses', { method: 'POST', headers: test.headers(), body: JSON.stringify({ model: 'slow', input: [], stream: true }), signal: abort.signal })
+      expect(response.headers.get('x-codex-primary-used-percent')).toBe('12.5')
+      const chunk = await response.body!.getReader().read()
+      expect(new TextDecoder().decode(chunk.value)).toBe('data: {"type":"response.created","response":{"id":"slow-response"}}\n\n')
+    } finally { abort.abort() }
+  })
+  it('does not label upstream errors with successful-response quota metadata', async () => {
+    const test = await quotaFixture()
+    const response = await test.post('/v1/responses', { model: 'quota-upstream-error', input: [] })
+    expect(response.status).toBe(429)
+    expect(response.headers.get('x-codex-primary-used-percent')).toBeNull()
+    expect(await response.json()).toEqual({ error: { message: 'fixture rate limit' } })
+  })
+  it('omits metadata for unbound global-fixed keys, aggregate keys and rejected requests', async () => {
+    const test = await quotaFixture()
+    await test.gateway.store.saveSettings({ ...test.gateway.store.settings, accountStorageId: test.id })
+    await test.gateway.store.updateKey(test.first.key.id, { accountStorageId: null })
+    let response = await test.post('/v1/responses', { model: 'fixture', input: [] })
+    expect(response.status).toBe(200)
+    expect(response.headers.get('x-codex-primary-used-percent')).toBeNull()
+    await response.arrayBuffer()
+    for (const forced of [false, true]) {
+      await test.gateway.store.updateKey(test.first.key.id, { accountStorageId: test.id,
+        aggregateRoute: { enabled: true, entries: [{ model: 'fixture', accountStorageId: test.id }] },
+        forceRoute: { enabled: forced, model: 'fixture' } })
+      response = await test.post('/v1/responses', { model: 'fixture', input: [] })
+      expect(response.status).toBe(200)
+      expect(response.headers.get('x-codex-primary-used-percent')).toBeNull()
+      await response.arrayBuffer()
+    }
+    response = await test.post('/v1/responses/compact', { model: 'fixture', input: [], stream: true }, test.second.secret)
+    expect(response.status).toBe(400)
+    expect(response.headers.get('x-codex-primary-used-percent')).toBeNull()
+  })
+  it('exposes the snapshot in the WebSocket handshake without changing frames', async () => {
+    const test = await quotaFixture()
+    const ws = new WebSocket(test.base.replace('http:', 'ws:') + '/v1/responses', { headers: test.headers() })
+    cleanups.push(async () => { ws.terminate() })
+    const upgrade = once(ws, 'upgrade')
+    await once(ws, 'open')
+    const [response] = await upgrade
+    expect(response.headers['x-codex-primary-used-percent']).toBe('12.5')
+    const received = once(ws, 'message')
+    ws.send(JSON.stringify({ type: 'response.create', response: { model: 'fixture', input: [] } }))
+    expect(JSON.parse((await received)[0].toString()).type).toBe('response.completed')
+    ws.close()
+    await once(ws, 'close')
+  })
+})
 
 describe('API outlet state and admission', () => {
   it('stores only key hashes and preserves revoked state across restart', async () => {
@@ -151,18 +405,17 @@ describe('API outlet transport boundaries', () => {
     expect(cross.status).toBe(403)
     expect(f.requests).toHaveLength(0)
   })
-  it('preserves query catalogs and replaces external keys and session namespaces', async () => {
+  it('reads account catalogs without the component or forwarding browser credentials', async () => {
     const f = await fixture()
     for (const key of [f.first, f.second]) {
       const response = await fetch(f.base + '/v1/models?client_version=0.153.4', { headers: { ...f.headers(key.secret), Cookie: 'webui-secret', 'Session-Id': 'same-session' } })
       expect(response.status).toBe(200)
-      expect((await response.json()).data[0].supported_reasoning_levels).toEqual([{ effort: 'max' }])
+      expect((await response.json()).data[0].supported_reasoning_levels).toEqual([{ effort: 'max' }, { effort: 'ultra' }])
     }
-    expect(f.requests[0].path).toContain('client_version=0.153.4')
-    expect(f.requests[0].headers.authorization).toBe('Bearer internal-fixture-key')
-    expect(f.requests[0].headers.cookie).toBeUndefined()
-    expect(f.requests[0].headers['session-id']).not.toBe(f.requests[1].headers['session-id'])
+    expect(ProxyComponent.prototype.prepare).not.toHaveBeenCalled()
+    expect(f.requests).toHaveLength(0)
   })
+
   it('rejects unsupported HTTP previous_response_id before forwarding', async () => {
     const f = await fixture()
     const response = await f.post('/v1/responses', { model: 'fixture', previous_response_id: 'foreign', input: [] })
@@ -361,6 +614,21 @@ it('rebinds the default outlet during a stalled stream and primary refresh while
   } finally { ctrl.abort(); f.setOperation(null) }
 })
 
+it('previews one account model catalog for key routing while the outlet stays disabled', async () => {
+  const f = await fixture()
+  try {
+    await f.gateway.store.saveSettings({ ...f.gateway.store.settings, enabled: false })
+    expect((await fetch(f.base + '/codex-api/api-proxy/models')).status).toBe(503)
+    const preview = await fetch(f.base + '/codex-api/api-proxy/models?accountStorageId=account')
+    expect(preview.status).toBe(200)
+    expect((await preview.json()).data[0].id).toBe('fixture')
+    expect(ProxyComponent.prototype.prepare).not.toHaveBeenCalled()
+    expect(f.requests).toHaveLength(0)
+  } finally {
+    await f.gateway.store.saveSettings({ ...f.gateway.store.settings, enabled: true })
+  }
+})
+
 it('force-removes only connections belonging to the selected account without waiting for their streams', async () => {
   const f = await fixture()
   const a = 'a'.repeat(64), b = 'b'.repeat(64)
@@ -457,6 +725,25 @@ it('keeps an active stream open on alias or notice saves and enforces only a cha
   await stream.body?.cancel().catch(() => undefined)
 })
 
+it('persists conversation notification preferences through management HTTP without modifying POST transport settings', async () => {
+  const f = await fixture()
+  const endpoint = '/codex-api/api-proxy/notifications/conversations'
+  const before = await f.gateway.notifications.snapshot()
+  const preferences = { postEnabled: true, goalProgressEnabled: true, states: { completed: false, quota: true, interrupted: false, automation: true } }
+  const migrated = { ...preferences, states: { ...preferences.states, resumeStarted: false } }
+  const saved = await f.post(endpoint, preferences)
+  expect(saved.status).toBe(200)
+  expect((await saved.json()).data).toEqual(migrated)
+  const read = await fetch(`${f.base}${endpoint}`)
+  expect((await read.json()).data).toEqual(migrated)
+  expect((await f.gateway.notifications.snapshot()).settings).toEqual(before.settings)
+  expect((await f.post(endpoint, { ...preferences, states: { ...preferences.states, quota: 'false' } })).status).toBe(400)
+  expect(await f.gateway.notifications.conversationPreferences()).toEqual(migrated)
+  const enabled = { ...migrated, states: { ...migrated.states, resumeStarted: true } }
+  expect((await f.post(endpoint, enabled)).status).toBe(200)
+  expect((await (await fetch(`${f.base}${endpoint}`)).json()).data).toEqual(enabled)
+})
+
 it('internal activation pins its account independently of API keys and default-route changes', async () => {
   const f = await fixture()
   await f.gateway.store.saveSettings({ ...f.gateway.store.settings, enabled: false, accountStorageId: 'account' })
@@ -510,4 +797,288 @@ it('keeps publication activation freeze separate from account switching, normal 
     f.setOperation(null)
     expect((await f.post('/v1/responses', { model: 'fixture' })).status).toBe(200)
   } finally { controller.abort() }
+})
+
+describe('API key routing policy', () => {
+  it('normalizes route settings, keeps model case, and rejects illegal combinations', async () => {
+    const store = new ProxyStore(await home()); await store.ready
+    const account = 'a'.repeat(64)
+    const created = await store.createKey('route', null, {
+      forceRoute: { enabled: false, model: '  gpt-5.6-luna  ' },
+      aggregateRoute: { enabled: true, entries: [{ model: '  Case-Sensitive  ', accountStorageId: account }, { model: 'plain', accountStorageId: null }] },
+    })
+    expect(created.key.forceRoute).toEqual({ enabled: false, model: 'gpt-5.6-luna' })
+    expect(created.key.aggregateRoute).toEqual({ enabled: true, entries: [{ model: 'Case-Sensitive', accountStorageId: account }, { model: 'plain', accountStorageId: null }] })
+    // 强制路由的模型必须存在于聚合清单，比较区分大小写。
+    await expect(store.updateKey(created.key.id, { forceRoute: { enabled: true, model: 'plain' } })).resolves.toBeUndefined()
+    await expect(store.updateKey(created.key.id, { forceRoute: { enabled: true, model: 'casesensitive' } })).rejects.toThrow('不在聚合路由清单内')
+    expect(store.findKey(created.key.id)?.forceRoute).toEqual({ enabled: true, model: 'plain' })
+    await expect(store.updateKey(created.key.id, { aggregateRoute: { enabled: true, entries: [{ model: 'dup', accountStorageId: null }, { model: 'dup', accountStorageId: null }] } })).rejects.toThrow('重复模型')
+    await expect(store.updateKey(created.key.id, { aggregateRoute: { enabled: true, entries: [{ model: '   ', accountStorageId: null }] } })).rejects.toThrow('缺少模型名')
+    await expect(store.updateKey(created.key.id, { aggregateRoute: { enabled: true, entries: [] } })).rejects.toThrow('至少需要一项')
+    await expect(store.updateKey(created.key.id, { forceRoute: { enabled: true, model: '   ' } })).rejects.toThrow('必须填写模型名')
+    await expect(store.updateKey(created.key.id, { aggregateRoute: { enabled: true, entries: [{ model: 'any', accountStorageId: 'not-a-hash' }] } })).rejects.toThrow('第 1 项账号无效')
+    // 关闭聚合路由后强制路由不再受限；清单本身仍然保留在 key 上。
+    await expect(store.updateKey(created.key.id, { aggregateRoute: { enabled: false, entries: [] }, forceRoute: { enabled: true, model: 'anything' } })).resolves.toBeUndefined()
+    expect(store.findKey(created.key.id)?.forceRoute).toEqual({ enabled: true, model: 'anything' })
+    const restarted = new ProxyStore(store.directory); await restarted.ready
+    expect(restarted.findKey(created.key.id)?.forceRoute).toEqual({ enabled: true, model: 'anything' })
+    expect(restarted.findKey(created.key.id)?.aggregateRoute).toEqual({ enabled: false, entries: [] })
+    await store.close(); await restarted.close()
+  })
+  it('drops damaged route settings on load instead of failing to start', async () => {
+    const store = new ProxyStore(await home()); await store.ready
+    const created = await store.createKey('damaged', null)
+    await store.close()
+    const file = join(store.directory, 'state.json')
+    const state = JSON.parse(await readFile(file, 'utf8'))
+    state.keys[0].forceRoute = { enabled: 'yes', model: 5 }
+    state.keys[0].aggregateRoute = { enabled: true, entries: [{ model: 'x', accountStorageId: 'not-a-hash' }] }
+    await writeFile(file, JSON.stringify(state))
+    const restarted = new ProxyStore(store.directory); await restarted.ready
+    const key = restarted.findKey(created.key.id)
+    expect(key).toBeTruthy()
+    expect(key?.forceRoute).toBeUndefined()
+    expect(key?.aggregateRoute).toBeUndefined()
+    await restarted.close()
+  })
+  it('serves the aggregate model union and routes each model to its own account', async () => {
+    const f = await fixture()
+    const a = 'a'.repeat(64), b = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+    const generation = await f.gateway.component.prepare(null)
+    const prepared: string[] = []
+    const spy = vi.spyOn(ProxyComponent.prototype, 'prepare').mockImplementation(async id => { prepared.push(id!); return { ...generation, id: id!, storageId: id!, references: 0 } })
+    try {
+      const key = await f.gateway.store.createKey('aggregate', null, { aggregateRoute: { enabled: true, entries: [
+        { model: 'gpt-a', accountStorageId: a }, { model: 'gpt-b', accountStorageId: b }, { model: 'gpt-global', accountStorageId: null },
+      ] } })
+      const catalog = await (await fetch(f.base + '/v1/models', { headers: f.headers(key.secret) })).json()
+      expect(catalog).toMatchObject({ object: 'list' })
+      expect(catalog.data.map((row: any) => row.id)).toEqual(['gpt-a', 'gpt-b', 'gpt-global'])
+      expect(f.requests).toHaveLength(0)
+      expect((await f.post('/v1/responses', { model: 'gpt-b', input: [] }, key.secret)).status).toBe(200)
+      expect(prepared).toEqual([b])
+      expect(f.requests.at(-1)!.body.model).toBe('gpt-b')
+      // 清单外的模型按一般透传处理，落到 key 自己的账号（未选择时用全局账号）。
+      expect((await f.post('/v1/responses', { model: 'not-listed', input: [] }, key.secret)).status).toBe(200)
+      expect(prepared).toEqual([b, a])
+      expect(f.requests.at(-1)!.body.model).toBe('not-listed')
+      // 清单项的账号为“全局账号”时跟随全局设置。
+      expect((await f.post('/v1/responses', { model: 'gpt-global', input: [] }, key.secret)).status).toBe(200)
+      expect(prepared).toEqual([b, a, a])
+    } finally { spy.mockRestore() }
+  })
+  it('prefers the caller model and only overrides it when force routing is on', async () => {
+    const f = await fixture()
+    const key = await f.gateway.store.createKey('forced', null, { forceRoute: { enabled: true, model: 'gpt-forced' } })
+    expect((await f.post('/v1/responses', { model: 'caller-model', input: [] }, key.secret)).status).toBe(200)
+    expect(f.requests.at(-1)!.body.model).toBe('gpt-forced')
+    await f.gateway.store.updateKey(key.key.id, { forceRoute: { enabled: false, model: 'gpt-forced' } })
+    // 未开启强制路由时按调用方模型直传，不用本地 models 目录否决。
+    expect((await f.post('/v1/responses', { model: 'caller-model', input: [] }, key.secret)).status).toBe(200)
+    expect(f.requests.at(-1)!.body.model).toBe('caller-model')
+  })
+  it('lets a forced model win over the aggregate account choice', async () => {
+    const f = await fixture()
+    const a = 'a'.repeat(64), b = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+    const generation = await f.gateway.component.prepare(null)
+    const prepared: string[] = []
+    const spy = vi.spyOn(ProxyComponent.prototype, 'prepare').mockImplementation(async id => { prepared.push(id!); return { ...generation, id: id!, storageId: id!, references: 0 } })
+    try {
+      const key = await f.gateway.store.createKey('aggregate-forced', null, {
+        aggregateRoute: { enabled: true, entries: [{ model: 'gpt-a', accountStorageId: a }, { model: 'gpt-b', accountStorageId: b }] },
+        forceRoute: { enabled: true, model: 'gpt-b' },
+      })
+      for (const model of ['gpt-a', 'gpt-b']) expect((await f.post('/v1/responses', { model, input: [] }, key.secret)).status).toBe(200)
+      expect(prepared).toEqual([b, b])
+      expect(f.requests.map(row => row.body.model)).toEqual(['gpt-b', 'gpt-b'])
+    } finally { spy.mockRestore() }
+  })
+  it('opens an aggregate WebSocket upstream only on the first frame model', async () => {
+    const f = await fixture()
+    const a = 'a'.repeat(64), b = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+    const generation = await f.gateway.component.prepare(null)
+    const prepared: string[] = []
+    const spy = vi.spyOn(ProxyComponent.prototype, 'prepare').mockImplementation(async id => { prepared.push(id!); return { ...generation, id: id!, storageId: id!, references: 0 } })
+    const key = await f.gateway.store.createKey('aggregate-ws', null, { aggregateRoute: { enabled: true, entries: [{ model: 'gpt-b', accountStorageId: b }] } })
+    const ws = new WebSocket(f.base.replace('http:', 'ws:') + '/v1/responses', { headers: f.headers(key.secret) })
+    try {
+      await once(ws, 'open')
+      expect(prepared).toEqual([])
+      const received = once(ws, 'message')
+      ws.send(JSON.stringify({ type: 'response.create', model: 'gpt-b', input: [] }))
+      expect(JSON.parse(String((await received)[0])).type).toBe('response.completed')
+      expect(prepared).toEqual([b])
+    } finally { ws.terminate(); spy.mockRestore() }
+  })
+  it('keeps an aggregate model pinned to account B through a primary switch', async () => {
+    const f = await fixture()
+    const a = 'a'.repeat(64), b = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+    const aggregate = await f.gateway.store.createKey('aggregate-switch', null, { aggregateRoute: { enabled: true, entries: [{ model: 'slow', accountStorageId: b }] } })
+    const defaultAbort = new AbortController()
+    const aggregateAbort = new AbortController()
+    try {
+      const defaultResponse = await fetch(f.base + '/v1/responses', { method: 'POST', headers: f.headers(), body: JSON.stringify({ model: 'slow', stream: true }), signal: defaultAbort.signal })
+      const aggregateResponse = await fetch(f.base + '/v1/responses', { method: 'POST', headers: f.headers(aggregate.secret), body: JSON.stringify({ model: 'slow', stream: true }), signal: aggregateAbort.signal })
+      expect(defaultResponse.status).toBe(200)
+      expect(aggregateResponse.status).toBe(200)
+      f.setOperation({ kind: 'switch', storageId: b })
+      const release = await f.lifecycle().beforeMutation('switch', b)
+      release()
+      await vi.waitFor(() => expect([...f.gateway.activity.entries.values()].map(entry => entry.keyId)).toEqual([aggregate.key.id]))
+      expect([...f.gateway.activity.entries.values()][0]?.storageId).toBe(b)
+    } finally {
+      defaultAbort.abort()
+      aggregateAbort.abort()
+      f.setOperation(null)
+    }
+  })
+  it('rejects same-key WS continuation when the aggregate model changes accounts', async () => {
+    const f = await fixture()
+    const a = 'a'.repeat(64), b = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+    const generation = await f.gateway.component.prepare(null)
+    const prepared: string[] = []
+    const spy = vi.spyOn(ProxyComponent.prototype, 'prepare').mockImplementation(async id => { prepared.push(id!); return { ...generation, id: id!, storageId: id!, references: 0 } })
+    const key = await f.gateway.store.createKey('aggregate-continuation', null, { aggregateRoute: { enabled: true, entries: [{ model: 'gpt-a', accountStorageId: a }, { model: 'gpt-b', accountStorageId: b }] } })
+    const first = new WebSocket(f.base.replace('http:', 'ws:') + '/v1/responses', { headers: f.headers(key.secret) })
+    try {
+      await once(first, 'open')
+      const completed = once(first, 'message')
+      first.send(JSON.stringify({ type: 'response.create', model: 'gpt-a', input: [] }))
+      const previous = JSON.parse(String((await completed)[0])).response.id
+      first.terminate()
+      await once(first, 'close')
+
+      const second = new WebSocket(f.base.replace('http:', 'ws:') + '/v1/responses', { headers: f.headers(key.secret) })
+      try {
+        await once(second, 'open')
+        const rejected = once(second, 'message')
+        second.send(JSON.stringify({ type: 'response.create', model: 'gpt-b', previous_response_id: previous, input: [] }))
+        const payload = JSON.parse(String((await rejected)[0]))
+        expect(payload.error.code).toBe('previous_response_not_found')
+        expect(f.requests.filter(row => row.path === 'ws')).toHaveLength(1)
+        expect(prepared).toEqual([a, b])
+        await vi.waitFor(() => expect(f.gateway.activity.entries.size).toBe(0))
+      } finally { second.terminate() }
+    } finally { first.terminate(); spy.mockRestore() }
+  })
+  it('counts a dynamic aggregate upload before routing and force-stops it without upstream traffic', async () => {
+    const f = await fixture()
+    const a = 'a'.repeat(64), b = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+    const key = await f.gateway.store.createKey('aggregate-upload', null, { aggregateRoute: { enabled: true, entries: [{ model: 'gpt-b', accountStorageId: b }] } })
+    const port = Number(new URL(f.base).port)
+    const socket = connect(port, '127.0.0.1')
+    try {
+      await once(socket, 'connect')
+      socket.write(`POST /v1/responses HTTP/1.1\r\nHost: localhost\r\nAuthorization: Bearer ${key.secret}\r\nContent-Type: application/json\r\nContent-Length: 64\r\nConnection: close\r\n\r\n{"model":"gpt-b",`)
+      await vi.waitFor(() => expect(f.gateway.activity.snapshot().entries.some((row: any) => row.phase === 'reading')).toBe(true))
+      expect(f.gateway.activity.snapshot().activeRequests).toBe(1)
+      const stopped = await f.post('/codex-api/api-proxy/settings', { settings: { enabled: false }, force: true })
+      expect(stopped.status).toBe(200)
+      await vi.waitFor(() => expect(f.gateway.activity.entries.size).toBe(0))
+      expect(f.requests).toHaveLength(0)
+      expect(f.gateway.activity.entries.size).toBe(0)
+    } finally {
+      socket.destroy()
+    }
+  })
+  it('keeps an unbound aggregate upload when a primary switch does not affect its eventual account', async () => {
+    const f = await fixture()
+    const a = 'a'.repeat(64), b = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+    const key = await f.gateway.store.createKey('aggregate-switch-upload', null, { aggregateRoute: { enabled: true, entries: [{ model: 'gpt-b', accountStorageId: b }] } })
+    const socket = connect(Number(new URL(f.base).port), '127.0.0.1')
+    try {
+      await once(socket, 'connect')
+      socket.write(`POST /v1/responses HTTP/1.1\r\nHost: localhost\r\nAuthorization: Bearer ${key.secret}\r\nContent-Type: application/json\r\nContent-Length: 28\r\nConnection: close\r\n\r\n{"model":"gpt-b",`)
+      await vi.waitFor(() => expect(f.gateway.activity.snapshot().entries.some((row: any) => row.phase === 'reading')).toBe(true))
+      const release = await f.lifecycle().beforeMutation('switch', b)
+      release()
+      socket.write('"input":[]}')
+      await vi.waitFor(() => expect(f.requests).toHaveLength(1))
+      expect(f.requests[0]?.body.model).toBe('gpt-b')
+    } finally { socket.destroy() }
+  })
+  it('rechecks the primary-route block after a static account waits for its body', async () => {
+    const f = await fixture()
+    const socket = connect(Number(new URL(f.base).port), '127.0.0.1')
+    try {
+      await once(socket, 'connect')
+      socket.write(`POST /v1/responses HTTP/1.1\r\nHost: localhost\r\nAuthorization: Bearer ${f.first.secret}\r\nContent-Type: application/json\r\nContent-Length: 30\r\nConnection: close\r\n\r\n{"model":"fixture",`)
+      await vi.waitFor(() => expect(f.gateway.activity.entries.size).toBe(1))
+      expect([...f.gateway.activity.entries.values()][0]?.storageId).toBe('account')
+      f.setOperation({ kind: 'switch', storageId: 'other' })
+      socket.write('"input":[]}')
+      await vi.waitFor(() => expect(f.gateway.activity.entries.size).toBe(0))
+      expect(f.requests).toHaveLength(0)
+    } finally {
+      socket.destroy()
+      f.setOperation(null)
+    }
+  })
+  it('aborts an unbound aggregate upload when a listed target account is removed', async () => {
+    const f = await fixture()
+    const a = 'a'.repeat(64), b = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: a, accounts: [{ storageId: a }, { storageId: b }] })
+    const key = await f.gateway.store.createKey('aggregate-remove', null, { aggregateRoute: { enabled: true, entries: [{ model: 'gpt-b', accountStorageId: b }] } })
+    const socket = connect(Number(new URL(f.base).port), '127.0.0.1')
+    try {
+      await once(socket, 'connect')
+      socket.write(`POST /v1/responses HTTP/1.1\r\nHost: localhost\r\nAuthorization: Bearer ${key.secret}\r\nContent-Type: application/json\r\nContent-Length: 64\r\nConnection: close\r\n\r\n{"model":"gpt-b",`)
+      await vi.waitFor(() => expect(f.gateway.activity.snapshot().entries.some((row: any) => row.phase === 'reading')).toBe(true))
+      const release = await f.lifecycle().beforeMutation('remove', b)
+      release()
+      await vi.waitFor(() => expect(f.gateway.activity.entries.size).toBe(0))
+      expect(f.requests).toHaveLength(0)
+    } finally { socket.destroy() }
+  })
+  it('does not start a second aggregate WebSocket prepare while the first frame is connecting', async () => {
+    const f = await fixture()
+    const account = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: account, accounts: [{ storageId: account }] })
+    const generation = await f.gateway.component.prepare(null)
+    const prepared: string[] = []
+    let releasePrepare!: () => void
+    const preparing = new Promise<void>(resolve => { releasePrepare = resolve })
+    const spy = vi.spyOn(ProxyComponent.prototype, 'prepare').mockImplementation(async id => {
+      prepared.push(id!)
+      await preparing
+      return { ...generation, id: id!, storageId: id!, references: 0 }
+    })
+    const key = await f.gateway.store.createKey('aggregate-double-first', null, { aggregateRoute: { enabled: true, entries: [{ model: 'gpt-b', accountStorageId: account }] } })
+    const ws = new WebSocket(f.base.replace('http:', 'ws:') + '/v1/responses', { headers: f.headers(key.secret) })
+    try {
+      await once(ws, 'open')
+      ws.send(JSON.stringify({ type: 'response.create', model: 'gpt-b', input: [] }))
+      await vi.waitFor(() => expect(prepared).toHaveLength(1))
+      ws.send(JSON.stringify({ type: 'response.create', model: 'gpt-b', input: [] }))
+      await sleep(20)
+      expect(prepared).toHaveLength(1)
+    } finally {
+      releasePrepare()
+      ws.terminate()
+      spy.mockRestore()
+    }
+  })
+  it('counts an aggregate WebSocket waiting for its first frame and drains it', async () => {
+    const f = await fixture()
+    const account = 'b'.repeat(64)
+    f.setAccountState({ activeStorageId: account, accounts: [{ storageId: account }] })
+    const key = await f.gateway.store.createKey('aggregate-waiting', null, { aggregateRoute: { enabled: true, entries: [{ model: 'gpt-b', accountStorageId: account }] } })
+    const ws = new WebSocket(f.base.replace('http:', 'ws:') + '/v1/responses', { headers: f.headers(key.secret) })
+    try {
+      await once(ws, 'open')
+      await vi.waitFor(() => expect(f.gateway.activity.snapshot().entries.some((row: any) => row.phase === 'waiting-first-frame')).toBe(true))
+      expect(f.gateway.activity.snapshot().activeRequests).toBe(0)
+      const drained = await f.post('/codex-api/api-proxy/drain', { draining: true })
+      expect(drained.status).toBe(200)
+      await vi.waitFor(() => expect(f.gateway.activity.entries.size).toBe(0))
+    } finally { ws.terminate() }
+  })
 })

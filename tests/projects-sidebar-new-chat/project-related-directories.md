@@ -1,6 +1,6 @@
 ### 0.1.89：通过项目 AGENTS.md 声明关联目录
 
-前提：选择一个主项目目录和实际可见的关联目录；59001 仅共享 `/workspace`。本轮专用示例位于 `/workspace/codexapp/output/ui-0.1.89/related-project/AGENTS.md`，关联 `../related-tools`。这是手工维护项目说明的约定，没有 WebUI 编辑入口或多根文件树。
+前提：选择一个主项目目录和实际可见的关联目录；59001 仅共享 `/home/Code`。本轮专用示例位于 `/home/Code/codexapp/output/ui-0.1.89/related-project/AGENTS.md`，关联 `../related-tools`。这是手工维护项目说明的约定，没有 WebUI 编辑入口或多根文件树。
 
 操作：
 1. 检查主目录 `AGENTS.md` 是否为符号链接，检查 `AGENTS.override.md` 及父目录有效说明；不要沿指向项目外或全局文件的链接写入，不改 override。

@@ -51,38 +51,26 @@ function getPotentialCodexPackageDirs(prefix: string): string[] {
   return dirs
 }
 
-function getPotentialCodexExecutables(prefix: string): string[] {
-  return getPotentialCodexPackageDirs(prefix).map((packageDir) => (
-    process.platform === 'win32'
-      ? join(
-          packageDir,
-          'node_modules',
-          '@openai',
-          'codex-win32-x64',
-          'vendor',
-          'x86_64-pc-windows-msvc',
-          'codex',
-          'codex.exe',
-        )
-      : join(packageDir, 'bin', 'codex')
-  ))
+export function getPotentialCodexExecutables(prefix: string): string[] {
+  // Codex >= 0.155 moved the binary from vendor/<target>/codex/ to vendor/<target>/bin/;
+  // keep both layouts so older and newer global installs both resolve.
+  return getPotentialCodexPackageDirs(prefix).flatMap((packageDir) => {
+    const vendor = join(packageDir, 'node_modules', '@openai', 'codex-win32-x64', 'vendor', 'x86_64-pc-windows-msvc')
+    if (process.platform === 'win32') {
+      return [join(vendor, 'bin', 'codex.exe'), join(vendor, 'codex', 'codex.exe')]
+    }
+    return [join(packageDir, 'bin', 'codex')]
+  })
 }
 
-function getPotentialRipgrepExecutables(prefix: string): string[] {
-  return getPotentialCodexPackageDirs(prefix).map((packageDir) => (
-    process.platform === 'win32'
-      ? join(
-          packageDir,
-          'node_modules',
-          '@openai',
-          'codex-win32-x64',
-          'vendor',
-          'x86_64-pc-windows-msvc',
-          'path',
-          'rg.exe',
-        )
-      : join(packageDir, 'bin', 'rg')
-  ))
+export function getPotentialRipgrepExecutables(prefix: string): string[] {
+  return getPotentialCodexPackageDirs(prefix).flatMap((packageDir) => {
+    const vendor = join(packageDir, 'node_modules', '@openai', 'codex-win32-x64', 'vendor', 'x86_64-pc-windows-msvc')
+    if (process.platform === 'win32') {
+      return [join(vendor, 'codex-path', 'rg.exe'), join(vendor, 'path', 'rg.exe')]
+    }
+    return [join(packageDir, 'bin', 'rg')]
+  })
 }
 
 export function canRunCommand(command: string, args: string[] = []): boolean {

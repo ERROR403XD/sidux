@@ -10,21 +10,21 @@ import { AccountAuthStore } from './accountAuthStore.js'
 
 const homes: string[] = []
 
-function jwt(accountId: string, userId: string): string {
+function jwt(accountId: string, userId: string, planType = 'plus'): string {
   return `header.${Buffer.from(JSON.stringify({
     'https://api.openai.com/profile': { email: `${userId}@example.test` },
     'https://api.openai.com/auth': {
       chatgpt_account_id: accountId,
-      chatgpt_plan_type: 'plus',
+      chatgpt_plan_type: planType,
       user_id: userId,
     },
   })).toString('base64url')}.signature`
 }
 
-function credential(accountId: string, userId: string, refreshToken = `refresh-${accountId}`): string {
+function credential(accountId: string, userId: string, refreshToken = `refresh-${accountId}`, planType = 'plus'): string {
   return JSON.stringify({
     auth_mode: 'chatgpt',
-    tokens: { account_id: accountId, access_token: jwt(accountId, userId), refresh_token: refreshToken },
+    tokens: { account_id: accountId, access_token: jwt(accountId, userId, planType), refresh_token: refreshToken },
   })
 }
 
@@ -102,6 +102,37 @@ afterEach(async () => {
 })
 
 describe('AccountAuthCoordinator', () => {
+  it('keeps the last successful quota timestamp when a refresh fails', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-23T10:00:00Z'))
+    const authStore = await store()
+    const saved = await authStore.upsertCredential(credential('account-a', 'user-a'), { activate: true })
+    let failure = false
+    const createProbe = vi.fn(() => ({
+      inspect: vi.fn(async () => {
+        if (failure) throw new Error('quota network fixture failure')
+        return inspection()
+      }),
+      dispose: vi.fn(),
+    }) as unknown as AccountAppServerProbe)
+    const coordinator = new AccountAuthCoordinator(authStore, { createProbe })
+    const success = await coordinator.refreshAccount(saved.account.storageId)
+    const successfulAt = success.quotaUpdatedAtIso
+    expect(successfulAt).toBe('2026-09-23T10:00:00.000Z')
+
+    failure = true
+    vi.setSystemTime(new Date('2026-09-23T10:11:00Z'))
+    const failed = await coordinator.refreshAccount(saved.account.storageId)
+    expect(failed.quotaStatus).toBe('error')
+    expect(failed.quotaError).toBe('quota network fixture failure')
+    expect(failed.quotaUpdatedAtIso).toBe(successfulAt)
+    expect(failed.quotaFailedAtIso).toBe('2026-09-23T10:11:00.000Z')
+    vi.setSystemTime(new Date('2026-09-23T10:12:00Z'))
+    const failedAgain = await coordinator.refreshAccount(saved.account.storageId)
+    expect(failedAgain.quotaFailedAtIso).toBe('2026-09-23T10:11:00.000Z')
+    vi.useRealTimers()
+  })
+
   it('merges rolling quota without losing weekly/reset metadata and ignores a late older full read', async () => {
     const authStore = await store()
     const saved = await authStore.upsertCredential(credential('account-a', 'user-a'), { activate: true })
@@ -405,8 +436,8 @@ describe('AccountAuthCoordinator', () => {
 })
 
 describe('API outlet credential ownership', () => {
-  function accessToken(accountId: string, userId: string, expires: number): string {
-    const parts = jwt(accountId, userId).split('.')
+  function accessToken(accountId: string, userId: string, expires: number, planType = 'plus'): string {
+    const parts = jwt(accountId, userId, planType).split('.')
     const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'))
     return `header.${Buffer.from(JSON.stringify({ ...payload, exp: expires })).toString('base64url')}.signature`
   }
@@ -447,6 +478,105 @@ describe('API outlet credential ownership', () => {
     expect((await coordinator.getApiCredential(saved.account.storageId)).accessToken).toBe(token)
     expect(fetchImpl).toHaveBeenCalledOnce()
   })
+  it('keeps the same account and identity when a subscription change refreshes the plan', async () => {
+    const accounts = await store()
+    const saved = await accounts.upsertCredential(credential('a', 'user-a', 'refresh-a', 'pro'), { activate: true })
+    const token = accessToken('a', 'user-a', Math.floor(Date.now() / 1000) + 3600, 'plus')
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ access_token: token, refresh_token: 'rotated-after-plan-change' }), { status: 200 }))
+    const coordinator = new AccountAuthCoordinator(accounts, { fetchImpl: fetchImpl as typeof fetch })
+    const projection = await coordinator.getApiCredential(saved.account.storageId)
+    expect(projection.accountId).toBe('a')
+    const state = await accounts.readState()
+    expect(state.accounts).toHaveLength(1)
+    expect(state.accounts[0]?.storageId).toBe(saved.account.storageId)
+    expect(state.activeStorageId).toBe(saved.account.storageId)
+    expect(state.accounts[0]?.planType).toBe('plus')
+    expect(state.accounts[0]?.authStatus).toBe('ready')
+    expect((await accounts.readActiveCredential())?.auth.tokens?.refresh_token).toBe('rotated-after-plan-change')
+  })
+
+  it('retries an ambiguous 401 instead of pinning the account to a permanent sign-in requirement', async () => {
+    const accounts = await store()
+    const now = Date.now()
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now)
+    try {
+      const token = accessToken('a', 'user-a', Math.floor(now / 1000) + 3600)
+      const stored = JSON.parse(credential('a', 'user-a')) as { tokens: Record<string, string> }
+      stored.tokens.access_token = token
+      const saved = await accounts.upsertCredential(JSON.stringify(stored), { activate: true })
+      const fetchImpl = vi.fn()
+        .mockResolvedValueOnce(new Response('upstream rejected credentials', { status: 401 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: token, refresh_token: 'recovered-once' }), { status: 200 }))
+      const coordinator = new AccountAuthCoordinator(accounts, { fetchImpl: fetchImpl as typeof fetch })
+      await expect(coordinator.refreshTokensForStorage(saved.account.storageId, {})).rejects.toThrow('HTTP 401')
+      expect((await accounts.readState()).accounts[0]?.authStatus).toBe('reauth_required')
+      await expect(coordinator.getApiCredential(saved.account.storageId)).rejects.toMatchObject({ code: 'account_unavailable' })
+      expect(fetchImpl).toHaveBeenCalledOnce()
+      clock.mockReturnValue(now + 61_000)
+      const projection = await coordinator.getApiCredential(saved.account.storageId)
+      expect(projection.accountId).toBe('a')
+      expect(fetchImpl).toHaveBeenCalledTimes(2)
+      const recovered = (await accounts.readState()).accounts[0]
+      expect(recovered?.authStatus).toBe('ready')
+      expect(recovered?.unavailableReason).toBeNull()
+    } finally {
+      clock.mockRestore()
+    }
+  })
+
+  it('retries the merged token refresh during a quota probe instead of demanding a new sign-in', async () => {
+    const accounts = await store()
+    const now = Date.now()
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now)
+    try {
+      const token = accessToken('a', 'user-a', Math.floor(now / 1000) + 3600)
+      const stored = JSON.parse(credential('a', 'user-a')) as { tokens: Record<string, string> }
+      stored.tokens.access_token = token
+      const saved = await accounts.upsertCredential(JSON.stringify(stored), { activate: true })
+      const fetchImpl = vi.fn()
+        .mockResolvedValueOnce(new Response('upstream rejected credentials', { status: 401 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify({
+          access_token: accessToken('a', 'user-a', Math.floor(now / 1000) + 7200),
+          refresh_token: 'probe-recovered',
+        }), { status: 200 }))
+      const coordinator = new AccountAuthCoordinator(accounts, { fetchImpl: fetchImpl as typeof fetch, createProbe: probeFactory() })
+      await expect(coordinator.refreshTokensForStorage(saved.account.storageId, {})).rejects.toThrow('HTTP 401')
+      expect((await accounts.readState()).accounts[0]?.authStatus).toBe('reauth_required')
+      clock.mockReturnValue(now + 61_000)
+      const refreshed = await coordinator.refreshAccount(saved.account.storageId)
+      expect(refreshed.authStatus).toBe('ready')
+      expect(fetchImpl).toHaveBeenCalledTimes(2)
+      expect((await accounts.readCredential(saved.account.storageId)).auth.tokens?.refresh_token).toBe('probe-recovered')
+    } finally {
+      clock.mockRestore()
+    }
+  })
+
+  it('caches a terminal refresh rejection longer without locking the account forever', async () => {
+    const accounts = await store()
+    const saved = await accounts.upsertCredential(expiredCredential('a', 'user-a'), { activate: true })
+    const now = Date.now()
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now)
+    try {
+      const token = accessToken('a', 'user-a', Math.floor(now / 1000) + 3600)
+      const fetchImpl = vi.fn()
+        .mockResolvedValueOnce(new Response(JSON.stringify({ error: 'invalid_grant' }), { status: 400 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: token, refresh_token: 'second-attempt' }), { status: 200 }))
+      const coordinator = new AccountAuthCoordinator(accounts, { fetchImpl: fetchImpl as typeof fetch })
+      await expect(coordinator.refreshTokensForStorage(saved.account.storageId, {})).rejects.toThrow()
+      expect((await accounts.readState()).accounts[0]?.authStatus).toBe('reauth_required')
+      clock.mockReturnValue(now + 61_000)
+      await expect(coordinator.refreshTokensForStorage(saved.account.storageId, {})).rejects.toThrow()
+      expect(fetchImpl).toHaveBeenCalledOnce()
+      clock.mockReturnValue(now + 11 * 60_000)
+      const projection = await coordinator.getApiCredential(saved.account.storageId)
+      expect(projection.accountId).toBe('a')
+      expect(fetchImpl).toHaveBeenCalledTimes(2)
+    } finally {
+      clock.mockRestore()
+    }
+  })
+
   it('does not repeatedly refresh a revoked credential from API and quota probes', async () => {
     const accounts = await store()
     const saved = await accounts.upsertCredential(expiredCredential('a', 'user-a'), { activate: true })

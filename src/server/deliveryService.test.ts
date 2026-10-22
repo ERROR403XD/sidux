@@ -22,6 +22,7 @@ async function fixture() {
     prepare: vi.fn(async (row: DeliveryRecord): Promise<Record<string, unknown>> => ({ threadId: row.threadId, input: [{ type: 'text', text: row.message.text }], model: row.message.model })),
     start: vi.fn(async (_params: Record<string, unknown>) => ({ turnId: 'native-turn' })),
     inspect: vi.fn(async (_row: DeliveryRecord): Promise<{ turnId?: string }> => ({})), changed: vi.fn(),
+    accepted: vi.fn(),
   }
   const service = new DeliveryService(store, dependencies)
   services.push(service)
@@ -33,6 +34,34 @@ afterEach(async () => {
 })
 
 describe('delivery before replay', () => {
+  it('emits acceptance only after a durable confirmation and deduplicates response/event races', async () => {
+    const { service, dependencies, store } = await fixture()
+    dependencies.start.mockImplementation(async () => {
+      await service.observe({ method: 'item/started', params: { threadId: 'thread', turnId: 'native-turn', item: { type: 'userMessage', clientId: input().message.id } } })
+      expect(await store.readReceipt(input().message.id)).toMatchObject({ status: 'accepted' })
+      return { turnId: 'native-turn' }
+    })
+    await service.submit(input())
+    await service.submit(input())
+    expect(dependencies.accepted).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ message: expect.objectContaining({ id: input().message.id }) }),
+      expect.objectContaining({ id: input().message.id, status: 'accepted', turnId: 'native-turn' }),
+    )
+  })
+
+  it('keeps acceptance silent while queued or unknown, then notifies when evidence confirms startup', async () => {
+    const { service, dependencies } = await fixture()
+    dependencies.canStart.mockResolvedValue(false)
+    await service.submit(input())
+    expect(dependencies.accepted).not.toHaveBeenCalled()
+    dependencies.canStart.mockResolvedValue(true)
+    dependencies.start.mockRejectedValue(new Error('response lost'))
+    await service.process('thread')
+    expect(dependencies.accepted).not.toHaveBeenCalled()
+    dependencies.inspect.mockResolvedValue({ turnId: 'native-turn' })
+    await service.reconcile(input().message.id)
+    expect(dependencies.accepted).toHaveBeenCalledOnce()
+  })
   it('records a local quota rejection as unsent rather than an ambiguous upstream submission', async () => {
     const { service, dependencies } = await fixture()
     dependencies.start.mockRejectedValue(Object.assign(new Error('账号额度已保留'), { submissionNotSent: true }))

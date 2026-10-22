@@ -6,12 +6,14 @@ export type Activity = {
   storageId?: string
   keyId: string
   transport: 'http' | 'sse' | 'ws'
+  phase: ActivityPhase
   busy: boolean
   startedAt: string
   model: string | null
   status: string
   abort: () => void
 }
+export type ActivityPhase = 'reading' | 'routing' | 'preparing' | 'connecting' | 'waiting-first-frame' | 'idle' | 'running' | 'closing'
 export class ProxyActivity {
   draining = false
   readonly entries = new Map<string, Activity>()
@@ -26,13 +28,13 @@ export class ProxyActivity {
       recent: this.recent.slice(0, 100),
     }
   }
-  admit(keyId: string, transport: Activity['transport'], limits: { globalConcurrency: number; keyConcurrency: number }): Activity {
+  admit(keyId: string, transport: Activity['transport'], limits: { globalConcurrency: number; keyConcurrency: number }, phase: ActivityPhase = 'preparing', busy = true): Activity {
     if (this.draining) throw new ProxyError('draining', '出口正在等待活动请求结束，请稍后重试。', 503)
     if (this.entries.size >= 128 || [...this.entries.values()].filter(entry => entry.keyId === keyId).length >= 32) {
       throw new ProxyError('connection_limit', '连接数已达上限。', 429)
     }
-    const entry: Activity = { id: randomUUID(), keyId, transport, busy: false, startedAt: new Date().toISOString(), model: null, status: 'preparing', abort: () => undefined }
-    this.begin(entry, limits)
+    const entry: Activity = { id: randomUUID(), keyId, transport, phase, busy: false, startedAt: new Date().toISOString(), model: null, status: 'preparing', abort: () => undefined }
+    if (busy) this.begin(entry, limits)
     this.entries.set(entry.id, entry)
     return entry
   }

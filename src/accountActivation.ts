@@ -2,7 +2,14 @@ export type ActivationSettings = { enabled: boolean; accountIds: string[]; times
 export type ActivationRun = { key: string; accountId: string; scheduledAt: number; finishedAt?: number; status: 'preparing' | 'sending' | 'sent' | 'skipped' | 'unknown'; reason: string }
 export type ActivationSnapshot = { settings: ActivationSettings; runs: ActivationRun[]; nextAt: number | null; error: string; model: string }
 export type ActivationHistorySlot = { date: string; scheduledAt: number; timezone: string }
-export type ActivationHistoryPage = { slots: ActivationHistorySlot[]; page: number; runs: ActivationRun[] }
+export type ActivationHistoryPage = { slots: ActivationHistorySlot[]; page: number; pageCount: number; runs: ActivationRun[] }
+export function activationRunTimezone(run: ActivationRun): string {
+  try {
+    const key = JSON.parse(run.key)
+    if (Array.isArray(key) && typeof key[1] === 'string') return key[1]
+  } catch { /* Legacy records use UTC. */ }
+  return 'UTC'
+}
 export function validateActivationSettings(value: unknown): ActivationSettings {
   const row = value as ActivationSettings
   if (!row || typeof row.enabled !== 'boolean' || !Array.isArray(row.accountIds) || !Array.isArray(row.times)) throw new Error('无效的激活设置')

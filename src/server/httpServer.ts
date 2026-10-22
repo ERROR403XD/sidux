@@ -6,6 +6,7 @@ import { existsSync } from 'node:fs'
 import { writeFile, stat } from 'node:fs/promises'
 import express, { type Express } from 'express'
 import { createCodexBridgeMiddleware } from './codexAppServerBridge.js'
+import { bindConversationNotifications } from './conversationNotificationBinding.js'
 import { createAuthSession } from './authMiddleware.js'
 import { createDirectoryListingHtml, createTextEditorHtml, decodeBrowsePath, getLocalDirectoryListing, isTextEditableFile, normalizeLocalPath } from './localBrowseUi.js'
 import { WebSocketServer, type WebSocket } from 'ws'
@@ -74,7 +75,8 @@ function readWildcardPathParam(value: unknown): string {
 export function createServer(options: ServerOptions = {}): ServerInstance {
   const app = express()
   const bridge = createCodexBridgeMiddleware()
-  const apiProxy = new ApiProxyGateway()
+  const apiProxy = new ApiProxyGateway(undefined, bridge.createConversation)
+  const unbindConversationNotifications = bindConversationNotifications(bridge, apiProxy.notifications)
   app.use((req, res, next) => {
     const pathname = new URL(req.url || '/', 'http://localhost').pathname
     if (pathname === '/v1' || pathname.startsWith('/v1/')) {
@@ -253,7 +255,7 @@ export function createServer(options: ServerOptions = {}): ServerInstance {
           renderFrontendMissingHtml('Codex web UI assets are missing.', [
             `Expected: ${spaEntryFile}`,
             'If running from source, build frontend assets with: pnpm run build:frontend',
-            'If running with npx, clear the npx cache and reinstall the package.',
+            'If running with npx, clear the npx cache and reinstall codexapp.',
           ]),
         )
       return
@@ -268,7 +270,7 @@ export function createServer(options: ServerOptions = {}): ServerInstance {
 
   return {
     app,
-    dispose: async () => { await apiProxy.close(); await bridge.dispose() },
+    dispose: async () => { await unbindConversationNotifications(); await apiProxy.close(); await bridge.dispose() },
     attachWebSocket: (server: HttpServer) => {
       apiProxy.attach(server)
       const wss = new WebSocketServer({ noServer: true })

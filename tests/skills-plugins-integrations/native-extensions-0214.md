@@ -37,3 +37,14 @@
 预期：同一作用域重复打开复用页面缓存；浏览器/服务重启复用磁盘目录。手动刷新位于全部插件左侧，失败保留目录；作用域不混用。后台当地 02:00 按顺序刷新已缓存作用域。页码正确、单页最多 60 项、筛选后回到第一页，中英文及深浅主题无溢出。
 
 清理：只删除测试 CODEX_HOME/cache/plugin-catalog 内样本缓存；不删除实际插件或生产配置。
+
+## dev.8 本地原生插件/MCP与关闭合同（2026-10-20审核）
+
+前置：使用`docs/baseline/022/dev8-review-20261020/package/`对应审计镜像，Codex0.162.1；只在network=none、无宿主端口和持久状态挂载的容器运行。精确命令在同目录`run-commands.json`的native-extensions/native-process-shutdown条目；保留768MiB、2CPU、512PID限制。
+
+1. 运行`native-extensions-container.cjs`：创建本地市场/插件技能/stdio echo服务，通过产品HTTP完成list/read/install、原生技能发现、MCP compact/full与固定中文回显。预期普通/插件MCP分别connected，compact不携带schema，full有资源和模板。
+2. 停用插件后重启产品，再新建原生空闲会话；预期停用保持、普通MCP仍在。重新启用和重载后新会话echo成功；卸载后新会话无插件MCP，市场源文件SHA不变，普通MCP仍可调用。无需发送模型回合。
+3. 停止自建产品子进程，确认其所属原生进程也结束。当前2次停止均失败，产品exit0却留4/12个包装和Codex进程，R58；脚本17检查15通过/2失败、预期exit1。
+4. 运行`native-process-shutdown-container.cjs`，对比只initialize和创建idle会话，再关闭stdin并可选SIGTERM。当前前者正常退出，后三组4秒内未退出；这些是原生兼容证据，不能标为本版本引入或插件安装失败。
+
+清理：仅在容器内按任务根cwd及PID核实后结束自有残留进程，确认活动进程0再删随机home，--rm移除容器；不操作宿主5900/59001/4173/5173。MCP直接调用结果不替代外部OAuth、模型驱动工具/技能或浏览器UI验收。

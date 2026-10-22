@@ -6,44 +6,12 @@ import {
   type LoginIntent,
 } from './accountAuthCoordinator.js'
 import { AccountStoreError } from './accountAuthStore.js'
+import { asRecord, JsonObjectBodyError, readJsonObjectBody, setJson, type RouteRequestContext } from './httpUtils.js'
 
-type AccountRouteContext = {
-  appServer: AccountRuntime
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null
-}
+type AccountRouteContext = RouteRequestContext & { appServer: AccountRuntime }
 
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null
-}
-
-function setJson(res: ServerResponse, statusCode: number, payload: unknown): void {
-  res.statusCode = statusCode
-  res.setHeader('Content-Type', 'application/json; charset=utf-8')
-  res.end(JSON.stringify(payload))
-}
-
-async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
-  const raw = await new Promise<string>((resolve, reject) => {
-    let body = ''
-    req.setEncoding('utf8')
-    req.on('data', (chunk: string) => { body += chunk })
-    req.on('end', () => resolve(body))
-    req.on('error', reject)
-  })
-  if (!raw) return {}
-  let parsed: Record<string, unknown> | null = null
-  try {
-    parsed = asRecord(JSON.parse(raw))
-  } catch {
-    throw new AccountCoordinatorError('invalid_request', 'Expected valid JSON.', 400)
-  }
-  if (!parsed) throw new AccountCoordinatorError('invalid_request', 'Expected a JSON object.', 400)
-  return parsed
 }
 
 function sendError(res: ServerResponse, error: unknown, fallback: string): void {
@@ -54,6 +22,10 @@ function sendError(res: ServerResponse, error: unknown, fallback: string): void 
   if (error instanceof AccountStoreError) {
     const statusCode = error.code === 'account_not_found' ? 404 : error.code.includes('conflict') || error.code.includes('mismatch') ? 409 : 400
     setJson(res, statusCode, { error: error.code, message: error.message })
+    return
+  }
+  if (error instanceof JsonObjectBodyError) {
+    setJson(res, 400, { error: 'invalid_request', message: error.message })
     return
   }
   setJson(res, 500, {
@@ -102,7 +74,7 @@ export async function handleAccountRoutes(
 
   if (req.method === 'POST' && url.pathname === '/codex-api/accounts/reset-credit') {
     try {
-      const input = await readJsonBody(req)
+      const input = await readJsonObjectBody(req)
       if (input.confirmed !== true || typeof input.storageId !== 'string' || typeof input.creditId !== 'string' || !input.creditId || typeof input.idempotencyKey !== 'string' || !/^[a-f0-9-]{36}$/i.test(input.idempotencyKey)) {
         throw new AccountCoordinatorError('confirmation_required', '请先确认所选账号与重置机会。', 400)
       }
@@ -123,7 +95,7 @@ export async function handleAccountRoutes(
 
   if (req.method === 'POST' && url.pathname === '/codex-api/accounts/quota/refresh') {
     try {
-      const body = await readJsonBody(req)
+      const body = await readJsonObjectBody(req)
       const storageId = readString(body.storageId)
       if (!storageId) throw new AccountCoordinatorError('account_not_found', 'Choose an account to refresh.', 400)
       await coordinator.refreshAccount(storageId)
@@ -142,7 +114,7 @@ export async function handleAccountRoutes(
 
   if (req.method === 'POST' && url.pathname === '/codex-api/accounts/login/start') {
     try {
-      const body = await readJsonBody(req)
+      const body = await readJsonObjectBody(req)
       const intent: LoginIntent = body.intent === 'reauth' ? 'reauth' : 'add'
       if (body.method !== undefined && body.method !== 'link' && body.method !== 'device') throw new AccountCoordinatorError('invalid_login_method', '请选择链接或 Device 登录。', 400)
       const data = await coordinator.startLogin({
@@ -159,7 +131,7 @@ export async function handleAccountRoutes(
 
   if (req.method === 'POST' && url.pathname === '/codex-api/accounts/login/complete') {
     try {
-      const body = await readJsonBody(req)
+      const body = await readJsonObjectBody(req)
       const loginSessionId = readString(body.loginSessionId)
       const callbackUrl = readString(body.callbackUrl)
       if (!loginSessionId || !callbackUrl) {
@@ -175,7 +147,7 @@ export async function handleAccountRoutes(
 
   if (req.method === 'POST' && url.pathname === '/codex-api/accounts/login/cancel') {
     try {
-      const body = await readJsonBody(req)
+      const body = await readJsonObjectBody(req)
       const loginSessionId = readString(body.loginSessionId)
       if (loginSessionId) await coordinator.cancelLogin(loginSessionId)
       setJson(res, 200, { ok: true })
@@ -187,7 +159,7 @@ export async function handleAccountRoutes(
 
   if (req.method === 'POST' && url.pathname === '/codex-api/accounts/switch') {
     try {
-      const body = await readJsonBody(req)
+      const body = await readJsonObjectBody(req)
       const storageId = readString(body.storageId)
       if (!storageId) throw new AccountCoordinatorError('account_not_found', 'Choose an account to switch to.', 400)
       const data = await coordinator.switchAccount({
@@ -204,7 +176,7 @@ export async function handleAccountRoutes(
 
   if (req.method === 'POST' && url.pathname === '/codex-api/accounts/remove') {
     try {
-      const body = await readJsonBody(req)
+      const body = await readJsonObjectBody(req)
       const storageId = readString(body.storageId)
       if (!storageId) throw new AccountCoordinatorError('account_not_found', 'Choose an account to remove.', 400)
       setJson(res, 200, { ok: true, data: await coordinator.removeAccount(storageId, context.appServer) })

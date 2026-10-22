@@ -1,4 +1,14 @@
-# Sidux two-phase release switch
+# CodexApp two-phase release switch
+
+## 0.2.22-dev.8：离线候选与事务边界审核
+
+- 前置：使用`docs/baseline/022/dev8-review-20261020/`审核脚本与既有审核镜像；容器network=none、无端口映射、无Docker socket。所有release/home/drop-in/容器身份均为新建合成夹具。完整复现参数见该目录`run-commands.json`，不得将默认路径指向持久服务。
+- 操作：执行`script-startup-contracts-container.cjs`，分别覆盖正常替换、构建失败、启动失败、停止前拒绝，以及停止/改名已生效后返回失败。检查最后原容器身份、running状态、实际恢复调用和drain状态。
+- 预期：失败仍保留可用的原候选；dev.8后两个场景当前失败（R33）。前四个对照通过；Docker响应丢失为故障注入，未做真实daemon故障实验。
+- 操作：执行`release-transactions-container.cjs`，基准与当前脚本均从base→A→B，再两次rollback；分别使用不同时间戳与同一时间戳。切换后更新合成auth，并检查rollback保留当前值。
+- 预期：两次rollback依次回A、base，事务指针无环。dev.8重复时间戳组第二次仍停A却返回0（R35）；正常组通过。时间戳由date桩控制，不表示自然连续部署可在一秒内完成。
+- 操作：`node docs/baseline/022/dev8-review-20261020/idle-inventory-offline.cjs`；确认32条合同通过，包括20页/200后台会话边界、并发4、末尾活动、坏响应与45秒虚拟截止。
+- 清理：容器退出后自动删除，脚本finally删除所有自有文件并关闭监听；只保留JSON证据。离线矩阵不使用端口、运行home或真实fetch。
 
 ## Feature / change
 
@@ -9,9 +19,9 @@ Validate `scripts/codexapp-release-switch.sh`: prepare an immutable release whil
 - Production is `codexapp.service` on `127.0.0.1:5900` with `CODEX_HOME=/root/.codex`.
 - The candidate source is committed and has already passed its unit, build, packaged Docker, UI, and account acceptance checks on `59001`.
 - After adding or re-authenticating the test account, the operator explicitly clicked **Switch**, confirmed that account became active, and then passed the real-account P6 request. A ready card alone is not evidence that its credentials are active.
-- The operator has a host shell that does not depend on the Sidux browser session being replaced.
-- No Sidux turn, queued message, approval, account operation, or direct host Codex CLI task is running.
-- All Sidux browser tabs are closed before `activate` or `rollback`, preventing automatic reconnect traffic during the authentication invariant check.
+- The operator has a host shell that does not depend on the CodexApp browser session being replaced.
+- No CodexApp turn, queued message, approval, account operation, or direct host Codex CLI task is running.
+- All CodexApp browser tabs are closed before `activate` or `rollback`, preventing automatic reconnect traffic during the authentication invariant check.
 
 ## Automated regression
 
@@ -26,23 +36,33 @@ Validate `scripts/codexapp-release-switch.sh`: prepare an immutable release whil
 1. Run `scripts/codexapp-release-switch.sh status` and record the active service/release and test-container state.
 2. Run `scripts/codexapp-release-switch.sh prepare` while production remains online.
 3. Confirm the command reports a release below `/home/docker/codexapp-releases/` and explicitly reports that production was unchanged.
-4. Confirm `/home/docker/codexapp-switch-state/latest-prepared` points to that release.
-5. End the current Codex turn. Do not ask the same turn to synchronously stop its own Sidux.
+4. Confirm `/home/docker/codexapp-switch-state/latest-prepared` points to that release and `status` reports the same `latest_prepared`.
+5. End the current Codex turn. Do not ask the same turn to synchronously stop its own CodexApp.
 
 ## Activation actions
 
 1. Close every browser tab connected to ports `5900` and `59001`.
-2. From a separate host shell, confirm there is no direct `codex` task, then run:
+2. From a separate host shell, confirm there is no direct `codex` task and that
+   `status` still reports the intended `latest_prepared`, then run the fixed
+   commands:
 
    ```bash
-   /workspace/codexapp/scripts/codexapp-release-switch.sh check latest
-   /workspace/codexapp/scripts/codexapp-release-switch.sh activate latest --confirm-idle
+   SCRIPT=/mnt/NAS02-Code/Sidux/scripts/codexapp-release-switch.sh
+   sudo bash "$SCRIPT" check
+   sudo bash "$SCRIPT" activate --confirm-idle
    ```
 
-3. Confirm the isolated `codexapp-multi-account-dev` container is stopped.
-4. Run `scripts/codexapp-release-switch.sh status` and confirm `active_release` points to the prepared release.
-5. Open `http://localhost:5900/` and verify the active account remains signed in, existing projects and threads load, and no startup login is triggered.
-6. Run one explicitly labeled harmless test turn and confirm it completes without duplicate live overlays.
+   Do not run another `prepare` between `check` and `activate`; both commands
+   resolve the latest successfully prepared release when they start. Do not
+   use the old `/home/Code/codexapp` worktree as the script entrypoint. Pass
+   an explicit release directory only when intentionally selecting a
+   different candidate.
+
+3. Review both command logs and confirm they print the same `Selected prepared release` path that `status` reported before activation.
+4. Confirm the isolated `codexapp-multi-account-dev` container is stopped.
+5. Run `scripts/codexapp-release-switch.sh status` and confirm `active_release` points to the prepared release.
+6. Open `http://192.168.50.46:5900/` and verify the active account remains signed in, existing projects and threads load, and no startup login is triggered.
+7. Run one explicitly labeled harmless test turn and confirm it completes without duplicate live overlays.
 
 ## Expected results
 
@@ -56,11 +76,11 @@ Validate `scripts/codexapp-release-switch.sh`: prepare an immutable release whil
 
 ## Rollback / cleanup
 
-1. End active work and close Sidux browser tabs.
+1. End active work and close CodexApp browser tabs.
 2. From the independent host shell run:
 
    ```bash
-   /workspace/codexapp/scripts/codexapp-release-switch.sh rollback --confirm-idle
+   sudo bash /mnt/NAS02-Code/Sidux/scripts/codexapp-release-switch.sh rollback --confirm-idle
    ```
 
 3. Confirm `5900` is healthy, the previous release is active, and the production account remains signed in.

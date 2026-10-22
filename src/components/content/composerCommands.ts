@@ -40,7 +40,7 @@ export function findSlashToken(text: string, cursor: number, selectionEnd = curs
 }
 
 export function buildComposerCommands(
-  skills: { name: string; description?: string; path: string }[],
+  skills: readonly { name: string; description?: string; path: string }[],
   prompts: { name: string; description?: string; path: string }[],
   translate: (message: string) => string = message => message,
 ): ComposerCommand[] {

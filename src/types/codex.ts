@@ -70,6 +70,7 @@ export type UiThread = {
   updatedAtIso: string
   preview: string
   unread: boolean
+  backgroundCompleted?: boolean
   inProgress: boolean
   pendingRequestState?: UiPendingRequestState | null
   task?: import('../subtasks').TaskIdentity | null
@@ -335,6 +336,7 @@ export type UiAccountEntry = {
   lastActivatedAtIso: string | null
   quotaSnapshot: UiRateLimitSnapshot | null
   quotaUpdatedAtIso: string | null
+  quotaFailedAtIso: string | null
   quotaStatus: UiAccountQuotaStatus
   quotaError: string | null
   unavailableReason: UiAccountUnavailableReason | null

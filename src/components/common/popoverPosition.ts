@@ -2,6 +2,7 @@ import type { CSSProperties } from 'vue'
 
 type PositionInput = {
   anchor: Pick<DOMRect, 'top' | 'bottom' | 'left' | 'right'>
+  point?: { x: number; y: number } | null
   avoidAnchorOverlap?: boolean
   width: number
   height: number
@@ -23,8 +24,8 @@ export function positionPopover(input: PositionInput): CSSProperties {
     : input.viewportHeight - padding * 2
   const maxHeight = Math.max(0, Math.min(availableHeight, input.viewportHeight - padding * 2))
   const height = Math.min(input.height, maxHeight)
-  const desiredLeft = input.align === 'end' ? input.anchor.right - width : input.anchor.left
-  const desiredTop = input.direction === 'up'
+  const desiredLeft = input.point?.x ?? (input.align === 'end' ? input.anchor.right - width : input.anchor.left)
+  const desiredTop = input.point ? input.point.y + gap : input.direction === 'up'
     ? input.anchor.top - height - gap
     : input.anchor.bottom + gap
   const left = Math.max(padding, Math.min(desiredLeft, input.viewportWidth - width - padding))

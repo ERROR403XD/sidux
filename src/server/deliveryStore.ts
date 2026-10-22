@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { opendir, readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { DeliveryMode, DeliveryReceipt, DeliveryRecord } from '../delivery.js'
+import { isDeliveryAcceptance, isGoalResumeIdentity, type DeliveryAcceptance, type DeliveryMode, type DeliveryReceipt, type DeliveryRecord } from '../delivery.js'
 import { normalizeStoredQueuedMessage, type StoredQueuedMessage, type ThreadQueueState } from '../threadQueue.js'
 import { writeAutomationFileAtomic } from './automationDefinition.js'
 import { AutomationStore } from './automationStore.js'
@@ -9,7 +9,7 @@ import { AutomationStore } from './automationStore.js'
 const ID_LIFETIME_MS = 7 * 86400000
 const MAX_PENDING = 500
 const MAX_PENDING_BYTES = 32 * 1024 * 1024
-type State = { version: 2; migratedLegacy: boolean; records: DeliveryRecord[] }
+type State = { version: 2 | 3; migratedLegacy: boolean; records: DeliveryRecord[] }
 type Submission = { threadId: string; message: StoredQueuedMessage; mode: DeliveryMode; contextId: string; params?: Record<string, unknown> }
 type Edit = { text: string; imageUrls: string[]; skills: StoredQueuedMessage['skills']; fileAttachments: StoredQueuedMessage['fileAttachments'] }
 
@@ -31,7 +31,7 @@ function validId(id: string): void {
 
 function validateState(value: unknown): State {
   const state = value as State
-  if (!state || state.version !== 2 || typeof state.migratedLegacy !== 'boolean' || !Array.isArray(state.records)) throw new Error('发送记录文件损坏，已停止投递')
+  if (!state || ![2, 3].includes(state.version) || typeof state.migratedLegacy !== 'boolean' || !Array.isArray(state.records)) throw new Error('发送记录文件版本不受支持或已损坏，已停止投递')
   const ids = new Set<string>()
   for (const row of state.records) {
     if (!row || !normalizeStoredQueuedMessage(row.message) || typeof row.threadId !== 'string' || !row.threadId
@@ -124,6 +124,9 @@ export class DeliveryStore {
   private async publish(state: State): Promise<void> {
     await this.lease.assertOwnership()
     if (state.records.length > MAX_PENDING) throw new Error('待处理发送记录超过 500 条上限')
+    // An older reader would send a queued GOAL intent as an ordinary message and
+    // cannot read its receipt. Keep the upgraded contract even after it drains.
+    if (state.records.some(row => row.message.continuation)) state.version = 3
     const raw = JSON.stringify(state)
     if (Buffer.byteLength(raw) > MAX_PENDING_BYTES) throw new Error('待处理发送内容超过 32 MB 上限')
     await writeAutomationFileAtomic(join(this.directory, 'pending.json'), raw)
@@ -160,7 +163,7 @@ export class DeliveryStore {
       const receipt = JSON.parse(await readFile(join(this.directory, 'receipts', id + '.json'), 'utf8')) as DeliveryReceipt
       if (!receipt || receipt.id !== id || !['accepted', 'cancelled'].includes(receipt.status) || typeof receipt.threadId !== 'string'
         || !Number.isFinite(receipt.createdAt) || !Number.isFinite(receipt.updatedAt)
-        || (receipt.status === 'accepted' && (typeof receipt.turnId !== 'string' || !receipt.turnId.trim()))
+        || (receipt.status === 'accepted' && !isDeliveryAcceptance(receipt))
         || !/^[a-f0-9]{64}$/.test(receipt.fingerprint)) throw new Error('发送确认记录损坏，已停止投递')
       return receipt
     } catch (error) {
@@ -237,8 +240,9 @@ export class DeliveryStore {
     })
   }
 
-  async confirm(id: string, turnId: string): Promise<DeliveryReceipt> {
-    if (!turnId.trim()) throw new Error('缺少回合 ID，无法确认送达')
+  async confirm(id: string, evidence: string | DeliveryAcceptance): Promise<DeliveryReceipt> {
+    const acceptance = typeof evidence === 'string' ? { turnId: evidence } : evidence
+    if (!isDeliveryAcceptance(acceptance)) throw new Error('缺少回合或目标确认，无法确认送达')
     return this.serial(async state => {
       const existing = await this.readReceipt(id)
       if (existing) {
@@ -247,7 +251,10 @@ export class DeliveryStore {
       }
       const row = this.pending(state, id)
       if (!['sending', 'unknown'].includes(row.status)) throw new Error('该消息尚未开始发送')
-      const receipt: DeliveryReceipt = { id, threadId: row.threadId, fingerprint: row.fingerprint, status: 'accepted', turnId, createdAt: row.createdAt, updatedAt: this.now() }
+      if (acceptance.goalResume && (!row.message.continuation || !isGoalResumeIdentity(row.params?.goalResume)
+        || acceptance.goalResume.createdAt !== row.params.goalResume.createdAt
+        || acceptance.goalResume.objectiveHash !== row.params.goalResume.objectiveHash)) throw new Error('目标确认与续跑记录不匹配')
+      const receipt: DeliveryReceipt = { id, threadId: row.threadId, fingerprint: row.fingerprint, status: 'accepted', ...acceptance, createdAt: row.createdAt, updatedAt: this.now() }
       await writeAutomationFileAtomic(join(this.directory, 'receipts', id + '.json'), JSON.stringify(receipt))
       state.records = state.records.filter(record => record.message.id !== id)
       return receipt

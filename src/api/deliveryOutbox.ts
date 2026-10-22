@@ -56,13 +56,22 @@ function intent(body: WebSubmission): string {
   return JSON.stringify({ ...body, expectedContextId: undefined, message: { ...body.message, id: '', delivery: undefined } })
 }
 
-export async function prepareWebDelivery(endpoint: PendingWebDelivery['endpoint'], body: WebSubmission): Promise<PendingWebDelivery> {
+export type DeliveryPreparationGuard = () => boolean
+
+export function assertDeliveryPreparationCurrent(canPrepare?: DeliveryPreparationGuard): void {
+  if (canPrepare && !canPrepare()) throw new Error('发送上下文已变化，消息尚未提交，请核对当前会话后重试')
+}
+
+export async function prepareWebDelivery(endpoint: PendingWebDelivery['endpoint'], body: WebSubmission, canPrepare?: DeliveryPreparationGuard): Promise<PendingWebDelivery> {
+  assertDeliveryPreparationCurrent(canPrepare)
   const pending = readPendingWebDeliveries(body.threadId)
   const previous = pending.find(row => row.endpoint === endpoint && intent(row.body) === intent(body))
   if (previous) return previous
   if (pending.length) throw new Error('提交待确认，请点击“核对提交”')
   const response = await fetch('/codex-api/delivery-context')
+  assertDeliveryPreparationCurrent(canPrepare)
   const payload = await response.json()
+  assertDeliveryPreparationCurrent(canPrepare)
   if (!response.ok || typeof payload.data?.contextId !== 'string' || !payload.data.contextId) throw new Error(payload.error || '无法确认当前账号，消息尚未提交')
   return rememberWebDelivery(endpoint, { ...body, expectedContextId: payload.data.contextId })
 }

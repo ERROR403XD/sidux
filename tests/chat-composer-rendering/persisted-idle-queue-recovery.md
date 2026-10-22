@@ -34,3 +34,48 @@ Queued messages in the queued state are drained for idle threads even if the ori
 - Remove temporary test projects/threads if they are no longer needed
 
 ---
+
+### 0.2.22 队列读取绑定与服务关闭
+
+#### 前置条件
+使用独立测试 CODEX_HOME；准备一条持久化 queued 消息和一个 idle 会话。不得使用 5900 的状态。自动组合检查：`pnpm exec vitest run src/server/queueRuntimeBinding.test.ts`。
+
+#### 操作
+1. 启动服务，读取 `/codex-api/thread-queue-state` 和运行时空闲快照，确认队列阻止部署空闲判定。
+2. 重启原生 app-server 进程，确认队列仍由同一发送服务读取。
+3. 在发送等待回合 ID 时关闭发送服务，确认关闭完成前仍能看到 sending 状态，不能注册第二个读取所有者。
+4. 等待发送结算和服务关闭后重新创建发送服务，读取持久化状态；重复创建/关闭 10 次。
+5. 使用含旧 `thread-queue-state` 的独立 home 重复上述流程，检查旧字段只迁移一次，其他全局状态字段保留。
+
+#### 预期与清理
+绑定独占，旧释放函数重复调用不会移除新绑定；切换读取所有者期间的旧空闲快照拒绝提交；关闭等待已有投递结算后才释放绑定。原生进程重启不丢失发送服务绑定，isolated worker 不读取主 home 的旧队列。结束后只移除独立测试 home；无需迁移生产 schema。
+
+---
+
+### 0.2.20-dev.6 离开期间已自动发送的排队行自愈
+
+#### Feature/Change Name
+A queued message that was auto-sent while the browser was away stops rendering as a queued row after reconnect, and discarding an already-sent row is idempotent instead of erroring.
+
+#### Prerequisites/Setup
+1. Dev server running (`pnpm run dev`)
+2. A thread with a running turn; queue one message so it shows above the composer
+3. A way to miss `codexapp/queue/changed` pushes (close the tab, disconnect the network, or suspend the machine)
+
+#### Steps
+1. Queue a message, then leave the browser while the turn is running
+2. Let the turn complete so the backend drains the queued message and the follow-up turn also completes
+3. Re-enter the browser and open the same thread
+4. Confirm no queued row remains above the composer (every reconnect `ready` re-syncs queue state)
+5. If a row is still visible (for example the drain raced the page load), press its 删除 button
+6. Confirm no error toast appears, the row disappears, and the message is present in the thread history as a sent user message
+
+#### Expected Results
+- After any (re)connect the client queue state matches the server (`refreshQueueState` runs on `ready`)
+- Discarding a row that was already delivered returns the fresh server state and the delivered receipt instead of the “该消息已发送或已移除” error
+- The queued chip never survives a refresh of the thread state
+
+#### Rollback/Cleanup
+- No data to roll back; settled rows stay immutable receipts on the server
+
+---

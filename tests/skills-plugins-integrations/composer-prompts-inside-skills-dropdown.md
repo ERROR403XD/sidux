@@ -39,3 +39,5 @@ The composer control row uses one `Skills` dropdown for both skills and saved pr
 ## 0.2.9 concurrent reads and freshness
 
 With DevTools open, refresh Home and open a thread: simultaneously mounted composers share one pending `GET /codex-api/prompts`. A later independent opening can read again. Create/delete a disposable prompt while an earlier read is delayed; the new list must reflect the mutation and a late older response must not overwrite it. Simulate a failed GET and reopen/retry: failure must not be cached. Remove the disposable prompt and restore the original draft.
+
+022-03B route 抽离补充：`src/server/routes/composerPromptRoutes.test.ts` 覆盖 prompt 列表、name/content 与 path 前置校验、创建 500/删除 400 错误边界及 removed 布尔值；真实目录、去重命名、路径限制和前端 in-flight 竞态仍分别由文件服务与既有手工用例验证。

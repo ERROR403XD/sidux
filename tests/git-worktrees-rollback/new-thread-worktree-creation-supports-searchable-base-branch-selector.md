@@ -18,9 +18,9 @@
 #### Expected Results
 - `Base branch` selector is visible only in `New worktree` mode.
 - Dropdown supports search/filter for branch names.
-- Worktree creation succeeds and creates a new branch named `codex/<id>`.
-- New worktree branch is based on the selected branch (merge-base confirms expected ancestry).
+- Temporary worktree creation succeeds with detached HEAD; `rev-parse --abbrev-ref HEAD` returns `HEAD`.
+- The detached HEAD matches the selected base branch commit (merge-base confirms expected ancestry).
 
 #### Rollback/Cleanup
 - Remove temporary worktree after verification: `git -C <repo-root> worktree remove <new-worktree-path>`.
-- Delete temporary branch if needed: `git -C <repo-root> branch -D codex/<id>`.
+- Temporary worktree creation does not add a `codex/<id>` branch. Delete a test branch only if the test explicitly created it.

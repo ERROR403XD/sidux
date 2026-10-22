@@ -46,3 +46,18 @@
 3. 保留机制最多记录 256 个待列表确认的本地创建 ID，不新增轮询，不伪造运行中状态，不更改发送或中断保护。
 
 证据：output/0218/projectless-welcome-ui.cjs、operation-toast-ui.cjs；清理隔离 fixture 即可，无真实目录或账号变更。
+
+## 0.2.22 会话读取完整服务与恢复边界
+
+前置：独立 HOME、合成 RPC、真实 ThreadHistory/AppServerProcess 投影与 JSONL；运行 `pnpm exec vitest run src/server/routes/threadReadRoutes.test.ts src/server/threadHistory.test.ts src/server/threadResponseService.test.ts src/server/inlinePayloadSanitizer.test.ts src/server/sessionSkillRecovery.test.ts src/server/codexAppServerBridge.archive.test.ts`。不修改真实会话事实文件。
+
+1. 读取会话页/单回合/任务摘录，确认 opaque cursor 原样传递、页最多 50 回合、摘录最多最近 10 回合、startTurnIndex=0 和已有响应包装；流错误合并、inline 图片落盘、技能恢复顺序保持。
+2. 按指定已完成回合分支，确认唯一 thread/fork 请求带 lastTurnId、excludeTurns 与 deferGoalContinuation；仅成功后使搜索失效，失败不触发失效。
+3. 准备含 exec_command 和 apply_patch 的合成 JSONL，确认实时读取恢复原条目顺序、输出/退出码/耗时，以及文件路径/增删行数；恢复不重复插入已有项目。
+4. 两次读取已完成会话，确认共两次原生读取而日志只扫描一次；改变日志字节数后重新读取。运行中状态不进入 completed cache，cache 和旧快照仍只有 AppServerProcess owner。
+5. 首条消息未 materialize 时返回空运行中状态；普通读取失败时有旧快照则保留内容并给 readFailed，无快照则 conversationState=null；缺失/相对会话文件的变更回退返回空列表。
+6. stream events 最多 400；缺 ID 返回 400。分页/摘录错误保持 500，未被该 route 显式处理的原生错误继续由 bridge 错误边界返回 502。
+
+预期：threadReadService 拥有完整读取/恢复/投影，sessionItemRecovery 持有原纯解析 helper；协议、媒体路径与缓存/失效策略保持。本批自动化不替代真实 UI 滚动/主题和人工验收。
+
+清理/回滚：关闭合成服务，删除本次独立 HOME 与图片；可独立 revert 迁移提交，不改持久化 schema、真实会话、账号或候选卷。

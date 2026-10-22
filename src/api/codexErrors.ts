@@ -66,3 +66,10 @@ export function normalizeCodexApiError(error: unknown, fallback: string, method?
     method,
   })
 }
+
+export const CODEX_CLI_MISSING_MESSAGE = 'Codex CLI not found. Install @openai/codex or set CODEXUI_CODEX_COMMAND.'
+
+export function isCodexCliMissingError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? '')
+  return message.includes('Codex CLI is not available')
+}

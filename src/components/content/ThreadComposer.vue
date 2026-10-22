@@ -382,6 +382,9 @@ import AppSelect from '../common/AppSelect.vue'
 import { reasoningUnavailable, fastModeControl, effortOptions, tierOptions, modelSettingsProblem, type ModelCapability } from '../../modelCapabilities'
 import { isOverlayEventInside } from '../../composables/overlayEvents'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useComposerDraftPersistence } from '../../composables/useComposerDraftPersistence'
+import { captureDraftSubmission, clearSubmittedDraft, composerDraftRecovery, readAcknowledgedDraft } from '../../composerDraftSubmission'
+import { createDeliveryId } from '../../delivery'
 import ComposerCommandPicker from './ComposerCommandPicker.vue'
 import { buildComposerCommands, type ComposerCommand, type SlashToken } from './composerCommands'
 import { useComposerCommandPicker } from '../../composables/useComposerCommandPicker'
@@ -393,6 +396,7 @@ import type {
   UiThreadTokenUsage,
   UiTokenUsageBreakdown,
 } from '../../types/codex'
+import { formatCompactTokenCount } from '../../utils/formatCounts'
 import { useDictation } from '../../composables/useDictation'
 import { useMobile } from '../../composables/useMobile'
 import { useUiLanguage } from '../../composables/useUiLanguage'
@@ -400,11 +404,10 @@ import {
   createComposerPrompt,
   getComposerPrompts,
   removeComposerPrompt,
-  searchComposerFiles,
-  uploadFile,
-  type ComposerFileSuggestion,
   type ComposerPromptInfo,
-} from '../../api/codexGateway'
+} from '../../api/composerPromptsGateway'
+import { uploadFile } from '../../api/mediaGateway'
+import { searchComposerFiles, type ComposerFileSuggestion } from '../../api/projectGateway'
 import IconTablerArrowUp from '../icons/IconTablerArrowUp.vue'
 import IconTablerBolt from '../icons/IconTablerBolt.vue'
 import IconTablerFilePencil from '../icons/IconTablerFilePencil.vue'
@@ -428,7 +431,7 @@ const props = defineProps<{
   activeThreadId: string
   draftKey?: string
   cwd?: string
-  collaborationModes?: CollaborationModeOption[]
+  collaborationModes?: readonly CollaborationModeOption[]
   selectedCollaborationMode: CollaborationModeKind
   models: string[]
   modelCapabilities?: ModelCapability[]
@@ -437,7 +440,7 @@ const props = defineProps<{
   selectedModel: string
   selectedReasoningEffort: ReasoningEffort | ''
   selectedSpeedMode: SpeedMode
-  skills?: SkillItem[]
+  skills?: readonly SkillItem[]
   threadTokenUsage?: UiThreadTokenUsage | null
   isTurnInProgress?: boolean
   isStopPending?: boolean
@@ -471,7 +474,7 @@ export type SubmitPayload = {
 
 export type ThreadComposerExposed = {
   hydrateDraft: (payload: ComposerDraftPayload) => void
-  acknowledgeDraft: (payload: ComposerDraftPayload) => void
+  acknowledgeDraft: (payload: ComposerDraftPayload, createdAt: number) => void
   appendTextToDraft: (text: string) => void
   hasUnsavedDraft: () => boolean
 }
@@ -580,7 +583,6 @@ let dragDepth = 0
 let attachmentSessionToken = 0
 const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
 const DRAFT_STORAGE_PREFIX = 'codex-web-local.thread-draft.v1.'
-let lastActiveThreadId = ''
 
 const modelCapability = computed(() => props.modelCapabilities?.find(model => model.id === props.selectedModel))
 const reasoningOptions = computed(() => effortOptions(modelCapability.value))
@@ -730,6 +732,8 @@ const skillDropdownOptions = computed(() =>
 )
 
 const queueSubmissionPending = ref(false)
+let submissionGeneration = 0
+let composerStopped = false
 const canSubmit = computed(() => {
   if (queueSubmissionPending.value) return false
   if (props.disabled) return false
@@ -823,20 +827,6 @@ const contextUsageTooltipText = computed(() => contextUsageView.value?.tooltipTe
 const contextUsageRemainingPercent = computed(() => contextUsageView.value?.percentRemaining ?? 0)
 const contextUsageTone = computed(() => contextUsageView.value?.tone ?? 'healthy')
 
-function formatCompactTokenCount(value: number): string {
-  if (!Number.isFinite(value)) return '0'
-  const absValue = Math.abs(value)
-  if (absValue >= 1_000_000) {
-    const compact = absValue >= 10_000_000 ? (value / 1_000_000).toFixed(0) : (value / 1_000_000).toFixed(1)
-    return `${compact.replace(/\.0$/, '')}M`
-  }
-  if (absValue >= 1_000) {
-    const compact = absValue >= 100_000 ? (value / 1_000).toFixed(0) : (value / 1_000).toFixed(1)
-    return `${compact.replace(/\.0$/, '')}k`
-  }
-  return String(Math.round(value))
-}
-
 function formatBreakdownSummary(breakdown: UiTokenUsageBreakdown): string {
   const nonCachedInput = Math.max(0, breakdown.inputTokens - breakdown.cachedInputTokens)
   const parts = [
@@ -911,18 +901,35 @@ function onSubmit(mode: 'steer' | 'queue' = 'queue'): void {
   if (!canSubmit.value || modelSettingsWarning.value) return
   const threadId = draftContextId.value
   const snapshot = JSON.stringify(getCurrentDraftPayload())
+  draftPersistence.flush()
+  const submitted = captureDraftSubmission(window.localStorage, getDraftStorageKey(threadId), snapshot)
+  const submission = ++submissionGeneration
   queueSubmissionPending.value = true
   const complete = (saved: boolean) => {
+    // Navigation may have already unmounted this composer or restored another context.
+    const cleared = saved && clearSubmittedDraft(window.localStorage, getDraftStorageKey(threadId), submitted)
+    if (saved && composerDraftRecovery.get(threadId) === snapshot) composerDraftRecovery.delete(threadId)
+    if (composerStopped) return
+    if (submission !== submissionGeneration && (!cleared || queueSubmissionPending.value)) return
+    submissionGeneration += 1
     queueSubmissionPending.value = false
     if (!saved || draftContextId.value !== threadId || JSON.stringify(getCurrentDraftPayload()) !== snapshot) return
-    clearPersistedDraftForThread(threadId)
+    if (submitted && !cleared) return
     clearDraftState()
+    draftPersistence.acceptCurrent()
     isComposerExpanded.value = false
     folderUploadGroups.value = []
     isAttachMenuOpen.value = false
     closeFileMention()
     if (isAndroid || isMobile.value) inputRef.value?.blur()
-    else void nextTick(() => inputRef.value?.focus())
+    else {
+      const generation = draftGeneration.value
+      void nextTick(() => {
+        if (!composerStopped && generation === draftGeneration.value && draftContextId.value === threadId) {
+          inputRef.value?.focus()
+        }
+      })
+    }
   }
   emit('submit', {
     text: draft.value.trim(),
@@ -937,6 +944,8 @@ function onSubmit(mode: 'steer' | 'queue' = 'queue'): void {
 
 function replaceDraftState(payload: ComposerDraftPayload): void {
   draftGeneration.value += 1
+  submissionGeneration += 1
+  queueSubmissionPending.value = false
   draft.value = payload.text
   selectedImages.value = payload.imageUrls.map((url, index) => ({
     id: `queued-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`,
@@ -968,7 +977,7 @@ function clearDraftState(): void {
   isComposerExpanded.value = false
 }
 
-function acknowledgeDraft(payload: ComposerDraftPayload): void {
+function acknowledgeDraft(payload: ComposerDraftPayload, createdAt: number): void {
   const current = getCurrentDraftPayload()
   const comparable = (draft: ComposerDraftPayload) => JSON.stringify({
     text: draft.text.trim(), imageUrls: draft.imageUrls,
@@ -976,8 +985,11 @@ function acknowledgeDraft(payload: ComposerDraftPayload): void {
     files: draft.fileAttachments.map(file => [file.label, file.path, file.fsPath]),
   })
   if (comparable(current) !== comparable(payload)) return
-  clearPersistedDraftForThread(draftContextId.value)
+  const key = getDraftStorageKey(draftContextId.value)
+  const submitted = readAcknowledgedDraft(window.localStorage, key, createdAt)
+  if (!clearSubmittedDraft(window.localStorage, key, submitted)) return
   clearDraftState()
+  draftPersistence.acceptCurrent()
 }
 
 function getDraftStorageKey(threadId: string): string {
@@ -1026,26 +1038,28 @@ function loadPersistedDraftForThread(threadId: string): ComposerDraftPayload | n
   }
 }
 
-function persistDraftForThread(threadId: string, payload: ComposerDraftPayload): void {
-  if (typeof window === 'undefined') return
+function persistDraftForThread(threadId: string, payload: ComposerDraftPayload): boolean {
+  if (typeof window === 'undefined') return false
   const normalizedThreadId = threadId.trim()
-  if (!normalizedThreadId) return
+  if (!normalizedThreadId) return false
   try {
     const hasContent = payload.text.trim().length > 0
       || payload.imageUrls.length > 0
       || payload.fileAttachments.length > 0
       || payload.skills.length > 0
     if (hasContent) {
-      window.localStorage.setItem(getDraftStorageKey(normalizedThreadId), JSON.stringify(payload))
+      window.localStorage.setItem(getDraftStorageKey(normalizedThreadId), JSON.stringify({ ...payload, revision: createDeliveryId() }))
       draftSaveStatus.value = 'saved'
       draftCopyFailed.value = false
-      return
+      return true
     }
     window.localStorage.removeItem(getDraftStorageKey(normalizedThreadId))
     draftSaveStatus.value = ''
     draftCopyFailed.value = false
+    return true
   } catch {
     draftSaveStatus.value = 'failed'
+    return false
   }
 }
 
@@ -1058,15 +1072,6 @@ async function copyFailedDraft(): Promise<void> {
     inputRef.value?.focus()
     inputRef.value?.select()
   }
-}
-
-function clearPersistedDraftForThread(threadId: string): void {
-  persistDraftForThread(threadId, {
-    text: '',
-    imageUrls: [],
-    fileAttachments: [],
-    skills: [],
-  })
 }
 
 function getCurrentDraftPayload(): ComposerDraftPayload {
@@ -1643,6 +1648,7 @@ function applyFileMention(suggestion: ComposerFileSuggestion): void {
 function hydrateDraft(payload: ComposerDraftPayload): void {
   cancelDictation()
   replaceDraftState(payload)
+  draftPersistence.saveCurrent()
   void nextTick(() => {
     inputRef.value?.focus()
   })
@@ -1810,6 +1816,8 @@ defineExpose<ThreadComposerExposed>({
 })
 
 onBeforeUnmount(() => {
+  composerStopped = true
+  submissionGeneration += 1
   promptsRevision++
   document.removeEventListener('click', onDocumentClick, true)
   window.removeEventListener('drop', onWindowDragCleanup)
@@ -1824,30 +1832,23 @@ onBeforeUnmount(() => {
 })
 
 const draftContextId = computed(() => props.draftKey || props.activeThreadId)
-watch(
-  () => draftContextId.value,
-  (nextThreadId) => {
+const draftPersistence = useComposerDraftPersistence({
+  recovery: composerDraftRecovery,
+  context: draftContextId,
+  payload: getCurrentDraftPayload,
+  load: loadPersistedDraftForThread,
+  save: persistDraftForThread,
+  restore: restored => {
     cancelDictation()
-    if (lastActiveThreadId) {
-      persistDraftForThread(lastActiveThreadId, getCurrentDraftPayload())
-    }
     clearDraftState()
     draftSaveStatus.value = ''
     draftCopyFailed.value = false
-    const restored = loadPersistedDraftForThread(nextThreadId)
     if (restored) {
       replaceDraftState(restored)
       onInputChange()
     }
-    lastActiveThreadId = nextThreadId.trim()
   },
-  { immediate: true },
-)
-
-watch([draft, selectedImages, fileAttachments, selectedSkills], () => {
-  if (!lastActiveThreadId) return
-  persistDraftForThread(lastActiveThreadId, getCurrentDraftPayload())
-}, { deep: true })
+})
 
 
 watch(

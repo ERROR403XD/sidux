@@ -8,6 +8,23 @@ import { normalizeToolSummary } from './api/normalizers/toolSummary'
 
 const model = normalizeModelCapability({ id: 'future-model', defaultReasoningEffort: 'max', supportedReasoningEfforts: [{ reasoningEffort: 'max' }, { reasoningEffort: 'ultra' }], serviceTiers: [{ id: 'priority', name: 'Fast', description: 'directory description' }], inputModalities: ['text'] })!
 describe('model capabilities across saved settings and requests', () => {
+  it('keeps custom routing IDs distinct even when display and underlying model names match', () => {
+    for (const id of ['sidux/sol', 'chatgpt-api/sol']) {
+      expect(normalizeModelCapability({ id, model: 'gpt-6.1-sol', display_name: 'GPT-6.1 Sol' }, 'custom'))
+        .toMatchObject({ id, model: id, displayName: id })
+    }
+    expect(normalizeModelCapability({ id: 'codex-sol', model: 'gpt-6.1-sol', displayName: 'GPT-6.1 Sol' }))
+      .toMatchObject({ model: 'gpt-6.1-sol', displayName: 'GPT-6.1 Sol' })
+  })
+  it('reads Magpie snake-case capabilities without inventing Ultra for other models', () => {
+    const row = normalizeModelCapability({ id: 'sidux/gpt-6.1-sol', supported_reasoning_levels: [{ effort: 'max' }, { effort: 'ultra' }], service_tiers: [{ id: 'priority', name: 'Fast' }], default_reasoning_level: 'max' }, 'custom')!
+    expect(effortOptions(row).map(item => item.value)).toEqual(['', 'max', 'ultra'])
+    expect(tierOptions(row).map(item => item.value)).toEqual(['', 'priority'])
+    expect(row.defaultEffort).toBe('max')
+    const luna = normalizeModelCapability({ id: 'sidux/gpt-6-luna', supported_reasoning_levels: [{ effort: 'max' }] }, 'custom')!
+    expect(luna.efforts?.map(item => item.value)).toEqual(['max'])
+    expect(normalizeModelCapability({ id: 'empty', supportedReasoningEfforts: [], supported_reasoning_levels: [{ effort: 'ultra' }] })?.efforts).toEqual([])
+  })
   it('uses advertised values and preserves unknown saved values without claiming support', () => {
     expect(effortOptions(model).map(row => row.value)).toEqual(['', 'max', 'ultra'])
     expect(effortOptions(model, 'future-effort').at(-1)?.label).toContain('目录未确认')

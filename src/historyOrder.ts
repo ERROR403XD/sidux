@@ -21,7 +21,7 @@ export function mergeTurnOrder(previous: Record<string, number>, incoming: Recor
   return Object.fromEntries(merged.map((id, index) => [id, index]))
 }
 
-export function bindMessageTurnOrder(messages: UiMessage[], lookup: Record<string, number>): UiMessage[] {
+export function bindMessageTurnOrder(messages: readonly UiMessage[], lookup: Record<string, number>): UiMessage[] {
   return messages.map(message => {
     const index = message.turnId ? lookup[message.turnId] : undefined
     return index === undefined || message.turnIndex === index ? message : { ...message, turnIndex: index }

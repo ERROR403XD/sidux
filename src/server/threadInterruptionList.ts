@@ -29,6 +29,20 @@ export class ThreadInterruptionList {
     return (this.entries[threadId] || []).filter(issue => !ignored.has(issue.turnId)).map(issue => ({ ...issue }))
   }
 
+  private clear(threadId: string): Promise<void> {
+    const write = this.writes.then(async () => {
+      await this.ready
+      if (!this.entries[threadId]) return
+      const next = Object.assign(Object.create(null), this.entries)
+      delete next[threadId]
+      await privateJson(this.path, next)
+      this.entries = next
+      this.changed(threadId, [])
+    })
+    this.writes = write.catch(() => {})
+    return write
+  }
+
   async snapshot(): Promise<ThreadInterruptionSnapshot> {
     await this.ready
     await this.writes
@@ -74,6 +88,11 @@ export class ThreadInterruptionList {
       const turnId = params.turn?.id || params.turnId
       if (turnId) this.turns.set(id, turnId)
       if (this.turns.size > 2048) this.turns.delete(this.turns.keys().next().value!)
+      // A new turn is the user's acknowledgement of the previous problem.
+      // Keep the marker until this point, then clear it durably; a later
+      // terminal failure records a fresh marker for the new turn.
+      const clearing = this.clear(id)
+      if (clearing) return clearing
     }
     if (method === 'error') {
       const kind = classifyThreadInterruption({ status: 'failed', error: params.error })

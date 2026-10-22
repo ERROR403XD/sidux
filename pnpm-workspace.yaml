@@ -3,3 +3,5 @@ allowBuilds:
   esbuild: true
   node-pty: true
   protobufjs: true
+minimumReleaseAgeExclude:
+  - smol-toml@1.9.1 # published before this repository adopted the release-age policy

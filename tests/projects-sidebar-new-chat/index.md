@@ -8,6 +8,8 @@ Return to the [manual test index](../../tests.md).
 
 | Section |
 | --- |
+| [0.2.22：侧栏项目与自动化完整控制器](sidebar-project-automation-controller.md) |
+| [0.2.22：项目组织与工作区恢复](project-organization-owner.md) |
 | [Feature: Project recency sort, pins, and mobile move mode](project-recency-sort-pins-and-mobile-move-mode.md) |
 | [Feature: Projectless new chat folders](projectless-new-chat-folders.md) |
 | [Feature: Unified create project and GitHub clone modal](unified-create-project-and-github-clone-modal.md) |
@@ -28,3 +30,5 @@ Return to the [manual test index](../../tests.md).
 | [0.2.16：会话完成列表与线程菜单](thread-completion-list.md) |
 | [0.2.18：侧边栏状态筛选](sidebar-status-filter.md) |
 | [0.2.19：仅名称项目与项目专项回归](organized-projects-without-directory.md) |
+
+- [侧栏右键菜单跟随鼠标](sidebar-context-menu-position.md)

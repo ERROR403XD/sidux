@@ -27,11 +27,11 @@ import { t } from '../../composables/useUiLanguage'
 import { readQuestionReply } from '../../userQuestions'
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { DELIVERY_OUTBOX_EVENT, forgetWebDelivery, readPendingWebDeliveries, submitRememberedDelivery, type PendingWebDelivery } from '../../api/deliveryOutbox'
-import type { StoredQueuedMessage } from '../../threadQueue'
+import type { StoredQueuedMessageView } from '../../threadQueue'
 import AppButton from '../common/AppButton.vue'
 import AppDialog from '../common/AppDialog.vue'
 
-const props = defineProps<{ threadId: string; queue: StoredQueuedMessage[] }>()
+const props = defineProps<{ threadId: string; queue: readonly StoredQueuedMessageView[] }>()
 const emit = defineEmits<{ settled: [submission: PendingWebDelivery] }>()
 const pending = ref<PendingWebDelivery[]>([])
 const error = ref('')

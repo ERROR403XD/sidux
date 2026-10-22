@@ -51,11 +51,11 @@ import { t } from '../../composables/useUiLanguage'
 import { ref, watch } from 'vue'
 import { readQuestionReply } from '../../userQuestions'
 import { deliveryStatusLabel } from '../../delivery'
-import type { StoredQueuedMessage } from '../../threadQueue'
+import type { StoredQueuedMessageView } from '../../threadQueue'
 import AppButton from '../common/AppButton.vue'
 import AppDialog from '../common/AppDialog.vue'
 
-const props = defineProps<{ messages: StoredQueuedMessage[] }>()
+const props = defineProps<{ messages: readonly StoredQueuedMessageView[] }>()
 const emit = defineEmits<{
   edit: [messageId: string]
   steer: [messageId: string]
@@ -78,7 +78,7 @@ function confirmAbandon(): void {
   if (id) emit('abandon', id)
 }
 
-function onDragStart(event: DragEvent, message: StoredQueuedMessage): void {
+function onDragStart(event: DragEvent, message: StoredQueuedMessageView): void {
   if (isQuestion(message) || message.delivery?.status !== 'queued') {
     event.preventDefault()
     return
@@ -89,7 +89,7 @@ function onDragStart(event: DragEvent, message: StoredQueuedMessage): void {
   if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
 }
 
-function onDragOver(message: StoredQueuedMessage): void {
+function onDragOver(message: StoredQueuedMessageView): void {
   if (message.delivery?.status !== 'queued' || !draggedMessageId.value || draggedMessageId.value === message.id) return
   dropTargetMessageId.value = message.id
 }
@@ -98,7 +98,7 @@ function onDragLeave(id: string): void {
   if (dropTargetMessageId.value === id) dropTargetMessageId.value = ''
 }
 
-function onDrop(message: StoredQueuedMessage): void {
+function onDrop(message: StoredQueuedMessageView): void {
   const draggedId = draggedMessageId.value
   resetDragState()
   if (message.delivery?.status !== 'queued' || !draggedId || draggedId === message.id) return
@@ -110,9 +110,9 @@ function resetDragState(): void {
   dropTargetMessageId.value = ''
 }
 
-function isQuestion(message: StoredQueuedMessage): boolean { return Boolean(readQuestionReply(message.text).questionReply) }
+function isQuestion(message: StoredQueuedMessageView): boolean { return Boolean(readQuestionReply(message.text).questionReply) }
 
-function getMessagePreview(message: StoredQueuedMessage): string {
+function getMessagePreview(message: StoredQueuedMessageView): string {
   if (isQuestion(message)) return t('问题回答')
   return message.text.trim() || [
     message.imageUrls.length ? t(`${message.imageUrls.length} 张图片`) : '',

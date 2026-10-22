@@ -19,38 +19,52 @@
         <p class="api-proxy-muted">{{ t('当前实际 API 账号：') }}{{ status.settings.enabled ? accountName(status.selectedStorageId || status.settings.accountStorageId || status.accounts.activeStorageId) : t('未启用') }}</p>
         <p class="api-proxy-muted">{{ t('切换时等待当前请求结束。') }}</p>
         <div class="api-proxy-actions">
-          <AppButton :busy="busy" @click="save(false)">{{ t('保存') }}</AppButton>
-          <AppButton variant="danger" :disabled="busy" @click="forceDialog = true">{{ t('中断活动连接并保存…') }}</AppButton>
+          <AppButton :variant="hasSettingsChanges ? 'primary' : 'default'" :busy="busy" @click="save(false)">{{ t('保存配置') }}</AppButton>
+          <AppButton variant="danger" :disabled="busy" @click="forceDialog = true">{{ t('中断活动连接并保存配置…') }}</AppButton>
         </div>
       </section>
-      <section class="api-proxy-card">
+      <section class="api-proxy-card api-proxy-keys-card">
         <div class="api-proxy-heading api-proxy-key-heading">
           <h2>API key</h2>
           <div class="api-proxy-actions api-proxy-key-toolbar">
             <AppButton :disabled="busy" @click="openCreate()">{{ t('创建API key') }}</AppButton>
             <AppButton @click="showInvalid = !showInvalid">{{ t(showInvalid ? '返回生效 API key' : '查看失效 API key') }}</AppButton>
             <AppButton @click="usageDialog = true">{{ t('Token统计') }}</AppButton>
-            <AppButton :busy="busy" @click="savePolicies">{{ t('保存配置') }}</AppButton>
+            <AppButton :variant="hasPolicyChanges ? 'primary' : 'default'" :busy="savingPolicies" @click="savePolicies">{{ t('保存配置') }}</AppButton>
           </div>
         </div>
         <p v-if="!status.keys.length">{{ t('尚未创建 API key。') }}</p>
         <p v-if="status.usage?.error" role="alert" class="api-proxy-error">{{ t(status.usage.error) }}</p>
-        <div v-for="key in visibleKeys" :key="key.id" class="api-proxy-key-row">
-          <div class="api-proxy-key-copy"><div class="api-proxy-key-title"><strong>{{ key.name }}</strong><span>••••{{ key.suffix }}</span><small>{{ t('到期：') }}{{ t(key.expiresAt ? date(key.expiresAt) : '无限') }}</small><span v-if="showInvalid">{{ t(keyLabel(key)) }}</span></div>
-            <small>{{ t('最近使用：') }}{{ date(key.lastUsedAt) }}</small>
-            <div v-if="policyDrafts[key.id]" class="api-proxy-inline-policy">
-              <AppSelect v-model="policyDrafts[key.id]!.account" :options="keyAccountOptions" enable-search :search-placeholder="t('搜索账号')" :disabled="busy || !!key.revokedAt" />
-              <span v-if="isCustomAccount(policyDrafts[key.id]!.account)" class="api-proxy-muted">{{ customEndpoints(policyDrafts[key.id]!.account).join(' · ') }}</span>
-              <AppSwitch v-if="!isCustomAccount(policyDrafts[key.id]!.account)" class="api-proxy-check" v-model="policyDrafts[key.id]!.protected"  :disabled="busy || !!key.revokedAt">{{ t('受保护') }}</AppSwitch>
+        <div v-for="key in visibleKeys" :key="key.id" class="api-proxy-key-row" :data-key-id="key.id">
+          <div class="api-proxy-key-copy">
+            <div class="api-proxy-key-title">
+              <strong>{{ key.name }}</strong><span>••••{{ key.suffix }}</span>
+              <small v-if="!key.revokedAt">{{ t('到期：') }}{{ t(key.expiresAt ? date(key.expiresAt) : '无限') }}</small>
+              <span v-if="showInvalid || !key.enabled">{{ t(keyLabel(key)) }}</span>
             </div>
-
+            <small class="api-proxy-key-recent">{{ t('最近使用：') }}{{ date(key.lastUsedAt) }}</small>
           </div>
-          <div class="api-proxy-actions">
-            <AppButton :disabled="busy || !!key.revokedAt" @click="renameTarget = key; renameValue = key.name">{{ t('重命名') }}</AppButton>
-            <AppSwitch :disabled="busy || !!key.revokedAt" :model-value="key.enabled" @change="updateKey(key, { enabled: $event })">{{ t('启用') }}</AppSwitch>
-            <AppButton :disabled="busy || !!key.revokedAt" @click="openCreate(key)">{{ t('轮换') }}</AppButton>
-            <AppButton variant="danger" :disabled="busy || !!key.revokedAt" @click="revokeTarget = key; interruptKey = false">{{ t('撤销…') }}</AppButton>
+          <div v-if="!key.revokedAt" class="api-proxy-actions api-proxy-key-controls">
+            <AppSwitch :disabled="busy || isKeyBusy(key.id)" :model-value="key.enabled" @change="updateKey(key, { enabled: $event })">{{ t('启用') }}</AppSwitch>
+            <AppButton :disabled="busy || isKeyBusy(key.id)" @click="openAdvanced(key)">{{ t('高级选项') }}</AppButton>
+            <AppButton :disabled="busy || isKeyBusy(key.id)" @click="renameTarget = key; renameValue = key.name">{{ t('重命名') }}</AppButton>
+            <AppButton :disabled="busy || isKeyBusy(key.id)" @click="openCreate(key)">{{ t('轮换') }}</AppButton>
+            <AppButton variant="danger" :disabled="busy || isKeyBusy(key.id)" @click="revokeTarget = key; interruptKey = false">{{ t('撤销…') }}</AppButton>
           </div>
+          <template v-if="!key.revokedAt && policyDrafts[key.id]">
+            <div class="api-proxy-inline-policy">
+              <AppSelect
+                class="api-proxy-key-account"
+                :model-value="accountValue(policyDrafts[key.id]!)"
+                :options="keyAccountOptions(policyDrafts[key.id]!)"
+                enable-search
+                :search-placeholder="t('搜索账号')"
+                :disabled="busy || isKeyBusy(key.id)"
+                @update:model-value="setAccountValue(policyDrafts[key.id]!, $event)"
+              />
+            </div>
+            <ConnectionEndpoints class="api-proxy-key-endpoints" :endpoints="keyEndpoints(policyDrafts[key.id]!)" :bridged="keyBridgedEndpoints(policyDrafts[key.id]!)" :manual="keyManualEndpoints(policyDrafts[key.id]!)" :show-tooltips="false" />
+          </template>
         </div>
       </section>
       <section class="api-proxy-card">
@@ -94,9 +108,11 @@
         </label>
         <label>{{ t('持续时间（天）') }} <input v-model="keyDurationDays" class="app-input" type="number" min="1" step="1" :placeholder="t('无限')" :disabled="busy" />
         </label>
-        <label>{{ t('使用账号') }}<AppSelect v-model="keyAccountDraft" :options="keyAccountOptions" enable-search :search-placeholder="t('搜索账号')" :disabled="busy" /></label>
-        <p v-if="isCustomAccount(keyAccountDraft)" class="api-proxy-muted">{{ customEndpoints(keyAccountDraft).join(' · ') }}</p>
-        <AppSwitch v-if="!isCustomAccount(keyAccountDraft)" class="api-proxy-check" v-model="keyProtectedDraft"  :disabled="busy">{{ t('受保护') }}</AppSwitch>
+        <label>{{ t('使用账号') }}<AppSelect class="api-proxy-key-account" :model-value="accountValue(createDraft)" :options="keyAccountOptions(createDraft)" enable-search :search-placeholder="t('搜索账号')" :disabled="busy" @update:model-value="setAccountValue(createDraft, $event)" /></label>
+        <div class="api-proxy-actions api-proxy-advanced-open">
+          <AppButton :disabled="busy" @click="openAdvanced()">{{ t('高级选项') }}</AppButton>
+          <span v-if="advancedSummary(createDraft)" class="api-proxy-muted">{{ advancedSummary(createDraft) }}</span>
+        </div>
         <p v-if="rotateTarget" class="api-proxy-muted">{{ t('旧 key 将于 24 小时后到期，也可提前撤销。') }}</p>
       </div>
       <template v-else><p>{{ t('请现在保存完整 key，关闭后不会再次显示。') }}</p><textarea class="app-input api-proxy-secret" :value="secret" readonly rows="3" :aria-label="t('新 API key')" /><AppButton @click="copySecret">{{ t('复制 key') }}</AppButton></template>
@@ -106,16 +122,57 @@
       <p>{{ t('撤销“') }}{{ revokeTarget?.name }}{{ t('”后无法重新启用。') }}</p><AppSwitch class="api-proxy-check" v-model="interruptKey">{{ t('同时中断这把 key 的活动连接（') }}{{ keyActivityCount }}）</AppSwitch>
       <template #footer><AppButton :disabled="busy" @click="revokeTarget = null">{{ t('取消') }}</AppButton><AppButton variant="danger" :busy="busy" @click="revokeKey">{{ t('撤销') }}</AppButton></template>
     </AppDialog>
-    <AppDialog :open="!!policyTarget" :title="t('账号与额度保护')" :busy="busy" size="compact" @close="policyTarget = null">
-      <p v-if="error" class="api-proxy-error" role="alert">{{ t(error) }}</p>
-      <label>{{ t('使用账号') }}<AppSelect v-model="keyAccountDraft" :options="keyAccountOptions" enable-search :search-placeholder="t('搜索账号')" :disabled="busy" /></label>
-      <p v-if="isCustomAccount(keyAccountDraft)" class="api-proxy-muted">{{ customEndpoints(keyAccountDraft).join(' · ') }}</p>
-        <AppSwitch v-if="!isCustomAccount(keyAccountDraft)" class="api-proxy-check" v-model="keyProtectedDraft"  :disabled="busy">{{ t('受保护') }}</AppSwitch>
-      <p class="api-proxy-muted">{{ t('保护值在账号设置中配置，受保护Key共享所选账号的预留额度。保存会断开此Key的旧连接。') }}</p>
-      <template #footer><AppButton :disabled="busy" @click="policyTarget = null">{{ t('取消') }}</AppButton><AppButton :busy="busy" @click="savePolicy">{{ t('保存') }}</AppButton></template>
+    <AppDialog :open="advancedOpen" :title="t('高级选项')" :busy="busy" panel-class="api-proxy-advanced-dialog" @close="closeAdvanced()">
+      <template v-if="advancedDraft">
+        <div class="api-proxy-route-setting">
+          <AppSwitch class="api-proxy-check" v-model="advancedDraft.protected" :disabled="busy">{{ t('受保护') }}</AppSwitch>
+        </div>
+        <div class="api-proxy-advanced-group">
+          <div class="api-proxy-route-setting">
+            <AppSwitch class="api-proxy-check" v-model="advancedDraft.forceEnabled" :disabled="busy">{{ t('模型强制路由') }}</AppSwitch>
+            <ApiKeyModelField
+              :model-value="advancedDraft.forceModel"
+              :account-id="resolvedAccountId(advancedDraft.account)"
+              :models="modelCatalog(resolvedAccountId(advancedDraft.account))"
+              :state="modelCatalogState(resolvedAccountId(advancedDraft.account))"
+              :disabled="busy || !advancedDraft.forceEnabled"
+              :placeholder="t('模型名')"
+              :aria-label="t('强制使用模型')"
+              @request="loadModelCatalog(resolvedAccountId(advancedDraft.account))"
+              @update:model-value="advancedDraft.forceModel = $event"
+            />
+          </div>
+        </div>
+        <div class="api-proxy-advanced-group">
+          <div class="api-proxy-route-setting">
+            <AppSwitch class="api-proxy-check" v-model="advancedDraft.aggregateEnabled" :disabled="busy">{{ t('聚合路由') }}</AppSwitch>
+            <AppButton :disabled="busy || !advancedDraft.aggregateEnabled" @click="addRouteRow()">{{ t('添加') }}</AppButton>
+          </div>
+          <template v-if="advancedDraft.aggregateEnabled">
+            <div v-for="(row, index) in advancedDraft.entries" :key="index" class="api-proxy-route-row">
+              <AppSelect v-model="row.account" class="api-proxy-route-account" :options="routeAccountOptions" enable-search :search-placeholder="t('搜索账号')" :placeholder="t('选择账号')" :disabled="busy" />
+              <div class="api-proxy-route-model">
+                <ApiKeyModelField
+                  :model-value="row.model"
+                  :account-id="resolvedAccountId(row.account)"
+                  :models="modelCatalog(resolvedAccountId(row.account))"
+                  :state="modelCatalogState(resolvedAccountId(row.account))"
+                  :disabled="busy"
+                  :placeholder="t('模型名')"
+                  :aria-label="t('模型名')"
+                  @request="loadModelCatalog(resolvedAccountId(row.account))"
+                  @update:model-value="row.model = $event"
+                />
+                <AppButton variant="danger" :disabled="busy" @click="removeRouteRow(index)">{{ t('移除') }}</AppButton>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+      <template #footer><AppButton :disabled="busy" @click="closeAdvanced()">{{ t('取消') }}</AppButton><AppButton variant="primary" :busy="busy" @click="confirmAdvanced()">{{ t('确认') }}</AppButton></template>
     </AppDialog>
     <AppDialog :open="!!renameTarget" :title="t('重命名 API key')" :busy="busy" size="compact" @close="renameTarget = null"><input v-model="renameValue" class="app-input" maxlength="80" data-autofocus /><template #footer><AppButton :busy="busy" @click="renameKey">{{ t('保存') }}</AppButton></template></AppDialog>
-    <AppDialog :open="forceDialog" :title="t('中断活动连接并保存')" :busy="busy" size="compact" @close="forceDialog = false"><p>{{ t('将中断') }} {{ status?.activity.connections || 0 }} {{ t('个连接，其中') }} {{ status?.activity.activeRequests || 0 }} {{ t('个请求正在处理。客户端会收到中断，需要重新连接。') }}</p><template #footer><AppButton :disabled="busy" @click="forceDialog = false">{{ t('取消') }}</AppButton><AppButton variant="danger" :busy="busy" @click="save(true)">{{ t('中断并保存') }}</AppButton></template></AppDialog>
+    <AppDialog :open="forceDialog" :title="t('中断活动连接并保存配置')" :busy="busy" size="compact" @close="forceDialog = false"><p>{{ t('将中断') }} {{ status?.activity.connections || 0 }} {{ t('个连接，其中') }} {{ status?.activity.activeRequests || 0 }} {{ t('个请求正在处理。客户端会收到中断，需要重新连接。') }}</p><template #footer><AppButton :disabled="busy" @click="forceDialog = false">{{ t('取消') }}</AppButton><AppButton variant="danger" :busy="busy" @click="save(true)">{{ t('中断并保存配置') }}</AppButton></template></AppDialog>
   </div>
 </template>
 
@@ -128,15 +185,21 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppButton from '../common/AppButton.vue'
 import AppDialog from '../common/AppDialog.vue'
 import AppSelect from '../common/AppSelect.vue'
+import ConnectionEndpoints from '../accounts/ConnectionEndpoints.vue'
+import ApiKeyModelField from './ApiKeyModelField.vue'
+import type { ApiProxyModelCatalogState } from '../../api/apiProxyModels'
 import { formatLocalDateTime, displayTimeZone } from '../../dateTime'
 import { emptyUsage } from '../../api/proxyUsageTypes'
 import { copyTextToClipboard } from '../../utils/clipboard'
-import { apiProxyRequest, type ApiProxyKey, type ApiProxySettings, type ApiProxyStatus } from '../../api/apiProxy'
+import { apiProxyRequest, visibleApiProxyKeys, type ApiProxyKey, type ApiProxySettings, type ApiProxyStatus } from '../../api/apiProxy'
+import { apiProxyModelNames } from '../../api/apiProxyModels'
+import type { CustomEndpoint } from '../../customConnections'
+import { notifyOperation } from '../../composables/useOperationToast'
 
 const showInvalid = ref(false)
 const usageDialog = ref(false)
 const usageKey = ref('all')
-const usageKeyOptions = computed(() => [{ value: 'all', label: t('全部 API key') }, ...(status.value?.keys || []).map(key => ({ value: key.id, label: `${key.name} · ••••${key.suffix}${key.revokedAt ? ` · ${t('已失效')}` : ''}` }))])
+const usageKeyOptions = computed(() => [{ value: 'all', label: t('全部 API key') }, ...(status.value?.keys || []).map(key => ({ value: key.id, label: `${key.name} · ••••${key.suffix}${key.revokedAt ? t(' · 已失效') : ''}` }))])
 const selectedUsage = computed(() => {
   if (usageKey.value !== 'all') return usageFor(usageKey.value)
   const total = emptyUsage()
@@ -146,27 +209,84 @@ const selectedUsage = computed(() => {
   }
   return total
 })
-const policyDrafts = ref<Record<string, { account: string; protected: boolean }>>({})
-const visibleKeys = computed(() => (status.value?.keys || []).filter(key => {
-  const invalid = !!key.revokedAt || !key.enabled || !!key.expiresAt && Date.parse(key.expiresAt) <= Date.now()
-  return showInvalid.value ? invalid : !invalid
-}))
-async function savePolicies(): Promise<void> {
-  await run(async () => {
-    for (const key of status.value?.keys || []) {
-      const draft = policyDrafts.value[key.id]
-      if (!draft || key.revokedAt) continue
-      const accountStorageId = draft.account === 'global' ? null : draft.account
-      if (accountStorageId === key.accountStorageId && draft.protected === key.protected) continue
-      await apiProxyRequest(`/keys/${key.id}`, { accountStorageId, protected: draft.protected })
-      key.accountStorageId = accountStorageId
-      key.protected = draft.protected
-    }
+type KeyRouteRow = { model: string; account: string }
+type KeyPolicyDraft = {
+  account: string
+  protected: boolean
+  forceEnabled: boolean
+  forceModel: string
+  aggregateEnabled: boolean
+  entries: KeyRouteRow[]
+}
+const endpointOrder: CustomEndpoint[] = ['/v1/models', '/v1/responses', '/v1/chat/completions']
+const policyDrafts = ref<Record<string, KeyPolicyDraft>>({})
+const visibleKeys = computed(() => visibleApiProxyKeys(status.value?.keys || [], showInvalid.value))
+const hasPolicyChanges = computed(() => pendingPolicyUpdates().length > 0)
+function draftFromKey(key: ApiProxyKey): KeyPolicyDraft {
+  return {
+    account: key.accountStorageId || 'global',
+    protected: !!key.protected,
+    forceEnabled: !!key.forceRoute?.enabled,
+    forceModel: key.forceRoute?.model || '',
+    aggregateEnabled: !!key.aggregateRoute?.enabled,
+    entries: (key.aggregateRoute?.entries || []).map(entry => ({ model: entry.model, account: entry.accountStorageId || 'global' })),
+  }
+}
+function copyDraft(source: KeyPolicyDraft): KeyPolicyDraft {
+  return { ...source, entries: source.entries.map(row => ({ ...row })) }
+}
+/** 聚合模式打开时主账号下拉框显示“聚合账号”，底层账号仍然保留作为清单外模型的兜底。 */
+function accountValue(draft: KeyPolicyDraft): string { return draft.aggregateEnabled ? 'aggregate' : draft.account }
+function setAccountValue(draft: KeyPolicyDraft, value: string): void {
+  if (value === 'aggregate') { draft.aggregateEnabled = true; return }
+  draft.aggregateEnabled = false
+  draft.account = value
+}
+function routePayload(draft: KeyPolicyDraft): { accountStorageId: string | null; protected: boolean; forceRoute: { enabled: boolean; model: string }; aggregateRoute: { enabled: boolean; entries: Array<{ model: string; accountStorageId: string | null }> } } {
+  return {
+    accountStorageId: draft.account === 'global' || !draft.account ? null : draft.account,
+    protected: draft.protected,
+    forceRoute: { enabled: draft.forceEnabled, model: draft.forceModel.trim() },
+    aggregateRoute: { enabled: draft.aggregateEnabled, entries: draft.entries.map(row => ({ model: row.model.trim(), accountStorageId: row.account === 'global' || !row.account ? null : row.account })) },
+  }
+}
+function savedRouteSignature(key: ApiProxyKey): string {
+  return JSON.stringify({
+    forceRoute: { enabled: !!key.forceRoute?.enabled, model: key.forceRoute?.model || '' },
+    aggregateRoute: { enabled: !!key.aggregateRoute?.enabled, entries: (key.aggregateRoute?.entries || []).map(entry => ({ model: entry.model, accountStorageId: entry.accountStorageId ?? null })) },
   })
+}
+function pendingPolicyUpdates(): Array<{ key: ApiProxyKey; payload: ReturnType<typeof routePayload> }> {
+  const rows: Array<{ key: ApiProxyKey; payload: ReturnType<typeof routePayload> }> = []
+  for (const key of status.value?.keys || []) {
+    const draft = policyDrafts.value[key.id]
+    if (!draft || key.revokedAt) continue
+    const payload = routePayload(draft)
+    if (payload.accountStorageId === (key.accountStorageId ?? null) && payload.protected === !!key.protected
+      && JSON.stringify({ forceRoute: payload.forceRoute, aggregateRoute: payload.aggregateRoute }) === savedRouteSignature(key)) continue
+    rows.push({ key, payload })
+  }
+  return rows
+}
+async function savePolicies(): Promise<void> {
+  const rows = pendingPolicyUpdates()
+  if (!rows.length) return
+  savingPolicies.value = true
+  try {
+    await runKeys(rows.map(row => row.key.id), async () => {
+      for (const row of rows) {
+        await apiProxyRequest(`/keys/${row.key.id}`, row.payload)
+      }
+    })
+    // 静默保存会让人误以为没生效；有实际改动且没有报错时才提示。
+    if (!error.value) notifyOperation('API key 配置已保存', 'success')
+  } finally { savingPolicies.value = false }
 }
 const status = ref<ApiProxyStatus | null>(null)
 const settings = ref<ApiProxySettings>({ enabled: false, accountStorageId: null, globalConcurrency: 8, keyConcurrency: 4, drainTimeoutSeconds: 60 })
 const busy = ref(false)
+const busyKeyIds = ref<string[]>([])
+const savingPolicies = ref(false)
 const error = ref('')
 const createDialog = ref(false)
 const forceDialog = ref(false)
@@ -178,10 +298,43 @@ const revokeTarget = ref<ApiProxyKey | null>(null)
 const renameTarget = ref<ApiProxyKey | null>(null)
 const renameValue = ref('')
 const interruptKey = ref(false)
-const policyTarget = ref<ApiProxyKey | null>(null)
-const keyAccountDraft = ref('global')
-const keyProtectedDraft = ref(false)
-const keyAccountOptions = computed(() => [{ value: 'global', label: t('全局账号') }, ...accountOptions.value.filter(option => option.value !== 'follow')])
+const createDraft = ref<KeyPolicyDraft>(emptyDraft())
+const advancedOpen = ref(false)
+const advancedKey = ref<ApiProxyKey | null>(null)
+const advancedDraft = ref<KeyPolicyDraft | null>(null)
+// 账号模型目录只用于路由输入框候选；按下需要时按账号读取一次并留在本次会话内复用。
+const modelCatalogs = ref<Record<string, { state: ApiProxyModelCatalogState; names: string[] }>>({})
+function modelCatalog(accountId: string | null): string[] {
+  return (accountId && modelCatalogs.value[accountId]?.names) || []
+}
+function modelCatalogState(accountId: string | null): ApiProxyModelCatalogState {
+  return (accountId && modelCatalogs.value[accountId]?.state) || 'idle'
+}
+async function loadModelCatalog(accountId: string | null): Promise<void> {
+  if (!accountId || disposed) return
+  const current = modelCatalogs.value[accountId]
+  if (current && current.state !== 'failed') return
+  modelCatalogs.value = { ...modelCatalogs.value, [accountId]: { state: 'loading', names: current?.names || [] } }
+  try {
+    const payload = await apiProxyRequest<unknown>(`/models?accountStorageId=${encodeURIComponent(accountId)}`)
+    if (disposed) return
+    modelCatalogs.value = { ...modelCatalogs.value, [accountId]: { state: 'ready', names: apiProxyModelNames(payload) } }
+  } catch {
+    if (disposed) return
+    modelCatalogs.value = { ...modelCatalogs.value, [accountId]: { state: 'failed', names: [] } }
+  }
+}
+function emptyDraft(): KeyPolicyDraft { return { account: 'global', protected: false, forceEnabled: false, forceModel: '', aggregateEnabled: false, entries: [] } }
+function keyAccountOptions(draft: KeyPolicyDraft) {
+  const options = [{ value: 'global', label: t('全局账号') }, ...accountOptions.value.filter(option => option.value !== 'follow')]
+  // 聚合清单可用（每项都有模型和账号）时主账号下拉框才提供“聚合账号”；
+  // 保留清单后切到普通账号仍能再切回聚合，避免“切走就回不去”。
+  return aggregateTableReady(draft) ? [{ value: 'aggregate', label: t('聚合账号') }, ...options] : options
+}
+function aggregateTableReady(draft: KeyPolicyDraft): boolean {
+  return draft.entries.length > 0 && draft.entries.every(row => !!row.model.trim() && !!row.account)
+}
+const routeAccountOptions = computed(() => [{ value: 'global', label: t('全局账号') }, ...accountOptions.value.filter(option => option.value !== 'follow')])
 const usageWindow = ref<'cumulative' | 'today' | 'week'>('cumulative')
 const usageWindows = [{ value: 'cumulative', label: '累计' }, { value: 'today', label: '今日' }, { value: 'week', label: '近 7 天' }]
 function usageFor(id: string) { return status.value?.usage?.keys[id]?.[usageWindow.value] || emptyUsage() }
@@ -189,17 +342,110 @@ let timer: ReturnType<typeof setInterval> | undefined
 let refreshing = false
 let disposed = false
 const selectedAccount = computed({ get: () => settings.value.accountStorageId || 'follow', set: value => { settings.value.accountStorageId = value === 'follow' ? null : value } })
+const hasSettingsChanges = computed(() => {
+  if (!status.value) return false
+  return JSON.stringify(settings.value) !== JSON.stringify(status.value.settings)
+})
 const accountOptions = computed(() => [{ value: 'follow', label: t('跟随 WebUI 当前账号') }, ...(status.value?.accounts.accounts || []).map(account => ({ value: account.storageId, label: `${accountDisplayName(account)} · ${t(accountStatusLabel(account.authStatus))}` }))])
 const baseUrl = `${window.location.origin}/v1`
 const keyActivityCount = computed(() => status.value?.activity.entries.filter(entry => entry.keyId === revokeTarget.value?.id).length || 0)
 const clientConfig = `model_provider = "sidux_gateway"\nmodel = "gpt-5.6-luna"\n\n[model_providers.sidux_gateway]\nname = "Sidux API"\nbase_url = "${baseUrl}"\nenv_key = "SIDUX_API_KEY"\nwire_api = "responses"\nrequires_openai_auth = false\nsupports_websockets = true`
-function customEndpoints(id: string): string[] {
-  const resolved = ['global', 'follow'].includes(id) ? settings.value.accountStorageId || status.value?.accounts.activeStorageId : id
-  return status.value?.accounts.accounts.find(row => row.storageId === resolved)?.supportedEndpoints || []
+function resolvedAccountId(id: string): string | null {
+  return ['global', 'follow'].includes(id) ? settings.value.accountStorageId || status.value?.accounts.activeStorageId || null : id
 }
-function isCustomAccount(id: string): boolean {
-  const resolved = ['global', 'follow'].includes(id) ? settings.value.accountStorageId || status.value?.accounts.activeStorageId : id
-  return status.value?.accounts.accounts.find(row => row.storageId === resolved)?.kind === 'custom'
+/** 与账号卡片一致沿用 supportedEndpoints；普通 OpenAI 账号固定三端全量。 */
+function accountEndpoints(id: string): CustomEndpoint[] {
+  const account = status.value?.accounts.accounts.find(row => row.storageId === resolvedAccountId(id))
+  if (!account || account.kind !== 'custom') return [...endpointOrder]
+  return endpointOrder.filter(endpoint => (account.supportedEndpoints || []).includes(endpoint))
+}
+function keyEndpoints(draft: KeyPolicyDraft): CustomEndpoint[] {
+  if (!draft.aggregateEnabled) return accountEndpoints(draft.account)
+  const supported = new Set<CustomEndpoint>()
+  for (const row of draft.entries) {
+    if (!row.account) continue
+    for (const endpoint of accountEndpoints(row.account)) supported.add(endpoint)
+  }
+  return endpointOrder.filter(endpoint => supported.has(endpoint))
+}
+/** 桥接端点：dev.4 起自定义连接开启协议转换后会补齐缺失端点，tag 需要单独着色。 */
+function accountBridgedEndpoints(id: string): CustomEndpoint[] {
+  const account = status.value?.accounts.accounts.find(row => row.storageId === resolvedAccountId(id))
+  return endpointOrder.filter(endpoint => (account?.bridgedEndpoints || []).includes(endpoint))
+}
+function accountManualEndpoints(id: string): CustomEndpoint[] {
+  const account = status.value?.accounts.accounts.find(row => row.storageId === resolvedAccountId(id))
+  return endpointOrder.filter(endpoint => (account?.manualEndpoints || []).includes(endpoint))
+}
+function keyBridgedEndpoints(draft: KeyPolicyDraft): CustomEndpoint[] {
+  if (!draft.aggregateEnabled) return accountBridgedEndpoints(draft.account)
+  const supported = new Set<CustomEndpoint>()
+  for (const row of draft.entries) {
+    if (!row.account) continue
+    for (const endpoint of accountBridgedEndpoints(row.account)) supported.add(endpoint)
+  }
+  return endpointOrder.filter(endpoint => supported.has(endpoint))
+}
+function keyManualEndpoints(draft: KeyPolicyDraft): CustomEndpoint[] {
+  if (!draft.aggregateEnabled) return accountManualEndpoints(draft.account)
+  const manual = new Set<CustomEndpoint>()
+  for (const row of draft.entries) {
+    if (!row.account) continue
+    for (const endpoint of accountManualEndpoints(row.account)) manual.add(endpoint)
+  }
+  return endpointOrder.filter(endpoint => manual.has(endpoint))
+}
+function accountExists(id: string): boolean {
+  return (status.value?.accounts.accounts || []).some(row => row.storageId === id)
+}
+function advancedSummary(draft: KeyPolicyDraft): string {
+  const parts: string[] = []
+  if (draft.protected) parts.push(t('受保护'))
+  if (draft.forceEnabled) parts.push(`${t('强制路由：')}${draft.forceModel.trim() || t('未填写')}`)
+  if (draft.aggregateEnabled) parts.push(`${t('聚合路由：')}${draft.entries.length}${t(' 项')}`)
+  return parts.join(' · ')
+}
+/** 确认高级选项时集中校验路由；返回空表示可以应用。 */
+function routeDraftError(draft: KeyPolicyDraft, name: string): string {
+  if (draft.forceEnabled && !draft.forceModel.trim()) return t('强制路由必须填写模型名。')
+  if (!draft.aggregateEnabled) return ''
+  if (!draft.entries.length) return t('聚合路由至少需要一项。')
+  const models = new Set<string>()
+  for (const row of draft.entries) {
+    const model = row.model.trim()
+    if (!model) return t('聚合路由存在空模型。')
+    if (models.has(model)) return `${t('聚合路由存在重复模型：')}${model}`
+    models.add(model)
+    if (!row.account) return t('聚合路由存在空账号。')
+    if (row.account !== 'global' && !accountExists(row.account)) return t('聚合路由的账号已被删除或停用。')
+  }
+  if (draft.forceEnabled && !models.has(draft.forceModel.trim())) return `${name} ${t('路由配置错误：')}${t('强制路由的模型不在聚合路由清单内。')}`
+  return ''
+}
+function addRouteRow(): void {
+  if (!advancedDraft.value) return
+  advancedDraft.value.entries.push({ model: '', account: 'global' })
+}
+function removeRouteRow(index: number): void {
+  advancedDraft.value?.entries.splice(index, 1)
+}
+function openAdvanced(key?: ApiProxyKey): void {
+  const source = key ? policyDrafts.value[key.id] : createDraft.value
+  if (!source) return
+  advancedKey.value = key ?? null
+  advancedDraft.value = copyDraft(source)
+  advancedOpen.value = true
+}
+function closeAdvanced(): void { advancedOpen.value = false; advancedDraft.value = null; advancedKey.value = null }
+function confirmAdvanced(): void {
+  const draft = advancedDraft.value
+  if (!draft) return
+  const name = advancedKey.value?.name || keyNameDraft.value.trim() || t('新 API key')
+  const message = routeDraftError(draft, name)
+  if (message) { notifyOperation(message, 'error'); return }
+  if (advancedKey.value) policyDrafts.value[advancedKey.value.id] = copyDraft(draft)
+  else createDraft.value = copyDraft(draft)
+  closeAdvanced()
 }
 function accountStatusLabel(value: string): string { return ({ ready: '可用', stale: '待确认', refreshing: '刷新中', reauth_required: '需重新登录', payment_required: '需处理额度', transient_error: '暂时异常', materialization_dirty: '需修复认证' } as Record<string, string>)[value] || value }
 function date(value: string | null): string { return value ? formatLocalDateTime(value, { second: '2-digit' }) : '—' }
@@ -213,7 +459,7 @@ async function refresh(reset = false): Promise<void> {
     const next = await apiProxyRequest<ApiProxyStatus>(`/status?timeZone=${encodeURIComponent(displayTimeZone())}`)
     if (disposed) return
     for (const key of next.keys) {
-      if (!policyDrafts.value[key.id]) policyDrafts.value[key.id] = { account: key.accountStorageId || 'global', protected: !!key.protected }
+      if (!policyDrafts.value[key.id]) policyDrafts.value[key.id] = draftFromKey(key)
     }
     status.value = next
     if (reset) settings.value = { ...next.settings }
@@ -221,23 +467,34 @@ async function refresh(reset = false): Promise<void> {
   finally { refreshing = false }
 }
 async function run(action: () => Promise<void>): Promise<void> {
-  if (busy.value) return
+  if (busy.value || busyKeyIds.value.length) return
   busy.value = true
   error.value = ''
   try { await action() } catch (caught) { error.value = caught instanceof Error ? caught.message : '操作失败。' }
   finally { busy.value = false; await refresh(false) }
 }
+function isKeyBusy(id: string): boolean { return busyKeyIds.value.includes(id) }
+// 只让涉及的行进入忙碌状态，避免整面板按钮一起禁用、抖出闪烁。
+async function runKeys(ids: string[], action: () => Promise<void>): Promise<void> {
+  if (busy.value || busyKeyIds.value.length) return
+  busyKeyIds.value = [...ids]
+  error.value = ''
+  try { await action() } catch (caught) { error.value = caught instanceof Error ? caught.message : '操作失败。' }
+  finally { busyKeyIds.value = []; await refresh(false) }
+}
+async function runKey(id: string, action: () => Promise<void>): Promise<void> { await runKeys([id], action) }
 async function save(force: boolean): Promise<void> {
   await run(async () => {
     await apiProxyRequest('/settings', { settings: settings.value, force })
     forceDialog.value = false
     await refresh(true)
+    notifyOperation('API 代理配置已保存', 'success')
   })
 }
 function openCreate(key?: ApiProxyKey): void {
   rotateTarget.value = key || null
-  setPolicyDraft(key)
-  keyNameDraft.value = key ? `${key.name}（新）` : 'Codex CLI'
+  createDraft.value = key ? draftFromKey(key) : emptyDraft()
+  keyNameDraft.value = key ? t('{v0}（新）', { v0: key.name }) : 'Codex CLI'
   keyDurationDays.value = ''
   secret.value = ''
   createDialog.value = true
@@ -256,37 +513,26 @@ async function createKey(): Promise<void> {
       throw new Error('持续时间请填写正整数天数，留空为无限。')
     }
     const created = await apiProxyRequest<{ secret: string }>('/keys', {
-      ...keyPolicy(),
+      ...routePayload(createDraft.value),
       name: keyNameDraft.value,
       expiresAt: expiresAt?.toISOString() ?? null,
     })
     secret.value = created.secret
-    if (rotateTarget.value) await apiProxyRequest(`/keys/${rotateTarget.value.id}`, { expiresAt: new Date(Date.now() + 86400_000).toISOString() })
-  })
-}
-function setPolicyDraft(key?: ApiProxyKey): void {
-  keyAccountDraft.value = key?.accountStorageId || 'global'
-  keyProtectedDraft.value = key?.protected || false
-}
-function keyPolicy() { return { accountStorageId: keyAccountDraft.value === 'global' ? null : keyAccountDraft.value, protected: keyProtectedDraft.value } }
-function openPolicy(key: ApiProxyKey): void {
-  setPolicyDraft(key)
-  policyTarget.value = key
-}
-async function savePolicy(): Promise<void> {
-  if (!policyTarget.value) return
-  await run(async () => {
-    await apiProxyRequest(`/keys/${policyTarget.value!.id}`, keyPolicy())
-    policyTarget.value = null
+    if (rotateTarget.value) {
+      await apiProxyRequest(`/keys/${rotateTarget.value.id}`, { expiresAt: new Date(Date.now() + 86400_000).toISOString() })
+      notifyOperation('API key 已轮换，旧 key 24 小时后到期', 'success')
+    } else {
+      notifyOperation('API key 已创建', 'success')
+    }
   })
 }
 async function copySecret(): Promise<void> { try { await copyTextToClipboard(secret.value) } catch { error.value = '无法自动复制，请选中 key 手动复制。' } }
-async function updateKey(key: ApiProxyKey, input: unknown): Promise<void> { await run(async () => { await apiProxyRequest(`/keys/${key.id}`, input) }) }
-async function revokeKey(): Promise<void> { const target = revokeTarget.value; if (!target) return; await run(async () => { await apiProxyRequest(`/keys/${target.id}`, { revoke: true, interrupt: interruptKey.value }); revokeTarget.value = null }) }
+async function updateKey(key: ApiProxyKey, input: unknown): Promise<void> { await runKey(key.id, async () => { await apiProxyRequest(`/keys/${key.id}`, input) }) }
+async function revokeKey(): Promise<void> { const target = revokeTarget.value; if (!target) return; await run(async () => { await apiProxyRequest(`/keys/${target.id}`, { revoke: true, interrupt: interruptKey.value }); revokeTarget.value = null; notifyOperation('API key 已撤销', 'success') }) }
 async function renameKey(): Promise<void> { const target = renameTarget.value; if (!target) return; await run(async () => { await apiProxyRequest(`/keys/${target.id}`, { name: renameValue.value }); renameTarget.value = null }) }
 onMounted(() => {
   void refresh(true)
-  timer = setInterval(() => { if (!document.hidden && !busy.value) void refresh(false) }, 10_000)
+  timer = setInterval(() => { if (!document.hidden && !busy.value && !busyKeyIds.value.length) void refresh(false) }, 10_000)
 })
 onUnmounted(() => { disposed = true; if (timer) clearInterval(timer); secret.value = '' })
 </script>

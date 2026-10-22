@@ -36,3 +36,7 @@ Project rows open the same action menu from right-click and the dots button, and
 - Remove the temporary project from the sidebar if it remains listed.
 
 ---
+
+### 2026-10-21 原生组合验收状态
+
+第29批计划以已安装dev.8、真实Codex/Git与独立home补证永久worktree及刷新/重启持久性，但桌面预跑因夹具WebSocket连接失败终止，完整操作链未完成。`results/worktree-native-incomplete.json`只保留未完成证据，不能满足本条验收。产品预期与清理步骤保持以上定义；当前缺口留在主审核报告，不以第28批合成历史刷新替代原生验收。

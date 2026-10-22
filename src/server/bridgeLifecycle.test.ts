@@ -16,9 +16,11 @@ it('keeps the new middleware usable when Vite closes the old server, and release
   const cleanup = vi.fn(async () => { stopped = true })
   const subscribers = new Set<unknown>()
   const state = {
-    disposed: false, owners: 0, disposal: null, version: 'shared-runtime-0217-settings-history-quiet-v1',
+    disposed: false, owners: 0, disposal: null, version: 'shared-runtime-022-resume-exclusion-v1',
+    resumeControls: { quotaResume: {}, scheduledResume: {} },
     appServer: { dispose: vi.fn(), rpc: vi.fn(), onNotification: (listener: unknown) => { subscribers.add(listener); return () => subscribers.delete(listener) } },
     terminalManager: { dispose: vi.fn() },
+    scheduledResume: { close: vi.fn(async () => {}) },
     telegramBridge: { stop: vi.fn(), settleNotifications: vi.fn(async () => {}) },
     methodCatalog: { snapshot: vi.fn() },
     backendQueueProcessor: { dispose: cleanup, readState: async () => { if (stopped) throw new Error('发送服务已停止'); return {} } },
@@ -59,7 +61,7 @@ it('keeps the new middleware usable when Vite closes the old server, and release
 it('includes residual commands in account quiescence and rejects unknown thread state', async () => {
   const runtime = new AppServerProcess()
   const rpc = vi.spyOn(runtime, 'rpc').mockResolvedValue({ data: [{ id: 't', status: { type: 'idle' } }], nextCursor: null })
-  runtime.queueStateReader = async () => ({})
+  runtime.bindQueueStateReader(async () => ({}))
   runtime.backgroundActivity = async () => ['t']
   expect(await runtime.getRuntimeQuiescenceSnapshot()).toMatchObject({ idle: false, activeTurnThreadIds: [], backgroundThreadIds: ['t'] })
   runtime.backgroundActivity = async () => []
@@ -73,7 +75,7 @@ it('includes residual commands in account quiescence and rejects unknown thread 
 it('refuses an idle snapshot when native activity changes during the background scan', async () => {
   const runtime = new AppServerProcess()
   vi.spyOn(runtime, 'rpc').mockResolvedValue({ data: [], nextCursor: null })
-  runtime.queueStateReader = async () => ({})
+  runtime.bindQueueStateReader(async () => ({}))
   runtime.backgroundActivity = async () => {
     runtime.notifyQueueChanged('new-work')
     return []
@@ -85,12 +87,13 @@ it('allows in-place account reload with failed queues and terminals while retain
   const runtime = new AppServerProcess()
   vi.spyOn(runtime, 'rpc').mockImplementation(async method => method === 'thread/read' ? { thread: { id: 'ended', status: { type: 'idle' } } } : { data: [{ id: 'ended', status: { type: 'idle' } }], nextCursor: null })
   ;(runtime as any).activeTurnThreadIds.add('ended')
-  runtime.queueStateReader = async () => ({ ended: [{ id: 'failed', delivery: { status: 'failed' } }] as any })
+  const releaseQueue = runtime.bindQueueStateReader(async () => ({ ended: [{ id: 'failed', delivery: { status: 'failed' } }] as any }))
   runtime.backgroundActivity = async () => ['ended']
   runtime.automationActivity = () => ['unrelated-automation']
   expect(await runtime.getAccountSwitchSnapshot()).toMatchObject({ idle: true, activeTurnThreadIds: [], queuedThreadIds: [] })
   expect((await runtime.getRuntimeQuiescenceSnapshot()).idle).toBe(false)
-  runtime.queueStateReader = async () => ({ ended: [{ id: 'unknown', delivery: { status: 'unknown' } }] as any })
+  releaseQueue()
+  runtime.bindQueueStateReader(async () => ({ ended: [{ id: 'unknown', delivery: { status: 'unknown' } }] as any }))
   expect((await runtime.getAccountSwitchSnapshot()).idle).toBe(false)
 })
 

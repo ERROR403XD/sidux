@@ -1,6 +1,6 @@
-import { appendFile, mkdir, readdir, readFile, unlink } from 'node:fs/promises'
+import { appendFile, mkdir, readdir, readFile, stat, unlink } from 'node:fs/promises'
 import { join } from 'node:path'
-import { activationClock, type ActivationHistoryPage, type ActivationHistorySlot, type ActivationRun } from '../accountActivation.js'
+import { activationClock, activationRunTimezone, type ActivationHistoryPage, type ActivationHistorySlot, type ActivationRun } from '../accountActivation.js'
 import { privateJson } from './apiProxy/store.js'
 
 export function activationHistoryCutoff(now: number): string {
@@ -22,17 +22,13 @@ export function activationRunDate(run: ActivationRun): string {
   return new Date(run.scheduledAt).toISOString().slice(0, 10)
 }
 
-function runTimezone(run: ActivationRun): string {
-  try {
-    const key = JSON.parse(run.key)
-    if (Array.isArray(key) && typeof key[1] === 'string') return key[1]
-  } catch { /* Use UTC for legacy records without a schedule key. */ }
-  return 'UTC'
-}
+type HistoryIndex = { version: 1; bytes: number; mtimeMs: number; slots: ActivationHistorySlot[] }
 
 export class AccountActivationHistory {
+  private static readonly pageSize = 5
   private lastPrunedDay = ''
-  private indexes = new Map<string, ActivationHistorySlot[]>()
+  private indexes = new Map<string, HistoryIndex>()
+  private operations: Promise<unknown> = Promise.resolve()
   constructor(private directory: string, private now = Date.now) {}
 
   async initialize(legacy: ActivationRun[]): Promise<void> {
@@ -55,20 +51,34 @@ export class AccountActivationHistory {
     }
   }
 
-  async record(run: ActivationRun): Promise<void> {
-    const date = activationRunDate(run)
-    if (date < activationHistoryCutoff(this.now())) return
-    // Append only the changed record; never rewrite three months of history per activation.
-    await appendFile(join(this.directory, `${date}.jsonl`), `${JSON.stringify(run)}\n`, { encoding: 'utf8', mode: 0o600 })
-    const slots = await this.readIndex(date)
-    const timezone = runTimezone(run)
-    if (!slots.some(slot => slot.scheduledAt === run.scheduledAt && slot.timezone === timezone)) {
-      slots.push({ date, scheduledAt: run.scheduledAt, timezone })
-      await privateJson(join(this.directory, `${date}.index.json`), slots)
-    }
+  private serial<T>(action: () => Promise<T>): Promise<T> {
+    const next = this.operations.then(action)
+    this.operations = next.catch(() => {})
+    return next
   }
 
-  async prune(): Promise<void> {
+  record(run: ActivationRun): Promise<void> {
+    return this.serial(() => this.recordNow(run))
+  }
+
+  private async recordNow(run: ActivationRun): Promise<void> {
+    const date = activationRunDate(run)
+    if (date < activationHistoryCutoff(this.now())) return
+    const slots = [...await this.readIndex(date)]
+    // A separator also isolates any incomplete final line left by an interrupted append.
+    await appendFile(join(this.directory, `${date}.jsonl`), `\n${JSON.stringify(run)}\n`, { encoding: 'utf8', mode: 0o600 })
+    const timezone = activationRunTimezone(run)
+    if (!slots.some(slot => slot.scheduledAt === run.scheduledAt && slot.timezone === timezone)) {
+      slots.push({ date, scheduledAt: run.scheduledAt, timezone })
+    }
+    await this.writeIndex(date, slots, await this.sourceStamp(date))
+  }
+
+  prune(): Promise<void> {
+    return this.serial(() => this.pruneNow())
+  }
+
+  private async pruneNow(): Promise<void> {
     const today = new Date(this.now()).toISOString().slice(0, 10)
     if (today === this.lastPrunedDay) return
     const cutoff = activationHistoryCutoff(this.now())
@@ -81,23 +91,44 @@ export class AccountActivationHistory {
     this.lastPrunedDay = today
   }
 
-  private async readIndex(date: string): Promise<ActivationHistorySlot[]> {
-    const cached = this.indexes.get(date)
-    if (cached) return cached
-    let slots: ActivationHistorySlot[]
+  private async sourceStamp(date: string): Promise<{ bytes: number; mtimeMs: number }> {
     try {
-      slots = JSON.parse(await readFile(join(this.directory, `${date}.index.json`), 'utf8'))
+      const source = await stat(join(this.directory, `${date}.jsonl`))
+      return { bytes: source.size, mtimeMs: source.mtimeMs }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-      const unique = new Map<string, ActivationHistorySlot>()
-      for (const run of await this.readDay(date)) {
-        const timezone = runTimezone(run)
-        unique.set(`${run.scheduledAt}:${timezone}`, { date, scheduledAt: run.scheduledAt, timezone })
-      }
-      slots = [...unique.values()]
-      await privateJson(join(this.directory, `${date}.index.json`), slots)
+      return { bytes: 0, mtimeMs: 0 }
     }
-    this.indexes.set(date, slots)
+  }
+
+  private async writeIndex(date: string, slots: ActivationHistorySlot[], stamp: { bytes: number; mtimeMs: number }): Promise<void> {
+    const index: HistoryIndex = { version: 1, ...stamp, slots }
+    await privateJson(join(this.directory, `${date}.index.json`), index)
+    this.indexes.set(date, index)
+  }
+
+  private async readIndex(date: string): Promise<ActivationHistorySlot[]> {
+    const stamp = await this.sourceStamp(date)
+    const matches = (index: HistoryIndex) => index.version === 1 && index.bytes === stamp.bytes && index.mtimeMs === stamp.mtimeMs && Array.isArray(index.slots)
+    const cached = this.indexes.get(date)
+    if (cached && matches(cached)) return cached.slots
+    try {
+      const index = JSON.parse(await readFile(join(this.directory, `${date}.index.json`), 'utf8')) as HistoryIndex
+      if (index && matches(index)) {
+        this.indexes.set(date, index)
+        return index.slots
+      }
+    } catch (error) {
+      // The index is derived data. Old array indexes and truncated files can be rebuilt.
+      if (!(error instanceof SyntaxError) && (error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
+    const unique = new Map<string, ActivationHistorySlot>()
+    for (const run of await this.readDay(date)) {
+      const timezone = activationRunTimezone(run)
+      unique.set(`${run.scheduledAt}:${timezone}`, { date, scheduledAt: run.scheduledAt, timezone })
+    }
+    const slots = [...unique.values()]
+    await this.writeIndex(date, slots, stamp)
     return slots
   }
 
@@ -120,7 +151,11 @@ export class AccountActivationHistory {
     return [...runs.values()].sort((a, b) => b.scheduledAt - a.scheduledAt || a.accountId.localeCompare(b.accountId))
   }
 
-  async page(requestedPage = 1): Promise<ActivationHistoryPage> {
+  page(requestedPage = 1): Promise<ActivationHistoryPage> {
+    return this.serial(() => this.pageNow(requestedPage))
+  }
+
+  private async pageNow(requestedPage: number): Promise<ActivationHistoryPage> {
     const cutoff = activationHistoryCutoff(this.now())
     const dates = (await readdir(this.directory))
       .filter(name => /^\d{4}-\d{2}-\d{2}\.jsonl$/.test(name) && name.slice(0, 10) >= cutoff)
@@ -128,9 +163,14 @@ export class AccountActivationHistory {
     const slots: ActivationHistorySlot[] = []
     for (const date of dates) slots.push(...await this.readIndex(date))
     slots.sort((a, b) => b.scheduledAt - a.scheduledAt || a.timezone.localeCompare(b.timezone))
-    const page = Math.max(1, Math.min(Number.isFinite(requestedPage) ? Math.trunc(requestedPage) : 1, slots.length || 1))
-    const slot = slots[page - 1]
-    const runs = slot ? (await this.readDay(slot.date)).filter(run => run.scheduledAt === slot.scheduledAt && runTimezone(run) === slot.timezone) : []
-    return { slots: structuredClone(slots), page, runs }
+    const pageCount = Math.max(1, Math.ceil(slots.length / AccountActivationHistory.pageSize))
+    const page = Math.max(1, Math.min(Number.isFinite(requestedPage) ? Math.trunc(requestedPage) : 1, pageCount))
+    const selected = slots.slice((page - 1) * AccountActivationHistory.pageSize, page * AccountActivationHistory.pageSize)
+    const days = new Map(selected.map(slot => [slot.date, [] as ActivationRun[]]))
+    await Promise.all([...days.keys()].map(async date => {
+      days.set(date, (await this.readDay(date)).filter(run => selected.some(slot => slot.date === date && slot.scheduledAt === run.scheduledAt && slot.timezone === activationRunTimezone(run))))
+    }))
+    const runs = [...days.values()].flat().sort((a, b) => b.scheduledAt - a.scheduledAt || a.accountId.localeCompare(b.accountId))
+    return { slots: structuredClone(selected), page, pageCount, runs: structuredClone(runs) }
   }
 }

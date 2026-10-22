@@ -26,6 +26,36 @@ function threadReadResponseWithContent(content: ThreadReadResponse['thread']['tu
 }
 
 describe('normalizeThreadMessagesV2', () => {
+  it.each(['for', 'to'])('hides the historical %s-Codex attachment envelope while preserving images, chips and request Markdown', (preposition) => {
+    const prompt = '**看图片** [guide](/tmp/guide.md:12)\n怎么感觉没对齐？'
+    const messages = normalizeThreadMessagesV2(threadReadResponseWithContent([{
+      type: 'userMessage',
+      id: 'user-image',
+      content: [
+        { type: 'text', text: `# Files mentioned by the user:\r\n\r\n## 图片.png: /tmp/image.png\r\n\r\n## notes.txt: /tmp/notes.txt\r\n\r\n## My request ${preposition} Codex:\r\n\r\n${prompt}\n`, text_elements: [] },
+        { type: 'localImage', path: '/tmp/image.png' },
+      ],
+    }]))
+
+    expect(messages).toHaveLength(1)
+    expect(messages[0]).toMatchObject({
+      text: prompt,
+      images: ['/codex-local-image?path=%2Ftmp%2Fimage.png'],
+      fileAttachments: [{ label: '图片.png', path: '/tmp/image.png' }, { label: 'notes.txt', path: '/tmp/notes.txt' }],
+    })
+  })
+
+  it('keeps an image-only historical message without displaying its empty request envelope', () => {
+    const messages = normalizeThreadMessagesV2(threadReadResponseWithContent([{
+      type: 'userMessage', id: 'image-only', content: [
+        { type: 'text', text: '# Files mentioned by the user:\n\n## image.png: /tmp/image.png\n\n## My request to Codex:\n\n', text_elements: [] },
+        { type: 'localImage', path: '/tmp/image.png' },
+      ],
+    }]))
+    expect(messages).toHaveLength(1)
+    expect(messages[0]).toMatchObject({ text: '', images: ['/codex-local-image?path=%2Ftmp%2Fimage.png'] })
+  })
+
   it('preserves selected skill inputs on the rendered user message', () => {
     const messages = normalizeThreadMessagesV2(threadReadResponseWithContent([{
       type: 'userMessage',

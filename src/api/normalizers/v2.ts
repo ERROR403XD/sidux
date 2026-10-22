@@ -63,7 +63,7 @@ function extractFileAttachments(value: string): UiFileAttachment[] {
 }
 
 function extractCodexUserRequestText(value: string): string {
-  const markerRegex = /(?:^|\n)\s{0,3}#{0,6}\s*my request for codex\s*:?\s*/giu
+  const markerRegex = /(?:^|\n)\s{0,3}#{0,6}\s*my request (?:for|to) codex\s*:?\s*/giu
   const matches = Array.from(value.matchAll(markerRegex))
   if (matches.length === 0) {
     return value.trim()

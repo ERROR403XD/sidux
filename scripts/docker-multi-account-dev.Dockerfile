@@ -18,7 +18,8 @@ COPY output/package/codexapp.tgz /tmp/codexapp.tgz
 # for node-pty's optional native build, which npm can otherwise silently omit.
 RUN npm_config_nodedir=/usr/local npm install -g /tmp/codexapp.tgz \
   && node -e "if(typeof require('/usr/local/lib/node_modules/codexapp/node_modules/node-pty').spawn!=='function')process.exit(1)" \
-  && npm install -g @openai/codex@0.153.4 \
+  && npm install -g @openai/codex@0.162.1 \
+      @openai/codex-linux-x64@npm:@openai/codex@0.162.1-linux-x64 \
   && codex --version \
   && npm cache clean --force \
   && rm /tmp/codexapp.tgz
@@ -27,10 +28,10 @@ COPY output/api-proxy-component/ /opt/codexapp-api-proxy/
 
 ENV CODEX_HOME=/codex-home
 ENV TZ=Asia/Shanghai
-RUN mkdir -p /codex-home /workspace \
+RUN mkdir -p /codex-home /home/Code \
   && chmod 700 /codex-home
 
-WORKDIR /workspace
+WORKDIR /home/Code
 EXPOSE 59001
 
 CMD ["sh", "-lc", "chmod 700 /codex-home && exec codexapp --port 59001 --strict-port --no-password --no-open"]

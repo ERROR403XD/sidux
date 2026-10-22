@@ -132,3 +132,96 @@ describe('bounded legacy history', () => {
     for (const message of ['unauthorized', 'invalid cursor', 'thread not found', 'request timed out']) expect(isHistoryPagingUnsupported(new Error(message))).toBe(false)
   })
 })
+
+it('reads real turn state without loading item content', async () => {
+  const rpc = vi.fn(async () => ({ data: [{ id: 'own', status: 'inProgress', itemsView: 'notLoaded', items: [] }] }))
+  const history = new ThreadHistory(rpc, async () => ({ historyPaging: true, resumeInitialPage: true, exactFork: true }))
+  expect(await history.turnState('thread', 'own')).toMatchObject({ id: 'own', status: 'inProgress' })
+  expect(rpc).toHaveBeenCalledExactlyOnceWith('thread/turns/list', { threadId: 'thread', limit: 10, sortDirection: 'desc', itemsView: 'notLoaded' })
+})
+
+it.each(['completed', 'failed', 'interrupted', 'inProgress'])('finds the real %s state of an older turn using only metadata pages', async status => {
+  const rpc = vi.fn(async (_method: string, params: Record<string, unknown>) => params.cursor
+    ? { data: [{ id: 'own', status, items: [], itemsView: 'notLoaded' }], nextCursor: null }
+    : { data: Array.from({ length: 10 }, (_, index) => ({ id: `newer-${index}`, status: 'completed' })), nextCursor: 'older/+=' })
+  const history = new ThreadHistory(rpc, support)
+  expect(await history.turnState('thread', 'own')).toMatchObject({ id: 'own', status })
+  expect(rpc).toHaveBeenCalledTimes(2)
+  expect(rpc).toHaveBeenLastCalledWith('thread/turns/list', { threadId: 'thread', limit: 50, sortDirection: 'desc', itemsView: 'notLoaded', cursor: 'older/+=' })
+})
+
+it('advances a bounded older-state search on later inspections despite new thread notifications', async () => {
+  const rpc = vi.fn(async (_method: string, params: Record<string, unknown>) => {
+    if (!params.cursor) return { data: [{ id: 'newest', status: 'completed' }], nextCursor: 'page-1' }
+    const page = Number(String(params.cursor).slice(-1))
+    return { data: page === 3 ? [{ id: 'own', status: 'completed' }] : [], nextCursor: page < 3 ? `page-${page + 1}` : null }
+  })
+  const history = new ThreadHistory(rpc, support)
+  expect(await history.turnState('thread', 'own')).toBeNull()
+  history.invalidate('thread')
+  expect(await history.turnState('thread', 'own')).toBeNull()
+  expect(await history.turnState('thread', 'own')).toMatchObject({ id: 'own', status: 'completed' })
+  expect(rpc.mock.calls.filter(([, params]) => params.cursor).map(([, params]) => params.cursor)).toEqual(['page-1', 'page-2', 'page-3'])
+  expect(rpc).toHaveBeenCalledTimes(6)
+})
+
+it('coalesces concurrent status inspections without loading content', async () => {
+  let release!: (value: { data: Array<{ id: string; status: string }> }) => void
+  const pending = new Promise<{ data: Array<{ id: string; status: string }> }>(resolve => { release = resolve })
+  const rpc = vi.fn(async () => pending)
+  const history = new ThreadHistory(rpc, support)
+  const first = history.turnState('thread', 'own')
+  const second = history.turnState('thread', 'own')
+  expect(second).toBe(first)
+  await vi.waitFor(() => expect(rpc).toHaveBeenCalledTimes(1))
+  release({ data: [{ id: 'own', status: 'completed' }] })
+  expect(await Promise.all([first, second])).toHaveLength(2)
+  expect(rpc).toHaveBeenCalledTimes(1)
+})
+
+it('does not restore a stale search cursor after the history owner is cleared', async () => {
+  let release!: (value: { data: never[]; nextCursor: string }) => void
+  const pending = new Promise<{ data: never[]; nextCursor: string }>(resolve => { release = resolve })
+  let olderReads = 0
+  const rpc = vi.fn(async (_method: string, params: Record<string, unknown>) => {
+    if (!params.cursor) return { data: [], nextCursor: 'first-older' }
+    olderReads++
+    if (olderReads === 1) return pending
+    return { data: [{ id: 'own', status: 'completed' }], nextCursor: null }
+  })
+  const history = new ThreadHistory(rpc, support)
+  const old = history.turnState('thread', 'own')
+  await vi.waitFor(() => expect(rpc).toHaveBeenCalledTimes(2))
+  history.clear()
+  release({ data: [], nextCursor: 'stale-cursor' })
+  await old
+  expect(await history.turnState('thread', 'own')).toMatchObject({ id: 'own', status: 'completed' })
+  expect(rpc.mock.calls.filter(([, params]) => params.cursor).map(([, params]) => params.cursor)).toEqual(['first-older', 'first-older'])
+})
+
+it('rejects repeating state cursors and does not fall back to full history on cursor errors', async () => {
+  for (const error of ['repeat', 'invalid']) {
+    const rpc = vi.fn(async (_method: string, params: Record<string, unknown>) => {
+      if (error === 'invalid' && params.cursor) throw new Error('invalid cursor')
+      return { data: [], nextCursor: 'same' }
+    })
+    await expect(new ThreadHistory(rpc, support).turnState('thread', 'own')).rejects.toThrow(error === 'repeat' ? '游标重复' : 'invalid cursor')
+    expect(rpc).toHaveBeenCalledTimes(2)
+    expect(rpc.mock.calls.every(([method]) => method === 'thread/turns/list')).toBe(true)
+  }
+})
+
+it('finds older terminal state in the bounded legacy snapshot and keeps its cache contract', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'history-state-'))
+  dirs.push(directory)
+  const path = join(directory, 'thread.jsonl')
+  await writeFile(path, 'fixture')
+  const metadata = { thread: { id: 'thread', path, preview: 'fixture' } }
+  const rpc = vi.fn(async (_method: string, params: Record<string, unknown>) => params.includeTurns
+    ? { thread: { ...metadata.thread, turns: Array.from({ length: 15 }, (_, index) => ({ id: String(index), status: index ? 'completed' : 'failed' })) } }
+    : metadata)
+  const history = new ThreadHistory(rpc, async () => ({ historyPaging: false, resumeInitialPage: false, exactFork: false }))
+  expect(await history.turnState('thread', '0')).toMatchObject({ id: '0', status: 'failed' })
+  expect(await history.turnState('thread', '0')).toMatchObject({ id: '0', status: 'failed' })
+  expect(rpc.mock.calls.filter(([, params]) => params.includeTurns === true)).toHaveLength(1)
+})

@@ -21,12 +21,15 @@ export function normalizeModelCapability(value: unknown, providerId = 'codex'): 
   const row = typeof value === 'string' ? { id: value } : value && typeof value === 'object' ? value as Record<string, unknown> : {}
   const id = capabilityValue(row.id) || capabilityValue(row.model)
   if (!id) return null
-  const efforts = Array.isArray(row.supportedReasoningEfforts) ? row.supportedReasoningEfforts.flatMap(value => {
+  const declaredEfforts = row.supportedReasoningEfforts ?? row.supported_reasoning_levels
+  const declaredTiers = row.serviceTiers ?? row.service_tiers
+  const inputModalities = row.inputModalities ?? row.input_modalities
+  const efforts = Array.isArray(declaredEfforts) ? declaredEfforts.flatMap(value => {
     const item = value && typeof value === 'object' ? value as Record<string, unknown> : {}
-    const effort = capabilityValue(item.reasoningEffort)
+    const effort = capabilityValue(item.reasoningEffort ?? item.effort)
     return effort ? [{ value: effort, description: typeof item.description === 'string' ? item.description.slice(0, 500) : '' }] : []
   }) : null
-  const serviceTiers = Array.isArray(row.serviceTiers) ? row.serviceTiers.flatMap(value => {
+  const serviceTiers = Array.isArray(declaredTiers) ? declaredTiers.flatMap(value => {
     const item = value && typeof value === 'object' ? value as Record<string, unknown> : {}
     const tier = capabilityValue(item.id)
     return tier ? [{ value: tier, label: capabilityValue(item.name) || tier, description: typeof item.description === 'string' ? item.description.slice(0, 500) : '' }] : []
@@ -35,13 +38,15 @@ export function normalizeModelCapability(value: unknown, providerId = 'codex'): 
     return tier ? [{ value: tier, label: tier, description: '' }] : []
   }) : null
   return {
-    id, model: capabilityValue(row.model) || id, displayName: capabilityValue(row.displayName) || id,
+    // Custom gateways route by their public ID, including the provider namespace.
+    id, model: providerId === 'custom' ? id : capabilityValue(row.model) || id,
+    displayName: providerId === 'custom' ? id : capabilityValue(row.displayName ?? row.display_name) || id,
     providerId, isDefault: row.isDefault === true,
     efforts: efforts?.filter((item, index) => efforts.findIndex(other => other.value === item.value) === index) ?? null,
-    defaultEffort: capabilityValue(row.defaultReasoningEffort),
+    defaultEffort: capabilityValue(row.defaultReasoningEffort ?? row.default_reasoning_level),
     serviceTiers: serviceTiers?.filter((item, index) => serviceTiers.findIndex(other => other.value === item.value) === index) ?? null,
-    defaultServiceTier: capabilityValue(row.defaultServiceTier),
-    inputModalities: Array.isArray(row.inputModalities) ? [...new Set(row.inputModalities.map(capabilityValue).filter(Boolean))] : null,
+    defaultServiceTier: capabilityValue(row.defaultServiceTier ?? row.default_service_tier),
+    inputModalities: Array.isArray(inputModalities) ? [...new Set(inputModalities.map(capabilityValue).filter(Boolean))] : null,
   }
 }
 

@@ -4,9 +4,9 @@
 Projectless new chats continue to create folders after repeated identical first messages.
 
 #### Prerequisites/Setup
-1. Use an isolated `CODEX_HOME`.
-2. Start local Vite: `CODEX_HOME=<temp-home> pnpm run dev --host 127.0.0.1 --port 4173`.
-3. Ensure `~/Documents/Codex/<today>/` already contains many folders for the same prompt slug, for example `hi`, `hi-2`, through `hi-100`.
+1. Use an isolated user home and `CODEX_HOME`. `CODEX_HOME` alone does not change `os.homedir()` or the projectless output root. The offline audit overrides homedir only inside its module fixture.
+2. For authorized UI validation, verify the owner/cwd of port 4173 before starting the task server with its isolated user environment. Keep the existing 4173 service running when it belongs to this audit.
+3. In that isolated user home, create task-owned collision folders under `Documents/Codex/<today>/`, for example `hi`, `hi-2`, through `hi-100`; record exact paths and never reuse or remove real user folders.
 
 #### Steps
 1. In light theme, open `http://127.0.0.1:4173/#/`.
@@ -21,7 +21,7 @@ Projectless new chats continue to create folders after repeated identical first 
 - Light and dark theme new-chat and conversation surfaces remain readable.
 
 #### Rollback/Cleanup
-- Stop the temporary Vite server if it was only used for this check.
-- Remove any temporary collision folders created under `~/Documents/Codex/<today>/` if they are no longer needed.
+- Leave port 4173 running unless explicitly asked to stop it.
+- Remove only the exact collision folders created in this task's isolated user home.
 
 ---

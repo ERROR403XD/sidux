@@ -5,6 +5,7 @@
 使用独立 4173/59001 和虚构线程，打开侧栏搜索与网络记录。同一项目准备多个无关标题、一个精确标题、前缀/包含匹配和打散的多关键词匹配；另准备仅正文命中、仅命令输出命中、已改名但摘要仍保留旧标题、初始侧栏页之外的会话。保持一个不匹配的置顶会话。范围测试使用至少 120 个线程，其中一个超过 50 回合。分别使用浅色和深色主题。
 
 自动检查：`pnpm exec vitest run src/server/threadSearch.test.ts src/threadSearchMatch.test.ts src/api/codexGateway.test.ts`。界面脚本：`node output/0215-search/ui.cjs`，使用请求拦截，不发送模型任务。
+0.2.22 NFS/分批边界脚本：先 `pnpm run seed:022-baseline "$PWD/output/022-nfs-baseline" threads-201`，再 `PROFILE_RUN_SERVER=1 PROFILE_PORT=4174 node scripts/verify-022-nfs-search-boundaries.cjs`。脚本只逐出合成会话目录页缓存，断言标题 201/201 完整覆盖、正文最近 100 条覆盖、范围外仅正文标记不命中，并自动停止独立 4174 服务。
 
 ## 操作与预期
 
@@ -20,6 +21,8 @@
 10. 在 1440×900、768×1024、375×812 浅深主题检查真实搜索框、范围菜单、结果、清空和重试；控件文字清晰，手机抽屉无横向溢出。打开结果后内容路由正确，再次展开抽屉可继续搜索。
 
 ## 性能与清理
+
+0.2.22 route 迁移回归：运行 `pnpm exec vitest run src/server/routes/threadSearchRoutes.test.ts src/server/threadSearch.test.ts src/threadSearchMatch.test.ts`。真实 HTTP→同一个 ThreadSearch 实例验证空查询零读取、标题暖缓存一次 list/零正文、invalidated 标题更新、断开 HTTP 时仅结算当前四项正文读取、随后新客户端正常查询，以及错误/成功/取消后 close listener 回到原数量。清理只关闭测试临时随机端口，不操作标准候选或真实会话；服务端取消不等同于界面迟到结果断言。
 
 记录冷/热标题查询、冷/热正文查询、更新和取消的请求数、响应字节与耗时。标题模式的正文读取必须为 0。正文并发最多 4，缓存最多 100 项且 UTF-8 合计不超过 32 MB；标题最多 10 页。超过缓存容量后允许重新读取被逐出的正文。接口仅返回匹配 ID 与必要的轻量元数据，不返回完整历史或长摘要；搜索不发起模型任务。
 

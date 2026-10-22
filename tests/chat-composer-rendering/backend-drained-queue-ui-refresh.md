@@ -27,3 +27,12 @@ The queue panel refreshes when the backend starts and drains persisted queued me
 - Delete any remaining queued test messages or let the queue drain
 
 ---
+### 0.2.22 Q04：停止后的队列写入完成隔离
+
+前提：隔离候选，延迟一条队列编辑/删除响应，记录服务端消息 ID。
+
+操作：提交操作后停止轮询或切换账号；让旧操作成功或失败。恢复轮询并读取当前队列，重复操作。检查已接受操作的服务端结果。
+
+预期：旧完成不提交 UI、不移除当前消息、不显示成功/失败通知；恢复后重新读取持久队列。停止仅撤销 UI 接收，已接受的服务端 intent 保留；后续操作按原顺序执行。
+
+清理：恢复网络延迟，取消自己留下的测试消息，关闭测试页面。

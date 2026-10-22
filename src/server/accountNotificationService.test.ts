@@ -1,11 +1,15 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { createServer } from 'node:http'
 import { afterEach, expect, it, vi } from 'vitest'
 import { AccountNotificationService } from './accountNotificationService'
 import { defaultNoticeRule, defaultNotificationSettings, renderNoticeBody, parseResetExpiryLeadTimes } from '../accountNotifications'
 import type { AccountAuthCoordinator } from './accountAuthCoordinator'
 import { AccountAuthStore, type StoredAccountEntry } from './accountAuthStore'
+import { defaultConversationNoticePreferences, type ConversationNoticeState } from '../conversationNotifications'
+import { bindConversationNotifications } from './conversationNotificationBinding'
+import { automaticResumeStartedMethod } from '../threadAutomaticResume'
 const cleanup: Array<() => Promise<void>> = []
 afterEach(async () => { while (cleanup.length) await cleanup.pop()!() })
 function entry(reset: number, used: number): StoredAccountEntry {
@@ -22,6 +26,237 @@ async function fixture() {
   await service.save({ settings: { ...defaultNotificationSettings, enabled: true, url: 'http://127.0.0.1/fixture', quietEnabled: true }, accountId: 'account-a', rule: { ...defaultNoticeRule, fiveHour: true, weekly: true }, protectionPercent: 1 })
   return { service, send, coordinator }
 }
+
+const conversationCases: { state: ConversationNoticeState; method: string; extra: object }[] = [
+  { state: 'completed', method: 'turn/completed', extra: { turn: { id: 'turn', status: 'completed' } } },
+  { state: 'quota', method: 'error', extra: { error: { message: 'usage limit exceeded' } } },
+  { state: 'interrupted', method: 'turn/cancelled', extra: { error: { message: 'connection reset' } } },
+  { state: 'automation', method: 'turn/completed', extra: { completionKind: 'background', turn: { id: 'turn', status: 'completed' } } },
+]
+
+it('persists resume receipts separately from completion and drops pending starts when disabled', async () => {
+  const { service, send, coordinator } = await fixture()
+  const preferences = defaultConversationNoticePreferences()
+  preferences.postEnabled = true
+  const readContext = vi.fn(async () => ({ title: '续跑会话', projectName: '项目' }))
+  const started = { method: automaticResumeStartedMethod, params: { threadId: 'thread', deliveryId: 'attempt', source: 'scheduled', turnId: 'turn' } }
+  await service.saveConversationPreferences(preferences)
+  await service.observeConversation(started, readContext)
+  expect(readContext).not.toHaveBeenCalled()
+  preferences.states.resumeStarted = true
+  await service.saveConversationPreferences(preferences)
+  await Promise.all([service.observeConversation(started, readContext), service.observeConversation(started, readContext)])
+  await service.observeConversation({ method: 'turn/completed', params: { threadId: 'thread', turn: { id: 'turn', status: 'completed' } } }, readContext)
+  await service.close()
+  const restarted = new AccountNotificationService(coordinator, send as typeof fetch, false)
+  cleanup.push(() => restarted.close())
+  await restarted.observeConversation(started, readContext)
+  await restarted.flush(Date.parse('2026-09-09T01:00:00Z'))
+  expect(send.mock.calls.map(row => JSON.parse(String(row[1]?.body)).message)).toEqual([
+    '【Sidux】定时续跑已启动：项目 · 续跑会话', '【Sidux】会话任务已完成：项目 · 续跑会话',
+  ])
+  expect(readContext).toHaveBeenCalledTimes(2)
+  await restarted.observeConversation({ method: automaticResumeStartedMethod, params: { threadId: 'goal', deliveryId: 'goal-attempt', source: 'quota' } }, readContext)
+  expect((await restarted.snapshot()).pendingCount).toBe(1)
+  preferences.states.resumeStarted = false
+  await restarted.saveConversationPreferences(preferences)
+  expect((await restarted.snapshot()).pendingCount).toBe(0)
+  await restarted.flush(Date.parse('2026-09-09T01:00:00Z'))
+  expect(send).toHaveBeenCalledTimes(2)
+})
+it('suppresses ongoing GOAL stages before context I/O and labels them only when opted in', async () => {
+  const { service, send } = await fixture()
+  await service.saveConversationPreferences({ ...defaultConversationNoticePreferences(), postEnabled: true })
+  const readContext = vi.fn(async () => ({ title: '持续目标', projectName: '项目' }))
+  const stage = (id: string, extra = {}) => ({ method: 'turn/completed', params: { threadId: 'goal', goalStatus: 'active', turn: { id, status: 'completed' }, ...extra } })
+  await service.observeConversation(stage('silent'), readContext)
+  expect(readContext).not.toHaveBeenCalled()
+  expect((await service.snapshot()).pendingCount).toBe(0)
+  await service.saveConversationPreferences({ ...defaultConversationNoticePreferences(), postEnabled: true, goalProgressEnabled: true })
+  await service.observeConversation(stage('stage'), readContext)
+  await service.flush(Date.parse('2026-09-09T01:00:00Z'))
+  expect(JSON.parse(String(send.mock.calls[0]?.[1]?.body)).message).toBe('【Sidux】GOAL 阶段完成：项目 · 持续目标')
+  await service.saveConversationPreferences({ ...defaultConversationNoticePreferences(), postEnabled: true })
+  await service.observeConversation(stage('final', { goalStatus: 'complete' }), readContext)
+  await service.observeConversation({ method: 'error', params: { threadId: 'goal', turnId: 'quota', error: { message: 'quota exceeded' } } }, readContext)
+  await service.observeConversation({ method: 'turn/cancelled', params: { threadId: 'goal', turnId: 'network', error: { message: 'connection reset' } } }, readContext)
+  await service.flush(Date.parse('2026-09-09T01:00:00Z'))
+  expect(send.mock.calls.map(row => JSON.parse(String(row[1]?.body)).message)).toEqual([
+    '【Sidux】GOAL 阶段完成：项目 · 持续目标', '【Sidux】会话任务已完成：项目 · 持续目标', '【Sidux】会话额度受限：项目 · 持续目标', '【Sidux】会话任务已中断：项目 · 持续目标',
+  ])
+})
+
+it('removes persisted GOAL stage notices when disabled without removing final or account notices', async () => {
+  const { service, send, coordinator } = await fixture()
+  await service.saveConversationPreferences({ ...defaultConversationNoticePreferences(), postEnabled: true, goalProgressEnabled: true })
+  const readContext = async () => ({ title: '目标', projectName: '项目' })
+  await service.observeConversation({ method: 'turn/completed', params: { threadId: 'goal', goalStatus: 'active', turn: { id: 'stage', status: 'completed' } } }, readContext)
+  await service.observeConversation({ method: 'turn/completed', params: { threadId: 'goal', goalStatus: 'complete', turn: { id: 'final', status: 'completed' } } }, readContext)
+  await service.observe(entry(100, 80))
+  await service.observe(entry(200, 0))
+  expect((await service.snapshot()).pendingCount).toBe(4)
+  await service.close()
+  const restarted = new AccountNotificationService(coordinator, send as typeof fetch, false)
+  cleanup.push(() => restarted.close())
+  expect((await restarted.conversationPreferences()).goalProgressEnabled).toBe(true)
+  await restarted.saveConversationPreferences({ ...defaultConversationNoticePreferences(), postEnabled: true })
+  expect((await restarted.snapshot()).pendingCount).toBe(3)
+  await restarted.flush(Date.parse('2026-09-09T01:00:00Z'))
+  expect(send).toHaveBeenCalledTimes(3)
+  expect(send.mock.calls.every(row => !String(row[1]?.body).includes('GOAL 阶段完成'))).toBe(true)
+  expect(send.mock.calls.some(row => String(row[1]?.body).includes('会话任务已完成'))).toBe(true)
+})
+
+it('rechecks GOAL preferences after async context reads and keeps category filtering', async () => {
+  const { service, send } = await fixture()
+  const preferences = { ...defaultConversationNoticePreferences(), postEnabled: true, goalProgressEnabled: true }
+  await service.saveConversationPreferences(preferences)
+  let finish!: (value: { title: string; projectName: string }) => void
+  const readContext = vi.fn(() => new Promise<{ title: string; projectName: string }>(resolve => { finish = resolve }))
+  const event = { method: 'turn/completed', params: { threadId: 'goal', goalStatus: 'active', completionKind: 'background', turn: { id: 'stage', status: 'completed' } } }
+  const work = service.observeConversation(event, readContext)
+  await vi.waitFor(() => expect(readContext).toHaveBeenCalledOnce())
+  await service.saveConversationPreferences({ ...preferences, goalProgressEnabled: false })
+  finish({ title: '目标', projectName: '项目' })
+  await work
+  expect((await service.snapshot()).pendingCount).toBe(0)
+  await service.saveConversationPreferences({ ...preferences, states: { ...preferences.states, automation: false } })
+  await service.observeConversation(event, readContext)
+  expect(readContext).toHaveBeenCalledOnce()
+  await service.flush(Date.parse('2026-09-09T01:00:00Z'))
+  expect(send).not.toHaveBeenCalled()
+})
+
+it.each(['quota exceeded', 'connection reset'])('retains an automatic interruption cause after a retryable %s error', async message => {
+  const { service, send } = await fixture()
+  await service.saveConversationPreferences({ ...defaultConversationNoticePreferences(), postEnabled: true })
+  const readContext = vi.fn(async () => ({ title: '自动中断', projectName: '项目' }))
+  await service.observeConversation({ method: 'error', params: { threadId: 'thread', turnId: 'turn', willRetry: true, error: { message } } }, readContext)
+  await service.observeConversation({ method: 'turn/completed', params: { threadId: 'thread', turn: { id: 'turn', status: 'interrupted', error: null } } }, readContext)
+  await service.flush(Date.parse('2026-09-09T01:00:00Z'))
+  expect(send).toHaveBeenCalledTimes(1)
+  expect(JSON.parse(String(send.mock.calls[0]?.[1]?.body)).message).toContain(message === 'quota exceeded' ? '额度受限' : '已中断')
+})
+
+it.each(['turn/completed', 'turn/cancelled'])('does not enqueue POST or read context for a manual %s stop', async method => {
+  const { service, send } = await fixture()
+  await service.saveConversationPreferences({ ...defaultConversationNoticePreferences(), postEnabled: true })
+  const readContext = vi.fn(async () => ({ title: '手动停止', projectName: '项目' }))
+  await service.observeConversation({ method, params: { threadId: 'thread', turn: { id: 'plain-stop', status: 'interrupted', error: null } } }, readContext)
+  await service.observeConversation({ method: 'error', params: { threadId: 'thread', turnId: 'retry-stop', willRetry: true, error: { message: 'quota exceeded' } } }, readContext)
+  await service.observeConversation({ method, params: { threadId: 'thread', interruptionReason: 'user', turn: { id: 'retry-stop', status: 'failed', error: { message: 'quota exceeded' } } } }, readContext)
+  await service.observeConversation({ method: 'error', params: { threadId: 'thread', turnId: 'retry-stop', interruptionReason: 'user', error: { message: 'connection reset' } } }, readContext)
+  expect(readContext).not.toHaveBeenCalled()
+  expect((await service.snapshot()).pendingCount).toBe(0)
+  await service.flush(Date.parse('2026-09-09T01:00:00Z'))
+  expect(send).not.toHaveBeenCalled()
+  await service.observeConversation({ method: 'turn/completed', params: { threadId: 'thread', turn: { id: 'next', status: 'completed' } } }, readContext)
+  await service.flush(Date.parse('2026-09-09T01:00:00Z'))
+  expect(send).toHaveBeenCalledTimes(1)
+})
+
+it.each(conversationCases)('shares the $state selector with POST and does no title read for disabled events', async ({ state, method, extra }) => {
+  const { service, send } = await fixture()
+  const preferences = defaultConversationNoticePreferences()
+  preferences.postEnabled = true
+  preferences.states[state] = false
+  await service.saveConversationPreferences(preferences)
+  const readContext = vi.fn(async () => ({ title: '完成时的标题', projectName: '显示项目' }))
+  const notification = { method, params: { threadId: 'thread', turnId: 'turn', ...extra } }
+  await service.observeConversation(notification, readContext)
+  expect(readContext).not.toHaveBeenCalled()
+  preferences.states[state] = true
+  await service.saveConversationPreferences(preferences)
+  await Promise.all([service.observeConversation(notification, readContext), service.observeConversation(notification, readContext)])
+  await service.flush(Date.parse('2026-09-09T01:00:00Z'))
+  expect(readContext).toHaveBeenCalledExactlyOnceWith('thread')
+  expect(send).toHaveBeenCalledTimes(1)
+  expect(JSON.parse(String(send.mock.calls[0]?.[1]?.body)).message).toContain('完成时的标题')
+})
+
+it('preserves the completion title and receipts across restart and quiet-hour deferral', async () => {
+  const { service, send, coordinator } = await fixture()
+  await service.saveConversationPreferences({ ...defaultConversationNoticePreferences(), postEnabled: true })
+  let projectName = '虚拟项目含引号"和换行\n'
+  let title = '标题含周额度 "和换行\n'
+  const readContext = vi.fn(async () => ({ title, projectName }))
+  const event = { method: 'turn/completed', params: { threadId: 'external-post', completionKind: 'background', turn: { id: 'turn', status: 'completed' } } }
+  await service.observeConversation(event, readContext)
+  await service.flush(Date.parse('2026-09-08T15:00:00Z'))
+  expect(send).not.toHaveBeenCalled()
+  await service.close()
+  title = '之后改名'
+  projectName = '项目也改名'
+  const restarted = new AccountNotificationService(coordinator, send as typeof fetch, false)
+  cleanup.push(() => restarted.close())
+  await restarted.observeConversation(event, readContext)
+  await restarted.flush(Date.parse('2026-09-09T01:00:00Z'))
+  expect(send).toHaveBeenCalledTimes(1)
+  expect(JSON.parse(String(send.mock.calls[0]?.[1]?.body)).message).toBe('【Sidux】自动化任务已完成：虚拟项目含引号"和换行\n · 标题含周额度 "和换行\n')
+  expect(readContext).toHaveBeenCalledTimes(1)
+  expect((await restarted.conversationPreferences()).postEnabled).toBe(true)
+})
+
+it('keeps conversation POST opt-in separate from account notices and removes disabled pending statuses', async () => {
+  const { service } = await fixture()
+  const event = { method: 'turn/completed', params: { threadId: 'thread', turn: { id: 'turn', status: 'completed' } } }
+  const readContext = vi.fn(async () => ({ title: '标题', projectName: '' }))
+  await service.observeConversation(event, readContext)
+  expect(readContext).not.toHaveBeenCalled()
+  await service.saveConversationPreferences({ ...defaultConversationNoticePreferences(), postEnabled: true })
+  await service.observe(entry(100, 80))
+  await service.observe(entry(200, 0))
+  await service.observeConversation(event, readContext)
+  expect((await service.snapshot()).pendingCount).toBe(3)
+  await service.save({ accountId: 'account-a', rule: { ...defaultNoticeRule, fiveHour: true, weekly: true } })
+  expect((await service.snapshot()).pendingCount).toBe(3)
+  const preferences = await service.conversationPreferences()
+  preferences.states.completed = false
+  await service.saveConversationPreferences(preferences)
+  expect((await service.snapshot()).pendingCount).toBe(2)
+})
+
+it('provides the no-project name to both message and custom POST fields', async () => {
+  const { service, send } = await fixture()
+  await service.save({ settings: { ...defaultNotificationSettings, enabled: true, url: 'http://127.0.0.1/fixture', quietEnabled: false, body: '{"project":"{{project_name}}","title":"{{title}}","message":"{{message}}"}' } })
+  await service.saveConversationPreferences({ ...defaultConversationNoticePreferences(), postEnabled: true })
+  await service.observeConversation({ method: 'turn/completed', params: { threadId: 'thread', turn: { id: 'turn', status: 'completed' } } }, async () => ({ title: '无归属会话', projectName: '' }))
+  await service.flush()
+  expect(JSON.parse(String(send.mock.calls[0]?.[1]?.body))).toEqual({ project: '无项目', title: '无归属会话', message: '【Sidux】会话任务已完成：无项目 · 无归属会话' })
+})
+
+it('delivers a titled external automation completion once through the server binding and a real local POST', async () => {
+  const received: { message: string }[] = []
+  const endpoint = createServer((req, res) => {
+    let body = ''
+    req.on('data', chunk => { body += chunk })
+    req.on('end', () => {
+      received.push(JSON.parse(body))
+      res.end('{}')
+    })
+  })
+  await new Promise<void>(resolve => endpoint.listen(0, '127.0.0.1', resolve))
+  cleanup.push(() => new Promise<void>((resolve, reject) => endpoint.close(error => error ? reject(error) : resolve())))
+  const port = (endpoint.address() as { port: number }).port
+  const { service, coordinator } = await fixture()
+  await service.save({ settings: { ...defaultNotificationSettings, enabled: true, url: `http://127.0.0.1:${port}`, quietEnabled: false } })
+  await service.saveConversationPreferences({ ...defaultConversationNoticePreferences(), postEnabled: true })
+  await service.close()
+  const runtime = new AccountNotificationService(coordinator, fetch, false)
+  cleanup.push(() => runtime.close())
+  let listener: (notification: { method: string; params: unknown }) => void = () => {}
+  const unbind = bindConversationNotifications({
+    subscribeNotifications: callback => { listener = callback; return () => {} },
+    readConversationNotificationContext: async () => ({ title: '外部 POST 触发的会话标题', projectName: '管理虚拟项目' }),
+  }, runtime)
+  const event = { method: 'turn/completed', params: { threadId: 'external-post', completionKind: 'background', turn: { id: 'turn', status: 'completed' } } }
+  listener(event)
+  listener(event)
+  await unbind()
+  await runtime.flush()
+  await runtime.flush()
+  expect(received).toEqual([{ message: '【Sidux】自动化任务已完成：管理虚拟项目 · 外部 POST 触发的会话标题' }])
+})
 it('deduplicates quota recovery, persists quiet-hour deferral and delivers escaped JSON once', async () => {
   const { service, send, coordinator } = await fixture()
   await service.observe(entry(100, 80))
@@ -56,6 +291,23 @@ it('does not retry an ambiguous POST and disabling a rule removes its pending ev
 it('substitutes nested message strings without turning message content into body configuration', () => {
   const text = 'quote" and\nnewline {{other}}'
   expect(JSON.parse(renderNoticeBody('{"token":"literal","nested":{"text":"{{message}}"}}', { message: text }))).toEqual({ token: 'literal', nested: { text } })
+})
+
+it('prefixes test and account POST messages once while preserving custom JSON fields', async () => {
+  const { service, send } = await fixture()
+  await service.save({
+    settings: { ...defaultNotificationSettings, enabled: true, url: 'http://127.0.0.1/fixture', body: '{"source":"custom","nested":{"text":"{{message}}"}}' },
+    accountId: 'account-a',
+    rule: { ...defaultNoticeRule, fiveHour: true, fiveHourMessage: '【Sidux】{{account}} 已恢复' },
+  })
+  await service.test()
+  await service.observe(entry(100, 80))
+  await service.observe(entry(200, 0))
+  await service.flush()
+  expect(send).toHaveBeenCalledTimes(2)
+  const bodies = send.mock.calls.map(row => JSON.parse(String(row[1]?.body)))
+  expect(bodies[0]).toEqual({ source: 'custom', nested: { text: expect.stringMatching(/^【Sidux】Sidux 通知测试：/) } })
+  expect(bodies[1]).toEqual({ source: 'custom', nested: { text: expect.stringMatching(/^【Sidux】[^【]+已恢复$/) } })
 })
 
 

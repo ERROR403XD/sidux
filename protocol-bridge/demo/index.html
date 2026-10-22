@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>protocol-bridge 测试台 · Chat → Responses</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font: 14px/1.6 system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: #f5f6f8; color: #1c1e21; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { background: #16181c; color: #e3e5e8; }
+    .card, header { background: #1f2227; border-color: #2c3038; }
+    input, textarea { background: #14161a !important; color: #e3e5e8 !important; border-color: #2c3038 !important; }
+    .reasoning { background: #23262c !important; }
+    .meta, .eventlog { color: #9aa0a8; }
+    .item-reasoning .label { color: #8fa4c4; }
+  }
+  header {
+    width: min(760px, calc(100% - 24px)); margin: 14px auto 0; padding: 10px 16px;
+    background: #fff; border: 1px solid #e3e5e8; border-radius: 12px;
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 16px; margin: 0; }
+  header .meta { color: #7a8088; font-size: 12px; }
+  .card {
+    width: min(760px, calc(100% - 24px)); background: #fff;
+    border: 1px solid #e3e5e8; border-radius: 12px; padding: 12px 16px;
+  }
+  #config { margin-top: 10px; }
+  #config .grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  @media (min-width: 640px) { #config .grid { grid-template-columns: 2fr 1fr; } #config .grid .full { grid-column: 1 / -1; } }
+  label { font-size: 12px; color: #7a8088; display: block; margin-bottom: 2px; }
+  input, textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid #d6d9de; border-radius: 8px;
+    font: inherit; background: #fff; color: inherit;
+  }
+  #chat { margin-top: 10px; flex: 1 0 auto; display: flex; flex-direction: column; }
+  #log { margin-top: 10px; }
+  .turn { margin: 12px 0; }
+  .bubble { border-radius: 10px; padding: 8px 12px; white-space: pre-wrap; word-break: break-word; }
+  .turn.user .bubble { background: #dceafd; margin-left: 15%; }
+  .turn.assistant .bubble { background: transparent; padding: 4px 2px; }
+  @media (prefers-color-scheme: dark) { .turn.user .bubble { background: #1d3a5f; } }
+  .item-reasoning { border-radius: 8px; padding: 6px 10px; background: #f1f3f6; margin-bottom: 6px; }
+  .item-reasoning .label { color: #5b7db1; font-size: 12px; font-weight: 600; }
+  .item-reasoning .body { font-size: 13px; color: #565b63; white-space: pre-wrap; }
+  .item-tool { font: 12px/1.5 Consolas, monospace; background: #26292f; color: #cfe3a8; border-radius: 8px; padding: 6px 10px; margin-top: 6px; white-space: pre-wrap; word-break: break-all; }
+  .usage { font-size: 12px; color: #7a8088; margin-top: 6px; }
+  .error { color: #c0392b; font-size: 13px; }
+  @media (prefers-color-scheme: dark) { .error { color: #ff8a80; } }
+  #composer { display: flex; gap: 8px; padding: 10px 0 14px; }
+  #composer textarea { resize: vertical; min-height: 44px; max-height: 140px; }
+  button {
+    border: 0; border-radius: 8px; padding: 8px 18px; font: inherit; cursor: pointer;
+    background: #2563eb; color: #fff; align-self: flex-end;
+  }
+  button:disabled { opacity: .5; cursor: default; }
+  button.ghost { background: transparent; color: #2563eb; border: 1px solid #d6d9de; }
+  .eventlog { font: 11px/1.6 Consolas, monospace; color: #7a8088; max-height: 180px; overflow: auto; white-space: pre-wrap; }
+  details summary { cursor: pointer; font-size: 12px; color: #7a8088; }
+</style>
+</head>
+<body>
+<header>
+  <h1>protocol-bridge 测试台</h1>
+  <span class="meta">浏览器 ← Responses SSE ← 协议桥 ← Chat Completions ← 你填的上游</span>
+</header>
+
+<section id="config" class="card">
+  <div class="grid">
+    <div class="full"><label>Base URL（OpenAI 兼容，含 /v1）</label><input id="baseUrl" placeholder="https://api.deepseek.com/v1" /></div>
+    <div><label>API key</label><input id="apiKey" type="password" autocomplete="off" placeholder="sk-..." /></div>
+    <div><label>Model</label><input id="model" placeholder="deepseek-chat" /></div>
+  </div>
+</section>
+
+<section id="chat" class="card"><div id="messages"></div>
+  <details id="logBox"><summary>事件日志（桥发出的原始 SSE 类型）</summary><div class="eventlog" id="eventlog"></div></details>
+  <div id="composer">
+    <textarea id="draft" placeholder="输入消息，Ctrl+Enter 发送"></textarea>
+    <button id="send">发送</button>
+  </div>
+</section>
+
+<script>
+  const $ = id => document.getElementById(id)
+  const fields = ['baseUrl', 'apiKey', 'model']
+  for (const id of fields) {
+    $(id).value = localStorage.getItem('bridge-demo.' + id) || ''
+    $(id).addEventListener('change', () => localStorage.setItem('bridge-demo.' + id, $(id).value))
+  }
+  let turns = []          // [{role, content}] — conversation history in Responses item terms
+  let streaming = false
+
+  function pushUser(text) {
+    const el = document.createElement('div')
+    el.className = 'turn user'
+    el.innerHTML = '<div class="bubble"></div>'
+    el.querySelector('.bubble').textContent = text
+    $('messages').appendChild(el)
+    scrollToEnd()
+  }
+
+  function beginAssistant() {
+    const el = document.createElement('div')
+    el.className = 'turn assistant'
+    el.dataset.text = ''
+    $('messages').appendChild(el)
+    scrollToEnd()
+    return el
+  }
+
+  function itemBlock(turnEl, kind) {
+    const block = document.createElement('div')
+    if (kind === 'reasoning') {
+      block.className = 'item-reasoning'
+      block.innerHTML = '<div class="label">推理</div><div class="body"></div>'
+    } else if (kind === 'function_call') {
+      block.className = 'item-tool'
+    } else {
+      block.className = 'bubble'
+    }
+    turnEl.appendChild(block)
+    return block
+  }
+
+  function scrollToEnd() { window.scrollTo(0, document.body.scrollHeight) }
+  function logEvent(type) {
+    const box = $('eventlog')
+    box.textContent += type + '\n'
+    box.scrollTop = box.scrollHeight
+  }
+
+  function setBusy(next) {
+    streaming = next
+    $('send').disabled = next
+    $('send').textContent = next ? '回复中…' : '发送'
+  }
+
+  async function send() {
+    const draft = $('draft').value.trim()
+    if (!draft || streaming) return
+    if (!$('baseUrl').value.trim() || !$('model').value.trim()) { alert('请先填写 Base URL 和 Model'); return }
+    for (const id of fields) localStorage.setItem('bridge-demo.' + id, $(id).value)
+
+    $('draft').value = ''
+    pushUser(draft)
+    turns.push({ role: 'user', content: draft })
+    setBusy(true)
+    const turnEl = beginAssistant()
+    const blocks = new Map()   // output_index -> DOM block
+    const args = new Map()     // output_index -> accumulated tool arguments
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ baseUrl: $('baseUrl').value.trim(), apiKey: $('apiKey').value, model: $('model').value.trim(), turns }),
+      })
+      if (!response.ok || !(response.headers.get('content-type') || '').includes('text/event-stream')) {
+        const text = await response.text()
+        let message = text
+        try { message = JSON.parse(text).error || text } catch {}
+        turnEl.insertAdjacentHTML('beforeend', '<div class="error"></div>')
+        turnEl.querySelector('.error').textContent = String(message).slice(0, 800)
+        setBusy(false); return
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder('utf-8')
+      let buffer = ''
+      const items = {}   // output_index -> {kind, block}
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        let cut
+        while ((cut = buffer.indexOf('\n\n')) !== -1) {
+          const frame = buffer.slice(0, cut); buffer = buffer.slice(cut + 2)
+          const line = frame.split('\n').find(row => row.startsWith('data: '))
+          if (!line) continue
+          const payload = JSON.parse(line.slice(6))
+          logEvent(payload.type)
+          if (payload.type === 'bridge.debug.chat_request') {
+            $('logBox').open = true
+            logEvent('  ↳ 上游收到: ' + JSON.stringify(payload.request))
+          } else if (payload.type === 'bridge.debug.warnings') {
+            logEvent('  ↳ 降级字段: ' + payload.warnings.map(w => w.field).join(', '))
+          } else if (payload.type === 'response.output_item.added') {
+            const kind = payload.item.type === 'reasoning' ? 'reasoning' : payload.item.type === 'function_call' ? 'function_call' : 'message'
+            const block = itemBlock(turnEl, kind)
+            if (kind === 'function_call') block.textContent = '🔧 ' + payload.item.name + ' '
+            items[payload.output_index] = { kind, block }
+          } else if (payload.type === 'response.output_text.delta') {
+            const item = items[payload.output_index]
+            turnEl.dataset.text += payload.delta
+            item.block.textContent += payload.delta
+            scrollToEnd()
+          } else if (payload.type === 'response.reasoning_summary_text.delta') {
+            const item = items[payload.output_index]
+            item.block.querySelector('.body').textContent += payload.delta
+            scrollToEnd()
+          } else if (payload.type === 'response.function_call_arguments.delta') {
+            args.set(payload.output_index, (args.get(payload.output_index) || '') + payload.delta)
+            items[payload.output_index].block.textContent = '🔧 ' + (args.get(payload.output_index) || '')
+            scrollToEnd()
+          } else if (payload.type === 'response.output_item.done') {
+            const item = items[payload.output_index]
+            if (item.kind === 'message') {
+              const full = payload.item.content.map(part => part.text || '').join('')
+              item.block.textContent = full
+              turnEl.dataset.text = full
+            } else if (item.kind === 'function_call') {
+              item.block.textContent = '🔧 ' + payload.item.name + ' ' + payload.item.arguments + '（演示页不执行工具）'
+            }
+          } else if (payload.type === 'response.completed') {
+            const usage = payload.response.usage
+            if (usage) {
+              const line = document.createElement('div')
+              line.className = 'usage'
+              line.textContent = `输入 ${usage.input_tokens} · 输出 ${usage.output_tokens} · 共 ${usage.total_tokens} tokens`
+              turnEl.appendChild(line)
+            }
+            if (payload.response.status !== 'completed') {
+              turnEl.insertAdjacentHTML('beforeend', '<div class="error"></div>')
+              turnEl.querySelector('.error').textContent = '响应状态: ' + payload.response.status + (payload.response.incomplete_details ? ' (' + payload.response.incomplete_details.reason + ')' : '')
+            }
+          } else if (payload.type === 'response.failed') {
+            turnEl.insertAdjacentHTML('beforeend', '<div class="error"></div>')
+            turnEl.querySelector('.error').textContent = 'failed: ' + (payload.response.error?.message || 'unknown')
+          }
+        }
+      }
+      if (turnEl.dataset.text) turns.push({ role: 'assistant', content: turnEl.dataset.text })
+    } catch (error) {
+      turnEl.insertAdjacentHTML('beforeend', '<div class="error"></div>')
+      turnEl.querySelector('.error').textContent = '连接失败: ' + (error instanceof Error ? error.message : error)
+    } finally {
+      setBusy(false)
+      scrollToEnd()
+    }
+  }
+
+  $('send').addEventListener('click', send)
+  $('draft').addEventListener('keydown', event => {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); send() }
+  })
+</script>
+</body>
+</html>

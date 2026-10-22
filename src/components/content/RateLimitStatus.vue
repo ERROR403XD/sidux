@@ -33,7 +33,7 @@ import type { UiRateLimitSnapshot, UiRateLimitWindow } from '../../types/codex'
 import { formatLocalDateTime } from '../../dateTime'
 
 defineProps<{
-  snapshots: UiRateLimitSnapshot[]
+  snapshots: readonly UiRateLimitSnapshot[]
 }>()
 
 type RateLimitMetric = {

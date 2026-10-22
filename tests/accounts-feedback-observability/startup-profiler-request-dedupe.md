@@ -11,7 +11,7 @@ Startup thread-list and skills-list refreshes reuse fresh in-memory results, and
 1. In light theme, run `PROFILE_BASE_URL=http://127.0.0.1:4173 PROFILE_WAIT_MS=7000 pnpm run profile:browser`.
 2. Open the generated `output/playwright/browser-runtime-profile-home-*.json`.
 3. Confirm `duplicateCounts.threadListFirstPage` is `1`, `duplicateCounts.skillsList` is `1`, and `warnings` is empty.
-4. Run `PROFILE_BASE_URL=http://127.0.0.1:4173 PROFILE_WAIT_MS=7000 pnpm run profile:thread`.
+4. Seed an isolated `threads-201` fixture; run `PROFILE_BASE_URL=http://127.0.0.1:4173 PROFILE_ROUTE='#/thread/02200000000000000000000000000001' PROFILE_WAIT_MS=7000 pnpm run profile:thread`. An omitted route must be rejected; never substitute a real user thread.
 5. Open the generated `output/playwright/browser-runtime-profile-thread-*.json`.
 6. Confirm `duplicateCounts.threadReadWithTurns` is `0`, `duplicateCounts.threadReadDuplicateKeys` is `0`, and `warnings` is empty.
 7. Repeat the home route in dark theme and confirm the page finishes loading without `pageState.stillLoadingThreads`.
@@ -23,6 +23,6 @@ Startup thread-list and skills-list refreshes reuse fresh in-memory results, and
 - Light and dark themes both complete thread loading.
 
 #### Rollback/Cleanup
-- Stop the temporary Vite server if it was only used for this check.
+- Close profiler pages and preserve the reusable 4173 verification server.
 
 ---

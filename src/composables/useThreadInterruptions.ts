@@ -1,5 +1,6 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import type { ThreadInterruption, ThreadInterruptionSnapshot } from '../threadInterruption'
+import { notifyOperation } from './useOperationToast'
 
 const READ_ERROR = '会话状态读取失败，请重试'
 const REQUEST_TIMEOUT_MS = 10_000
@@ -8,11 +9,12 @@ export function useThreadInterruptions() {
   const issues = ref<ThreadInterruptionSnapshot>({})
   const readError = ref('')
   const saveError = ref('')
-  const error = computed(() => saveError.value || readError.value)
+  const error = computed(() => saveError.value)
   const ignoring = ref(false)
   let pending: Promise<void> | undefined
   let changes: ThreadInterruptionSnapshot | undefined
   let disposed = false
+  let readFailureNotified = false
   let controller: AbortController | undefined
   const requests = new Set<AbortController>()
 
@@ -85,8 +87,15 @@ export function useThreadInterruptions() {
       for (const id of Object.keys(next)) if (!next[id]?.length) delete next[id]
       issues.value = next
       readError.value = ''
+      readFailureNotified = false
     }).catch(() => {
-      if (!disposed && controller === control) readError.value = READ_ERROR
+      if (!disposed && controller === control) {
+        readError.value = READ_ERROR
+        if (!readFailureNotified) {
+          notifyOperation(READ_ERROR, 'warning', 'conversation-status')
+          readFailureNotified = true
+        }
+      }
     }).finally(() => {
       if (controller === control) {
         pending = undefined
@@ -103,6 +112,12 @@ export function useThreadInterruptions() {
         // that shared read fails; concurrent ready events still share one read.
         if (!disposed && readError.value === READ_ERROR) void refresh()
       })
+      return
+    }
+    if (notification.method === 'turn/started') {
+      const params = notification.params as { threadId?: string; thread_id?: string }
+      const threadId = params?.threadId || params?.thread_id || ''
+      if (threadId) updateIssues(threadId, [])
       return
     }
     if (notification.method !== 'codexapp/interruptions/changed') return

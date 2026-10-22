@@ -1,7 +1,10 @@
 import { capabilityValue } from './modelCapabilities.js'
 import { readDeliveryView, type DeliveryView } from './delivery.js'
+import type { AutomaticResumeSource } from './threadAutomaticResume.js'
 export type StoredQueuedMessage = {
   delivery?: DeliveryView
+  continuation?: true
+  resumeSource?: AutomaticResumeSource
   model?: string
   effort?: string
   serviceTier?: string | null
@@ -14,6 +17,12 @@ export type StoredQueuedMessage = {
 }
 
 export type ThreadQueueState = Record<string, StoredQueuedMessage[]>
+export type StoredQueuedMessageView = Readonly<Omit<StoredQueuedMessage, 'delivery' | 'imageUrls' | 'skills' | 'fileAttachments'>> & {
+  readonly delivery?: Readonly<NonNullable<StoredQueuedMessage['delivery']>>
+  readonly imageUrls: readonly string[]
+  readonly skills: readonly Readonly<StoredQueuedMessage['skills'][number]>[]
+  readonly fileAttachments: readonly Readonly<StoredQueuedMessage['fileAttachments'][number]>[]
+}
 export type ThreadQueueOperation =
   | { type: 'add'; threadId: string; message: StoredQueuedMessage; beforeId?: string }
   | { type: 'remove' | 'abandon' | 'resume' | 'steer' | 'reconcile'; threadId: string; messageId: string; revision?: number }
@@ -32,6 +41,8 @@ export function normalizeStoredQueuedMessage(value: unknown): StoredQueuedMessag
   if (!id) return null
   return {
     id,
+    ...(row.continuation === true ? { continuation: true as const } : {}),
+    ...(row.resumeSource === 'quota' || row.resumeSource === 'scheduled' ? { resumeSource: row.resumeSource } : {}),
     ...(row.delivery !== undefined ? { delivery: readDeliveryView(row.delivery) } : {}),
     ...(capabilityValue(row.model) ? { model: capabilityValue(row.model) } : {}),
     ...(typeof row.effort === 'string' ? { effort: capabilityValue(row.effort) } : {}),

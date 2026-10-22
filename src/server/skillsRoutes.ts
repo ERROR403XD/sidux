@@ -7,44 +7,13 @@ import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { writeFile } from 'node:fs/promises'
 import { getSpawnInvocation } from '../utils/commandInvocation.js'
+import { asRecord, getErrorMessage, setJson, withTimeout, type RouteRequestContext } from './httpUtils.js'
 
 type AppServerLike = {
   rpc(method: string, params: unknown): Promise<unknown>
 }
 
-type ReadJsonBody = (req: IncomingMessage) => Promise<unknown>
-
-type SkillRouteContext = {
-  appServer: AppServerLike
-  readJsonBody: ReadJsonBody
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null
-}
-
-function getErrorMessage(payload: unknown, fallback: string): string {
-  if (payload instanceof Error && payload.message.trim().length > 0) {
-    return payload.message
-  }
-  const record = asRecord(payload)
-  if (!record) return fallback
-  const error = record.error
-  if (typeof error === 'string' && error.length > 0) return error
-  const nestedError = asRecord(error)
-  if (nestedError && typeof nestedError.message === 'string' && nestedError.message.length > 0) {
-    return nestedError.message
-  }
-  return fallback
-}
-
-function setJson(res: ServerResponse, statusCode: number, payload: unknown): void {
-  res.statusCode = statusCode
-  res.setHeader('Content-Type', 'application/json; charset=utf-8')
-  res.end(JSON.stringify(payload))
-}
+type SkillRouteContext = RouteRequestContext & { appServer: AppServerLike }
 
 function getCodexHomeDir(): string {
   const codexHome = process.env.CODEX_HOME?.trim()
@@ -197,16 +166,6 @@ async function runCommandWithOutput(command: string, args: string[], options: { 
       const suffix = details.length > 0 ? `: ${details}` : ''
       reject(new Error(`Command failed (${command} ${args.join(' ')})${suffix}`))
     })
-  })
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
-    promise.then(
-      (val) => { clearTimeout(timer); resolve(val) },
-      (err) => { clearTimeout(timer); reject(err) },
-    )
   })
 }
 

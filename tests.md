@@ -16,10 +16,11 @@ This file is the manual test index. Detailed regression and feature verification
 | Folder | Sections | Scope |
 | --- | ---: | --- |
 | [Projects, Sidebar, and New Chat](tests/projects-sidebar-new-chat/index.md) | 16 | Home route, project picker, sidebar organization, new-chat setup, projectless folders, and project/worktree shell behavior. |
-| [Automations](tests/automations/index.md) | 4 | Thread heartbeat automations, project cron automations, dialogs, action rows, and automation panel behavior. |
+| [Automations](tests/automations/index.md) | 9 | Thread heartbeat automations, project cron automations, dialogs, action rows, automation panel behavior, and the external execute endpoint. |
 | [Skills, Plugins, and Integrations](tests/skills-plugins-integrations/index.md) | 28 | Skills Hub, skill sync, plugin/app directory surfaces, prompts, Composio, Telegram, and installed skill behavior. |
 | [Chat Composer and Message Rendering](tests/chat-composer-rendering/index.md) | 35 | Composer controls, queued messages, plan mode, markdown parsing, file links, attachments, generated images, and visible message rows. |
-| [Thread Loading, Streaming, and State](tests/thread-loading-state/index.md) | 28 | Thread list/detail loading, pagination, selected-thread stability, streaming scroll behavior, live-state reads, and missing-thread handling. |
+| [Thread Loading, Streaming, and State](tests/thread-loading-state/index.md) | 29 | Thread list/detail loading, pagination, selected-thread stability, streaming scroll behavior, live-state reads, and missing-thread handling. |
+| [Server Route Contracts](tests/server-routes/index.md) | 5 | Migrated HTTP route-family request/response contracts for delivery, automation runtime, free mode, Git reads, and Telegram. |
 | [Providers and Models](tests/providers-models/index.md) | 24 | Provider selectors, model menus, OpenRouter, OpenCode Zen, custom endpoints, Responses/Completions format, and model refresh behavior. |
 | [Auth and Docker Runtime](tests/auth-docker-runtime/index.md) | 14 | Codex auth, Docker-packaged runtime cases, copied auth behavior, two-phase release switching, invalid auth errors, and auth-aware provider fallback. |
 | [CLI, Network, and Platform](tests/cli-network-platform/index.md) | 16 | CLI startup, dev scripts, npx, Tailscale, reverse proxies, Windows, Android, Termux, and platform packaging behavior. |

@@ -1,8 +1,23 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ThreadGoalReader } from './threadGoalReader'
 import type { ThreadGoal } from '../api/threadCommands'
 const goal = (threadId: string): ThreadGoal => ({ threadId, objective: 'fixture goal', status: 'paused', tokenBudget: 1000, tokensUsed: 0, timeUsedSeconds: 0, createdAt: 1, updatedAt: 1 })
 describe('bounded native goal summaries', () => {
+  it('supplies known GOAL statuses synchronously without extra reads or TTL expiry during a long turn', async () => {
+    let now = 1
+    const rpc = vi.fn(async () => ({ goal: { ...goal('thread'), status: 'active' } }))
+    const reader = new ThreadGoalReader(rpc, () => now)
+    expect(reader.peekStatus('thread')).toBeUndefined()
+    await reader.snapshot(['thread'])
+    now += 60_000
+    expect(reader.peekStatus('thread')).toBe('active')
+    expect(rpc).toHaveBeenCalledOnce()
+    reader.observe({ method: 'thread/goal/updated', params: { threadId: 'thread', goal: { ...goal('thread'), status: 'complete' } } })
+    expect(reader.peekStatus('thread')).toBe('complete')
+    reader.observe({ method: 'thread/goal/cleared', params: { threadId: 'thread' } })
+    expect(reader.peekStatus('thread')).toBeNull()
+    expect(rpc).toHaveBeenCalledOnce()
+  })
   it('bounds native concurrency across batches and caches empty and present goals', async () => {
     let active = 0, peak = 0, requests = 0, now = 1
     const reader = new ThreadGoalReader(async (_method, params) => { requests++; active++; peak = Math.max(active, peak); await new Promise(resolve => setTimeout(resolve, 1)); active--; const id = (params as { threadId: string }).threadId; return { goal: id === 'goal-thread' ? goal(id) : null } }, () => now)
@@ -20,7 +35,7 @@ describe('bounded native goal summaries', () => {
     reader.observe({ method: 'thread/goal/updated', params: { threadId: 'fixture', goal: goal('fixture') } })
     finish({ goal: null }); expect((await pending).fixture).toEqual(goal('fixture'))
   })
-  it('refreshes only the selected stale goal after reconnection and rejects malformed native data', async () => {
+  it('refreshes only the selected stale goal after reconnection and degrades failed native data', async () => {
     let reads = 0
     let current = goal('selected')
     const reader = new ThreadGoalReader(async (_method, params) => {
@@ -32,7 +47,25 @@ describe('bounded native goal summaries', () => {
     expect((await reader.snapshot(['selected', 'sidebar'])).selected?.status).toBe('paused')
     expect((await reader.snapshot(['selected', 'sidebar'], 'selected')).selected?.tokensUsed).toBe(200)
     expect(reads).toBe(3)
+    const degraded = new ThreadGoalReader(async (_, params) => {
+      const id = (params as { threadId: string }).threadId
+      if (id === 'selected') return { goal: goal(id) }
+      throw new Error('unavailable')
+    })
+    expect(await degraded.snapshot(['selected', 'sidebar'])).toEqual({ selected: goal('selected') })
     const malformed = new ThreadGoalReader(async () => ({ goal: {} }))
-    await expect(malformed.snapshot(['selected'])).rejects.toThrow('不完整')
+    expect(await malformed.snapshot(['selected'])).toEqual({})
+  })
+
+  it('keeps a cached goal when an individual native read fails', async () => {
+    const rpc = vi.fn(async (_method: string, params: unknown) => {
+      const id = (params as { threadId: string }).threadId
+      if (id === 'cached') return { goal: goal(id) }
+      throw new Error('unavailable')
+    })
+    const reader = new ThreadGoalReader(rpc)
+    await reader.snapshot(['cached'])
+    expect(await reader.snapshot(['cached', 'failed'])).toEqual({ cached: goal('cached') })
+    expect(rpc).toHaveBeenCalledTimes(2)
   })
 })

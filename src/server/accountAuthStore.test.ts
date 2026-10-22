@@ -135,6 +135,37 @@ describe('AccountAuthStore', () => {
     expect(await readFile(store.credentialPath(parsed.identity.storageId), 'utf8')).toBe(raw)
   })
 
+  it('serializes state migration with concurrent metadata updates', async () => {
+    const store = await createStore()
+    const raw = credential('account-a')
+    const parsed = parseAccountCredential(raw)
+    await store.writeCredential(parsed.identity.storageId, raw)
+    await writeFile(store.statePath, JSON.stringify({
+      activeAccountId: 'account-a',
+      activeStorageId: parsed.identity.storageId,
+      accounts: [{
+        accountId: 'account-a',
+        storageId: parsed.identity.storageId,
+        lastRefreshedAtIso: '2026-01-01T00:00:00.000Z',
+      }],
+    }))
+
+    let releaseUpdate: (() => void) | undefined
+    const updateGate = new Promise<void>(resolve => { releaseUpdate = resolve })
+    const update = store.updateState(async state => {
+      await updateGate
+      return {
+        state: { ...state, accounts: state.accounts.map(account => ({ ...account, alias: '并发别名' })) },
+        result: null,
+      }
+    })
+    const migrationPromise = store.readState()
+    releaseUpdate!()
+    const [migration] = await Promise.all([migrationPromise, update])
+    expect(migration.accounts[0]?.credentialRevision).toBe(1)
+    expect((await store.readState()).accounts[0]?.alias).toBe('并发别名')
+  })
+
   it('migrates an account-id-only snapshot directory to the stable identity path', async () => {
     const store = await createStore()
     const raw = credential('account-a', 'user-a')

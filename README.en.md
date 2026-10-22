@@ -2,10 +2,10 @@
 
 [中文](README.md) | **English**
 
-[![Release](https://img.shields.io/github/v/release/ERROR403XD/sidux)](https://github.com/ERROR403XD/sidux/releases)
+[![Release](https://img.shields.io/github/v/release/ERROR403XD/codexapp)](https://github.com/ERROR403XD/sidux/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Sidux is a self-hosted web interface for Codex app-server. Manage projects, conversations, accounts, and automations from desktop, tablet, or phone browsers. The current public release baseline is **0.2.19**; starting with **0.2.20**, the project uses the Sidux name and icon consistently. This is an independently maintained community project, unaffiliated with OpenAI.
+Sidux (formerly CodexApp) is a self-hosted web interface for Codex app-server. Manage projects, conversations, accounts, and automations from desktop, tablet, or phone browsers. The release baseline is **0.2.22**. This is an independently maintained community project, unaffiliated with OpenAI.
 
 ## Acceptable use and policy compliance
 
@@ -30,7 +30,7 @@ This project is forked from [friuns2/codex-mobile](https://github.com/friuns2/co
 
 This fork therefore continues development from the GitHub source, rather than the reportedly poisoned npm distribution. “Unpoisoned GitHub version” refers to the source baseline without the distribution-only injection described in that report; it is not a blanket security guarantee for all historical code or dependencies. Upstream ancestry is retained, while local development is published as a reviewed source snapshot, and release packages are built from this repository. The linked report is the source for the incident description, not an independently verified conclusion about every upstream release.
 
-**Install from this repository or its [GitHub Releases](https://github.com/ERROR403XD/sidux/releases).** Starting with 0.2.20, use `sidux` as the primary command; `codexapp` and `codexui` remain compatibility aliases. Historical 0.2.19-and-earlier packages retain their `codexapp-<version>.tgz` filenames and launch commands. This GitHub release does not establish control over the same-named npm package.
+**Install from this repository or its [GitHub Releases](https://github.com/ERROR403XD/sidux/releases).** The new command is `sidux`; `codexapp` and `codexui` remain compatibility aliases. Existing repository URLs, data paths, environment variables, and service names are not migrated yet so upgrades and rollbacks keep working.
 
 ## Features
 
@@ -55,7 +55,9 @@ This fork therefore continues development from the GitHub source, rather than th
 | Bilingual interface | Chinese/English settings, accounts, API proxy, automations, and project dialogs with persistent language preferences; user content is not translated. |
 | Deployment | Removed built-in tunneling and mandatory startup login; strict ports, two-phase release switching, and cache recovery. |
 
-Version 0.2.19 includes changes from 0.2.18 and 0.2.19: name-only projects, multiple daily scheduled times, steering-message recovery and deduplication, improved conversation filtering and error states, fixes to automation persistence and history recovery, and UI improvements. See the [release notes](https://github.com/ERROR403XD/sidux/releases/tag/v0.2.19).
+The wider plugin refresh button aligns with the list right edge; the filter fits its content and the search field fills the remaining space with consistent control gaps.
+
+Version 0.2.22 promotes the final `0.2.22-dev.8` baseline to stable, including conversation status and notifications, scheduled-resume markers, custom connections, and settings improvements. It retains 80 confirmed unresolved audit findings, including six P1 issues; see the [release notes and known issues](docs/RELEASE-0.2.22.md). Fixes continue in 0.2.23.
 
 ## Requirements
 
@@ -70,10 +72,10 @@ Version 0.2.19 includes changes from 0.2.18 and 0.2.19: name-only projects, mult
 ### Build this repository
 
 ```bash
-git clone --branch v0.2.19 https://github.com/ERROR403XD/sidux.git
+git clone --branch v0.2.22 https://github.com/ERROR403XD/sidux.git
 cd sidux
-pnpm install --frozen-lockfile
-pnpm run build
+npm ci
+npm run build
 node dist-cli/index.js --port 5900 --strict-port --no-open
 ```
 
@@ -81,11 +83,11 @@ Open `http://localhost:5900`, follow the terminal's web authentication instructi
 
 ### Install the GitHub Release package
 
-Download the historical package `codexapp-0.2.19.tgz` and `SHA256SUMS` from [v0.2.19](https://github.com/ERROR403XD/sidux/releases/tag/v0.2.19), then run in the download directory:
+Download `codexapp-0.2.22.tgz` and `SHA256SUMS` from [v0.2.22](https://github.com/ERROR403XD/sidux/releases/tag/v0.2.22), then run in the download directory:
 
 ```bash
 sha256sum -c SHA256SUMS
-npm install -g ./codexapp-0.2.19.tgz
+npm install -g ./codexapp-0.2.22.tgz
 codexapp --port 5900 --strict-port --no-open
 ```
 
@@ -102,7 +104,7 @@ The package contains built web/CLI assets; installation still downloads npm depe
 | `--no-password` | Disable the web password, suitable only for trusted environments with other access controls. |
 | `CODEX_HOME` | Separate credentials, conversations, and application state; otherwise uses the Codex default directory. |
 
-Run `node dist-cli/index.js --help`, installed `sidux --help`, or the compatibility command `codexapp --help` for all options. Choose permission and approval policies appropriate to your tasks; these control local execution and do not remove provider safeguards or usage restrictions.
+Run `node dist-cli/index.js --help` or installed `codexapp --help` for all options. Choose permission and approval policies appropriate to your tasks; these control local execution and do not remove provider safeguards or usage restrictions.
 
 The service listens on `0.0.0.0` and is reachable through the host's LAN address. Configure firewall rules, a password, or your own private network/reverse proxy as appropriate. Browser microphone features may require HTTPS. Project files and tools run on the server host.
 
@@ -126,8 +128,6 @@ Credentials, conversations, and application state live in the selected `CODEX_HO
 
 Finish running tasks and back up data before upgrading. Verify and build/install the new release before starting it. Keep the previous tag/package and data backups for rollback. `scripts/codexapp-release-switch.sh` implements two-phase deployment for this project's host setup; read its configuration before using it. Publishing a GitHub Release does not automatically switch your running service.
 
-Version 0.2.19 uses recoverable segmented automation history. Before downgrading, stop the instance and keep a complete backup, then run `node dist-cli/index.js automation-history --home /path/to/codex-home --export-legacy` with the **0.2.19 executable**. Start the older version only after export succeeds; never delete locks or history to bypass a failure. Direct runtime dependencies are pinned; retain each deployment’s generated package-lock.json so npm ci can reproduce the same resolved installation.
-
 ## Development and verification
 
 ```bash
@@ -137,9 +137,9 @@ pnpm run build
 pnpm run test:unit
 ```
 
-Vue 3 / TypeScript / Vite power the frontend. Node.js / Express connect to Codex app-server over WebSocket/RPC; the terminal uses xterm.js / node-pty. Source is in `src/` and `scripts/`; see [tests.md](tests.md) and [public release verification](docs/RELEASE-0.2.19.md).
+Vue 3 / TypeScript / Vite power the frontend. Node.js / Express connect to Codex app-server over WebSocket/RPC; the terminal uses xterm.js / node-pty. Source is in `src/` and `scripts/`; see [tests.md](tests.md) and [public release verification](docs/RELEASE-0.2.22.md).
 
-See [0.2.19 release verification](docs/RELEASE-0.2.19.md) for the tested scope and limitations. Private conversations, host paths, screenshots, and raw acceptance records are excluded.
+See [0.2.22 release verification](docs/RELEASE-0.2.22.md) for the tested scope and limitations. Private conversations, host paths, screenshots, and raw acceptance records are excluded.
 
 ## Troubleshooting
 

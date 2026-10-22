@@ -42,7 +42,7 @@ export function compactionFromTurn(value: unknown): UiMessage[] {
   })
 }
 
-export function updateCompactionMessages(messages: UiMessage[], method: string, value: unknown): UiMessage[] | null {
+export function updateCompactionMessages(messages: readonly UiMessage[], method: string, value: unknown): UiMessage[] | null {
   const params = object(value)
   const item = object(params.item)
   const turn = object(params.turn)

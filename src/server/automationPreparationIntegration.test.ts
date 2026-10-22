@@ -165,12 +165,16 @@ it('keeps the actual shared read pending and coalesces timed-out retries until t
 it('closes a fresh empty thread stalled while naming it and rejects the late prepared result before any turn is submitted', async () => {
   const f = await fixture()
   try {
-    const held = f.acquire('naming', undefined, 250)
+    const held = f.acquire('naming')
     expect(await held.result).toBe(true)
     await writeFile(f.pause, JSON.stringify({ method: 'thread/name/set', phase: 'after' }))
     const rpc = vi.fn((method: string, params: unknown, runId?: string) => f.app.automationRpc(method, params, runId))
     const runtime = createAutomationRuntime({ rpc, accountBusy: () => false, hasQueuedMessages: async () => false, pendingRequests: () => [], readHistory: async () => ({}), buildParams: async () => ({}) })
-    const result = await held.scope.effect(() => runtime.createThread(f.home, 'prepared name', {}, 'naming')).catch(error => error)
+    const pending = held.scope.effect(() => runtime.createThread(f.home, 'prepared name', {}, 'naming')).catch(error => error)
+    // Establish the naming phase before cancelling; worker startup must not decide this test's interleaving.
+    await vi.waitFor(async () => expect(await f.markers()).toHaveLength(1), { timeout: 5000 })
+    held.scope.cancel(new Error('fixture naming cancelled'))
+    const result = await pending
     expect(result).toBe(held.scope.signal.reason)
     await held.scope.settle()
     f.app.endTaskPreparation('naming')

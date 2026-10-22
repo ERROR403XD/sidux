@@ -48,7 +48,7 @@ export function matchesDelivery(row: ConversationDelivery, message: UiMessage): 
     && readQuestionReply(row.message.text).text === message.text
 }
 
-export function nativeDeliveryMatcher(messages: UiMessage[]): (row: ConversationDelivery) => boolean {
+export function nativeDeliveryMatcher(messages: readonly UiMessage[]): (row: ConversationDelivery) => boolean {
   const ids = new Set<string>()
   const ordinals = new Map<string, UiMessage>()
   for (const message of messages) {
@@ -63,4 +63,8 @@ export function nativeDeliveryMatcher(messages: UiMessage[]): (row: Conversation
     const candidate = ordinals.get(JSON.stringify([row.turnId, row.userMessageOrdinal]))
     return !!candidate && matchesDelivery(row, candidate)
   }
+}
+
+export function resolveUserMessageOrdinal(deliveredTurnId: string, sourceTurnId: string | undefined, nextOrdinal: number): number {
+  return deliveredTurnId === sourceTurnId ? nextOrdinal : 0
 }

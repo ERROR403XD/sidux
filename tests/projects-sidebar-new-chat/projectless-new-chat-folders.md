@@ -2,7 +2,7 @@
 
 #### Prerequisites
 - App server is running from this repository.
-- Home directory is writable.
+- Use a writable, isolated test user home. `CODEX_HOME` alone does not change the `~/Documents/Codex` output path; record the task-owned output root before testing.
 - Light and dark themes are both available from Settings.
 
 #### Steps
@@ -25,4 +25,4 @@
 - Light and dark theme composer surfaces remain readable and unchanged apart from the folder behavior.
 
 #### Rollback/Cleanup
-- Delete only the test folders created under `~/Documents/Codex/<YYYY-MM-DD>/`.
+- Delete only the exact test folders created under the isolated test user's `~/Documents/Codex/<YYYY-MM-DD>/`; preserve all real user folders.

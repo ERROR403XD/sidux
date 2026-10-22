@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { computed } from 'vue'
 import { t, setUiLanguage } from '../composables/useUiLanguage'
 import { zhSourceEnglish } from './zhSourceEnglish'
@@ -7,6 +9,46 @@ import { englishForSource } from './translateSource'
 afterEach(() => setUiLanguage('en'))
 
 describe('Chinese-authored interface translations', () => {
+  it('keeps reviewed component literals translated', () => {
+    setUiLanguage('en')
+    expect(t('中断活动连接并保存配置…')).toBe('Interrupt active connections and save configuration…')
+    expect(t('中断活动连接并保存配置')).toBe('Interrupt active connections and save configuration')
+    expect(t('中断并保存配置')).toBe('Interrupt and save configuration')
+    expect(t(' · 已失效')).toBe(' · Inactive')
+    expect(t('确认移除连接')).toBe('Confirm remove connection')
+    expect(t('/ 预算')).toBe('/ Budget')
+    expect(t('使用重置机会，{v0}', { v0: '2026-10-09' })).toBe('Use banked reset, 2026-10-09')
+    expect(t('主题：{v0}', { v0: 'Dark' })).toBe('Theme: Dark')
+    expect(t('{v0} · 全部执行记录', { v0: 'Heartbeat' })).toBe('Heartbeat · All runs')
+    expect(t('{v0}（新）', { v0: 'Backup' })).toBe('Backup (new)')
+    setUiLanguage('zh-CN')
+    expect(t('使用重置机会，{v0}', { v0: '2026-10-09' })).toBe('使用重置机会，2026-10-09')
+    expect(t('主题：{v0}', { v0: '深色' })).toBe('主题：深色')
+  })
+
+  it('does not regress reviewed dynamic translation call sites', () => {
+    const root = join(__dirname, '..')
+    const paths = [
+      'components/api-proxy/ApiProxyPanel.vue',
+      'components/accounts/AccountQuota.vue',
+      'components/accounts/AccountResetCredits.vue',
+      'components/accounts/CustomConnections.vue',
+      'components/common/AppSelect.vue',
+      'components/content/AutomationRunHistory.vue',
+      'components/sidebar/SidebarThreadControls.vue',
+    ].map(relative => join(root, relative))
+    const files = new Map(paths.map(path => [path, readFileSync(path, 'utf8')]))
+    for (const [path, source] of files) {
+      expect(source, path).not.toContain('）` :')
+    }
+    expect(files.get(join(root, 'components/api-proxy/ApiProxyPanel.vue'))).toContain("t(' · 已失效')")
+    expect(files.get(join(root, 'components/api-proxy/ApiProxyPanel.vue'))).toContain("t('{v0}（新）'")
+    expect(files.get(join(root, 'components/accounts/AccountQuota.vue'))).toContain("t('{v0} 重置'")
+    expect(files.get(join(root, 'components/accounts/AccountResetCredits.vue'))).toContain("t('使用重置机会，{v0}'")
+    expect(files.get(join(root, 'components/sidebar/SidebarThreadControls.vue'))).toContain("t('主题：{v0}'")
+    expect(files.get(join(root, 'components/content/AutomationRunHistory.vue'))).toContain("t('{v0} · 全部执行记录'")
+  })
+
   it('translates existing and new keys in both languages without a reload', () => {
     const label = computed(() => t('附加工作目录'))
     setUiLanguage('en')

@@ -12,7 +12,7 @@
     </button>
 
     <template v-if="!isSidebarCollapsed">
-    <button class="sidebar-thread-controls-button" type="button" :title="t(`主题：${t(theme === 'dark' ? '深色' : theme === 'light' ? '浅色' : '跟随系统')}`)" :aria-label="t(`主题：${t(theme === 'dark' ? '深色' : theme === 'light' ? '浅色' : '跟随系统')}`)" @click="$emit('cycle-theme')">
+    <button class="sidebar-thread-controls-button" type="button" :title="t('主题：{v0}', { v0: t(theme === 'dark' ? '深色' : theme === 'light' ? '浅色' : '跟随系统') })" :aria-label="t('主题：{v0}', { v0: t(theme === 'dark' ? '深色' : theme === 'light' ? '浅色' : '跟随系统') })" @click="$emit('cycle-theme')">
       <IconMonitor v-if="theme !== 'dark' && theme !== 'light'" class="sidebar-thread-controls-icon" />
       <svg v-else class="sidebar-thread-controls-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
         <path v-if="theme === 'dark'" d="M20 15.2A8 8 0 0 1 8.8 4 8 8 0 1 0 20 15.2Z" />

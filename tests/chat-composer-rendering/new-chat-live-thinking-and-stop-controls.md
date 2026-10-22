@@ -4,7 +4,7 @@
 Projectless new chats show live thinking state and interrupt controls while a turn is active.
 
 #### Prerequisites/Setup
-1. Use an isolated `CODEX_HOME` with valid Codex auth.
+1. Use an isolated test user/home and `CODEX_HOME`, with test-only auth or a deterministic protocol fixture. Projectless output uses `os.homedir()`; setting `CODEX_HOME` alone does not isolate its workspace directory.
 2. Start local Vite: `CODEX_HOME=<temp-home> pnpm run dev --host 127.0.0.1 --port 4173`.
 
 #### Steps
@@ -21,7 +21,7 @@ Projectless new chats show live thinking state and interrupt controls while a tu
 - The stop button is visible while the turn is active and disappears after completion.
 
 #### Rollback/Cleanup
-- Stop the temporary Vite server if it was only used for this check.
-- Remove temporary projectless chat folders under `~/Documents/Codex/<today>/` if they are no longer needed.
+- Keep the verified audit server on 4173 running unless explicitly asked to stop it.
+- Inspect the actual cwd and ownership of each projectless folder under the isolated test user home. Remove only folders created by this test after their own activity has ended; never clean the host user Documents tree based only on a date or directory name.
 
 ---

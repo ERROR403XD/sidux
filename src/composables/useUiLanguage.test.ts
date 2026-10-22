@@ -18,7 +18,7 @@ it('updates existing UI labels and parameterized messages when language changes'
   expect(storage.get('codex-web-local.ui-language.v1')).toBe('zh-CN')
   for (const command of ['Commit', 'Pull', 'Push', 'Fetch', 'Reset', 'Rebase', 'Merge', 'Checkout']) expect(t(command)).toBe(command)
   expect(t('Worktree')).toBe('工作树')
-  expect(t('raw external error /workspace')).toBe('raw external error /workspace')
+  expect(t('raw external error /home/Code')).toBe('raw external error /home/Code')
   setUiLanguage('en')
   expect(label.value).toBe('Current branch')
 })

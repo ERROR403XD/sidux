@@ -57,3 +57,15 @@ Toggle "Free mode" in settings to use free OpenRouter models without an OpenAI A
 #### Rollback/Cleanup
 - Remove `src/server/freeMode.ts`, revert changes in `codexAppServerBridge.ts`, `codexGateway.ts`, and `App.vue`.
 - Delete `~/.codex/webui-custom-providers.json` to clear free mode state.
+
+### 0.2.22 供应方变更服务与门禁释放
+
+前置：独立 HOME、合成 RPC/凭据，运行 `pnpm exec vitest run src/server/providerChangeService.test.ts src/server/routes/freeModeRoutes.test.ts src/server/customConnectionAdmission.test.ts`，不要修改真实账号状态。
+
+1. 队列中保留 queued 消息后切换供应方，确认返回 409，尚未读取请求 body、写配置或重启原生进程；移除测试 intent 后连续切换两次成功。
+2. 注入原生读取失败、body 解析失败和配置写入失败，各自完成后再次切换；预期门禁已释放，可正常继续，已确认写入沿用既有错误处理。
+3. 从自定义连接切换账号，分别返回失败状态与抛出错误；原连接恢复，后续成功切换不残留 gate。
+4. 占用连接期间编辑/移除被拒绝；并发身份切换被拒绝；新连接的测试与保存仍允许，保留原账号和连接选择。
+5. 执行打包 Provider/Auth 矩阵：空/损坏 auth 回退 Zen，连续两次 OpenRouter 切换成功，无效 auth 的真实失败行刷新后仍在，重复 live overlay 为 0。
+
+预期：`runProviderChange` 唯一拥有 acquire/finally release，业务服务持有检查、写入/重启和失败恢复全过程；route 只解析与映射响应。清理仅独立 HOME/测试容器；标准 59001 卷与生产状态保留，无 schema 迁移。
