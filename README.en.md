@@ -85,7 +85,7 @@ Open `http://localhost:5900`, follow the terminal's web authentication instructi
 
 ### Install the GitHub Release package
 
-Download `codexapp-0.2.22.tgz` and `SHA256SUMS` from [v0.2.22](https://github.com/ERROR403XD/sidux/releases/tag/v0.2.22), then run in the download directory:
+Download `codexapp-0.2.22.tgz`, `package-lock.json`, and `SHA256SUMS` from [v0.2.22](https://github.com/ERROR403XD/sidux/releases/tag/v0.2.22), then run in the download directory:
 
 ```bash
 sha256sum -c SHA256SUMS

@@ -85,7 +85,7 @@ node dist-cli/index.js --port 5900 --strict-port --no-open
 
 ### 使用本仓库 Release 安装包
 
-从 [v0.2.22](https://github.com/ERROR403XD/sidux/releases/tag/v0.2.22) 下载 `codexapp-0.2.22.tgz` 和 `SHA256SUMS`，在下载目录执行：
+从 [v0.2.22](https://github.com/ERROR403XD/sidux/releases/tag/v0.2.22) 下载 `codexapp-0.2.22.tgz`、`package-lock.json` 和 `SHA256SUMS`，在下载目录执行：
 
 ```bash
 sha256sum -c SHA256SUMS
