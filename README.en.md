@@ -59,6 +59,8 @@ The wider plugin refresh button aligns with the list right edge; the filter fits
 
 Version 0.2.22 promotes the final `0.2.22-dev.8` baseline to stable, including conversation status and notifications, scheduled-resume markers, custom connections, and settings improvements. It retains 80 confirmed unresolved audit findings, including six P1 issues; see the [release notes and known issues](docs/RELEASE-0.2.22.md). Fixes continue in 0.2.23.
 
+The current development version is `0.2.23-dev.1`; see the [0.2.23 development scope](docs/DEVELOPMENT-0.2.23.md).
+
 ## Requirements
 
 - This release is built and CLI-tested with Node.js 24 and pnpm 11. The manifest declares Node.js ≥18; not every minimum-version combination was tested.
